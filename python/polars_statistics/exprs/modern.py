@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Union
 
 import polars as pl
 from polars.plugins import register_plugin_function
@@ -10,9 +11,16 @@ from polars.plugins import register_plugin_function
 LIB = Path(__file__).parent.parent
 
 
+def _to_expr(x: Union[pl.Expr, str]) -> pl.Expr:
+    """Convert string column name to expression."""
+    if isinstance(x, str):
+        return pl.col(x)
+    return x
+
+
 def energy_distance(
-    x: pl.Expr,
-    y: pl.Expr,
+    x: Union[pl.Expr, str],
+    y: Union[pl.Expr, str],
     n_permutations: int = 999,
     seed: int | None = None,
 ) -> pl.Expr:
@@ -43,8 +51,8 @@ def energy_distance(
     Szekely, G.J. and Rizzo, M.L. (2004) "Testing for Equal Distributions in
     High Dimension"
     """
-    x_clean = x.cast(pl.Float64)
-    y_clean = y.cast(pl.Float64)
+    x_clean = _to_expr(x).cast(pl.Float64)
+    y_clean = _to_expr(y).cast(pl.Float64)
 
     seed_expr = pl.lit(seed, dtype=pl.UInt64) if seed is not None else pl.lit(None, dtype=pl.UInt64)
 
@@ -62,8 +70,8 @@ def energy_distance(
 
 
 def mmd_test(
-    x: pl.Expr,
-    y: pl.Expr,
+    x: Union[pl.Expr, str],
+    y: Union[pl.Expr, str],
     n_permutations: int = 999,
     seed: int | None = None,
 ) -> pl.Expr:
@@ -92,8 +100,8 @@ def mmd_test(
     ----------
     Gretton, A. et al. (2012) "A Kernel Two-Sample Test"
     """
-    x_clean = x.cast(pl.Float64)
-    y_clean = y.cast(pl.Float64)
+    x_clean = _to_expr(x).cast(pl.Float64)
+    y_clean = _to_expr(y).cast(pl.Float64)
 
     seed_expr = pl.lit(seed, dtype=pl.UInt64) if seed is not None else pl.lit(None, dtype=pl.UInt64)
 

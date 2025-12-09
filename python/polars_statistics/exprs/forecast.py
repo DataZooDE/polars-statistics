@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Union
 
 import polars as pl
 from polars.plugins import register_plugin_function
@@ -10,9 +10,16 @@ from polars.plugins import register_plugin_function
 LIB = Path(__file__).parent.parent
 
 
+def _to_expr(x: Union[pl.Expr, str]) -> pl.Expr:
+    """Convert string column name to expression."""
+    if isinstance(x, str):
+        return pl.col(x)
+    return x
+
+
 def diebold_mariano(
-    e1: pl.Expr,
-    e2: pl.Expr,
+    e1: Union[pl.Expr, str],
+    e2: Union[pl.Expr, str],
     loss: Literal["squared", "absolute"] = "squared",
     horizon: int = 1,
 ) -> pl.Expr:
@@ -40,8 +47,8 @@ def diebold_mariano(
     ----------
     Diebold, F.X. and Mariano, R.S. (1995) "Comparing Predictive Accuracy"
     """
-    e1_clean = e1.cast(pl.Float64)
-    e2_clean = e2.cast(pl.Float64)
+    e1_clean = _to_expr(e1).cast(pl.Float64)
+    e2_clean = _to_expr(e2).cast(pl.Float64)
 
     return register_plugin_function(
         plugin_path=LIB,
@@ -57,8 +64,8 @@ def diebold_mariano(
 
 
 def permutation_t_test(
-    x: pl.Expr,
-    y: pl.Expr,
+    x: Union[pl.Expr, str],
+    y: Union[pl.Expr, str],
     alternative: Literal["two-sided", "less", "greater"] = "two-sided",
     n_permutations: int = 999,
     seed: int | None = None,
@@ -85,8 +92,8 @@ def permutation_t_test(
     pl.Expr
         Struct containing 'statistic' and 'p_value'.
     """
-    x_clean = x.cast(pl.Float64)
-    y_clean = y.cast(pl.Float64)
+    x_clean = _to_expr(x).cast(pl.Float64)
+    y_clean = _to_expr(y).cast(pl.Float64)
 
     seed_expr = pl.lit(seed, dtype=pl.UInt64) if seed is not None else pl.lit(None, dtype=pl.UInt64)
 
@@ -105,8 +112,8 @@ def permutation_t_test(
 
 
 def clark_west(
-    e1: pl.Expr,
-    e2: pl.Expr,
+    e1: Union[pl.Expr, str],
+    e2: Union[pl.Expr, str],
     horizon: int = 1,
 ) -> pl.Expr:
     """Clark-West test for nested model comparison.
@@ -133,8 +140,8 @@ def clark_west(
     Clark, T.E. and West, K.D. (2007) "Approximately Normal Tests for Equal
     Predictive Accuracy in Nested Models"
     """
-    e1_clean = e1.cast(pl.Float64)
-    e2_clean = e2.cast(pl.Float64)
+    e1_clean = _to_expr(e1).cast(pl.Float64)
+    e2_clean = _to_expr(e2).cast(pl.Float64)
 
     return register_plugin_function(
         plugin_path=LIB,
@@ -149,8 +156,8 @@ def clark_west(
 
 
 def spa_test(
-    benchmark: pl.Expr,
-    *models: pl.Expr,
+    benchmark: Union[pl.Expr, str],
+    *models: Union[pl.Expr, str],
     n_bootstrap: int = 999,
     block_length: float = 5.0,
     seed: int | None = None,
@@ -181,10 +188,10 @@ def spa_test(
     ----------
     Hansen, P.R. (2005) "A Test for Superior Predictive Ability"
     """
-    benchmark_clean = benchmark.cast(pl.Float64)
+    benchmark_clean = _to_expr(benchmark).cast(pl.Float64)
     seed_expr = pl.lit(seed, dtype=pl.UInt64) if seed is not None else pl.lit(None, dtype=pl.UInt64)
 
-    model_args = [m.cast(pl.Float64) for m in models]
+    model_args = [_to_expr(m).cast(pl.Float64) for m in models]
 
     return register_plugin_function(
         plugin_path=LIB,
@@ -201,7 +208,7 @@ def spa_test(
 
 
 def model_confidence_set(
-    *models: pl.Expr,
+    *models: Union[pl.Expr, str],
     alpha: float = 0.1,
     statistic: Literal["range", "max"] = "range",
     n_bootstrap: int = 999,
@@ -238,7 +245,7 @@ def model_confidence_set(
     Hansen, Lunde, and Nason (2011) "The Model Confidence Set"
     """
     seed_expr = pl.lit(seed, dtype=pl.UInt64) if seed is not None else pl.lit(None, dtype=pl.UInt64)
-    model_args = [m.cast(pl.Float64) for m in models]
+    model_args = [_to_expr(m).cast(pl.Float64) for m in models]
 
     return register_plugin_function(
         plugin_path=LIB,
@@ -256,8 +263,8 @@ def model_confidence_set(
 
 
 def mspe_adjusted(
-    benchmark: pl.Expr,
-    *models: pl.Expr,
+    benchmark: Union[pl.Expr, str],
+    *models: Union[pl.Expr, str],
     n_bootstrap: int = 999,
     block_length: float = 5.0,
     seed: int | None = None,
@@ -285,10 +292,10 @@ def mspe_adjusted(
     pl.Expr
         Struct containing 'statistic', 'p_value_consistent', 'p_value_upper', 'best_model_idx'.
     """
-    benchmark_clean = benchmark.cast(pl.Float64)
+    benchmark_clean = _to_expr(benchmark).cast(pl.Float64)
     seed_expr = pl.lit(seed, dtype=pl.UInt64) if seed is not None else pl.lit(None, dtype=pl.UInt64)
 
-    model_args = [m.cast(pl.Float64) for m in models]
+    model_args = [_to_expr(m).cast(pl.Float64) for m in models]
 
     return register_plugin_function(
         plugin_path=LIB,
