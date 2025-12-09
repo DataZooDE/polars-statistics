@@ -53,16 +53,49 @@ jobs:
       - name: Cache Rust
         uses: Swatinem/rust-cache@v2
 
-      - name: Install dependencies
+      - name: Create virtual environment
+        run: python -m venv .venv
+
+      - name: Install dependencies (Unix)
+        if: runner.os != 'Windows'
         run: |
+          source .venv/bin/activate
           python -m pip install --upgrade pip
           pip install maturin numpy polars pytest scipy statsmodels
 
-      - name: Build and install
-        run: maturin develop --release
+      - name: Install dependencies (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          .venv\Scripts\activate
+          python -m pip install --upgrade pip
+          pip install maturin numpy polars pytest scipy statsmodels
+        shell: cmd
 
-      - name: Run Python tests
-        run: pytest tests/ -v
+      - name: Build and install (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          source .venv/bin/activate
+          maturin develop --release
+
+      - name: Build and install (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          .venv\Scripts\activate
+          maturin develop --release
+        shell: cmd
+
+      - name: Run Python tests (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          source .venv/bin/activate
+          pytest tests/ -v
+
+      - name: Run Python tests (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          .venv\Scripts\activate
+          pytest tests/ -v
+        shell: cmd
 
   build-wheels:
     name: Build wheels (${{ matrix.os }})
