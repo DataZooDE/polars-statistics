@@ -4,6 +4,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 
+> **Note:** This extension is in early stage development. APIs may change and some features are experimental.
+
 High-performance statistical testing for [Polars](https://pola.rs/) DataFrames, powered by Rust.
 
 ## Features

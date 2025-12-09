@@ -55,9 +55,9 @@ thiserror = "2.0"
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
 
-# Local crates (path dependencies)
-regress-rs = { path = "../statistics" }
-anofox-statistics = { path = "../tests-rs" }
+# GitHub dependencies
+regress-rs = { git = "https://github.com/sipemu/regress-rs" }
+anofox-statistics = { git = "https://github.com/sipemu/anofox-statistics-rs" }
 
 [profile.release]
 codegen-units = 1

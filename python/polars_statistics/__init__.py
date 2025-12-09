@@ -49,6 +49,20 @@ from polars_statistics.exprs import (
     # Modern tests
     energy_distance,
     mmd_test,
+    # Regression expressions
+    ols,
+    ridge,
+    elastic_net,
+    wls,
+    rls,
+    bls,
+    nnls,
+    logistic,
+    poisson,
+    negative_binomial,
+    tweedie,
+    probit,
+    cloglog,
 )
 
 __version__ = "0.1.0"
@@ -99,6 +113,20 @@ __all__ = [
     # Modern test expressions
     "energy_distance",
     "mmd_test",
+    # Regression expressions
+    "ols",
+    "ridge",
+    "elastic_net",
+    "wls",
+    "rls",
+    "bls",
+    "nnls",
+    "logistic",
+    "poisson",
+    "negative_binomial",
+    "tweedie",
+    "probit",
+    "cloglog",
     # Library path
     "LIB",
 ]

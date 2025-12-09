@@ -1,4 +1,4 @@
-"""Expression API for statistical tests."""
+"""Expression API for statistical tests and regression."""
 
 from polars_statistics.exprs.parametric import (
     ttest_ind,
@@ -28,6 +28,21 @@ from polars_statistics.exprs.modern import (
     energy_distance,
     mmd_test,
 )
+from polars_statistics.exprs.regression import (
+    ols,
+    ridge,
+    elastic_net,
+    wls,
+    rls,
+    bls,
+    nnls,
+    logistic,
+    poisson,
+    negative_binomial,
+    tweedie,
+    probit,
+    cloglog,
+)
 
 __all__ = [
     # Parametric tests
@@ -53,4 +68,18 @@ __all__ = [
     # Modern distribution tests
     "energy_distance",
     "mmd_test",
+    # Regression expressions
+    "ols",
+    "ridge",
+    "elastic_net",
+    "wls",
+    "rls",
+    "bls",
+    "nnls",
+    "logistic",
+    "poisson",
+    "negative_binomial",
+    "tweedie",
+    "probit",
+    "cloglog",
 ]
