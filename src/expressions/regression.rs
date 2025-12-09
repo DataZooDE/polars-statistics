@@ -6,7 +6,7 @@ use faer::{Col, Mat};
 use polars::prelude::*;
 use pyo3_polars::derive::polars_expr;
 
-use regress_rs::solvers::{
+use anofox_regression::solvers::{
     AlmDistribution, AlmRegressor, BinomialRegressor, BlsRegressor, ElasticNetRegressor,
     FittedRegressor, NegativeBinomialRegressor, OlsRegressor, PoissonRegressor, Regressor,
     RidgeRegressor, RlsRegressor, TweedieRegressor, WlsRegressor,

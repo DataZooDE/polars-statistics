@@ -3,7 +3,7 @@
 use numpy::{PyArray1, PyReadonlyArray1, PyReadonlyArray2};
 use pyo3::prelude::*;
 
-use regress_rs::solvers::{BlsRegressor, FittedRegressor, Regressor};
+use anofox_regression::solvers::{BlsRegressor, FittedRegressor, Regressor};
 
 use crate::utils::{IntoNumpy, ToFaer};
 

@@ -3,7 +3,7 @@
 use numpy::{PyArray1, PyReadonlyArray1, PyReadonlyArray2};
 use pyo3::prelude::*;
 
-use regress_rs::solvers::{
+use anofox_regression::solvers::{
     FittedNegativeBinomial, FittedRegressor, NegativeBinomialRegressor, Regressor,
 };
 

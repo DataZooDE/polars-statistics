@@ -3,8 +3,8 @@
 use numpy::{PyArray1, PyReadonlyArray1, PyReadonlyArray2};
 use pyo3::prelude::*;
 
-use regress_rs::prelude::*;
-use regress_rs::solvers::{FittedOls, OlsRegressor, Regressor};
+use anofox_regression::prelude::*;
+use anofox_regression::solvers::{FittedOls, OlsRegressor, Regressor};
 
 use crate::utils::{IntoNumpy, ToFaer};
 

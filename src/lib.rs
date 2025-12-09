@@ -1,7 +1,7 @@
 //! polars-statistics: Statistical testing and regression for Polars DataFrames.
 //!
 //! This crate provides Python bindings for statistical analysis with Polars,
-//! wrapping the `regress-rs` and `anofox-statistics` Rust libraries.
+//! wrapping the `anofox-regression` and `anofox-statistics` Rust libraries.
 
 use pyo3::prelude::*;
 use pyo3_polars::PolarsAllocator;
