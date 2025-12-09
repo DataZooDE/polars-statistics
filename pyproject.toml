@@ -1,0 +1,91 @@
+[build-system]
+requires = ["maturin>=1.7.4"]
+build-backend = "maturin"
+
+[project]
+name = "polars-statistics"
+version = "0.1.0"
+description = "High-performance statistical testing and regression for Polars DataFrames, powered by Rust"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+authors = [{ name = "Simon M", email = "code@santic.info" }]
+maintainers = [{ name = "Simon M", email = "code@santic.info" }]
+keywords = [
+    "polars",
+    "statistics",
+    "regression",
+    "hypothesis-testing",
+    "t-test",
+    "glm",
+    "ols",
+    "logistic-regression",
+    "poisson-regression",
+    "bootstrap",
+    "rust",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Rust",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Typing :: Typed",
+]
+dependencies = ["polars>=1.0.0"]
+
+[project.optional-dependencies]
+numpy = ["numpy>=1.21"]
+all = ["numpy>=1.21"]
+dev = [
+    "numpy>=1.21",
+    "pytest>=7.0",
+    "scipy>=1.10",
+    "statsmodels>=0.14",
+    "maturin>=1.7.4",
+]
+
+[project.urls]
+Homepage = "https://github.com/sipemu/polars-statistics"
+Documentation = "https://github.com/sipemu/polars-statistics#readme"
+Repository = "https://github.com/sipemu/polars-statistics"
+Issues = "https://github.com/sipemu/polars-statistics/issues"
+Changelog = "https://github.com/sipemu/polars-statistics/releases"
+
+[tool.maturin]
+python-source = "python"
+module-name = "polars_statistics._polars_statistics"
+bindings = "pyo3"
+features = ["pyo3/extension-module"]
+strip = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4"]
+ignore = ["E501"]
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true

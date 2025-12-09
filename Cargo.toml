@@ -1,0 +1,65 @@
+[package]
+name = "polars-statistics"
+version = "0.1.0"
+edition = "2021"
+authors = ["Simon M"]
+description = "Statistical testing and regression for Polars DataFrames"
+license = "MIT"
+repository = "https://github.com/sipemu/polars-statistics"
+readme = "README.md"
+keywords = ["polars", "statistics", "regression", "hypothesis-testing"]
+categories = ["science", "mathematics"]
+
+[lib]
+name = "_polars_statistics"
+crate-type = ["cdylib"]
+
+[dependencies]
+# Python bindings
+pyo3 = { version = "0.23", features = ["abi3-py39", "extension-module"] }
+numpy = "0.23"
+pyo3-polars = { version = "0.20", features = ["derive", "lazy"] }
+
+# Polars
+polars = { version = "0.46", default-features = false, features = [
+    "lazy",
+    "dtype-struct",
+    "dtype-array",
+    "dtype-i8",
+    "dtype-i16",
+    "dtype-u8",
+    "dtype-u16",
+    "zip_with",
+    "abs",
+    "round_series",
+    "log",
+    "is_in",
+    "cross_join",
+    "diff",
+] }
+polars-arrow = "0.46"
+
+# Linear algebra
+faer = { version = "0.20", features = ["rayon"] }
+
+# Statistics
+statrs = "0.17"
+
+# Random number generation
+rand = "0.8"
+rand_chacha = "0.3"
+
+# Error handling
+thiserror = "2.0"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+
+# Local crates (path dependencies)
+regress-rs = { path = "../statistics" }
+anofox-statistics = { path = "../tests-rs" }
+
+[profile.release]
+codegen-units = 1
+lto = "fat"
+strip = "symbols"

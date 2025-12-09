@@ -1,0 +1,172 @@
+"""Parametric statistical tests as Polars expressions."""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Literal, Union
+
+import polars as pl
+from polars.plugins import register_plugin_function
+
+LIB = Path(__file__).parent.parent
+
+
+def ttest_ind(
+    x: Union[pl.Expr, str],
+    y: Union[pl.Expr, str],
+    alternative: Literal["two-sided", "less", "greater"] = "two-sided",
+    equal_var: bool = False,
+) -> pl.Expr:
+    """
+    Perform independent samples t-test.
+
+    This function works with group_by and over operations, computing
+    the t-test for each group independently.
+
+    Parameters
+    ----------
+    x : pl.Expr or str
+        First sample expression or column name.
+    y : pl.Expr or str
+        Second sample expression or column name.
+    alternative : {"two-sided", "less", "greater"}, default "two-sided"
+        Alternative hypothesis direction.
+    equal_var : bool, default False
+        If True, use Student's t-test (assumes equal variances).
+        If False, use Welch's t-test.
+
+    Returns
+    -------
+    pl.Expr
+        Expression returning struct{statistic: f64, p_value: f64}
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> import polars_statistics as ps
+    >>>
+    >>> df = pl.DataFrame({
+    ...     "group": ["A", "A", "A", "B", "B", "B"],
+    ...     "x": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+    ...     "y": [1.5, 2.5, 3.5, 4.5, 5.5, 6.5],
+    ... })
+    >>>
+    >>> # Simple t-test
+    >>> df.select(ps.ttest_ind("x", "y"))
+    >>>
+    >>> # T-test per group
+    >>> df.group_by("group").agg(ps.ttest_ind("x", "y").alias("ttest"))
+    """
+    if isinstance(x, str):
+        x = pl.col(x)
+    if isinstance(y, str):
+        y = pl.col(y)
+
+    # Filter out nulls and non-finite values
+    x_clean = x.filter(x.is_finite())
+    y_clean = y.filter(y.is_finite())
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_ttest_ind",
+        args=[
+            x_clean,
+            y_clean,
+            pl.lit(alternative, dtype=pl.String),
+            pl.lit(equal_var, dtype=pl.Boolean),
+        ],
+        returns_scalar=True,
+    )
+
+
+def ttest_paired(
+    x: Union[pl.Expr, str],
+    y: Union[pl.Expr, str],
+    alternative: Literal["two-sided", "less", "greater"] = "two-sided",
+) -> pl.Expr:
+    """
+    Perform paired samples t-test.
+
+    Parameters
+    ----------
+    x : pl.Expr or str
+        First sample (before treatment).
+    y : pl.Expr or str
+        Second sample (after treatment).
+    alternative : {"two-sided", "less", "greater"}, default "two-sided"
+        Alternative hypothesis direction.
+
+    Returns
+    -------
+    pl.Expr
+        Expression returning struct{statistic: f64, p_value: f64}
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> import polars_statistics as ps
+    >>>
+    >>> df = pl.DataFrame({
+    ...     "before": [1.0, 2.0, 3.0, 4.0, 5.0],
+    ...     "after": [1.5, 2.8, 3.2, 4.5, 5.1],
+    ... })
+    >>>
+    >>> df.select(ps.ttest_paired("before", "after"))
+    """
+    if isinstance(x, str):
+        x = pl.col(x)
+    if isinstance(y, str):
+        y = pl.col(y)
+
+    # Both must be finite for paired test
+    x_clean = x.filter(x.is_finite() & y.is_finite())
+    y_clean = y.filter(x.is_finite() & y.is_finite())
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_ttest_paired",
+        args=[
+            x_clean,
+            y_clean,
+            pl.lit(alternative, dtype=pl.String),
+        ],
+        returns_scalar=True,
+    )
+
+
+def brown_forsythe(
+    x: Union[pl.Expr, str],
+    y: Union[pl.Expr, str],
+) -> pl.Expr:
+    """
+    Perform Brown-Forsythe test for equality of variances.
+
+    This is a robust test for homogeneity of variances that uses
+    deviations from the median instead of the mean.
+
+    Parameters
+    ----------
+    x : pl.Expr or str
+        First sample expression or column name.
+    y : pl.Expr or str
+        Second sample expression or column name.
+
+    Returns
+    -------
+    pl.Expr
+        Expression returning struct{statistic: f64, p_value: f64}
+    """
+    if isinstance(x, str):
+        x = pl.col(x)
+    if isinstance(y, str):
+        y = pl.col(y)
+
+    x_clean = x.filter(x.is_finite())
+    y_clean = y.filter(y.is_finite())
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_brown_forsythe",
+        args=[x_clean, y_clean],
+        returns_scalar=True,
+    )
