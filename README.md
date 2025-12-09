@@ -139,6 +139,81 @@ ps.energy_distance(pl.col("x"), pl.col("y"), n_permutations=999, seed=42)
 ps.mmd_test(pl.col("x"), pl.col("y"), n_permutations=999, seed=42)
 ```
 
+### Regression Expressions
+
+Fit regression models per group using `group_by` or `over`:
+
+```python
+# OLS regression per group
+df.group_by("group").agg(
+    ps.ols("y", "x1", "x2").alias("model")
+)
+
+# Extract results from struct
+result.with_columns(
+    pl.col("model").struct.field("r_squared"),
+    pl.col("model").struct.field("coefficients"),
+)
+
+# Window function - fit model per group, broadcast to all rows
+df.with_columns(
+    ps.ols("y", "x1", "x2").over("group").alias("model")
+)
+```
+
+**Linear Models:**
+
+```python
+# Ordinary Least Squares
+ps.ols("y", "x1", "x2", with_intercept=True)
+
+# Ridge Regression (L2 regularization)
+ps.ridge("y", "x1", "x2", lambda_=1.0)
+
+# Elastic Net (L1 + L2 regularization)
+ps.elastic_net("y", "x1", "x2", lambda_=1.0, alpha=0.5)
+
+# Weighted Least Squares
+ps.wls("y", "weights", "x1", "x2")
+
+# Recursive Least Squares
+ps.rls("y", "x1", "x2", forgetting_factor=0.99)
+
+# Bounded Least Squares
+ps.bls("y", "x1", "x2", lower_bound=0.0, upper_bound=None)
+
+# Non-negative Least Squares (shorthand for bls with lower_bound=0)
+ps.nnls("y", "x1", "x2")
+```
+
+**GLM Models:**
+
+```python
+# Logistic Regression (binary classification)
+ps.logistic("y", "x1", "x2")
+
+# Poisson Regression (count data)
+ps.poisson("y", "x1", "x2")
+
+# Negative Binomial (overdispersed counts)
+ps.negative_binomial("y", "x1", "x2", theta=None)
+
+# Tweedie GLM
+ps.tweedie("y", "x1", "x2", var_power=1.5)
+
+# Probit Regression
+ps.probit("y", "x1", "x2")
+
+# Complementary Log-Log
+ps.cloglog("y", "x1", "x2")
+```
+
+**Output Fields:**
+
+Linear models return a struct with: `intercept`, `coefficients`, `r_squared`, `adj_r_squared`, `mse`, `rmse`, `f_statistic`, `f_pvalue`, `aic`, `bic`, `n_observations`.
+
+GLM models return a struct with: `intercept`, `coefficients`, `aic`, `bic`, `n_observations`.
+
 ## Working with Group Operations
 
 The expression API integrates seamlessly with Polars' `group_by` and `over`:
@@ -196,6 +271,21 @@ df.lazy().group_by("experiment").agg(
 | **Modern** | | |
 | `energy_distance` | Energy Distance test | `n_permutations`, `seed` |
 | `mmd_test` | Maximum Mean Discrepancy | `n_permutations`, `seed` |
+| **Regression (Linear)** | | |
+| `ols` | Ordinary Least Squares | `with_intercept` |
+| `ridge` | Ridge Regression (L2) | `lambda_`, `with_intercept` |
+| `elastic_net` | Elastic Net (L1+L2) | `lambda_`, `alpha`, `with_intercept` |
+| `wls` | Weighted Least Squares | `with_intercept` |
+| `rls` | Recursive Least Squares | `forgetting_factor`, `with_intercept` |
+| `bls` | Bounded Least Squares | `lower_bound`, `upper_bound`, `with_intercept` |
+| `nnls` | Non-negative Least Squares | `with_intercept` |
+| **Regression (GLM)** | | |
+| `logistic` | Logistic Regression | `with_intercept` |
+| `poisson` | Poisson Regression | `with_intercept` |
+| `negative_binomial` | Negative Binomial | `theta`, `with_intercept` |
+| `tweedie` | Tweedie GLM | `var_power`, `with_intercept` |
+| `probit` | Probit Regression | `with_intercept` |
+| `cloglog` | Complementary Log-Log | `with_intercept` |
 
 ---
 
