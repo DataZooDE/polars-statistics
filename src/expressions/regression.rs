@@ -183,6 +183,57 @@ fn col_to_vec(col: &Col<f64>) -> Vec<f64> {
     (0..col.nrows()).map(|i| col[i]).collect()
 }
 
+/// Output type for coefficient summary (tidy format)
+fn summary_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
+    let fields = vec![
+        Field::new("term".into(), DataType::String),
+        Field::new("estimate".into(), DataType::Float64),
+        Field::new("std_error".into(), DataType::Float64),
+        Field::new("statistic".into(), DataType::Float64),
+        Field::new("p_value".into(), DataType::Float64),
+    ];
+    Ok(Field::new(
+        "summary".into(),
+        DataType::List(Box::new(DataType::Struct(fields))),
+    ))
+}
+
+/// Create coefficient summary output as List[Struct] (tidy format)
+fn summary_output(
+    terms: Vec<String>,
+    estimates: Vec<f64>,
+    std_errors: Vec<f64>,
+    statistics: Vec<f64>,
+    p_values: Vec<f64>,
+) -> PolarsResult<Series> {
+    let n = terms.len();
+
+    // Build individual Series for struct fields
+    let term_s = Series::new("term".into(), terms);
+    let estimate_s = Series::new("estimate".into(), estimates);
+    let std_error_s = Series::new("std_error".into(), std_errors);
+    let statistic_s = Series::new("statistic".into(), statistics);
+    let p_value_s = Series::new("p_value".into(), p_values);
+
+    // Create struct from series
+    let struct_ca = StructChunked::from_series(
+        "item".into(),
+        n,
+        [&term_s, &estimate_s, &std_error_s, &statistic_s, &p_value_s].into_iter(),
+    )?;
+
+    // Wrap in a list (single element containing all coefficient rows)
+    let struct_series = struct_ca.into_series();
+    let list_s = Series::new("summary".into(), &[struct_series]);
+
+    Ok(list_s)
+}
+
+/// Create empty summary output on error
+fn summary_nan_output() -> PolarsResult<Series> {
+    summary_output(vec![], vec![], vec![], vec![], vec![])
+}
+
 // ============================================================================
 // Linear Regression Expressions
 // ============================================================================
@@ -200,7 +251,7 @@ fn pl_ols(inputs: &[Series]) -> PolarsResult<Series> {
 
     let model = OlsRegressor::builder()
         .with_intercept(with_intercept)
-        .compute_inference(true)
+        
         .build();
 
     match model.fit(&x, &y) {
@@ -680,5 +731,860 @@ fn pl_alm(inputs: &[Series]) -> PolarsResult<Series> {
             )
         }
         Err(_) => glm_nan_output(),
+    }
+}
+
+// ============================================================================
+// Summary Expressions (Tidy Coefficient Output)
+// ============================================================================
+
+/// Helper to build term names for coefficients
+fn build_term_names(n_features: usize, with_intercept: bool) -> Vec<String> {
+    let mut terms = Vec::with_capacity(n_features + if with_intercept { 1 } else { 0 });
+    if with_intercept {
+        terms.push("intercept".to_string());
+    }
+    for i in 1..=n_features {
+        terms.push(format!("x{}", i));
+    }
+    terms
+}
+
+/// OLS summary expression - returns tidy coefficient table
+/// inputs[0] = y, inputs[1] = with_intercept (bool), inputs[2..] = x columns
+#[polars_expr(output_type_func=summary_output_dtype)]
+fn pl_ols_summary(inputs: &[Series]) -> PolarsResult<Series> {
+    let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
+    let n_features = inputs.len() - 2;
+
+    let (x, y) = match build_xy_data(inputs, 0, 2) {
+        Ok(data) => data,
+        Err(_) => return summary_nan_output(),
+    };
+
+    let model = OlsRegressor::builder()
+        .with_intercept(with_intercept)
+        
+        .build();
+
+    match model.fit(&x, &y) {
+        Ok(fitted) => {
+            let result = fitted.result();
+            let terms = build_term_names(n_features, with_intercept);
+
+            // Build coefficient vectors including intercept
+            let mut estimates = Vec::new();
+            let mut std_errors = Vec::new();
+            let mut statistics = Vec::new();
+            let mut p_values = Vec::new();
+
+            if with_intercept {
+                estimates.push(fitted.intercept().unwrap_or(f64::NAN));
+                std_errors.push(result.intercept_std_error.unwrap_or(f64::NAN));
+                statistics.push(result.intercept_t_statistic.unwrap_or(f64::NAN));
+                p_values.push(result.intercept_p_value.unwrap_or(f64::NAN));
+            }
+
+            // Add feature coefficients
+            let coefs = col_to_vec(fitted.coefficients());
+            estimates.extend(coefs);
+
+            if let Some(ref se) = result.std_errors {
+                std_errors.extend(col_to_vec(se));
+            } else {
+                std_errors.extend(vec![f64::NAN; n_features]);
+            }
+
+            if let Some(ref ts) = result.t_statistics {
+                statistics.extend(col_to_vec(ts));
+            } else {
+                statistics.extend(vec![f64::NAN; n_features]);
+            }
+
+            if let Some(ref pv) = result.p_values {
+                p_values.extend(col_to_vec(pv));
+            } else {
+                p_values.extend(vec![f64::NAN; n_features]);
+            }
+
+            summary_output(terms, estimates, std_errors, statistics, p_values)
+        }
+        Err(_) => summary_nan_output(),
+    }
+}
+
+/// Ridge summary expression
+/// inputs[0] = y, inputs[1] = lambda, inputs[2] = with_intercept, inputs[3..] = x columns
+#[polars_expr(output_type_func=summary_output_dtype)]
+fn pl_ridge_summary(inputs: &[Series]) -> PolarsResult<Series> {
+    let lambda = inputs[1].f64()?.get(0).unwrap_or(1.0);
+    let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
+    let n_features = inputs.len() - 3;
+
+    let (x, y) = match build_xy_data(inputs, 0, 3) {
+        Ok(data) => data,
+        Err(_) => return summary_nan_output(),
+    };
+
+    let model = RidgeRegressor::builder()
+        .lambda(lambda)
+        .with_intercept(with_intercept)
+        
+        .build();
+
+    match model.fit(&x, &y) {
+        Ok(fitted) => {
+            let result = fitted.result();
+            let terms = build_term_names(n_features, with_intercept);
+
+            let mut estimates = Vec::new();
+            let mut std_errors = Vec::new();
+            let mut statistics = Vec::new();
+            let mut p_values = Vec::new();
+
+            if with_intercept {
+                estimates.push(fitted.intercept().unwrap_or(f64::NAN));
+                std_errors.push(result.intercept_std_error.unwrap_or(f64::NAN));
+                statistics.push(result.intercept_t_statistic.unwrap_or(f64::NAN));
+                p_values.push(result.intercept_p_value.unwrap_or(f64::NAN));
+            }
+
+            let coefs = col_to_vec(fitted.coefficients());
+            estimates.extend(coefs);
+
+            if let Some(ref se) = result.std_errors {
+                std_errors.extend(col_to_vec(se));
+            } else {
+                std_errors.extend(vec![f64::NAN; n_features]);
+            }
+
+            if let Some(ref ts) = result.t_statistics {
+                statistics.extend(col_to_vec(ts));
+            } else {
+                statistics.extend(vec![f64::NAN; n_features]);
+            }
+
+            if let Some(ref pv) = result.p_values {
+                p_values.extend(col_to_vec(pv));
+            } else {
+                p_values.extend(vec![f64::NAN; n_features]);
+            }
+
+            summary_output(terms, estimates, std_errors, statistics, p_values)
+        }
+        Err(_) => summary_nan_output(),
+    }
+}
+
+/// Elastic Net summary expression
+/// inputs[0] = y, inputs[1] = lambda, inputs[2] = alpha, inputs[3] = with_intercept, inputs[4..] = x columns
+#[polars_expr(output_type_func=summary_output_dtype)]
+fn pl_elastic_net_summary(inputs: &[Series]) -> PolarsResult<Series> {
+    let lambda = inputs[1].f64()?.get(0).unwrap_or(1.0);
+    let alpha = inputs[2].f64()?.get(0).unwrap_or(0.5);
+    let with_intercept = inputs[3].bool()?.get(0).unwrap_or(true);
+    let n_features = inputs.len() - 4;
+
+    let (x, y) = match build_xy_data(inputs, 0, 4) {
+        Ok(data) => data,
+        Err(_) => return summary_nan_output(),
+    };
+
+    let model = ElasticNetRegressor::builder()
+        .lambda(lambda)
+        .alpha(alpha)
+        .with_intercept(with_intercept)
+        
+        .build();
+
+    match model.fit(&x, &y) {
+        Ok(fitted) => {
+            let result = fitted.result();
+            let terms = build_term_names(n_features, with_intercept);
+
+            let mut estimates = Vec::new();
+            let mut std_errors = Vec::new();
+            let mut statistics = Vec::new();
+            let mut p_values = Vec::new();
+
+            if with_intercept {
+                estimates.push(fitted.intercept().unwrap_or(f64::NAN));
+                std_errors.push(result.intercept_std_error.unwrap_or(f64::NAN));
+                statistics.push(result.intercept_t_statistic.unwrap_or(f64::NAN));
+                p_values.push(result.intercept_p_value.unwrap_or(f64::NAN));
+            }
+
+            let coefs = col_to_vec(fitted.coefficients());
+            estimates.extend(coefs);
+
+            if let Some(ref se) = result.std_errors {
+                std_errors.extend(col_to_vec(se));
+            } else {
+                std_errors.extend(vec![f64::NAN; n_features]);
+            }
+
+            if let Some(ref ts) = result.t_statistics {
+                statistics.extend(col_to_vec(ts));
+            } else {
+                statistics.extend(vec![f64::NAN; n_features]);
+            }
+
+            if let Some(ref pv) = result.p_values {
+                p_values.extend(col_to_vec(pv));
+            } else {
+                p_values.extend(vec![f64::NAN; n_features]);
+            }
+
+            summary_output(terms, estimates, std_errors, statistics, p_values)
+        }
+        Err(_) => summary_nan_output(),
+    }
+}
+
+/// WLS summary expression
+/// inputs[0] = y, inputs[1] = weights, inputs[2] = with_intercept, inputs[3..] = x columns
+#[polars_expr(output_type_func=summary_output_dtype)]
+fn pl_wls_summary(inputs: &[Series]) -> PolarsResult<Series> {
+    let weights_series = inputs[1].f64()?;
+    let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
+    let n_features = inputs.len() - 3;
+
+    let (x, y) = match build_xy_data(inputs, 0, 3) {
+        Ok(data) => data,
+        Err(_) => return summary_nan_output(),
+    };
+
+    let weights_vec: Vec<f64> = weights_series.into_no_null_iter().collect();
+    let weights = Col::from_fn(weights_vec.len(), |i| weights_vec[i]);
+
+    let model = WlsRegressor::builder()
+        .with_intercept(with_intercept)
+        .weights(weights)
+        
+        .build();
+
+    match model.fit(&x, &y) {
+        Ok(fitted) => {
+            let result = fitted.result();
+            let terms = build_term_names(n_features, with_intercept);
+
+            let mut estimates = Vec::new();
+            let mut std_errors = Vec::new();
+            let mut statistics = Vec::new();
+            let mut p_values = Vec::new();
+
+            if with_intercept {
+                estimates.push(fitted.intercept().unwrap_or(f64::NAN));
+                std_errors.push(result.intercept_std_error.unwrap_or(f64::NAN));
+                statistics.push(result.intercept_t_statistic.unwrap_or(f64::NAN));
+                p_values.push(result.intercept_p_value.unwrap_or(f64::NAN));
+            }
+
+            let coefs = col_to_vec(fitted.coefficients());
+            estimates.extend(coefs);
+
+            if let Some(ref se) = result.std_errors {
+                std_errors.extend(col_to_vec(se));
+            } else {
+                std_errors.extend(vec![f64::NAN; n_features]);
+            }
+
+            if let Some(ref ts) = result.t_statistics {
+                statistics.extend(col_to_vec(ts));
+            } else {
+                statistics.extend(vec![f64::NAN; n_features]);
+            }
+
+            if let Some(ref pv) = result.p_values {
+                p_values.extend(col_to_vec(pv));
+            } else {
+                p_values.extend(vec![f64::NAN; n_features]);
+            }
+
+            summary_output(terms, estimates, std_errors, statistics, p_values)
+        }
+        Err(_) => summary_nan_output(),
+    }
+}
+
+/// RLS summary expression
+/// inputs[0] = y, inputs[1] = forgetting_factor, inputs[2] = with_intercept, inputs[3..] = x columns
+#[polars_expr(output_type_func=summary_output_dtype)]
+fn pl_rls_summary(inputs: &[Series]) -> PolarsResult<Series> {
+    let forgetting_factor = inputs[1].f64()?.get(0).unwrap_or(0.99);
+    let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
+    let n_features = inputs.len() - 3;
+
+    let (x, y) = match build_xy_data(inputs, 0, 3) {
+        Ok(data) => data,
+        Err(_) => return summary_nan_output(),
+    };
+
+    let model = RlsRegressor::builder()
+        .forgetting_factor(forgetting_factor)
+        .with_intercept(with_intercept)
+        
+        .build();
+
+    match model.fit(&x, &y) {
+        Ok(fitted) => {
+            let result = fitted.result();
+            let terms = build_term_names(n_features, with_intercept);
+
+            let mut estimates = Vec::new();
+            let mut std_errors = Vec::new();
+            let mut statistics = Vec::new();
+            let mut p_values = Vec::new();
+
+            if with_intercept {
+                estimates.push(fitted.intercept().unwrap_or(f64::NAN));
+                std_errors.push(result.intercept_std_error.unwrap_or(f64::NAN));
+                statistics.push(result.intercept_t_statistic.unwrap_or(f64::NAN));
+                p_values.push(result.intercept_p_value.unwrap_or(f64::NAN));
+            }
+
+            let coefs = col_to_vec(fitted.coefficients());
+            estimates.extend(coefs);
+
+            if let Some(ref se) = result.std_errors {
+                std_errors.extend(col_to_vec(se));
+            } else {
+                std_errors.extend(vec![f64::NAN; n_features]);
+            }
+
+            if let Some(ref ts) = result.t_statistics {
+                statistics.extend(col_to_vec(ts));
+            } else {
+                statistics.extend(vec![f64::NAN; n_features]);
+            }
+
+            if let Some(ref pv) = result.p_values {
+                p_values.extend(col_to_vec(pv));
+            } else {
+                p_values.extend(vec![f64::NAN; n_features]);
+            }
+
+            summary_output(terms, estimates, std_errors, statistics, p_values)
+        }
+        Err(_) => summary_nan_output(),
+    }
+}
+
+/// BLS summary expression
+/// inputs[0] = y, inputs[1] = lower_bound, inputs[2] = upper_bound, inputs[3] = with_intercept, inputs[4..] = x columns
+#[polars_expr(output_type_func=summary_output_dtype)]
+fn pl_bls_summary(inputs: &[Series]) -> PolarsResult<Series> {
+    let lower_bound = inputs[1].f64()?.get(0);
+    let upper_bound = inputs[2].f64()?.get(0);
+    let with_intercept = inputs[3].bool()?.get(0).unwrap_or(true);
+    let n_features = inputs.len() - 4;
+
+    let (x, y) = match build_xy_data(inputs, 0, 4) {
+        Ok(data) => data,
+        Err(_) => return summary_nan_output(),
+    };
+
+    let mut builder = BlsRegressor::builder()
+        .with_intercept(with_intercept)
+        ;
+
+    if let Some(lb) = lower_bound {
+        builder = builder.lower_bound_all(lb);
+    }
+    if let Some(ub) = upper_bound {
+        builder = builder.upper_bound_all(ub);
+    }
+
+    let model = builder.build();
+
+    match model.fit(&x, &y) {
+        Ok(fitted) => {
+            let result = fitted.result();
+            let terms = build_term_names(n_features, with_intercept);
+
+            let mut estimates = Vec::new();
+            let mut std_errors = Vec::new();
+            let mut statistics = Vec::new();
+            let mut p_values = Vec::new();
+
+            if with_intercept {
+                estimates.push(fitted.intercept().unwrap_or(f64::NAN));
+                std_errors.push(result.intercept_std_error.unwrap_or(f64::NAN));
+                statistics.push(result.intercept_t_statistic.unwrap_or(f64::NAN));
+                p_values.push(result.intercept_p_value.unwrap_or(f64::NAN));
+            }
+
+            let coefs = col_to_vec(fitted.coefficients());
+            estimates.extend(coefs);
+
+            if let Some(ref se) = result.std_errors {
+                std_errors.extend(col_to_vec(se));
+            } else {
+                std_errors.extend(vec![f64::NAN; n_features]);
+            }
+
+            if let Some(ref ts) = result.t_statistics {
+                statistics.extend(col_to_vec(ts));
+            } else {
+                statistics.extend(vec![f64::NAN; n_features]);
+            }
+
+            if let Some(ref pv) = result.p_values {
+                p_values.extend(col_to_vec(pv));
+            } else {
+                p_values.extend(vec![f64::NAN; n_features]);
+            }
+
+            summary_output(terms, estimates, std_errors, statistics, p_values)
+        }
+        Err(_) => summary_nan_output(),
+    }
+}
+
+// ============================================================================
+// GLM Summary Expressions
+// ============================================================================
+
+/// Logistic summary expression
+/// inputs[0] = y, inputs[1] = with_intercept, inputs[2..] = x columns
+#[polars_expr(output_type_func=summary_output_dtype)]
+fn pl_logistic_summary(inputs: &[Series]) -> PolarsResult<Series> {
+    let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
+    let n_features = inputs.len() - 2;
+
+    let (x, y) = match build_xy_data(inputs, 0, 2) {
+        Ok(data) => data,
+        Err(_) => return summary_nan_output(),
+    };
+
+    let model = BinomialRegressor::logistic()
+        .with_intercept(with_intercept)
+        
+        .build();
+
+    match model.fit(&x, &y) {
+        Ok(fitted) => {
+            let result = fitted.result();
+            let terms = build_term_names(n_features, with_intercept);
+
+            let mut estimates = Vec::new();
+            let mut std_errors = Vec::new();
+            let mut statistics = Vec::new();
+            let mut p_values = Vec::new();
+
+            if with_intercept {
+                estimates.push(fitted.intercept().unwrap_or(f64::NAN));
+                std_errors.push(result.intercept_std_error.unwrap_or(f64::NAN));
+                statistics.push(result.intercept_t_statistic.unwrap_or(f64::NAN));
+                p_values.push(result.intercept_p_value.unwrap_or(f64::NAN));
+            }
+
+            let coefs = col_to_vec(fitted.coefficients());
+            estimates.extend(coefs);
+
+            if let Some(ref se) = result.std_errors {
+                std_errors.extend(col_to_vec(se));
+            } else {
+                std_errors.extend(vec![f64::NAN; n_features]);
+            }
+
+            if let Some(ref zs) = result.t_statistics {
+                statistics.extend(col_to_vec(zs));
+            } else {
+                statistics.extend(vec![f64::NAN; n_features]);
+            }
+
+            if let Some(ref pv) = result.p_values {
+                p_values.extend(col_to_vec(pv));
+            } else {
+                p_values.extend(vec![f64::NAN; n_features]);
+            }
+
+            summary_output(terms, estimates, std_errors, statistics, p_values)
+        }
+        Err(_) => summary_nan_output(),
+    }
+}
+
+/// Poisson summary expression
+/// inputs[0] = y, inputs[1] = with_intercept, inputs[2..] = x columns
+#[polars_expr(output_type_func=summary_output_dtype)]
+fn pl_poisson_summary(inputs: &[Series]) -> PolarsResult<Series> {
+    let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
+    let n_features = inputs.len() - 2;
+
+    let (x, y) = match build_xy_data(inputs, 0, 2) {
+        Ok(data) => data,
+        Err(_) => return summary_nan_output(),
+    };
+
+    let model = PoissonRegressor::builder()
+        .with_intercept(with_intercept)
+        
+        .build();
+
+    match model.fit(&x, &y) {
+        Ok(fitted) => {
+            let result = fitted.result();
+            let terms = build_term_names(n_features, with_intercept);
+
+            let mut estimates = Vec::new();
+            let mut std_errors = Vec::new();
+            let mut statistics = Vec::new();
+            let mut p_values = Vec::new();
+
+            if with_intercept {
+                estimates.push(fitted.intercept().unwrap_or(f64::NAN));
+                std_errors.push(result.intercept_std_error.unwrap_or(f64::NAN));
+                statistics.push(result.intercept_t_statistic.unwrap_or(f64::NAN));
+                p_values.push(result.intercept_p_value.unwrap_or(f64::NAN));
+            }
+
+            let coefs = col_to_vec(fitted.coefficients());
+            estimates.extend(coefs);
+
+            if let Some(ref se) = result.std_errors {
+                std_errors.extend(col_to_vec(se));
+            } else {
+                std_errors.extend(vec![f64::NAN; n_features]);
+            }
+
+            if let Some(ref zs) = result.t_statistics {
+                statistics.extend(col_to_vec(zs));
+            } else {
+                statistics.extend(vec![f64::NAN; n_features]);
+            }
+
+            if let Some(ref pv) = result.p_values {
+                p_values.extend(col_to_vec(pv));
+            } else {
+                p_values.extend(vec![f64::NAN; n_features]);
+            }
+
+            summary_output(terms, estimates, std_errors, statistics, p_values)
+        }
+        Err(_) => summary_nan_output(),
+    }
+}
+
+/// Negative Binomial summary expression
+/// inputs[0] = y, inputs[1] = theta, inputs[2] = with_intercept, inputs[3..] = x columns
+#[polars_expr(output_type_func=summary_output_dtype)]
+fn pl_negative_binomial_summary(inputs: &[Series]) -> PolarsResult<Series> {
+    let theta = inputs[1].f64()?.get(0);
+    let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
+    let n_features = inputs.len() - 3;
+
+    let (x, y) = match build_xy_data(inputs, 0, 3) {
+        Ok(data) => data,
+        Err(_) => return summary_nan_output(),
+    };
+
+    let mut builder = NegativeBinomialRegressor::builder()
+        .with_intercept(with_intercept)
+        ;
+
+    if let Some(t) = theta {
+        builder = builder.theta(t);
+    } else {
+        builder = builder.estimate_theta(true);
+    }
+
+    let model = builder.build();
+
+    match model.fit(&x, &y) {
+        Ok(fitted) => {
+            let result = fitted.result();
+            let terms = build_term_names(n_features, with_intercept);
+
+            let mut estimates = Vec::new();
+            let mut std_errors = Vec::new();
+            let mut statistics = Vec::new();
+            let mut p_values = Vec::new();
+
+            if with_intercept {
+                estimates.push(fitted.intercept().unwrap_or(f64::NAN));
+                std_errors.push(result.intercept_std_error.unwrap_or(f64::NAN));
+                statistics.push(result.intercept_t_statistic.unwrap_or(f64::NAN));
+                p_values.push(result.intercept_p_value.unwrap_or(f64::NAN));
+            }
+
+            let coefs = col_to_vec(fitted.coefficients());
+            estimates.extend(coefs);
+
+            if let Some(ref se) = result.std_errors {
+                std_errors.extend(col_to_vec(se));
+            } else {
+                std_errors.extend(vec![f64::NAN; n_features]);
+            }
+
+            if let Some(ref zs) = result.t_statistics {
+                statistics.extend(col_to_vec(zs));
+            } else {
+                statistics.extend(vec![f64::NAN; n_features]);
+            }
+
+            if let Some(ref pv) = result.p_values {
+                p_values.extend(col_to_vec(pv));
+            } else {
+                p_values.extend(vec![f64::NAN; n_features]);
+            }
+
+            summary_output(terms, estimates, std_errors, statistics, p_values)
+        }
+        Err(_) => summary_nan_output(),
+    }
+}
+
+/// Tweedie summary expression
+/// inputs[0] = y, inputs[1] = var_power, inputs[2] = with_intercept, inputs[3..] = x columns
+#[polars_expr(output_type_func=summary_output_dtype)]
+fn pl_tweedie_summary(inputs: &[Series]) -> PolarsResult<Series> {
+    let var_power = inputs[1].f64()?.get(0).unwrap_or(1.5);
+    let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
+    let n_features = inputs.len() - 3;
+
+    let (x, y) = match build_xy_data(inputs, 0, 3) {
+        Ok(data) => data,
+        Err(_) => return summary_nan_output(),
+    };
+
+    let model = TweedieRegressor::builder()
+        .var_power(var_power)
+        .with_intercept(with_intercept)
+        
+        .build();
+
+    match model.fit(&x, &y) {
+        Ok(fitted) => {
+            let result = fitted.result();
+            let terms = build_term_names(n_features, with_intercept);
+
+            let mut estimates = Vec::new();
+            let mut std_errors = Vec::new();
+            let mut statistics = Vec::new();
+            let mut p_values = Vec::new();
+
+            if with_intercept {
+                estimates.push(fitted.intercept().unwrap_or(f64::NAN));
+                std_errors.push(result.intercept_std_error.unwrap_or(f64::NAN));
+                statistics.push(result.intercept_t_statistic.unwrap_or(f64::NAN));
+                p_values.push(result.intercept_p_value.unwrap_or(f64::NAN));
+            }
+
+            let coefs = col_to_vec(fitted.coefficients());
+            estimates.extend(coefs);
+
+            if let Some(ref se) = result.std_errors {
+                std_errors.extend(col_to_vec(se));
+            } else {
+                std_errors.extend(vec![f64::NAN; n_features]);
+            }
+
+            if let Some(ref zs) = result.t_statistics {
+                statistics.extend(col_to_vec(zs));
+            } else {
+                statistics.extend(vec![f64::NAN; n_features]);
+            }
+
+            if let Some(ref pv) = result.p_values {
+                p_values.extend(col_to_vec(pv));
+            } else {
+                p_values.extend(vec![f64::NAN; n_features]);
+            }
+
+            summary_output(terms, estimates, std_errors, statistics, p_values)
+        }
+        Err(_) => summary_nan_output(),
+    }
+}
+
+/// Probit summary expression
+/// inputs[0] = y, inputs[1] = with_intercept, inputs[2..] = x columns
+#[polars_expr(output_type_func=summary_output_dtype)]
+fn pl_probit_summary(inputs: &[Series]) -> PolarsResult<Series> {
+    let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
+    let n_features = inputs.len() - 2;
+
+    let (x, y) = match build_xy_data(inputs, 0, 2) {
+        Ok(data) => data,
+        Err(_) => return summary_nan_output(),
+    };
+
+    let model = BinomialRegressor::probit()
+        .with_intercept(with_intercept)
+        
+        .build();
+
+    match model.fit(&x, &y) {
+        Ok(fitted) => {
+            let result = fitted.result();
+            let terms = build_term_names(n_features, with_intercept);
+
+            let mut estimates = Vec::new();
+            let mut std_errors = Vec::new();
+            let mut statistics = Vec::new();
+            let mut p_values = Vec::new();
+
+            if with_intercept {
+                estimates.push(fitted.intercept().unwrap_or(f64::NAN));
+                std_errors.push(result.intercept_std_error.unwrap_or(f64::NAN));
+                statistics.push(result.intercept_t_statistic.unwrap_or(f64::NAN));
+                p_values.push(result.intercept_p_value.unwrap_or(f64::NAN));
+            }
+
+            let coefs = col_to_vec(fitted.coefficients());
+            estimates.extend(coefs);
+
+            if let Some(ref se) = result.std_errors {
+                std_errors.extend(col_to_vec(se));
+            } else {
+                std_errors.extend(vec![f64::NAN; n_features]);
+            }
+
+            if let Some(ref zs) = result.t_statistics {
+                statistics.extend(col_to_vec(zs));
+            } else {
+                statistics.extend(vec![f64::NAN; n_features]);
+            }
+
+            if let Some(ref pv) = result.p_values {
+                p_values.extend(col_to_vec(pv));
+            } else {
+                p_values.extend(vec![f64::NAN; n_features]);
+            }
+
+            summary_output(terms, estimates, std_errors, statistics, p_values)
+        }
+        Err(_) => summary_nan_output(),
+    }
+}
+
+/// Cloglog summary expression
+/// inputs[0] = y, inputs[1] = with_intercept, inputs[2..] = x columns
+#[polars_expr(output_type_func=summary_output_dtype)]
+fn pl_cloglog_summary(inputs: &[Series]) -> PolarsResult<Series> {
+    let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
+    let n_features = inputs.len() - 2;
+
+    let (x, y) = match build_xy_data(inputs, 0, 2) {
+        Ok(data) => data,
+        Err(_) => return summary_nan_output(),
+    };
+
+    let model = BinomialRegressor::cloglog()
+        .with_intercept(with_intercept)
+        
+        .build();
+
+    match model.fit(&x, &y) {
+        Ok(fitted) => {
+            let result = fitted.result();
+            let terms = build_term_names(n_features, with_intercept);
+
+            let mut estimates = Vec::new();
+            let mut std_errors = Vec::new();
+            let mut statistics = Vec::new();
+            let mut p_values = Vec::new();
+
+            if with_intercept {
+                estimates.push(fitted.intercept().unwrap_or(f64::NAN));
+                std_errors.push(result.intercept_std_error.unwrap_or(f64::NAN));
+                statistics.push(result.intercept_t_statistic.unwrap_or(f64::NAN));
+                p_values.push(result.intercept_p_value.unwrap_or(f64::NAN));
+            }
+
+            let coefs = col_to_vec(fitted.coefficients());
+            estimates.extend(coefs);
+
+            if let Some(ref se) = result.std_errors {
+                std_errors.extend(col_to_vec(se));
+            } else {
+                std_errors.extend(vec![f64::NAN; n_features]);
+            }
+
+            if let Some(ref zs) = result.t_statistics {
+                statistics.extend(col_to_vec(zs));
+            } else {
+                statistics.extend(vec![f64::NAN; n_features]);
+            }
+
+            if let Some(ref pv) = result.p_values {
+                p_values.extend(col_to_vec(pv));
+            } else {
+                p_values.extend(vec![f64::NAN; n_features]);
+            }
+
+            summary_output(terms, estimates, std_errors, statistics, p_values)
+        }
+        Err(_) => summary_nan_output(),
+    }
+}
+
+/// ALM summary expression
+/// inputs[0] = y, inputs[1] = distribution, inputs[2] = with_intercept, inputs[3..] = x columns
+#[polars_expr(output_type_func=summary_output_dtype)]
+fn pl_alm_summary(inputs: &[Series]) -> PolarsResult<Series> {
+    let dist_str = inputs[1].str()?.get(0).unwrap_or("normal");
+    let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
+    let n_features = inputs.len() - 3;
+
+    let (x, y) = match build_xy_data(inputs, 0, 3) {
+        Ok(data) => data,
+        Err(_) => return summary_nan_output(),
+    };
+
+    let distribution = match parse_alm_distribution(dist_str) {
+        Some(d) => d,
+        None => return summary_nan_output(),
+    };
+
+    let model = AlmRegressor::builder()
+        .distribution(distribution)
+        .with_intercept(with_intercept)
+        
+        .build();
+
+    match model.fit(&x, &y) {
+        Ok(fitted) => {
+            let result = fitted.result();
+            let terms = build_term_names(n_features, with_intercept);
+
+            let mut estimates = Vec::new();
+            let mut std_errors = Vec::new();
+            let mut statistics = Vec::new();
+            let mut p_values = Vec::new();
+
+            if with_intercept {
+                estimates.push(fitted.intercept().unwrap_or(f64::NAN));
+                std_errors.push(result.intercept_std_error.unwrap_or(f64::NAN));
+                statistics.push(result.intercept_t_statistic.unwrap_or(f64::NAN));
+                p_values.push(result.intercept_p_value.unwrap_or(f64::NAN));
+            }
+
+            let coefs = col_to_vec(fitted.coefficients());
+            estimates.extend(coefs);
+
+            if let Some(ref se) = result.std_errors {
+                std_errors.extend(col_to_vec(se));
+            } else {
+                std_errors.extend(vec![f64::NAN; n_features]);
+            }
+
+            if let Some(ref zs) = result.t_statistics {
+                statistics.extend(col_to_vec(zs));
+            } else {
+                statistics.extend(vec![f64::NAN; n_features]);
+            }
+
+            if let Some(ref pv) = result.p_values {
+                p_values.extend(col_to_vec(pv));
+            } else {
+                p_values.extend(vec![f64::NAN; n_features]);
+            }
+
+            summary_output(terms, estimates, std_errors, statistics, p_values)
+        }
+        Err(_) => summary_nan_output(),
     }
 }

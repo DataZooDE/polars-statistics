@@ -66,6 +66,20 @@ from polars_statistics.exprs import (
     probit,
     cloglog,
     alm,
+    # Summary expressions
+    ols_summary,
+    ridge_summary,
+    elastic_net_summary,
+    wls_summary,
+    rls_summary,
+    bls_summary,
+    logistic_summary,
+    poisson_summary,
+    negative_binomial_summary,
+    tweedie_summary,
+    probit_summary,
+    cloglog_summary,
+    alm_summary,
 )
 
 __version__ = "0.1.0"
@@ -133,6 +147,20 @@ __all__ = [
     "probit",
     "cloglog",
     "alm",
+    # Summary expressions
+    "ols_summary",
+    "ridge_summary",
+    "elastic_net_summary",
+    "wls_summary",
+    "rls_summary",
+    "bls_summary",
+    "logistic_summary",
+    "poisson_summary",
+    "negative_binomial_summary",
+    "tweedie_summary",
+    "probit_summary",
+    "cloglog_summary",
+    "alm_summary",
     # Library path
     "LIB",
 ]

@@ -698,3 +698,415 @@ def alm(
         ],
         returns_scalar=True,
     )
+
+
+# ============================================================================
+# Summary Expressions (Tidy Coefficient Output)
+# ============================================================================
+
+
+def ols_summary(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    with_intercept: bool = True,
+) -> pl.Expr:
+    """OLS coefficient summary in tidy format (like R's broom::tidy).
+
+    Returns a List[Struct] with one row per coefficient containing:
+    term, estimate, std_error, statistic, p_value.
+
+    Parameters
+    ----------
+    y : pl.Expr or str
+        Target variable.
+    *x : pl.Expr or str
+        Feature variables (one or more).
+    with_intercept : bool, default True
+        Whether to include an intercept term.
+
+    Returns
+    -------
+    pl.Expr
+        List of structs containing coefficient statistics.
+
+    Examples
+    --------
+    >>> df.group_by("group").agg(
+    ...     ps.ols_summary("y", "x1", "x2").alias("coef")
+    ... ).explode("coef").unnest("coef")
+    """
+    if isinstance(y, str):
+        y = pl.col(y)
+
+    x_exprs = []
+    for xi in x:
+        if isinstance(xi, str):
+            xi = pl.col(xi)
+        x_exprs.append(xi.cast(pl.Float64))
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_ols_summary",
+        args=[
+            y.cast(pl.Float64),
+            pl.lit(with_intercept, dtype=pl.Boolean),
+            *x_exprs,
+        ],
+        returns_scalar=True,
+    )
+
+
+def ridge_summary(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    lambda_: float = 1.0,
+    with_intercept: bool = True,
+) -> pl.Expr:
+    """Ridge regression coefficient summary in tidy format."""
+    if isinstance(y, str):
+        y = pl.col(y)
+
+    x_exprs = []
+    for xi in x:
+        if isinstance(xi, str):
+            xi = pl.col(xi)
+        x_exprs.append(xi.cast(pl.Float64))
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_ridge_summary",
+        args=[
+            y.cast(pl.Float64),
+            pl.lit(lambda_, dtype=pl.Float64),
+            pl.lit(with_intercept, dtype=pl.Boolean),
+            *x_exprs,
+        ],
+        returns_scalar=True,
+    )
+
+
+def elastic_net_summary(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    lambda_: float = 1.0,
+    alpha: float = 0.5,
+    with_intercept: bool = True,
+) -> pl.Expr:
+    """Elastic Net regression coefficient summary in tidy format."""
+    if isinstance(y, str):
+        y = pl.col(y)
+
+    x_exprs = []
+    for xi in x:
+        if isinstance(xi, str):
+            xi = pl.col(xi)
+        x_exprs.append(xi.cast(pl.Float64))
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_elastic_net_summary",
+        args=[
+            y.cast(pl.Float64),
+            pl.lit(lambda_, dtype=pl.Float64),
+            pl.lit(alpha, dtype=pl.Float64),
+            pl.lit(with_intercept, dtype=pl.Boolean),
+            *x_exprs,
+        ],
+        returns_scalar=True,
+    )
+
+
+def wls_summary(
+    y: Union[pl.Expr, str],
+    weights: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    with_intercept: bool = True,
+) -> pl.Expr:
+    """Weighted Least Squares coefficient summary in tidy format."""
+    if isinstance(y, str):
+        y = pl.col(y)
+    if isinstance(weights, str):
+        weights = pl.col(weights)
+
+    x_exprs = []
+    for xi in x:
+        if isinstance(xi, str):
+            xi = pl.col(xi)
+        x_exprs.append(xi.cast(pl.Float64))
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_wls_summary",
+        args=[
+            y.cast(pl.Float64),
+            weights.cast(pl.Float64),
+            pl.lit(with_intercept, dtype=pl.Boolean),
+            *x_exprs,
+        ],
+        returns_scalar=True,
+    )
+
+
+def rls_summary(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    forgetting_factor: float = 0.99,
+    with_intercept: bool = True,
+) -> pl.Expr:
+    """Recursive Least Squares coefficient summary in tidy format."""
+    if isinstance(y, str):
+        y = pl.col(y)
+
+    x_exprs = []
+    for xi in x:
+        if isinstance(xi, str):
+            xi = pl.col(xi)
+        x_exprs.append(xi.cast(pl.Float64))
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_rls_summary",
+        args=[
+            y.cast(pl.Float64),
+            pl.lit(forgetting_factor, dtype=pl.Float64),
+            pl.lit(with_intercept, dtype=pl.Boolean),
+            *x_exprs,
+        ],
+        returns_scalar=True,
+    )
+
+
+def bls_summary(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    lower_bound: float | None = None,
+    upper_bound: float | None = None,
+    with_intercept: bool = True,
+) -> pl.Expr:
+    """Bounded Least Squares coefficient summary in tidy format."""
+    if isinstance(y, str):
+        y = pl.col(y)
+
+    x_exprs = []
+    for xi in x:
+        if isinstance(xi, str):
+            xi = pl.col(xi)
+        x_exprs.append(xi.cast(pl.Float64))
+
+    lb = pl.lit(lower_bound, dtype=pl.Float64) if lower_bound is not None else pl.lit(None, dtype=pl.Float64)
+    ub = pl.lit(upper_bound, dtype=pl.Float64) if upper_bound is not None else pl.lit(None, dtype=pl.Float64)
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_bls_summary",
+        args=[
+            y.cast(pl.Float64),
+            lb,
+            ub,
+            pl.lit(with_intercept, dtype=pl.Boolean),
+            *x_exprs,
+        ],
+        returns_scalar=True,
+    )
+
+
+# ============================================================================
+# GLM Summary Expressions
+# ============================================================================
+
+
+def logistic_summary(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    with_intercept: bool = True,
+) -> pl.Expr:
+    """Logistic regression coefficient summary in tidy format."""
+    if isinstance(y, str):
+        y = pl.col(y)
+
+    x_exprs = []
+    for xi in x:
+        if isinstance(xi, str):
+            xi = pl.col(xi)
+        x_exprs.append(xi.cast(pl.Float64))
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_logistic_summary",
+        args=[
+            y.cast(pl.Float64),
+            pl.lit(with_intercept, dtype=pl.Boolean),
+            *x_exprs,
+        ],
+        returns_scalar=True,
+    )
+
+
+def poisson_summary(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    with_intercept: bool = True,
+) -> pl.Expr:
+    """Poisson regression coefficient summary in tidy format."""
+    if isinstance(y, str):
+        y = pl.col(y)
+
+    x_exprs = []
+    for xi in x:
+        if isinstance(xi, str):
+            xi = pl.col(xi)
+        x_exprs.append(xi.cast(pl.Float64))
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_poisson_summary",
+        args=[
+            y.cast(pl.Float64),
+            pl.lit(with_intercept, dtype=pl.Boolean),
+            *x_exprs,
+        ],
+        returns_scalar=True,
+    )
+
+
+def negative_binomial_summary(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    theta: float | None = None,
+    with_intercept: bool = True,
+) -> pl.Expr:
+    """Negative Binomial regression coefficient summary in tidy format."""
+    if isinstance(y, str):
+        y = pl.col(y)
+
+    x_exprs = []
+    for xi in x:
+        if isinstance(xi, str):
+            xi = pl.col(xi)
+        x_exprs.append(xi.cast(pl.Float64))
+
+    theta_lit = pl.lit(theta, dtype=pl.Float64) if theta is not None else pl.lit(None, dtype=pl.Float64)
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_negative_binomial_summary",
+        args=[
+            y.cast(pl.Float64),
+            theta_lit,
+            pl.lit(with_intercept, dtype=pl.Boolean),
+            *x_exprs,
+        ],
+        returns_scalar=True,
+    )
+
+
+def tweedie_summary(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    var_power: float = 1.5,
+    with_intercept: bool = True,
+) -> pl.Expr:
+    """Tweedie GLM coefficient summary in tidy format."""
+    if isinstance(y, str):
+        y = pl.col(y)
+
+    x_exprs = []
+    for xi in x:
+        if isinstance(xi, str):
+            xi = pl.col(xi)
+        x_exprs.append(xi.cast(pl.Float64))
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_tweedie_summary",
+        args=[
+            y.cast(pl.Float64),
+            pl.lit(var_power, dtype=pl.Float64),
+            pl.lit(with_intercept, dtype=pl.Boolean),
+            *x_exprs,
+        ],
+        returns_scalar=True,
+    )
+
+
+def probit_summary(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    with_intercept: bool = True,
+) -> pl.Expr:
+    """Probit regression coefficient summary in tidy format."""
+    if isinstance(y, str):
+        y = pl.col(y)
+
+    x_exprs = []
+    for xi in x:
+        if isinstance(xi, str):
+            xi = pl.col(xi)
+        x_exprs.append(xi.cast(pl.Float64))
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_probit_summary",
+        args=[
+            y.cast(pl.Float64),
+            pl.lit(with_intercept, dtype=pl.Boolean),
+            *x_exprs,
+        ],
+        returns_scalar=True,
+    )
+
+
+def cloglog_summary(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    with_intercept: bool = True,
+) -> pl.Expr:
+    """Complementary log-log regression coefficient summary in tidy format."""
+    if isinstance(y, str):
+        y = pl.col(y)
+
+    x_exprs = []
+    for xi in x:
+        if isinstance(xi, str):
+            xi = pl.col(xi)
+        x_exprs.append(xi.cast(pl.Float64))
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_cloglog_summary",
+        args=[
+            y.cast(pl.Float64),
+            pl.lit(with_intercept, dtype=pl.Boolean),
+            *x_exprs,
+        ],
+        returns_scalar=True,
+    )
+
+
+def alm_summary(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    distribution: str = "normal",
+    with_intercept: bool = True,
+) -> pl.Expr:
+    """Augmented Linear Model coefficient summary in tidy format."""
+    if isinstance(y, str):
+        y = pl.col(y)
+
+    x_exprs = []
+    for xi in x:
+        if isinstance(xi, str):
+            xi = pl.col(xi)
+        x_exprs.append(xi.cast(pl.Float64))
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_alm_summary",
+        args=[
+            y.cast(pl.Float64),
+            pl.lit(distribution, dtype=pl.String),
+            pl.lit(with_intercept, dtype=pl.Boolean),
+            *x_exprs,
+        ],
+        returns_scalar=True,
+    )
