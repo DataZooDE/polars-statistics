@@ -18,6 +18,8 @@ from polars_statistics._polars_statistics import (
     Tweedie,
     Probit,
     Cloglog,
+    # Augmented Linear Model
+    ALM,
     # Bootstrap
     StationaryBootstrap,
     CircularBlockBootstrap,
@@ -63,6 +65,7 @@ from polars_statistics.exprs import (
     tweedie,
     probit,
     cloglog,
+    alm,
 )
 
 __version__ = "0.1.0"
@@ -85,6 +88,8 @@ __all__ = [
     "Tweedie",
     "Probit",
     "Cloglog",
+    # Augmented Linear Model
+    "ALM",
     # Bootstrap
     "StationaryBootstrap",
     "CircularBlockBootstrap",
@@ -127,6 +132,7 @@ __all__ = [
     "tweedie",
     "probit",
     "cloglog",
+    "alm",
     # Library path
     "LIB",
 ]

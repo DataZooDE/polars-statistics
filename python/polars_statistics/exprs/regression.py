@@ -626,3 +626,75 @@ def cloglog(
         ],
         returns_scalar=True,
     )
+
+
+# ============================================================================
+# ALM Expressions
+# ============================================================================
+
+
+def alm(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    distribution: str = "normal",
+    with_intercept: bool = True,
+) -> pl.Expr:
+    """Augmented Linear Model (ALM) as a Polars expression.
+
+    A flexible regression model supporting 24+ distributions.
+
+    Parameters
+    ----------
+    y : pl.Expr or str
+        Target variable.
+    *x : pl.Expr or str
+        Feature variables (one or more).
+    distribution : str, default "normal"
+        Distribution family. Options include:
+        - Continuous: "normal", "laplace", "student_t", "logistic"
+        - Positive: "lognormal", "loglaplace", "gamma", "inverse_gaussian", "exponential"
+        - Bounded (0,1): "beta"
+        - Count: "poisson", "negative_binomial", "binomial", "geometric"
+    with_intercept : bool, default True
+        Whether to include an intercept term.
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing: intercept, coefficients, aic, bic, n_observations.
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> import polars_statistics as ps
+    >>>
+    >>> # Laplace regression per group
+    >>> df.group_by("group").agg(
+    ...     ps.alm("y", "x1", "x2", distribution="laplace").alias("model")
+    ... )
+    >>>
+    >>> # Gamma regression for positive data
+    >>> df.group_by("group").agg(
+    ...     ps.alm("y", "x1", distribution="gamma").alias("model")
+    ... )
+    """
+    if isinstance(y, str):
+        y = pl.col(y)
+
+    x_exprs = []
+    for xi in x:
+        if isinstance(xi, str):
+            xi = pl.col(xi)
+        x_exprs.append(xi.cast(pl.Float64))
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_alm",
+        args=[
+            y.cast(pl.Float64),
+            pl.lit(distribution, dtype=pl.String),
+            pl.lit(with_intercept, dtype=pl.Boolean),
+            *x_exprs,
+        ],
+        returns_scalar=True,
+    )

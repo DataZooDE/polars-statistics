@@ -13,6 +13,7 @@ mod py_negative_binomial;
 mod py_tweedie;
 mod py_probit;
 mod py_cloglog;
+mod py_alm;
 
 pub use py_ols::PyOLS;
 pub use py_ridge::PyRidge;
@@ -27,3 +28,4 @@ pub use py_negative_binomial::PyNegativeBinomial;
 pub use py_tweedie::PyTweedie;
 pub use py_probit::PyProbit;
 pub use py_cloglog::PyCloglog;
+pub use py_alm::PyALM;

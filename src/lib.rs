@@ -32,6 +32,9 @@ fn _polars_statistics(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<pymodels::PyProbit>()?;
     m.add_class::<pymodels::PyCloglog>()?;
 
+    // Augmented Linear Model
+    m.add_class::<pymodels::PyALM>()?;
+
     // Bootstrap
     m.add_class::<pymodels::PyStationaryBootstrap>()?;
     m.add_class::<pymodels::PyCircularBlockBootstrap>()?;

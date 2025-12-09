@@ -42,6 +42,7 @@ from polars_statistics.exprs.regression import (
     tweedie,
     probit,
     cloglog,
+    alm,
 )
 
 __all__ = [
@@ -82,4 +83,5 @@ __all__ = [
     "tweedie",
     "probit",
     "cloglog",
+    "alm",
 ]

@@ -7,9 +7,9 @@ use polars::prelude::*;
 use pyo3_polars::derive::polars_expr;
 
 use regress_rs::solvers::{
-    BinomialRegressor, BlsRegressor, ElasticNetRegressor, FittedRegressor, NegativeBinomialRegressor,
-    OlsRegressor, PoissonRegressor, Regressor, RidgeRegressor, RlsRegressor, TweedieRegressor,
-    WlsRegressor,
+    AlmDistribution, AlmRegressor, BinomialRegressor, BlsRegressor, ElasticNetRegressor,
+    FittedRegressor, NegativeBinomialRegressor, OlsRegressor, PoissonRegressor, Regressor,
+    RidgeRegressor, RlsRegressor, TweedieRegressor, WlsRegressor,
 };
 
 // ============================================================================
@@ -566,6 +566,68 @@ fn pl_cloglog(inputs: &[Series]) -> PolarsResult<Series> {
     };
 
     let model = BinomialRegressor::cloglog()
+        .with_intercept(with_intercept)
+        .build();
+
+    match model.fit(&x, &y) {
+        Ok(fitted) => {
+            let result = fitted.result();
+            glm_output(
+                fitted.intercept(),
+                &col_to_vec(fitted.coefficients()),
+                result.aic,
+                result.bic,
+                result.n_observations,
+            )
+        }
+        Err(_) => glm_nan_output(),
+    }
+}
+
+// ============================================================================
+// ALM Expression
+// ============================================================================
+
+/// Parse distribution string to AlmDistribution enum.
+fn parse_alm_distribution(s: &str) -> Option<AlmDistribution> {
+    match s.to_lowercase().as_str() {
+        "normal" | "gaussian" => Some(AlmDistribution::Normal),
+        "laplace" => Some(AlmDistribution::Laplace),
+        "student_t" | "studentt" | "t" => Some(AlmDistribution::StudentT),
+        "logistic" => Some(AlmDistribution::Logistic),
+        "gamma" => Some(AlmDistribution::Gamma),
+        "inverse_gaussian" | "inversegaussian" => Some(AlmDistribution::InverseGaussian),
+        "exponential" => Some(AlmDistribution::Exponential),
+        "beta" => Some(AlmDistribution::Beta),
+        "poisson" => Some(AlmDistribution::Poisson),
+        "negative_binomial" | "negativebinomial" | "negbin" => Some(AlmDistribution::NegativeBinomial),
+        "binomial" => Some(AlmDistribution::Binomial),
+        "geometric" => Some(AlmDistribution::Geometric),
+        "lognormal" | "log_normal" => Some(AlmDistribution::LogNormal),
+        "loglaplace" | "log_laplace" => Some(AlmDistribution::LogLaplace),
+        _ => None,
+    }
+}
+
+/// ALM (Augmented Linear Model) expression.
+/// inputs[0] = y, inputs[1] = distribution (string), inputs[2] = with_intercept, inputs[3..] = x columns
+#[polars_expr(output_type_func=glm_output_dtype)]
+fn pl_alm(inputs: &[Series]) -> PolarsResult<Series> {
+    let dist_str = inputs[1].str()?.get(0).unwrap_or("normal");
+    let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
+
+    let (x, y) = match build_xy_data(inputs, 0, 3) {
+        Ok(data) => data,
+        Err(_) => return glm_nan_output(),
+    };
+
+    let distribution = match parse_alm_distribution(dist_str) {
+        Some(d) => d,
+        None => return glm_nan_output(),
+    };
+
+    let model = AlmRegressor::builder()
+        .distribution(distribution)
         .with_intercept(with_intercept)
         .build();
 

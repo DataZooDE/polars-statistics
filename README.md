@@ -14,7 +14,7 @@ High-performance statistical testing for [Polars](https://pola.rs/) DataFrames, 
 - **Comprehensive Statistical Tests**: Parametric, non-parametric, distributional, and forecast comparison tests
 - **Modern Distribution Tests**: Energy Distance and Maximum Mean Discrepancy (MMD)
 - **High Performance**: Rust-powered computations with zero-copy data transfer
-- **Regression Models**: OLS, Ridge, Elastic Net, WLS, GLMs, and more (supplementary)
+- **Regression Models**: OLS, Ridge, Elastic Net, WLS, GLMs, ALM (24+ distributions), and more
 
 ## Installation
 
@@ -208,11 +208,36 @@ ps.probit("y", "x1", "x2")
 ps.cloglog("y", "x1", "x2")
 ```
 
+**Augmented Linear Model (ALM):**
+
+ALM supports 24+ distributions with flexible link functions:
+
+```python
+# Normal (default) - equivalent to OLS
+ps.alm("y", "x1", "x2", distribution="normal")
+
+# Laplace distribution (robust to outliers)
+ps.alm("y", "x1", "x2", distribution="laplace")
+
+# Student-t (heavy tails)
+ps.alm("y", "x1", "x2", distribution="student_t")
+
+# Gamma (positive continuous data)
+ps.alm("y", "x1", "x2", distribution="gamma")
+
+# Available distributions:
+# normal, laplace, student_t, logistic, gamma, inverse_gaussian,
+# exponential, beta, poisson, negative_binomial, geometric, binomial,
+# multinomial, dirichlet
+```
+
 **Output Fields:**
 
 Linear models return a struct with: `intercept`, `coefficients`, `r_squared`, `adj_r_squared`, `mse`, `rmse`, `f_statistic`, `f_pvalue`, `aic`, `bic`, `n_observations`.
 
 GLM models return a struct with: `intercept`, `coefficients`, `aic`, `bic`, `n_observations`.
+
+ALM models return a struct with: `intercept`, `coefficients`, `aic`, `bic`, `log_likelihood`, `n_observations`.
 
 ## Working with Group Operations
 
@@ -286,6 +311,8 @@ df.lazy().group_by("experiment").agg(
 | `tweedie` | Tweedie GLM | `var_power`, `with_intercept` |
 | `probit` | Probit Regression | `with_intercept` |
 | `cloglog` | Complementary Log-Log | `with_intercept` |
+| **Regression (ALM)** | | |
+| `alm` | Augmented Linear Model | `distribution`, `with_intercept` |
 
 ---
 
@@ -326,7 +353,7 @@ bls = BLS.nnls().fit(np.abs(X), y)  # coefficients >= 0
 ### Generalized Linear Models
 
 ```python
-from polars_statistics import Logistic, Poisson, NegativeBinomial, Tweedie, Probit, Cloglog
+from polars_statistics import Logistic, Poisson, NegativeBinomial, Tweedie, Probit, Cloglog, ALM
 
 # Logistic Regression
 y_binary = (y > 0).astype(float)
@@ -351,6 +378,45 @@ probit = Probit().fit(X, y_binary)
 
 # Complementary Log-Log
 cloglog = Cloglog().fit(X, y_binary)
+```
+
+### Augmented Linear Model (ALM)
+
+ALM provides a flexible framework supporting 24+ distributions with customizable link functions:
+
+```python
+from polars_statistics import ALM
+
+# Normal distribution (equivalent to OLS)
+alm = ALM.normal().fit(X, y)
+
+# Laplace distribution (robust to outliers)
+alm_laplace = ALM.laplace().fit(X, y)
+
+# Student-t distribution (heavy tails)
+alm_t = ALM.student_t(df=5.0).fit(X, y)
+
+# Gamma distribution (positive continuous data)
+alm_gamma = ALM.gamma().fit(np.abs(X), np.abs(y))
+
+# Poisson distribution (count data)
+alm_poisson = ALM.poisson().fit(X, y_counts)
+
+# Custom distribution with link function
+alm_custom = ALM(
+    distribution="inverse_gaussian",
+    link="inverse",
+    with_intercept=True,
+    compute_inference=True,
+).fit(X, y)
+
+# Supported distributions:
+# normal, laplace, student_t, logistic, gamma, inverse_gaussian,
+# exponential, beta, poisson, negative_binomial, geometric, binomial,
+# multinomial, dirichlet
+
+# Supported link functions:
+# identity, log, logit, probit, inverse, sqrt, cloglog
 ```
 
 ### Bootstrap Methods
@@ -379,6 +445,7 @@ model.std_errors        # Standard errors (if compute_inference=True)
 model.p_values          # P-values (if compute_inference=True)
 model.aic               # Akaike Information Criterion
 model.bic               # Bayesian Information Criterion
+model.log_likelihood    # Log-likelihood (ALM models)
 ```
 
 ---

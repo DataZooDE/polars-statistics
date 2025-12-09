@@ -16,12 +16,12 @@ crate-type = ["cdylib"]
 
 [dependencies]
 # Python bindings
-pyo3 = { version = "0.23", features = ["abi3-py39", "extension-module"] }
-numpy = "0.23"
-pyo3-polars = { version = "0.20", features = ["derive", "lazy"] }
+pyo3 = { version = "0.26", features = ["abi3-py39", "extension-module"] }
+numpy = "0.26"
+pyo3-polars = { version = "0.25", features = ["derive", "lazy"] }
 
 # Polars
-polars = { version = "0.46", default-features = false, features = [
+polars = { version = "0.52", default-features = false, features = [
     "lazy",
     "dtype-struct",
     "dtype-array",
@@ -37,13 +37,13 @@ polars = { version = "0.46", default-features = false, features = [
     "cross_join",
     "diff",
 ] }
-polars-arrow = "0.46"
+polars-arrow = "0.52"
 
 # Linear algebra
-faer = { version = "0.20", features = ["rayon"] }
+faer = { version = "0.23", features = ["rayon"] }
 
 # Statistics
-statrs = "0.17"
+statrs = "0.18"
 
 # Random number generation
 rand = "0.8"
@@ -55,9 +55,11 @@ thiserror = "2.0"
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
 
-# GitHub dependencies
-regress-rs = { git = "https://github.com/sipemu/regress-rs" }
-anofox-statistics = { git = "https://github.com/sipemu/anofox-statistics-rs" }
+# Regression
+regress-rs = "0.3"
+
+# Statistics
+anofox-statistics = "0.2"
 
 [profile.release]
 codegen-units = 1
