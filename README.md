@@ -4,16 +4,15 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 
-High-performance statistical testing and regression for [Polars](https://pola.rs/) DataFrames, powered by Rust.
+High-performance statistical testing for [Polars](https://pola.rs/) DataFrames, powered by Rust.
 
 ## Features
 
-- **Regression Models**: OLS, Ridge, Elastic Net, WLS, Logistic, Poisson
-- **Statistical Tests**: t-tests, Mann-Whitney U, Wilcoxon, Kruskal-Wallis, Shapiro-Wilk, D'Agostino, and more
-- **Forecast Comparison**: Diebold-Mariano test, permutation t-test
-- **Bootstrap Methods**: Stationary Bootstrap, Circular Block Bootstrap
-- **Polars Integration**: Expression API with full `group_by` and `over` support
+- **Native Polars Expressions**: Full support for `group_by`, `over`, and lazy evaluation
+- **Comprehensive Statistical Tests**: Parametric, non-parametric, distributional, and forecast comparison tests
+- **Modern Distribution Tests**: Energy Distance and Maximum Mean Discrepancy (MMD)
 - **High Performance**: Rust-powered computations with zero-copy data transfer
+- **Regression Models**: OLS, Ridge, Elastic Net, WLS, GLMs, and more (supplementary)
 
 ## Installation
 
@@ -21,43 +20,7 @@ High-performance statistical testing and regression for [Polars](https://pola.rs
 pip install polars-statistics
 ```
 
-For development:
-```bash
-pip install polars-statistics[dev]
-```
-
 ## Quick Start
-
-### Regression Models
-
-```python
-import numpy as np
-from polars_statistics import OLS, Ridge, Logistic
-
-# Generate sample data
-np.random.seed(42)
-X = np.random.randn(100, 3)
-y = X @ np.array([1, 2, 3]) + np.random.randn(100) * 0.1
-
-# Ordinary Least Squares
-model = OLS(compute_inference=True).fit(X, y)
-print(f"Coefficients: {model.coefficients}")
-print(f"R-squared: {model.r_squared:.4f}")
-print(f"P-values: {model.p_values}")
-
-# Ridge Regression
-ridge = Ridge(lambda_=0.1).fit(X, y)
-print(f"Ridge coefficients: {ridge.coefficients}")
-
-# Logistic Regression
-y_binary = (y > y.mean()).astype(float)
-logit = Logistic().fit(X, y_binary)
-probs = logit.predict_proba(X)
-```
-
-### Statistical Tests with Polars Expressions
-
-The expression API integrates seamlessly with Polars' lazy evaluation and supports `group_by` operations:
 
 ```python
 import polars as pl
@@ -65,96 +28,256 @@ import polars_statistics as ps
 
 df = pl.DataFrame({
     "group": ["A"] * 50 + ["B"] * 50,
-    "treatment": [1.2, 2.3, 1.8, ...],  # treatment values
-    "control": [1.0, 2.1, 1.5, ...],    # control values
+    "treatment": [1.2, 2.3, 1.8, 2.1, ...],
+    "control": [1.0, 2.1, 1.5, 1.9, ...],
 })
 
-# T-test within groups
+# Run t-test per group
 result = df.group_by("group").agg(
     ps.ttest_ind(pl.col("treatment"), pl.col("control")).alias("ttest")
 )
-print(result)
-# shape: (2, 2)
-# ┌───────┬─────────────────────┐
-# │ group ┆ ttest               │
-# │ ---   ┆ ---                 │
-# │ str   ┆ struct[2]           │
-# ╞═══════╪═════════════════════╡
-# │ A     ┆ {2.34, 0.021}       │
-# │ B     ┆ {1.89, 0.062}       │
-# └───────┴─────────────────────┘
 
-# Access struct fields
+# Extract results
 result.with_columns(
     pl.col("ttest").struct.field("statistic"),
     pl.col("ttest").struct.field("p_value"),
 )
 ```
 
-### Available Statistical Tests
+All test functions return a struct with `statistic` and `p_value` fields.
+
+## Expression API
+
+### Parametric Tests
 
 ```python
 import polars as pl
 import polars_statistics as ps
 
+# Independent samples t-test (Welch's by default)
+ps.ttest_ind(pl.col("x"), pl.col("y"), alternative="two-sided", equal_var=False)
+
+# Paired samples t-test
+ps.ttest_paired(pl.col("before"), pl.col("after"), alternative="two-sided")
+
+# Brown-Forsythe test for equality of variances
+ps.brown_forsythe(pl.col("x"), pl.col("y"))
+
+# Yuen's test for trimmed means (robust to outliers)
+ps.yuen_test(pl.col("x"), pl.col("y"), trim=0.2)
+```
+
+### Non-Parametric Tests
+
+```python
+# Mann-Whitney U test (Wilcoxon rank-sum)
+ps.mann_whitney_u(pl.col("x"), pl.col("y"))
+
+# Wilcoxon signed-rank test (paired)
+ps.wilcoxon_signed_rank(pl.col("x"), pl.col("y"))
+
+# Kruskal-Wallis H test (3+ groups)
+ps.kruskal_wallis(pl.col("group1"), pl.col("group2"), pl.col("group3"))
+
+# Brunner-Munzel test for stochastic equality
+ps.brunner_munzel(pl.col("x"), pl.col("y"), alternative="two-sided")
+```
+
+### Distributional Tests
+
+```python
+# Shapiro-Wilk normality test
+ps.shapiro_wilk(pl.col("x"))
+
+# D'Agostino-Pearson normality test
+ps.dagostino(pl.col("x"))
+```
+
+### Forecast Comparison Tests
+
+```python
+# Diebold-Mariano test for equal predictive accuracy
+ps.diebold_mariano(pl.col("errors1"), pl.col("errors2"), loss="squared", horizon=1)
+
+# Permutation t-test (non-parametric)
+ps.permutation_t_test(pl.col("x"), pl.col("y"), n_permutations=999, seed=42)
+
+# Clark-West test for nested model comparison
+ps.clark_west(pl.col("restricted_errors"), pl.col("unrestricted_errors"), horizon=1)
+
+# Superior Predictive Ability (SPA) test
+ps.spa_test(
+    pl.col("benchmark_loss"),
+    pl.col("model1_loss"), pl.col("model2_loss"),
+    n_bootstrap=999,
+    block_length=5.0,
+)
+
+# Model Confidence Set (MCS)
+ps.model_confidence_set(
+    pl.col("model1_loss"), pl.col("model2_loss"), pl.col("model3_loss"),
+    alpha=0.1,
+    statistic="range",
+)
+
+# MSPE-Adjusted SPA test for nested models
+ps.mspe_adjusted(
+    pl.col("benchmark_errors"),
+    pl.col("model1_errors"), pl.col("model2_errors"),
+)
+```
+
+### Modern Distribution Tests
+
+```python
+# Energy Distance test
+ps.energy_distance(pl.col("x"), pl.col("y"), n_permutations=999, seed=42)
+
+# Maximum Mean Discrepancy (MMD) test
+ps.mmd_test(pl.col("x"), pl.col("y"), n_permutations=999, seed=42)
+```
+
+## Working with Group Operations
+
+The expression API integrates seamlessly with Polars' `group_by` and `over`:
+
+```python
 df = pl.DataFrame({
-    "x": [...],
-    "y": [...],
+    "experiment": ["exp1"] * 100 + ["exp2"] * 100,
+    "treatment": [...],
+    "control": [...],
 })
 
-# Parametric tests
-ps.ttest_ind(pl.col("x"), pl.col("y"))           # Independent t-test
-ps.ttest_paired(pl.col("x"), pl.col("y"))        # Paired t-test
-ps.brown_forsythe(pl.col("x"), pl.col("y"))      # Equality of variances
+# Test per experiment
+df.group_by("experiment").agg(
+    ps.ttest_ind("treatment", "control").alias("ttest"),
+    ps.mann_whitney_u("treatment", "control").alias("mwu"),
+)
 
-# Non-parametric tests
-ps.mann_whitney_u(pl.col("x"), pl.col("y"))      # Mann-Whitney U test
-ps.wilcoxon_signed_rank(pl.col("x"), pl.col("y")) # Wilcoxon signed-rank
-ps.kruskal_wallis(pl.col("x"), pl.col("y"))      # Kruskal-Wallis H test
+# Window function
+df.with_columns(
+    ps.shapiro_wilk("treatment").over("experiment").alias("normality")
+)
 
-# Distributional tests
-ps.shapiro_wilk(pl.col("x"))                     # Shapiro-Wilk normality
-ps.dagostino(pl.col("x"))                        # D'Agostino-Pearson
+# Lazy evaluation
+df.lazy().group_by("experiment").agg(
+    ps.brunner_munzel("treatment", "control")
+).collect()
+```
 
-# Forecast comparison
-ps.diebold_mariano(pl.col("e1"), pl.col("e2"))   # Diebold-Mariano test
-ps.permutation_t_test(pl.col("x"), pl.col("y"))  # Permutation t-test
+## API Reference
+
+### Expression Functions
+
+| Function | Description | Key Parameters |
+|----------|-------------|----------------|
+| **Parametric** | | |
+| `ttest_ind` | Independent samples t-test | `alternative`, `equal_var` |
+| `ttest_paired` | Paired samples t-test | `alternative` |
+| `brown_forsythe` | Test for equality of variances | - |
+| `yuen_test` | Trimmed means comparison | `trim` |
+| **Non-Parametric** | | |
+| `mann_whitney_u` | Mann-Whitney U test | - |
+| `wilcoxon_signed_rank` | Wilcoxon signed-rank test | - |
+| `kruskal_wallis` | Kruskal-Wallis H test | - |
+| `brunner_munzel` | Brunner-Munzel test | `alternative` |
+| **Distributional** | | |
+| `shapiro_wilk` | Shapiro-Wilk normality test | - |
+| `dagostino` | D'Agostino-Pearson test | - |
+| **Forecast** | | |
+| `diebold_mariano` | Diebold-Mariano test | `loss`, `horizon` |
+| `permutation_t_test` | Permutation t-test | `alternative`, `n_permutations`, `seed` |
+| `clark_west` | Clark-West nested model test | `horizon` |
+| `spa_test` | Superior Predictive Ability | `n_bootstrap`, `block_length`, `seed` |
+| `model_confidence_set` | Model Confidence Set | `alpha`, `statistic`, `n_bootstrap` |
+| `mspe_adjusted` | MSPE-Adjusted SPA test | `n_bootstrap`, `block_length`, `seed` |
+| **Modern** | | |
+| `energy_distance` | Energy Distance test | `n_permutations`, `seed` |
+| `mmd_test` | Maximum Mean Discrepancy | `n_permutations`, `seed` |
+
+---
+
+## Regression Models (Supplementary)
+
+For users who need regression models, polars-statistics also provides high-performance implementations:
+
+### Linear Models
+
+```python
+import numpy as np
+from polars_statistics import OLS, Ridge, ElasticNet, WLS, RLS, BLS
+
+X = np.random.randn(100, 3)
+y = X @ [1, 2, 3] + np.random.randn(100) * 0.1
+
+# Ordinary Least Squares
+ols = OLS(compute_inference=True).fit(X, y)
+print(ols.coefficients, ols.r_squared, ols.p_values)
+
+# Ridge Regression (L2)
+ridge = Ridge(lambda_=0.1).fit(X, y)
+
+# Elastic Net (L1 + L2)
+enet = ElasticNet(lambda_=0.1, alpha=0.5).fit(X, y)
+
+# Weighted Least Squares
+weights = np.ones(100)
+wls = WLS().fit(X, y, weights)
+
+# Recursive Least Squares (online learning)
+rls = RLS(forgetting_factor=0.99).fit(X, y)
+
+# Bounded Least Squares / Non-negative LS
+bls = BLS.nnls().fit(np.abs(X), y)  # coefficients >= 0
+```
+
+### Generalized Linear Models
+
+```python
+from polars_statistics import Logistic, Poisson, NegativeBinomial, Tweedie, Probit, Cloglog
+
+# Logistic Regression
+y_binary = (y > 0).astype(float)
+logit = Logistic().fit(X, y_binary)
+probs = logit.predict_proba(X)
+
+# Poisson Regression (count data)
+y_counts = np.random.poisson(5, 100).astype(float)
+poisson = Poisson().fit(X, y_counts)
+
+# Negative Binomial (overdispersed counts)
+negbin = NegativeBinomial(estimate_theta=True).fit(X, y_counts)
+print(negbin.theta_estimated)
+
+# Tweedie GLM (flexible distribution)
+tweedie = Tweedie(var_power=1.5).fit(X, y_counts)
+# Or use factory methods:
+gamma_glm = Tweedie.gamma().fit(X, np.abs(y))
+
+# Probit Regression
+probit = Probit().fit(X, y_binary)
+
+# Complementary Log-Log
+cloglog = Cloglog().fit(X, y_binary)
 ```
 
 ### Bootstrap Methods
 
 ```python
-import numpy as np
 from polars_statistics import StationaryBootstrap, CircularBlockBootstrap
 
 data = np.random.randn(100)
 
 # Stationary bootstrap (random block lengths)
 bootstrap = StationaryBootstrap(expected_block_length=5.0, seed=42)
-sample = bootstrap.sample(data)
 samples = bootstrap.samples(data, n_samples=1000)
 
 # Circular block bootstrap (fixed block length)
 cbb = CircularBlockBootstrap(block_length=10, seed=42)
-sample = cbb.sample(data)
+samples = cbb.samples(data, n_samples=1000)
 ```
 
-## API Reference
-
-### Regression Models
-
-| Model | Description | Key Parameters |
-|-------|-------------|----------------|
-| `OLS` | Ordinary Least Squares | `with_intercept`, `compute_inference`, `confidence_level` |
-| `Ridge` | Ridge regression (L2) | `lambda_`, `with_intercept` |
-| `ElasticNet` | Elastic Net (L1+L2) | `lambda_`, `alpha`, `max_iter`, `tol` |
-| `WLS` | Weighted Least Squares | `with_intercept`, `compute_inference` |
-| `Logistic` | Logistic regression | `with_intercept`, `max_iter`, `tol` |
-| `Poisson` | Poisson regression | `with_intercept`, `max_iter`, `tol` |
-
 ### Model Properties
-
-After fitting, models expose these properties:
 
 ```python
 model.coefficients      # Regression coefficients
@@ -166,22 +289,7 @@ model.aic               # Akaike Information Criterion
 model.bic               # Bayesian Information Criterion
 ```
 
-### Expression Functions
-
-All expression functions return a struct with `statistic` and `p_value` fields:
-
-| Function | Description | Parameters |
-|----------|-------------|------------|
-| `ttest_ind` | Independent samples t-test | `alternative`, `equal_var` |
-| `ttest_paired` | Paired samples t-test | `alternative` |
-| `brown_forsythe` | Brown-Forsythe test | - |
-| `mann_whitney_u` | Mann-Whitney U test | - |
-| `wilcoxon_signed_rank` | Wilcoxon signed-rank test | - |
-| `kruskal_wallis` | Kruskal-Wallis H test | - |
-| `shapiro_wilk` | Shapiro-Wilk normality test | - |
-| `dagostino` | D'Agostino-Pearson test | - |
-| `diebold_mariano` | Diebold-Mariano test | `loss`, `horizon` |
-| `permutation_t_test` | Permutation t-test | `alternative`, `n_permutations`, `seed` |
+---
 
 ## Performance
 
@@ -191,49 +299,20 @@ polars-statistics is built on high-performance Rust libraries:
 - **[anofox-statistics](https://github.com/sipemu/anofox-statistics-rs)**: Statistical tests with SIMD optimizations
 - **Zero-copy integration**: Direct memory sharing between Python and Rust
 
-Benchmarks show 10-100x speedups compared to pure Python implementations for large datasets.
-
 ## Development
 
-### Building from Source
-
 ```bash
-# Clone the repository
 git clone https://github.com/sipemu/polars-statistics.git
 cd polars-statistics
-
-# Create virtual environment
-python -m venv .venv
-source .venv/bin/activate  # or `.venv\Scripts\activate` on Windows
-
-# Install maturin and build
-pip install maturin numpy polars
+python -m venv .venv && source .venv/bin/activate
+pip install maturin numpy polars pytest
 maturin develop --release
-
-# Run tests
-pip install pytest scipy statsmodels
 pytest
 ```
 
-### Running Tests
-
-```bash
-pytest tests/ -v
-```
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT License - see [LICENSE](LICENSE) for details.
 
 ## Acknowledgments
 

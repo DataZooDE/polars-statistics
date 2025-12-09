@@ -21,10 +21,16 @@ fn _polars_statistics(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<pymodels::PyRidge>()?;
     m.add_class::<pymodels::PyElasticNet>()?;
     m.add_class::<pymodels::PyWLS>()?;
+    m.add_class::<pymodels::PyRLS>()?;
+    m.add_class::<pymodels::PyBLS>()?;
 
     // GLM Models
     m.add_class::<pymodels::PyLogistic>()?;
     m.add_class::<pymodels::PyPoisson>()?;
+    m.add_class::<pymodels::PyNegativeBinomial>()?;
+    m.add_class::<pymodels::PyTweedie>()?;
+    m.add_class::<pymodels::PyProbit>()?;
+    m.add_class::<pymodels::PyCloglog>()?;
 
     // Bootstrap
     m.add_class::<pymodels::PyStationaryBootstrap>()?;

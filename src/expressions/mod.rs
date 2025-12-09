@@ -8,9 +8,11 @@ mod parametric;
 mod nonparametric;
 mod distributional;
 mod forecast;
+mod modern;
 
 pub use output_types::*;
 pub use parametric::*;
 pub use nonparametric::*;
 pub use distributional::*;
 pub use forecast::*;
+pub use modern::*;

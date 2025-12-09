@@ -144,3 +144,61 @@ def kruskal_wallis(
         args=cleaned_groups,
         returns_scalar=True,
     )
+
+
+def brunner_munzel(
+    x: Union[pl.Expr, str],
+    y: Union[pl.Expr, str],
+    alternative: str = "two-sided",
+) -> pl.Expr:
+    """
+    Perform Brunner-Munzel test for stochastic equality.
+
+    A robust non-parametric test for comparing two independent samples
+    that doesn't assume equal variances or shape of distributions.
+    Tests whether P(X < Y) = 0.5.
+
+    Parameters
+    ----------
+    x : pl.Expr or str
+        First sample expression or column name.
+    y : pl.Expr or str
+        Second sample expression or column name.
+    alternative : {"two-sided", "less", "greater"}, default "two-sided"
+        Alternative hypothesis direction.
+
+    Returns
+    -------
+    pl.Expr
+        Expression returning struct{statistic: f64, p_value: f64}
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> import polars_statistics as ps
+    >>>
+    >>> df = pl.DataFrame({
+    ...     "x": [1.0, 2.0, 3.0, 4.0, 5.0],
+    ...     "y": [2.0, 4.0, 6.0, 8.0, 10.0],
+    ... })
+    >>>
+    >>> df.select(ps.brunner_munzel("x", "y"))
+    """
+    if isinstance(x, str):
+        x = pl.col(x)
+    if isinstance(y, str):
+        y = pl.col(y)
+
+    x_clean = x.filter(x.is_finite())
+    y_clean = y.filter(y.is_finite())
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_brunner_munzel",
+        args=[
+            x_clean,
+            y_clean,
+            pl.lit(alternative, dtype=pl.String),
+        ],
+        returns_scalar=True,
+    )

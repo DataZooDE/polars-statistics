@@ -170,3 +170,61 @@ def brown_forsythe(
         args=[x_clean, y_clean],
         returns_scalar=True,
     )
+
+
+def yuen_test(
+    x: Union[pl.Expr, str],
+    y: Union[pl.Expr, str],
+    trim: float = 0.2,
+) -> pl.Expr:
+    """
+    Perform Yuen's test for trimmed means.
+
+    A robust alternative to the t-test that compares trimmed means,
+    making it less sensitive to outliers and violations of normality.
+
+    Parameters
+    ----------
+    x : pl.Expr or str
+        First sample expression or column name.
+    y : pl.Expr or str
+        Second sample expression or column name.
+    trim : float, default 0.2
+        Proportion to trim from each end (0 to 0.5).
+
+    Returns
+    -------
+    pl.Expr
+        Expression returning struct{statistic: f64, p_value: f64}
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> import polars_statistics as ps
+    >>>
+    >>> df = pl.DataFrame({
+    ...     "x": [1.0, 2.0, 3.0, 4.0, 100.0],  # outlier
+    ...     "y": [1.5, 2.5, 3.5, 4.5, 5.5],
+    ... })
+    >>>
+    >>> # Robust comparison using trimmed means
+    >>> df.select(ps.yuen_test("x", "y", trim=0.2))
+    """
+    if isinstance(x, str):
+        x = pl.col(x)
+    if isinstance(y, str):
+        y = pl.col(y)
+
+    x_clean = x.filter(x.is_finite())
+    y_clean = y.filter(y.is_finite())
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_yuen_test",
+        args=[
+            x_clean,
+            y_clean,
+            pl.lit(trim, dtype=pl.Float64),
+        ],
+        returns_scalar=True,
+    )
