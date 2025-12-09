@@ -3,7 +3,9 @@
 use polars::prelude::*;
 use pyo3_polars::derive::polars_expr;
 
-use anofox_statistics::{brunner_munzel, mann_whitney_u, wilcoxon_signed_rank, kruskal_wallis, Alternative};
+use anofox_statistics::{
+    brunner_munzel, kruskal_wallis, mann_whitney_u, wilcoxon_signed_rank, Alternative,
+};
 
 use crate::expressions::output_types::{generic_stats_output, stats_output_dtype};
 
@@ -45,7 +47,9 @@ fn pl_wilcoxon_signed_rank(inputs: &[Series]) -> PolarsResult<Series> {
     let y_vec: Vec<f64> = y.into_no_null_iter().collect();
 
     match wilcoxon_signed_rank(&x_vec, &y_vec) {
-        Ok(result) => generic_stats_output(result.statistic, result.p_value, "wilcoxon_signed_rank"),
+        Ok(result) => {
+            generic_stats_output(result.statistic, result.p_value, "wilcoxon_signed_rank")
+        }
         Err(_) => generic_stats_output(f64::NAN, f64::NAN, "wilcoxon_signed_rank"),
     }
 }

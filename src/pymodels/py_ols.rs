@@ -6,7 +6,7 @@ use pyo3::prelude::*;
 use regress_rs::prelude::*;
 use regress_rs::solvers::{FittedOls, OlsRegressor, Regressor};
 
-use crate::utils::{IntoFaer, IntoNumpy};
+use crate::utils::{IntoNumpy, ToFaer};
 
 /// Ordinary Least Squares regression model.
 ///
@@ -77,8 +77,8 @@ impl PyOLS {
         x: PyReadonlyArray2<'py, f64>,
         y: PyReadonlyArray1<'py, f64>,
     ) -> PyResult<PyRefMut<'py, Self>> {
-        let x_mat = x.into_faer();
-        let y_col = y.into_faer();
+        let x_mat = x.to_faer();
+        let y_col = y.to_faer();
 
         let model = OlsRegressor::builder()
             .with_intercept(slf.with_intercept)
@@ -115,7 +115,7 @@ impl PyOLS {
             .as_ref()
             .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
 
-        let x_mat = x.into_faer();
+        let x_mat = x.to_faer();
         let predictions = fitted.predict(&x_mat);
 
         Ok(predictions.into_numpy(py))
@@ -255,7 +255,11 @@ impl PyOLS {
             .as_ref()
             .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
 
-        Ok(fitted.result().std_errors.as_ref().map(|se| se.into_numpy(py)))
+        Ok(fitted
+            .result()
+            .std_errors
+            .as_ref()
+            .map(|se| se.into_numpy(py)))
     }
 
     /// Get t-statistics for coefficients.
@@ -281,7 +285,11 @@ impl PyOLS {
             .as_ref()
             .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
 
-        Ok(fitted.result().p_values.as_ref().map(|pv| pv.into_numpy(py)))
+        Ok(fitted
+            .result()
+            .p_values
+            .as_ref()
+            .map(|pv| pv.into_numpy(py)))
     }
 
     /// Get residuals.
@@ -347,18 +355,24 @@ impl PyOLS {
         ));
         summary.push_str(&format!("Df Residuals:     {:>10}\n", result.residual_df()));
         summary.push_str(&format!("Df Model:         {:>10}\n", result.model_df()));
-        summary.push_str("\n");
+        summary.push('\n');
 
         summary.push_str(&format!("R-squared:        {:>10.6}\n", result.r_squared));
-        summary.push_str(&format!("Adj. R-squared:   {:>10.6}\n", result.adj_r_squared));
+        summary.push_str(&format!(
+            "Adj. R-squared:   {:>10.6}\n",
+            result.adj_r_squared
+        ));
         summary.push_str(&format!("F-statistic:      {:>10.4}\n", result.f_statistic));
         summary.push_str(&format!("Prob (F):         {:>10.4e}\n", result.f_pvalue));
-        summary.push_str("\n");
+        summary.push('\n');
 
         summary.push_str(&format!("AIC:              {:>10.2}\n", result.aic));
         summary.push_str(&format!("BIC:              {:>10.2}\n", result.bic));
-        summary.push_str(&format!("Log-Likelihood:   {:>10.2}\n", result.log_likelihood));
-        summary.push_str("\n");
+        summary.push_str(&format!(
+            "Log-Likelihood:   {:>10.2}\n",
+            result.log_likelihood
+        ));
+        summary.push('\n');
 
         if let Some(ref se) = result.std_errors {
             summary.push_str("Coefficients:\n");

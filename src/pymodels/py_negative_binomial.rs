@@ -3,9 +3,11 @@
 use numpy::{PyArray1, PyReadonlyArray1, PyReadonlyArray2};
 use pyo3::prelude::*;
 
-use regress_rs::solvers::{FittedNegativeBinomial, FittedRegressor, NegativeBinomialRegressor, Regressor};
+use regress_rs::solvers::{
+    FittedNegativeBinomial, FittedRegressor, NegativeBinomialRegressor, Regressor,
+};
 
-use crate::utils::{IntoFaer, IntoNumpy};
+use crate::utils::{IntoNumpy, ToFaer};
 
 /// Negative Binomial regression model.
 ///
@@ -60,8 +62,8 @@ impl PyNegativeBinomial {
         x: PyReadonlyArray2<'py, f64>,
         y: PyReadonlyArray1<'py, f64>,
     ) -> PyResult<PyRefMut<'py, Self>> {
-        let x_mat = x.into_faer();
-        let y_col = y.into_faer();
+        let x_mat = x.to_faer();
+        let y_col = y.to_faer();
 
         let mut builder = NegativeBinomialRegressor::builder()
             .with_intercept(slf.with_intercept)
@@ -93,7 +95,7 @@ impl PyNegativeBinomial {
             .as_ref()
             .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
 
-        let x_mat = x.into_faer();
+        let x_mat = x.to_faer();
         let predictions = fitted.predict(&x_mat);
 
         Ok(predictions.into_numpy(py))
@@ -140,7 +142,11 @@ impl PyNegativeBinomial {
             .as_ref()
             .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
 
-        Ok(fitted.result().std_errors.as_ref().map(|se| se.into_numpy(py)))
+        Ok(fitted
+            .result()
+            .std_errors
+            .as_ref()
+            .map(|se| se.into_numpy(py)))
     }
 
     #[getter]
@@ -150,7 +156,11 @@ impl PyNegativeBinomial {
             .as_ref()
             .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
 
-        Ok(fitted.result().p_values.as_ref().map(|pv| pv.into_numpy(py)))
+        Ok(fitted
+            .result()
+            .p_values
+            .as_ref()
+            .map(|pv| pv.into_numpy(py)))
     }
 
     #[getter]

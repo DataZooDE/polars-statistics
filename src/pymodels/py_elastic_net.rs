@@ -5,7 +5,7 @@ use pyo3::prelude::*;
 
 use regress_rs::solvers::{ElasticNetRegressor, FittedRegressor, Regressor};
 
-use crate::utils::{IntoFaer, IntoNumpy};
+use crate::utils::{IntoNumpy, ToFaer};
 
 /// Elastic Net regression model (L1 + L2 regularization).
 ///
@@ -54,8 +54,8 @@ impl PyElasticNet {
         x: PyReadonlyArray2<'py, f64>,
         y: PyReadonlyArray1<'py, f64>,
     ) -> PyResult<PyRefMut<'py, Self>> {
-        let x_mat = x.into_faer();
-        let y_col = y.into_faer();
+        let x_mat = x.to_faer();
+        let y_col = y.to_faer();
 
         let model = ElasticNetRegressor::builder()
             .lambda(slf.lambda_)
@@ -83,7 +83,7 @@ impl PyElasticNet {
             .as_ref()
             .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
 
-        let x_mat = x.into_faer();
+        let x_mat = x.to_faer();
         let predictions = fitted.predict(&x_mat);
 
         Ok(predictions.into_numpy(py))

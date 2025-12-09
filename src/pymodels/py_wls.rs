@@ -5,7 +5,7 @@ use pyo3::prelude::*;
 
 use regress_rs::solvers::{FittedRegressor, Regressor, WlsRegressor};
 
-use crate::utils::{IntoFaer, IntoNumpy};
+use crate::utils::{IntoNumpy, ToFaer};
 
 /// Weighted Least Squares regression model.
 ///
@@ -57,9 +57,9 @@ impl PyWLS {
         y: PyReadonlyArray1<'py, f64>,
         weights: PyReadonlyArray1<'py, f64>,
     ) -> PyResult<PyRefMut<'py, Self>> {
-        let x_mat = x.into_faer();
-        let y_col = y.into_faer();
-        let w_col = weights.into_faer();
+        let x_mat = x.to_faer();
+        let y_col = y.to_faer();
+        let w_col = weights.to_faer();
 
         let model = WlsRegressor::builder()
             .with_intercept(slf.with_intercept)
@@ -86,7 +86,7 @@ impl PyWLS {
             .as_ref()
             .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
 
-        let x_mat = x.into_faer();
+        let x_mat = x.to_faer();
         let predictions = fitted.predict(&x_mat);
 
         Ok(predictions.into_numpy(py))

@@ -5,7 +5,7 @@ use pyo3::prelude::*;
 
 use regress_rs::solvers::{FittedPoisson, FittedRegressor, PoissonRegressor, Regressor};
 
-use crate::utils::{IntoFaer, IntoNumpy};
+use crate::utils::{IntoNumpy, ToFaer};
 
 /// Poisson regression model (Poisson GLM with log link).
 ///
@@ -67,8 +67,8 @@ impl PyPoisson {
         x: PyReadonlyArray2<'py, f64>,
         y: PyReadonlyArray1<'py, f64>,
     ) -> PyResult<PyRefMut<'py, Self>> {
-        let x_mat = x.into_faer();
-        let y_col = y.into_faer();
+        let x_mat = x.to_faer();
+        let y_col = y.to_faer();
 
         let model = PoissonRegressor::log()
             .with_intercept(slf.with_intercept)
@@ -107,7 +107,7 @@ impl PyPoisson {
             .as_ref()
             .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
 
-        let x_mat = x.into_faer();
+        let x_mat = x.to_faer();
         let counts = fitted.predict_count(&x_mat);
 
         Ok(counts.into_numpy(py))
@@ -124,7 +124,7 @@ impl PyPoisson {
             .as_ref()
             .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
 
-        let x_mat = x.into_faer();
+        let x_mat = x.to_faer();
         let linear = fitted.predict_linear(&x_mat);
 
         Ok(linear.into_numpy(py))
@@ -161,7 +161,11 @@ impl PyPoisson {
             .as_ref()
             .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
 
-        Ok(fitted.result().std_errors.as_ref().map(|se| se.into_numpy(py)))
+        Ok(fitted
+            .result()
+            .std_errors
+            .as_ref()
+            .map(|se| se.into_numpy(py)))
     }
 
     #[getter]
@@ -171,7 +175,11 @@ impl PyPoisson {
             .as_ref()
             .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
 
-        Ok(fitted.result().p_values.as_ref().map(|pv| pv.into_numpy(py)))
+        Ok(fitted
+            .result()
+            .p_values
+            .as_ref()
+            .map(|pv| pv.into_numpy(py)))
     }
 
     #[getter]

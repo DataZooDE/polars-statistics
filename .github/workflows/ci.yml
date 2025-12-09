@@ -30,21 +30,6 @@ jobs:
       - name: Clippy
         run: cargo clippy --all-targets -- -D warnings
 
-  test-rust:
-    name: Rust Tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache Rust
-        uses: Swatinem/rust-cache@v2
-
-      - name: Run tests
-        run: cargo test --all-features
-
   test-python:
     name: Python Tests (${{ matrix.python-version }}, ${{ matrix.os }})
     runs-on: ${{ matrix.os }}

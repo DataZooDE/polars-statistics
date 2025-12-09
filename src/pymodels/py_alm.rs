@@ -3,9 +3,11 @@
 use numpy::{PyArray1, PyReadonlyArray1, PyReadonlyArray2};
 use pyo3::prelude::*;
 
-use regress_rs::solvers::{AlmDistribution, AlmRegressor, FittedAlm, FittedRegressor, LinkFunction, Regressor};
+use regress_rs::solvers::{
+    AlmDistribution, AlmRegressor, FittedAlm, FittedRegressor, LinkFunction, Regressor,
+};
 
-use crate::utils::{IntoFaer, IntoNumpy};
+use crate::utils::{IntoNumpy, ToFaer};
 
 /// Convert string to AlmDistribution enum.
 fn parse_distribution(s: &str) -> PyResult<AlmDistribution> {
@@ -106,6 +108,7 @@ pub struct PyALM {
 impl PyALM {
     #[new]
     #[pyo3(signature = (distribution="normal", link=None, with_intercept=true, compute_inference=true, confidence_level=0.95, max_iter=100, tol=1e-8, extra_parameter=None))]
+    #[allow(clippy::too_many_arguments)]
     fn new(
         distribution: &str,
         link: Option<&str>,
@@ -133,42 +136,96 @@ impl PyALM {
     #[staticmethod]
     #[pyo3(signature = (with_intercept=true, compute_inference=true))]
     fn normal(with_intercept: bool, compute_inference: bool) -> Self {
-        Self::new("normal", None, with_intercept, compute_inference, 0.95, 100, 1e-8, None)
+        Self::new(
+            "normal",
+            None,
+            with_intercept,
+            compute_inference,
+            0.95,
+            100,
+            1e-8,
+            None,
+        )
     }
 
     /// Create a Laplace ALM.
     #[staticmethod]
     #[pyo3(signature = (with_intercept=true, compute_inference=true))]
     fn laplace(with_intercept: bool, compute_inference: bool) -> Self {
-        Self::new("laplace", None, with_intercept, compute_inference, 0.95, 100, 1e-8, None)
+        Self::new(
+            "laplace",
+            None,
+            with_intercept,
+            compute_inference,
+            0.95,
+            100,
+            1e-8,
+            None,
+        )
     }
 
     /// Create a Student-t ALM.
     #[staticmethod]
     #[pyo3(signature = (df=5.0, with_intercept=true, compute_inference=true))]
     fn student_t(df: f64, with_intercept: bool, compute_inference: bool) -> Self {
-        Self::new("student_t", None, with_intercept, compute_inference, 0.95, 100, 1e-8, Some(df))
+        Self::new(
+            "student_t",
+            None,
+            with_intercept,
+            compute_inference,
+            0.95,
+            100,
+            1e-8,
+            Some(df),
+        )
     }
 
     /// Create a Gamma ALM (for positive continuous data).
     #[staticmethod]
     #[pyo3(signature = (with_intercept=true, compute_inference=true))]
     fn gamma(with_intercept: bool, compute_inference: bool) -> Self {
-        Self::new("gamma", Some("log"), with_intercept, compute_inference, 0.95, 100, 1e-8, None)
+        Self::new(
+            "gamma",
+            Some("log"),
+            with_intercept,
+            compute_inference,
+            0.95,
+            100,
+            1e-8,
+            None,
+        )
     }
 
     /// Create a Beta ALM (for data in (0,1)).
     #[staticmethod]
     #[pyo3(signature = (with_intercept=true, compute_inference=true))]
     fn beta(with_intercept: bool, compute_inference: bool) -> Self {
-        Self::new("beta", Some("logit"), with_intercept, compute_inference, 0.95, 100, 1e-8, None)
+        Self::new(
+            "beta",
+            Some("logit"),
+            with_intercept,
+            compute_inference,
+            0.95,
+            100,
+            1e-8,
+            None,
+        )
     }
 
     /// Create a Poisson ALM (for count data).
     #[staticmethod]
     #[pyo3(signature = (with_intercept=true, compute_inference=true))]
     fn poisson(with_intercept: bool, compute_inference: bool) -> Self {
-        Self::new("poisson", Some("log"), with_intercept, compute_inference, 0.95, 100, 1e-8, None)
+        Self::new(
+            "poisson",
+            Some("log"),
+            with_intercept,
+            compute_inference,
+            0.95,
+            100,
+            1e-8,
+            None,
+        )
     }
 
     /// Fit the ALM model.
@@ -184,8 +241,8 @@ impl PyALM {
         x: PyReadonlyArray2<'py, f64>,
         y: PyReadonlyArray1<'py, f64>,
     ) -> PyResult<PyRefMut<'py, Self>> {
-        let x_mat = x.into_faer();
-        let y_col = y.into_faer();
+        let x_mat = x.to_faer();
+        let y_col = y.to_faer();
 
         let dist = parse_distribution(&slf.distribution)?;
 
@@ -237,7 +294,7 @@ impl PyALM {
             .as_ref()
             .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
 
-        let x_mat = x.into_faer();
+        let x_mat = x.to_faer();
         let predictions = fitted.predict(&x_mat);
 
         Ok(predictions.into_numpy(py))
@@ -274,7 +331,11 @@ impl PyALM {
             .as_ref()
             .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
 
-        Ok(fitted.result().std_errors.as_ref().map(|se| se.into_numpy(py)))
+        Ok(fitted
+            .result()
+            .std_errors
+            .as_ref()
+            .map(|se| se.into_numpy(py)))
     }
 
     #[getter]
@@ -284,7 +345,11 @@ impl PyALM {
             .as_ref()
             .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
 
-        Ok(fitted.result().p_values.as_ref().map(|pv| pv.into_numpy(py)))
+        Ok(fitted
+            .result()
+            .p_values
+            .as_ref()
+            .map(|pv| pv.into_numpy(py)))
     }
 
     #[getter]

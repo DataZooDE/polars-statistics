@@ -3,9 +3,9 @@
 use numpy::{PyArray1, PyReadonlyArray1, PyReadonlyArray2};
 use pyo3::prelude::*;
 
-use regress_rs::solvers::{FittedRegressor, RlsRegressor, Regressor};
+use regress_rs::solvers::{FittedRegressor, Regressor, RlsRegressor};
 
-use crate::utils::{IntoFaer, IntoNumpy};
+use crate::utils::{IntoNumpy, ToFaer};
 
 /// Recursive Least Squares regression model.
 ///
@@ -43,8 +43,8 @@ impl PyRLS {
         x: PyReadonlyArray2<'py, f64>,
         y: PyReadonlyArray1<'py, f64>,
     ) -> PyResult<PyRefMut<'py, Self>> {
-        let x_mat = x.into_faer();
-        let y_col = y.into_faer();
+        let x_mat = x.to_faer();
+        let y_col = y.to_faer();
 
         let model = RlsRegressor::builder()
             .forgetting_factor(slf.forgetting_factor)
@@ -69,7 +69,7 @@ impl PyRLS {
             .as_ref()
             .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
 
-        let x_mat = x.into_faer();
+        let x_mat = x.to_faer();
         let predictions = fitted.predict(&x_mat);
 
         Ok(predictions.into_numpy(py))

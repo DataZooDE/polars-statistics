@@ -5,7 +5,7 @@ use pyo3::prelude::*;
 
 use regress_rs::solvers::{FittedRegressor, FittedTweedie, Regressor, TweedieRegressor};
 
-use crate::utils::{IntoFaer, IntoNumpy};
+use crate::utils::{IntoNumpy, ToFaer};
 
 /// Tweedie regression model.
 ///
@@ -111,8 +111,8 @@ impl PyTweedie {
         x: PyReadonlyArray2<'py, f64>,
         y: PyReadonlyArray1<'py, f64>,
     ) -> PyResult<PyRefMut<'py, Self>> {
-        let x_mat = x.into_faer();
-        let y_col = y.into_faer();
+        let x_mat = x.to_faer();
+        let y_col = y.to_faer();
 
         let mut builder = TweedieRegressor::builder()
             .var_power(slf.var_power)
@@ -144,7 +144,7 @@ impl PyTweedie {
             .as_ref()
             .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
 
-        let x_mat = x.into_faer();
+        let x_mat = x.to_faer();
         let predictions = fitted.predict(&x_mat);
 
         Ok(predictions.into_numpy(py))
@@ -181,7 +181,11 @@ impl PyTweedie {
             .as_ref()
             .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
 
-        Ok(fitted.result().std_errors.as_ref().map(|se| se.into_numpy(py)))
+        Ok(fitted
+            .result()
+            .std_errors
+            .as_ref()
+            .map(|se| se.into_numpy(py)))
     }
 
     #[getter]
@@ -191,7 +195,11 @@ impl PyTweedie {
             .as_ref()
             .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
 
-        Ok(fitted.result().p_values.as_ref().map(|pv| pv.into_numpy(py)))
+        Ok(fitted
+            .result()
+            .p_values
+            .as_ref()
+            .map(|pv| pv.into_numpy(py)))
     }
 
     #[getter]

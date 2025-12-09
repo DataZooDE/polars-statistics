@@ -20,7 +20,10 @@ use regress_rs::solvers::{
 fn linear_regression_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
     let fields = vec![
         Field::new("intercept".into(), DataType::Float64),
-        Field::new("coefficients".into(), DataType::List(Box::new(DataType::Float64))),
+        Field::new(
+            "coefficients".into(),
+            DataType::List(Box::new(DataType::Float64)),
+        ),
         Field::new("r_squared".into(), DataType::Float64),
         Field::new("adj_r_squared".into(), DataType::Float64),
         Field::new("mse".into(), DataType::Float64),
@@ -38,7 +41,10 @@ fn linear_regression_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field
 fn glm_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
     let fields = vec![
         Field::new("intercept".into(), DataType::Float64),
-        Field::new("coefficients".into(), DataType::List(Box::new(DataType::Float64))),
+        Field::new(
+            "coefficients".into(),
+            DataType::List(Box::new(DataType::Float64)),
+        ),
         Field::new("aic".into(), DataType::Float64),
         Field::new("bic".into(), DataType::Float64),
         Field::new("n_observations".into(), DataType::UInt32),
@@ -51,7 +57,11 @@ fn glm_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
 // ============================================================================
 
 /// Build X matrix and y vector from input Series
-fn build_xy_data(inputs: &[Series], y_idx: usize, x_start_idx: usize) -> PolarsResult<(Mat<f64>, Col<f64>)> {
+fn build_xy_data(
+    inputs: &[Series],
+    y_idx: usize,
+    x_start_idx: usize,
+) -> PolarsResult<(Mat<f64>, Col<f64>)> {
     let y_series = inputs[y_idx].f64()?;
     let n_rows = y_series.len();
     let n_features = inputs.len() - x_start_idx;
@@ -73,6 +83,7 @@ fn build_xy_data(inputs: &[Series], y_idx: usize, x_start_idx: usize) -> PolarsR
 }
 
 /// Create linear regression output struct
+#[allow(clippy::too_many_arguments)]
 fn linear_output(
     intercept: Option<f64>,
     coefficients: &[f64],
@@ -103,7 +114,20 @@ fn linear_output(
     StructChunked::from_series(
         "regression".into(),
         1,
-        [&intercept_s, &coef_s, &r2_s, &adj_r2_s, &mse_s, &rmse_s, &f_s, &fp_s, &aic_s, &bic_s, &n_s].into_iter(),
+        [
+            &intercept_s,
+            &coef_s,
+            &r2_s,
+            &adj_r2_s,
+            &mse_s,
+            &rmse_s,
+            &f_s,
+            &fp_s,
+            &aic_s,
+            &bic_s,
+            &n_s,
+        ]
+        .into_iter(),
     )
     .map(|ca| ca.into_series())
 }
@@ -134,7 +158,19 @@ fn glm_output(
 
 /// Create NaN output for linear models on error
 fn linear_nan_output() -> PolarsResult<Series> {
-    linear_output(None, &[], f64::NAN, f64::NAN, f64::NAN, f64::NAN, f64::NAN, f64::NAN, f64::NAN, f64::NAN, 0)
+    linear_output(
+        None,
+        &[],
+        f64::NAN,
+        f64::NAN,
+        f64::NAN,
+        f64::NAN,
+        f64::NAN,
+        f64::NAN,
+        f64::NAN,
+        f64::NAN,
+        0,
+    )
 }
 
 /// Create NaN output for GLM models on error
@@ -466,8 +502,7 @@ fn pl_negative_binomial(inputs: &[Series]) -> PolarsResult<Series> {
         Err(_) => return glm_nan_output(),
     };
 
-    let mut builder = NegativeBinomialRegressor::builder()
-        .with_intercept(with_intercept);
+    let mut builder = NegativeBinomialRegressor::builder().with_intercept(with_intercept);
 
     if let Some(t) = theta {
         builder = builder.theta(t);
@@ -600,7 +635,9 @@ fn parse_alm_distribution(s: &str) -> Option<AlmDistribution> {
         "exponential" => Some(AlmDistribution::Exponential),
         "beta" => Some(AlmDistribution::Beta),
         "poisson" => Some(AlmDistribution::Poisson),
-        "negative_binomial" | "negativebinomial" | "negbin" => Some(AlmDistribution::NegativeBinomial),
+        "negative_binomial" | "negativebinomial" | "negbin" => {
+            Some(AlmDistribution::NegativeBinomial)
+        }
         "binomial" => Some(AlmDistribution::Binomial),
         "geometric" => Some(AlmDistribution::Geometric),
         "lognormal" | "log_normal" => Some(AlmDistribution::LogNormal),

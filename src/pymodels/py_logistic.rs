@@ -5,7 +5,7 @@ use pyo3::prelude::*;
 
 use regress_rs::solvers::{BinomialRegressor, FittedBinomial, FittedRegressor, Regressor};
 
-use crate::utils::{IntoFaer, IntoNumpy};
+use crate::utils::{IntoNumpy, ToFaer};
 
 /// Logistic regression model (Binomial GLM with logit link).
 ///
@@ -67,8 +67,8 @@ impl PyLogistic {
         x: PyReadonlyArray2<'py, f64>,
         y: PyReadonlyArray1<'py, f64>,
     ) -> PyResult<PyRefMut<'py, Self>> {
-        let x_mat = x.into_faer();
-        let y_col = y.into_faer();
+        let x_mat = x.to_faer();
+        let y_col = y.to_faer();
 
         let model = BinomialRegressor::logistic()
             .with_intercept(slf.with_intercept)
@@ -107,7 +107,7 @@ impl PyLogistic {
             .as_ref()
             .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
 
-        let x_mat = x.into_faer();
+        let x_mat = x.to_faer();
         let probabilities = fitted.predict_probability(&x_mat);
 
         Ok(probabilities.into_numpy(py))
@@ -138,13 +138,19 @@ impl PyLogistic {
             .as_ref()
             .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
 
-        let x_mat = x.into_faer();
+        let x_mat = x.to_faer();
         let probabilities = fitted.predict_probability(&x_mat);
 
         // Convert probabilities to class labels
         let n = probabilities.nrows();
         let labels: Vec<f64> = (0..n)
-            .map(|i| if probabilities[i] >= threshold { 1.0 } else { 0.0 })
+            .map(|i| {
+                if probabilities[i] >= threshold {
+                    1.0
+                } else {
+                    0.0
+                }
+            })
             .collect();
 
         Ok(numpy::PyArray1::from_vec(py, labels))
@@ -161,7 +167,7 @@ impl PyLogistic {
             .as_ref()
             .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
 
-        let x_mat = x.into_faer();
+        let x_mat = x.to_faer();
         let linear = fitted.predict_linear(&x_mat);
 
         Ok(linear.into_numpy(py))
@@ -198,7 +204,11 @@ impl PyLogistic {
             .as_ref()
             .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
 
-        Ok(fitted.result().std_errors.as_ref().map(|se| se.into_numpy(py)))
+        Ok(fitted
+            .result()
+            .std_errors
+            .as_ref()
+            .map(|se| se.into_numpy(py)))
     }
 
     #[getter]
@@ -208,7 +218,11 @@ impl PyLogistic {
             .as_ref()
             .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
 
-        Ok(fitted.result().p_values.as_ref().map(|pv| pv.into_numpy(py)))
+        Ok(fitted
+            .result()
+            .p_values
+            .as_ref()
+            .map(|pv| pv.into_numpy(py)))
     }
 
     #[getter]

@@ -3,7 +3,7 @@
 use polars::prelude::*;
 use pyo3_polars::derive::polars_expr;
 
-use anofox_statistics::{shapiro_wilk, dagostino_k_squared};
+use anofox_statistics::{dagostino_k_squared, shapiro_wilk};
 
 use crate::expressions::output_types::{generic_stats_output, stats_output_dtype};
 

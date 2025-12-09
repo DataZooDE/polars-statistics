@@ -3,9 +3,9 @@
 use numpy::{PyArray1, PyReadonlyArray1, PyReadonlyArray2};
 use pyo3::prelude::*;
 
-use regress_rs::solvers::{FittedRegressor, RidgeRegressor, Regressor};
+use regress_rs::solvers::{FittedRegressor, Regressor, RidgeRegressor};
 
-use crate::utils::{IntoFaer, IntoNumpy};
+use crate::utils::{IntoNumpy, ToFaer};
 
 /// Ridge regression model (L2 regularization).
 ///
@@ -35,7 +35,12 @@ pub struct PyRidge {
 impl PyRidge {
     #[new]
     #[pyo3(signature = (lambda_=1.0, with_intercept=true, compute_inference=true, confidence_level=0.95))]
-    fn new(lambda_: f64, with_intercept: bool, compute_inference: bool, confidence_level: f64) -> Self {
+    fn new(
+        lambda_: f64,
+        with_intercept: bool,
+        compute_inference: bool,
+        confidence_level: f64,
+    ) -> Self {
         Self {
             lambda_,
             with_intercept,
@@ -50,8 +55,8 @@ impl PyRidge {
         x: PyReadonlyArray2<'py, f64>,
         y: PyReadonlyArray1<'py, f64>,
     ) -> PyResult<PyRefMut<'py, Self>> {
-        let x_mat = x.into_faer();
-        let y_col = y.into_faer();
+        let x_mat = x.to_faer();
+        let y_col = y.to_faer();
 
         let model = RidgeRegressor::builder()
             .lambda(slf.lambda_)
@@ -78,7 +83,7 @@ impl PyRidge {
             .as_ref()
             .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
 
-        let x_mat = x.into_faer();
+        let x_mat = x.to_faer();
         let predictions = fitted.predict(&x_mat);
 
         Ok(predictions.into_numpy(py))

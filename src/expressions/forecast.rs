@@ -109,15 +109,29 @@ fn pl_spa_test(inputs: &[Series]) -> PolarsResult<Series> {
         .map(|s| s.f64().map(|ca| ca.into_no_null_iter().collect()))
         .collect::<PolarsResult<Vec<_>>>()?;
 
-    match spa_test(&benchmark_vec, &model_losses, n_bootstrap, block_length, seed) {
+    match spa_test(
+        &benchmark_vec,
+        &model_losses,
+        n_bootstrap,
+        block_length,
+        seed,
+    ) {
         Ok(result) => {
             let statistic = Series::new("statistic".into(), &[result.statistic]);
-            let p_consistent = Series::new("p_value_consistent".into(), &[result.p_value_consistent]);
+            let p_consistent =
+                Series::new("p_value_consistent".into(), &[result.p_value_consistent]);
             let p_upper = Series::new("p_value_upper".into(), &[result.p_value_upper]);
-            let best_idx = Series::new("best_model_idx".into(), &[result.best_model_idx.map(|i| i as u32)]);
+            let best_idx = Series::new(
+                "best_model_idx".into(),
+                &[result.best_model_idx.map(|i| i as u32)],
+            );
 
-            StructChunked::from_series("spa_result".into(), 1, [&statistic, &p_consistent, &p_upper, &best_idx].into_iter())
-                .map(|ca| ca.into_series())
+            StructChunked::from_series(
+                "spa_result".into(),
+                1,
+                [&statistic, &p_consistent, &p_upper, &best_idx].into_iter(),
+            )
+            .map(|ca| ca.into_series())
         }
         Err(_) => {
             let statistic = Series::new("statistic".into(), &[f64::NAN]);
@@ -125,8 +139,12 @@ fn pl_spa_test(inputs: &[Series]) -> PolarsResult<Series> {
             let p_upper = Series::new("p_value_upper".into(), &[f64::NAN]);
             let best_idx: Series = Series::new("best_model_idx".into(), &[None::<u32>]);
 
-            StructChunked::from_series("spa_result".into(), 1, [&statistic, &p_consistent, &p_upper, &best_idx].into_iter())
-                .map(|ca| ca.into_series())
+            StructChunked::from_series(
+                "spa_result".into(),
+                1,
+                [&statistic, &p_consistent, &p_upper, &best_idx].into_iter(),
+            )
+            .map(|ca| ca.into_series())
         }
     }
 }
@@ -134,7 +152,10 @@ fn pl_spa_test(inputs: &[Series]) -> PolarsResult<Series> {
 /// MCS output type
 fn mcs_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
     let fields = vec![
-        Field::new("included_models".into(), DataType::List(Box::new(DataType::UInt32))),
+        Field::new(
+            "included_models".into(),
+            DataType::List(Box::new(DataType::UInt32)),
+        ),
         Field::new("mcs_p_value".into(), DataType::Float64),
     ];
     Ok(Field::new("mcs_result".into(), DataType::Struct(fields)))
@@ -160,7 +181,14 @@ fn pl_model_confidence_set(inputs: &[Series]) -> PolarsResult<Series> {
         .map(|s| s.f64().map(|ca| ca.into_no_null_iter().collect()))
         .collect::<PolarsResult<Vec<_>>>()?;
 
-    match model_confidence_set(&model_losses, alpha, statistic, n_bootstrap, block_length, seed) {
+    match model_confidence_set(
+        &model_losses,
+        alpha,
+        statistic,
+        n_bootstrap,
+        block_length,
+        seed,
+    ) {
         Ok(result) => {
             let included: Vec<u32> = result.included_models.iter().map(|&i| i as u32).collect();
             // Create list series by wrapping inner Series
@@ -168,16 +196,24 @@ fn pl_model_confidence_set(inputs: &[Series]) -> PolarsResult<Series> {
             let included_series = Series::new("included_models".into(), [inner_series]);
             let p_value = Series::new("mcs_p_value".into(), &[result.mcs_p_value]);
 
-            StructChunked::from_series("mcs_result".into(), 1, [&included_series, &p_value].into_iter())
-                .map(|ca| ca.into_series())
+            StructChunked::from_series(
+                "mcs_result".into(),
+                1,
+                [&included_series, &p_value].into_iter(),
+            )
+            .map(|ca| ca.into_series())
         }
         Err(_) => {
             let inner_series = Series::new("".into(), Vec::<u32>::new());
             let included_series = Series::new("included_models".into(), [inner_series]);
             let p_value = Series::new("mcs_p_value".into(), &[f64::NAN]);
 
-            StructChunked::from_series("mcs_result".into(), 1, [&included_series, &p_value].into_iter())
-                .map(|ca| ca.into_series())
+            StructChunked::from_series(
+                "mcs_result".into(),
+                1,
+                [&included_series, &p_value].into_iter(),
+            )
+            .map(|ca| ca.into_series())
         }
     }
 }
@@ -198,15 +234,29 @@ fn pl_mspe_adjusted(inputs: &[Series]) -> PolarsResult<Series> {
         .map(|s| s.f64().map(|ca| ca.into_no_null_iter().collect()))
         .collect::<PolarsResult<Vec<_>>>()?;
 
-    match mspe_adjusted_spa(&benchmark_vec, &model_errors, n_bootstrap, block_length, seed) {
+    match mspe_adjusted_spa(
+        &benchmark_vec,
+        &model_errors,
+        n_bootstrap,
+        block_length,
+        seed,
+    ) {
         Ok(result) => {
             let statistic = Series::new("statistic".into(), &[result.statistic]);
-            let p_consistent = Series::new("p_value_consistent".into(), &[result.p_value_consistent]);
+            let p_consistent =
+                Series::new("p_value_consistent".into(), &[result.p_value_consistent]);
             let p_upper = Series::new("p_value_upper".into(), &[result.p_value_upper]);
-            let best_idx = Series::new("best_model_idx".into(), &[result.best_model_idx.map(|i| i as u32)]);
+            let best_idx = Series::new(
+                "best_model_idx".into(),
+                &[result.best_model_idx.map(|i| i as u32)],
+            );
 
-            StructChunked::from_series("spa_result".into(), 1, [&statistic, &p_consistent, &p_upper, &best_idx].into_iter())
-                .map(|ca| ca.into_series())
+            StructChunked::from_series(
+                "spa_result".into(),
+                1,
+                [&statistic, &p_consistent, &p_upper, &best_idx].into_iter(),
+            )
+            .map(|ca| ca.into_series())
         }
         Err(_) => {
             let statistic = Series::new("statistic".into(), &[f64::NAN]);
@@ -214,8 +264,12 @@ fn pl_mspe_adjusted(inputs: &[Series]) -> PolarsResult<Series> {
             let p_upper = Series::new("p_value_upper".into(), &[f64::NAN]);
             let best_idx: Series = Series::new("best_model_idx".into(), &[None::<u32>]);
 
-            StructChunked::from_series("spa_result".into(), 1, [&statistic, &p_consistent, &p_upper, &best_idx].into_iter())
-                .map(|ca| ca.into_series())
+            StructChunked::from_series(
+                "spa_result".into(),
+                1,
+                [&statistic, &p_consistent, &p_upper, &best_idx].into_iter(),
+            )
+            .map(|ca| ca.into_series())
         }
     }
 }
