@@ -9,8 +9,8 @@ description = "High-performance statistical testing and regression for Polars Da
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.9"
-authors = [{ name = "Simon M", email = "code@santic.info" }]
-maintainers = [{ name = "Simon M", email = "code@santic.info" }]
+authors = [{ name = "Simon Müller", email = "sm@data-zoo.de" }]
+maintainers = [{ name = "Simon Müller", email = "sm@data-zoo.de" }]
 keywords = [
     "polars",
     "statistics",
@@ -56,11 +56,11 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/sipemu/polars-statistics"
-Documentation = "https://github.com/sipemu/polars-statistics#readme"
-Repository = "https://github.com/sipemu/polars-statistics"
-Issues = "https://github.com/sipemu/polars-statistics/issues"
-Changelog = "https://github.com/sipemu/polars-statistics/releases"
+Homepage = "https://github.com/DataZooDE/polars-statistics"
+Documentation = "https://github.com/DataZooDE/polars-statistics#readme"
+Repository = "https://github.com/DataZooDE/polars-statistics"
+Issues = "https://github.com/DataZooDE/polars-statistics/issues"
+Changelog = "https://github.com/DataZooDE/polars-statistics/releases"
 
 [tool.maturin]
 python-source = "python"
