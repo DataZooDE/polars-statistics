@@ -1,11 +1,13 @@
 //! Python-facing model wrappers using PyO3.
 
 // Regression models
+mod py_aid;
 mod py_alm;
 mod py_bls;
 mod py_bootstrap;
 mod py_cloglog;
 mod py_elastic_net;
+mod py_lm_dynamic;
 mod py_logistic;
 mod py_negative_binomial;
 mod py_ols;
@@ -29,11 +31,13 @@ mod py_wilcoxon;
 mod py_yuen_test;
 
 // Regression model exports
+pub use py_aid::{PyAid, PyAidResult};
 pub use py_alm::PyALM;
 pub use py_bls::PyBLS;
 pub use py_bootstrap::{PyCircularBlockBootstrap, PyStationaryBootstrap};
 pub use py_cloglog::PyCloglog;
 pub use py_elastic_net::PyElasticNet;
+pub use py_lm_dynamic::PyLmDynamic;
 pub use py_logistic::PyLogistic;
 pub use py_negative_binomial::PyNegativeBinomial;
 pub use py_ols::PyOLS;

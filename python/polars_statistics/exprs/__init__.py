@@ -101,6 +101,10 @@ from polars_statistics.exprs.regression import (
     logistic_formula_predict,
     poisson_formula_predict,
     alm_formula_predict,
+    # AID and Dynamic Linear Model
+    aid,
+    aid_anomalies,
+    lm_dynamic,
 )
 
 __all__ = [
@@ -200,4 +204,8 @@ __all__ = [
     "logistic_formula_predict",
     "poisson_formula_predict",
     "alm_formula_predict",
+    # AID and Dynamic Linear Model
+    "aid",
+    "aid_anomalies",
+    "lm_dynamic",
 ]

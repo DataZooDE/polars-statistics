@@ -8,8 +8,9 @@ use pyo3_polars::derive::polars_expr;
 use serde::Deserialize;
 
 use anofox_regression::solvers::{
-    AlmDistribution, AlmRegressor, BinomialRegressor, BlsRegressor, ElasticNetRegressor,
-    FittedRegressor, NegativeBinomialRegressor, OlsRegressor, PoissonRegressor, Regressor,
+    AidClassifier, AlmDistribution, AlmRegressor, AnomalyType, BinomialRegressor, BlsRegressor,
+    DemandDistribution, DemandType, ElasticNetRegressor, FittedRegressor, InformationCriterion,
+    LmDynamicRegressor, NegativeBinomialRegressor, OlsRegressor, PoissonRegressor, Regressor,
     RidgeRegressor, RlsRegressor, TweedieRegressor, WlsRegressor,
 };
 use anofox_regression::IntervalType;
@@ -2750,5 +2751,436 @@ fn pl_alm_summary(inputs: &[Series]) -> PolarsResult<Series> {
             summary_output(terms, estimates, std_errors, statistics, p_values)
         }
         Err(_) => summary_nan_output(),
+    }
+}
+
+// ============================================================================
+// AID (Automatic Identification of Demand) Expression
+// ============================================================================
+
+/// Output type for AID classification
+fn aid_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
+    let fields = vec![
+        Field::new("demand_type".into(), DataType::String),
+        Field::new("is_intermittent".into(), DataType::Boolean),
+        Field::new("is_fractional".into(), DataType::Boolean),
+        Field::new("distribution".into(), DataType::String),
+        Field::new("mean".into(), DataType::Float64),
+        Field::new("variance".into(), DataType::Float64),
+        Field::new("zero_proportion".into(), DataType::Float64),
+        Field::new("n_observations".into(), DataType::UInt32),
+        // Anomaly summary fields
+        Field::new("has_stockouts".into(), DataType::Boolean),
+        Field::new("is_new_product".into(), DataType::Boolean),
+        Field::new("is_obsolete_product".into(), DataType::Boolean),
+        Field::new("stockout_count".into(), DataType::UInt32),
+        Field::new("new_product_count".into(), DataType::UInt32),
+        Field::new("obsolete_product_count".into(), DataType::UInt32),
+        Field::new("high_outlier_count".into(), DataType::UInt32),
+        Field::new("low_outlier_count".into(), DataType::UInt32),
+    ];
+    Ok(Field::new("aid".into(), DataType::Struct(fields)))
+}
+
+/// Convert DemandType to string
+fn demand_type_str(dt: DemandType) -> &'static str {
+    match dt {
+        DemandType::Regular => "regular",
+        DemandType::Intermittent => "intermittent",
+    }
+}
+
+/// Convert DemandDistribution to string
+fn demand_distribution_str(dist: DemandDistribution) -> &'static str {
+    match dist {
+        DemandDistribution::Poisson => "poisson",
+        DemandDistribution::NegativeBinomial => "negative_binomial",
+        DemandDistribution::Geometric => "geometric",
+        DemandDistribution::Normal => "normal",
+        DemandDistribution::Gamma => "gamma",
+        DemandDistribution::LogNormal => "lognormal",
+        DemandDistribution::RectifiedNormal => "rectified_normal",
+    }
+}
+
+/// Anomaly counts structure
+struct AnomalyCounts {
+    stockout: u32,
+    new_product: u32,
+    obsolete_product: u32,
+    high_outlier: u32,
+    low_outlier: u32,
+}
+
+impl AnomalyCounts {
+    fn from_anomalies(anomalies: &[AnomalyType]) -> Self {
+        let mut counts = AnomalyCounts {
+            stockout: 0,
+            new_product: 0,
+            obsolete_product: 0,
+            high_outlier: 0,
+            low_outlier: 0,
+        };
+        for a in anomalies {
+            match a {
+                AnomalyType::Stockout => counts.stockout += 1,
+                AnomalyType::NewProduct => counts.new_product += 1,
+                AnomalyType::ObsoleteProduct => counts.obsolete_product += 1,
+                AnomalyType::HighOutlier => counts.high_outlier += 1,
+                AnomalyType::LowOutlier => counts.low_outlier += 1,
+                AnomalyType::None => {}
+            }
+        }
+        counts
+    }
+
+    fn has_stockouts(&self) -> bool {
+        self.stockout > 0
+    }
+
+    fn is_new_product(&self) -> bool {
+        self.new_product > 0
+    }
+
+    fn is_obsolete_product(&self) -> bool {
+        self.obsolete_product > 0
+    }
+}
+
+/// Create AID output struct
+fn aid_output(
+    demand_type: &str,
+    is_intermittent: bool,
+    is_fractional: bool,
+    distribution: &str,
+    mean: f64,
+    variance: f64,
+    zero_proportion: f64,
+    n_observations: u32,
+    anomaly_counts: &AnomalyCounts,
+) -> PolarsResult<Series> {
+    let fields = vec![
+        Series::new("demand_type".into(), vec![demand_type]),
+        Series::new("is_intermittent".into(), vec![is_intermittent]),
+        Series::new("is_fractional".into(), vec![is_fractional]),
+        Series::new("distribution".into(), vec![distribution]),
+        Series::new("mean".into(), vec![mean]),
+        Series::new("variance".into(), vec![variance]),
+        Series::new("zero_proportion".into(), vec![zero_proportion]),
+        Series::new("n_observations".into(), vec![n_observations]),
+        // Anomaly summary fields
+        Series::new("has_stockouts".into(), vec![anomaly_counts.has_stockouts()]),
+        Series::new("is_new_product".into(), vec![anomaly_counts.is_new_product()]),
+        Series::new("is_obsolete_product".into(), vec![anomaly_counts.is_obsolete_product()]),
+        Series::new("stockout_count".into(), vec![anomaly_counts.stockout]),
+        Series::new("new_product_count".into(), vec![anomaly_counts.new_product]),
+        Series::new("obsolete_product_count".into(), vec![anomaly_counts.obsolete_product]),
+        Series::new("high_outlier_count".into(), vec![anomaly_counts.high_outlier]),
+        Series::new("low_outlier_count".into(), vec![anomaly_counts.low_outlier]),
+    ];
+
+    StructChunked::from_series("aid".into(), 1, fields.iter())
+        .map(|ca| ca.into_series())
+}
+
+/// Create AID NaN output
+fn aid_nan_output() -> PolarsResult<Series> {
+    let empty_counts = AnomalyCounts {
+        stockout: 0,
+        new_product: 0,
+        obsolete_product: 0,
+        high_outlier: 0,
+        low_outlier: 0,
+    };
+    aid_output("unknown", false, false, "unknown", f64::NAN, f64::NAN, f64::NAN, 0, &empty_counts)
+}
+
+/// Automatic Identification of Demand (AID) classifier.
+///
+/// Classifies demand patterns as regular or intermittent and selects the
+/// best-fitting distribution.
+///
+/// # Arguments
+/// * inputs[0] - y: demand time series
+/// * inputs[1] - intermittent_threshold: threshold for classifying as intermittent (0.0 to 1.0)
+/// * inputs[2] - detect_anomalies: whether to detect anomalies (boolean)
+#[polars_expr(output_type_func=aid_output_dtype)]
+fn pl_aid(inputs: &[Series]) -> PolarsResult<Series> {
+    let intermittent_threshold = inputs[1].f64()?.get(0).unwrap_or(0.3);
+    let detect_anomalies = inputs[2].bool()?.get(0).unwrap_or(true);
+
+    let y_series = inputs[0].f64()?;
+    let n_rows = y_series.len();
+
+    if n_rows == 0 {
+        return aid_nan_output();
+    }
+
+    // Build y vector
+    let y_vec: Vec<f64> = y_series.into_no_null_iter().collect();
+    let y = Col::from_fn(y_vec.len(), |i| y_vec[i]);
+
+    let classifier = AidClassifier::builder()
+        .intermittent_threshold(intermittent_threshold)
+        .detect_anomalies(detect_anomalies)
+        .build();
+
+    let result = classifier.classify(&y);
+    let anomaly_counts = AnomalyCounts::from_anomalies(&result.anomalies);
+
+    aid_output(
+        demand_type_str(result.demand_type),
+        result.demand_type == DemandType::Intermittent,
+        result.is_fractional,
+        demand_distribution_str(result.distribution),
+        result.parameters.mean,
+        result.parameters.variance,
+        result.zero_proportion,
+        result.n_observations as u32,
+        &anomaly_counts,
+    )
+}
+
+// ============================================================================
+// AID Anomalies Expression
+// ============================================================================
+
+/// Output type for AID anomalies (per-observation)
+fn aid_anomalies_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
+    let fields = vec![
+        Field::new(
+            "stockout".into(),
+            DataType::List(Box::new(DataType::Boolean)),
+        ),
+        Field::new(
+            "new_product".into(),
+            DataType::List(Box::new(DataType::Boolean)),
+        ),
+        Field::new(
+            "obsolete_product".into(),
+            DataType::List(Box::new(DataType::Boolean)),
+        ),
+        Field::new(
+            "high_outlier".into(),
+            DataType::List(Box::new(DataType::Boolean)),
+        ),
+        Field::new(
+            "low_outlier".into(),
+            DataType::List(Box::new(DataType::Boolean)),
+        ),
+    ];
+    Ok(Field::new("aid_anomalies".into(), DataType::Struct(fields)))
+}
+
+/// Create AID anomalies output struct
+fn aid_anomalies_output(
+    stockout: Vec<bool>,
+    new_product: Vec<bool>,
+    obsolete_product: Vec<bool>,
+    high_outlier: Vec<bool>,
+    low_outlier: Vec<bool>,
+) -> PolarsResult<Series> {
+    let stockout_series = Series::new("".into(), stockout);
+    let new_product_series = Series::new("".into(), new_product);
+    let obsolete_product_series = Series::new("".into(), obsolete_product);
+    let high_outlier_series = Series::new("".into(), high_outlier);
+    let low_outlier_series = Series::new("".into(), low_outlier);
+
+    let fields = vec![
+        Series::new("stockout".into(), vec![stockout_series]),
+        Series::new("new_product".into(), vec![new_product_series]),
+        Series::new("obsolete_product".into(), vec![obsolete_product_series]),
+        Series::new("high_outlier".into(), vec![high_outlier_series]),
+        Series::new("low_outlier".into(), vec![low_outlier_series]),
+    ];
+
+    StructChunked::from_series("aid_anomalies".into(), 1, fields.iter())
+        .map(|ca| ca.into_series())
+}
+
+/// Create AID anomalies empty output
+fn aid_anomalies_nan_output() -> PolarsResult<Series> {
+    aid_anomalies_output(vec![], vec![], vec![], vec![], vec![])
+}
+
+/// AID Anomalies expression - returns per-observation anomaly flags.
+///
+/// # Arguments
+/// * inputs[0] - y: demand time series
+/// * inputs[1] - intermittent_threshold: threshold for classifying as intermittent (0.0 to 1.0)
+#[polars_expr(output_type_func=aid_anomalies_output_dtype)]
+fn pl_aid_anomalies(inputs: &[Series]) -> PolarsResult<Series> {
+    let intermittent_threshold = inputs[1].f64()?.get(0).unwrap_or(0.3);
+
+    let y_series = inputs[0].f64()?;
+    let n_rows = y_series.len();
+
+    if n_rows == 0 {
+        return aid_anomalies_nan_output();
+    }
+
+    // Build y vector
+    let y_vec: Vec<f64> = y_series.into_no_null_iter().collect();
+    let y = Col::from_fn(y_vec.len(), |i| y_vec[i]);
+
+    let classifier = AidClassifier::builder()
+        .intermittent_threshold(intermittent_threshold)
+        .detect_anomalies(true)
+        .build();
+
+    let result = classifier.classify(&y);
+
+    // Convert anomalies to per-type boolean vectors
+    let mut stockout = vec![false; n_rows];
+    let mut new_product = vec![false; n_rows];
+    let mut obsolete_product = vec![false; n_rows];
+    let mut high_outlier = vec![false; n_rows];
+    let mut low_outlier = vec![false; n_rows];
+
+    for (i, anomaly) in result.anomalies.iter().enumerate() {
+        match anomaly {
+            AnomalyType::Stockout => stockout[i] = true,
+            AnomalyType::NewProduct => new_product[i] = true,
+            AnomalyType::ObsoleteProduct => obsolete_product[i] = true,
+            AnomalyType::HighOutlier => high_outlier[i] = true,
+            AnomalyType::LowOutlier => low_outlier[i] = true,
+            AnomalyType::None => {}
+        }
+    }
+
+    aid_anomalies_output(stockout, new_product, obsolete_product, high_outlier, low_outlier)
+}
+
+// ============================================================================
+// Dynamic Linear Model (LmDynamic) Expression
+// ============================================================================
+
+/// Parse information criterion string
+fn parse_ic(s: &str) -> Option<InformationCriterion> {
+    match s.to_lowercase().as_str() {
+        "aic" => Some(InformationCriterion::AIC),
+        "aicc" | "aic_c" => Some(InformationCriterion::AICc),
+        "bic" => Some(InformationCriterion::BIC),
+        _ => None,
+    }
+}
+
+/// Output type for dynamic linear model
+fn lm_dynamic_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
+    let fields = vec![
+        Field::new("intercept".into(), DataType::Float64),
+        Field::new(
+            "coefficients".into(),
+            DataType::List(Box::new(DataType::Float64)),
+        ),
+        Field::new("r_squared".into(), DataType::Float64),
+        Field::new("adj_r_squared".into(), DataType::Float64),
+        Field::new("mse".into(), DataType::Float64),
+        Field::new("rmse".into(), DataType::Float64),
+        Field::new("n_observations".into(), DataType::UInt32),
+    ];
+    Ok(Field::new("lm_dynamic".into(), DataType::Struct(fields)))
+}
+
+/// Create dynamic linear model output struct
+fn lm_dynamic_output(
+    intercept: Option<f64>,
+    coefficients: &[f64],
+    r_squared: f64,
+    adj_r_squared: f64,
+    mse: f64,
+    rmse: f64,
+    n_observations: u32,
+) -> PolarsResult<Series> {
+    let coef_series = Series::new("".into(), coefficients);
+
+    let fields = vec![
+        Series::new("intercept".into(), vec![intercept.unwrap_or(f64::NAN)]),
+        Series::new(
+            "coefficients".into(),
+            vec![coef_series],
+        ),
+        Series::new("r_squared".into(), vec![r_squared]),
+        Series::new("adj_r_squared".into(), vec![adj_r_squared]),
+        Series::new("mse".into(), vec![mse]),
+        Series::new("rmse".into(), vec![rmse]),
+        Series::new("n_observations".into(), vec![n_observations]),
+    ];
+
+    StructChunked::from_series("lm_dynamic".into(), 1, fields.iter())
+        .map(|ca| ca.into_series())
+}
+
+/// Create dynamic linear model NaN output
+fn lm_dynamic_nan_output() -> PolarsResult<Series> {
+    lm_dynamic_output(None, &[], f64::NAN, f64::NAN, f64::NAN, f64::NAN, 0)
+}
+
+/// Dynamic Linear Model regression.
+///
+/// A time-varying parameter model that combines multiple candidate regression
+/// models using pointwise information criteria weighting.
+///
+/// # Arguments
+/// * inputs[0] - y: target variable
+/// * inputs[1] - ic: information criterion ("aic", "aicc", "bic")
+/// * inputs[2] - distribution: error distribution
+/// * inputs[3] - lowess_span: LOWESS smoothing span (0.0 to disable, 0.05-1.0 to enable)
+/// * inputs[4] - max_models: maximum number of candidate models
+/// * inputs[5] - with_intercept: whether to include intercept
+/// * inputs[6..] - x: feature variables
+#[polars_expr(output_type_func=lm_dynamic_output_dtype)]
+fn pl_lm_dynamic(inputs: &[Series]) -> PolarsResult<Series> {
+    let ic_str = inputs[1].str()?.get(0).unwrap_or("aicc");
+    let dist_str = inputs[2].str()?.get(0).unwrap_or("normal");
+    let lowess_span = inputs[3].f64()?.get(0).unwrap_or(0.3);
+    let max_models = inputs[4].u32()?.get(0).unwrap_or(64) as usize;
+    let with_intercept = inputs[5].bool()?.get(0).unwrap_or(true);
+
+    let (x, y) = match build_xy_data(inputs, 0, 6) {
+        Ok(data) => data,
+        Err(_) => return lm_dynamic_nan_output(),
+    };
+
+    let ic_type = match parse_ic(ic_str) {
+        Some(ic) => ic,
+        None => return lm_dynamic_nan_output(),
+    };
+
+    let distribution = match parse_alm_distribution(dist_str) {
+        Some(d) => d,
+        None => return lm_dynamic_nan_output(),
+    };
+
+    let mut builder = LmDynamicRegressor::builder()
+        .ic(ic_type)
+        .distribution(distribution)
+        .with_intercept(with_intercept)
+        .max_models(max_models);
+
+    if lowess_span > 0.0 {
+        builder = builder.lowess_span(lowess_span);
+    } else {
+        builder = builder.no_smoothing();
+    }
+
+    let model = builder.build();
+
+    match model.fit(&x, &y) {
+        Ok(fitted) => {
+            let result = fitted.result();
+            let coefficients = col_to_vec(&result.coefficients);
+
+            lm_dynamic_output(
+                result.intercept,
+                &coefficients,
+                result.r_squared,
+                result.adj_r_squared,
+                result.mse,
+                result.rmse,
+                result.n_observations as u32,
+            )
+        }
+        Err(_) => lm_dynamic_nan_output(),
     }
 }

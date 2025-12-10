@@ -2664,3 +2664,214 @@ def alm_formula_predict(
         null_policy=null_policy,
         name=name,
     )
+
+
+# ============================================================================
+# AID (Automatic Identification of Demand) Expression
+# ============================================================================
+
+
+def aid(
+    y: Union[pl.Expr, str],
+    intermittent_threshold: float = 0.3,
+    detect_anomalies: bool = True,
+) -> pl.Expr:
+    """Automatic Identification of Demand (AID) classifier.
+
+    Classifies demand patterns as regular or intermittent and selects the
+    best-fitting distribution. Based on the aid function from the greybox R package.
+
+    Parameters
+    ----------
+    y : pl.Expr or str
+        Demand time series.
+    intermittent_threshold : float, default 0.3
+        Proportion of zeros above which demand is classified as intermittent.
+    detect_anomalies : bool, default True
+        Whether to detect anomalies (stockouts, lifecycle events, outliers).
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing: demand_type, is_intermittent, is_fractional,
+        distribution, mean, variance, zero_proportion, n_observations,
+        has_stockouts, is_new_product, is_obsolete_product, stockout_count,
+        new_product_count, obsolete_product_count, high_outlier_count, low_outlier_count.
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> import polars_statistics as ps
+    >>>
+    >>> df = pl.DataFrame({
+    ...     "sku": ["A"] * 100 + ["B"] * 100,
+    ...     "demand": [...]
+    ... })
+    >>>
+    >>> # Classify demand per SKU
+    >>> df.group_by("sku").agg(
+    ...     ps.aid("demand").alias("classification")
+    ... )
+    >>>
+    >>> # Access results
+    >>> result.with_columns(
+    ...     pl.col("classification").struct.field("demand_type"),
+    ...     pl.col("classification").struct.field("distribution"),
+    ... )
+    """
+    if isinstance(y, str):
+        y = pl.col(y)
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_aid",
+        args=[
+            y.cast(pl.Float64),
+            pl.lit(intermittent_threshold, dtype=pl.Float64),
+            pl.lit(detect_anomalies, dtype=pl.Boolean),
+        ],
+        returns_scalar=True,
+    )
+
+
+def aid_anomalies(
+    y: Union[pl.Expr, str],
+    intermittent_threshold: float = 0.3,
+) -> pl.Expr:
+    """AID anomaly detection - returns per-observation anomaly flags.
+
+    Analyzes demand time series and returns boolean lists indicating which
+    observations are flagged as each anomaly type.
+
+    Parameters
+    ----------
+    y : pl.Expr or str
+        Demand time series.
+    intermittent_threshold : float, default 0.3
+        Proportion of zeros above which demand is classified as intermittent.
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing lists of boolean flags for each anomaly type:
+        stockout, new_product, obsolete_product, high_outlier, low_outlier.
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> import polars_statistics as ps
+    >>>
+    >>> df = pl.DataFrame({
+    ...     "sku": ["A"] * 100 + ["B"] * 100,
+    ...     "demand": [...]
+    ... })
+    >>>
+    >>> # Get anomaly flags per SKU
+    >>> df.group_by("sku").agg(
+    ...     ps.aid_anomalies("demand").alias("anomalies")
+    ... )
+    >>>
+    >>> # Access individual anomaly lists
+    >>> result.with_columns(
+    ...     pl.col("anomalies").struct.field("stockout"),
+    ...     pl.col("anomalies").struct.field("high_outlier"),
+    ... )
+    """
+    if isinstance(y, str):
+        y = pl.col(y)
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_aid_anomalies",
+        args=[
+            y.cast(pl.Float64),
+            pl.lit(intermittent_threshold, dtype=pl.Float64),
+        ],
+        returns_scalar=True,
+    )
+
+
+# ============================================================================
+# Dynamic Linear Model (LmDynamic) Expression
+# ============================================================================
+
+
+def lm_dynamic(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    ic: str = "aicc",
+    distribution: str = "normal",
+    lowess_span: float = 0.3,
+    max_models: int = 64,
+    with_intercept: bool = True,
+) -> pl.Expr:
+    """Dynamic Linear Model regression.
+
+    A time-varying parameter model that combines multiple candidate regression
+    models using pointwise information criteria weighting. Based on the
+    lmDynamic function from the greybox R package.
+
+    Parameters
+    ----------
+    y : pl.Expr or str
+        Target variable.
+    *x : pl.Expr or str
+        Feature variables (one or more).
+    ic : str, default "aicc"
+        Information criterion for model weighting.
+        Options: "aic", "aicc", "bic"
+    distribution : str, default "normal"
+        Error distribution family (same options as ALM).
+    lowess_span : float, default 0.3
+        LOWESS smoothing span (0.05 to 1.0). Set to 0.0 to disable smoothing.
+    max_models : int, default 64
+        Maximum number of candidate models to consider.
+    with_intercept : bool, default True
+        Whether to include an intercept term.
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing: intercept, coefficients (time-averaged), r_squared,
+        adj_r_squared, mse, rmse, n_observations.
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> import polars_statistics as ps
+    >>>
+    >>> df = pl.DataFrame({
+    ...     "group": ["A"] * 100 + ["B"] * 100,
+    ...     "y": [...],
+    ...     "x1": [...],
+    ...     "x2": [...],
+    ... })
+    >>>
+    >>> # Dynamic regression per group
+    >>> df.group_by("group").agg(
+    ...     ps.lm_dynamic("y", "x1", "x2", ic="aicc").alias("model")
+    ... )
+    """
+    if isinstance(y, str):
+        y = pl.col(y)
+
+    x_exprs = []
+    for xi in x:
+        if isinstance(xi, str):
+            xi = pl.col(xi)
+        x_exprs.append(xi.cast(pl.Float64))
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_lm_dynamic",
+        args=[
+            y.cast(pl.Float64),
+            pl.lit(ic, dtype=pl.String),
+            pl.lit(distribution, dtype=pl.String),
+            pl.lit(lowess_span, dtype=pl.Float64),
+            pl.lit(max_models, dtype=pl.UInt32),
+            pl.lit(with_intercept, dtype=pl.Boolean),
+            *x_exprs,
+        ],
+        returns_scalar=True,
+    )

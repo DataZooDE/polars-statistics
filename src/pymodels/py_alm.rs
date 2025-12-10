@@ -4,13 +4,13 @@ use numpy::{PyArray1, PyReadonlyArray1, PyReadonlyArray2};
 use pyo3::prelude::*;
 
 use anofox_regression::solvers::{
-    AlmDistribution, AlmRegressor, FittedAlm, FittedRegressor, LinkFunction, Regressor,
+    AlmDistribution, AlmLoss, AlmRegressor, FittedAlm, FittedRegressor, LinkFunction, Regressor,
 };
 
 use crate::utils::{IntoNumpy, ToFaer};
 
 /// Convert string to AlmDistribution enum.
-fn parse_distribution(s: &str) -> PyResult<AlmDistribution> {
+pub fn parse_distribution(s: &str) -> PyResult<AlmDistribution> {
     match s.to_lowercase().as_str() {
         "normal" | "gaussian" => Ok(AlmDistribution::Normal),
         "laplace" => Ok(AlmDistribution::Laplace),
@@ -59,6 +59,20 @@ fn parse_link(s: &str) -> PyResult<LinkFunction> {
     }
 }
 
+/// Convert string to AlmLoss enum.
+fn parse_loss(s: &str, role_trim: Option<f64>) -> PyResult<AlmLoss> {
+    match s.to_lowercase().as_str() {
+        "likelihood" | "mle" => Ok(AlmLoss::Likelihood),
+        "mse" => Ok(AlmLoss::MSE),
+        "mae" => Ok(AlmLoss::MAE),
+        "ham" => Ok(AlmLoss::HAM),
+        "role" => Ok(AlmLoss::ROLE { trim: role_trim.unwrap_or(0.05) }),
+        _ => Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+            format!("Unknown loss function: '{}'. Available: likelihood, mse, mae, ham, role", s)
+        )),
+    }
+}
+
 /// Augmented Linear Model (ALM).
 ///
 /// A flexible regression model supporting 24+ distributions with configurable link functions.
@@ -79,6 +93,11 @@ fn parse_link(s: &str) -> PyResult<LinkFunction> {
 /// link : str, optional
 ///     Link function. If None, uses canonical link for the distribution.
 ///     Options: "identity", "log", "logit", "probit", "inverse", "sqrt", "cloglog"
+/// loss : str, default "likelihood"
+///     Loss function for convergence criterion.
+///     Options: "likelihood" (MLE), "mse", "mae", "ham" (Half Absolute Moment), "role" (ROLE)
+/// role_trim : float, optional
+///     Fraction of observations to trim when using ROLE loss (0.0 to 0.5, default 0.05).
 /// with_intercept : bool, default True
 ///     Whether to include an intercept term.
 /// compute_inference : bool, default True
@@ -95,6 +114,8 @@ fn parse_link(s: &str) -> PyResult<LinkFunction> {
 pub struct PyALM {
     distribution: String,
     link: Option<String>,
+    loss: String,
+    role_trim: Option<f64>,
     with_intercept: bool,
     compute_inference: bool,
     confidence_level: f64,
@@ -107,11 +128,13 @@ pub struct PyALM {
 #[pymethods]
 impl PyALM {
     #[new]
-    #[pyo3(signature = (distribution="normal", link=None, with_intercept=true, compute_inference=true, confidence_level=0.95, max_iter=100, tol=1e-8, extra_parameter=None))]
+    #[pyo3(signature = (distribution="normal", link=None, loss="likelihood", role_trim=None, with_intercept=true, compute_inference=true, confidence_level=0.95, max_iter=100, tol=1e-8, extra_parameter=None))]
     #[allow(clippy::too_many_arguments)]
     fn new(
         distribution: &str,
         link: Option<&str>,
+        loss: &str,
+        role_trim: Option<f64>,
         with_intercept: bool,
         compute_inference: bool,
         confidence_level: f64,
@@ -122,6 +145,8 @@ impl PyALM {
         Self {
             distribution: distribution.to_string(),
             link: link.map(|s| s.to_string()),
+            loss: loss.to_string(),
+            role_trim,
             with_intercept,
             compute_inference,
             confidence_level,
@@ -139,6 +164,8 @@ impl PyALM {
         Self::new(
             "normal",
             None,
+            "likelihood",
+            None,
             with_intercept,
             compute_inference,
             0.95,
@@ -154,6 +181,8 @@ impl PyALM {
     fn laplace(with_intercept: bool, compute_inference: bool) -> Self {
         Self::new(
             "laplace",
+            None,
+            "likelihood",
             None,
             with_intercept,
             compute_inference,
@@ -171,6 +200,8 @@ impl PyALM {
         Self::new(
             "student_t",
             None,
+            "likelihood",
+            None,
             with_intercept,
             compute_inference,
             0.95,
@@ -187,6 +218,8 @@ impl PyALM {
         Self::new(
             "gamma",
             Some("log"),
+            "likelihood",
+            None,
             with_intercept,
             compute_inference,
             0.95,
@@ -203,6 +236,8 @@ impl PyALM {
         Self::new(
             "beta",
             Some("logit"),
+            "likelihood",
+            None,
             with_intercept,
             compute_inference,
             0.95,
@@ -219,6 +254,8 @@ impl PyALM {
         Self::new(
             "poisson",
             Some("log"),
+            "likelihood",
+            None,
             with_intercept,
             compute_inference,
             0.95,
@@ -245,9 +282,11 @@ impl PyALM {
         let y_col = y.to_faer();
 
         let dist = parse_distribution(&slf.distribution)?;
+        let loss = parse_loss(&slf.loss, slf.role_trim)?;
 
         let mut builder = AlmRegressor::builder()
             .distribution(dist)
+            .loss(loss)
             .with_intercept(slf.with_intercept)
             .compute_inference(slf.compute_inference)
             .confidence_level(slf.confidence_level)

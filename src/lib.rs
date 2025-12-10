@@ -35,6 +35,13 @@ fn _polars_statistics(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // Augmented Linear Model
     m.add_class::<pymodels::PyALM>()?;
 
+    // Dynamic Linear Model
+    m.add_class::<pymodels::PyLmDynamic>()?;
+
+    // Demand Classification
+    m.add_class::<pymodels::PyAid>()?;
+    m.add_class::<pymodels::PyAidResult>()?;
+
     // Bootstrap
     m.add_class::<pymodels::PyStationaryBootstrap>()?;
     m.add_class::<pymodels::PyCircularBlockBootstrap>()?;

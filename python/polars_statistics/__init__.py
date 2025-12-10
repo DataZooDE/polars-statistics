@@ -20,6 +20,11 @@ from polars_statistics._polars_statistics import (
     Cloglog,
     # Augmented Linear Model
     ALM,
+    # Dynamic Linear Model
+    LmDynamic,
+    # Demand Classification
+    Aid,
+    AidResult,
     # Bootstrap
     StationaryBootstrap,
     CircularBlockBootstrap,
@@ -137,6 +142,10 @@ from polars_statistics.exprs import (
     logistic_formula_predict,
     poisson_formula_predict,
     alm_formula_predict,
+    # AID and Dynamic Linear Model expressions
+    aid,
+    aid_anomalies,
+    lm_dynamic,
 )
 
 __version__ = "0.1.0"
@@ -161,6 +170,11 @@ __all__ = [
     "Cloglog",
     # Augmented Linear Model
     "ALM",
+    # Dynamic Linear Model
+    "LmDynamic",
+    # Demand Classification
+    "Aid",
+    "AidResult",
     # Bootstrap
     "StationaryBootstrap",
     "CircularBlockBootstrap",
@@ -275,6 +289,10 @@ __all__ = [
     "logistic_formula_predict",
     "poisson_formula_predict",
     "alm_formula_predict",
+    # AID and Dynamic Linear Model expressions
+    "aid",
+    "aid_anomalies",
+    "lm_dynamic",
     # Library path
     "LIB",
 ]

@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from polars_statistics import OLS, Ridge, ElasticNet, WLS, Logistic, Poisson
+from polars_statistics import OLS, Ridge, ElasticNet, WLS, Logistic, Poisson, LmDynamic, Aid
 
 
 class TestOLS:
@@ -214,3 +214,120 @@ class TestPoisson:
 
         assert len(predictions) == 200
         assert all(p >= 0 for p in predictions)
+
+
+class TestLmDynamic:
+    """Tests for Dynamic Linear Model."""
+
+    def test_fit_basic(self):
+        """Test basic dynamic linear model fitting."""
+        np.random.seed(42)
+        X = np.random.randn(100, 2)
+        y = X @ np.array([1, 2]) + np.random.randn(100) * 0.1
+
+        model = LmDynamic(ic="aicc", distribution="normal").fit(X, y)
+
+        assert model.is_fitted()
+        assert len(model.coefficients) == 2
+        assert model.r_squared > 0.9
+
+    def test_dynamic_coefficients(self):
+        """Test dynamic coefficients extraction."""
+        np.random.seed(42)
+        X = np.random.randn(100, 2)
+        y = X @ np.array([1, 2]) + np.random.randn(100) * 0.1
+
+        model = LmDynamic(ic="aicc").fit(X, y)
+
+        dyn_coef = model.dynamic_coefficients
+        assert dyn_coef.shape[0] == 100  # n_observations rows
+        assert dyn_coef.shape[1] >= 2  # at least 2 coefficients
+
+    def test_predict(self):
+        """Test prediction."""
+        np.random.seed(42)
+        X = np.random.randn(100, 2)
+        y = X @ np.array([1, 2])
+
+        model = LmDynamic().fit(X, y)
+        predictions = model.predict(X)
+
+        assert len(predictions) == 100
+
+    def test_no_smoothing(self):
+        """Test model without LOWESS smoothing."""
+        np.random.seed(42)
+        X = np.random.randn(50, 2)
+        y = X @ np.array([1, 2]) + np.random.randn(50) * 0.1
+
+        model = LmDynamic(lowess_span=None).fit(X, y)
+
+        assert model.is_fitted()
+        assert model.smoothed_weights is None
+
+
+class TestAid:
+    """Tests for AID demand classifier."""
+
+    def test_regular_demand(self):
+        """Test classification of regular demand."""
+        np.random.seed(42)
+        # Regular demand - Poisson with mean 10, few zeros
+        demand = np.random.poisson(10, 100).astype(float)
+
+        result = Aid().classify(demand)
+
+        assert result.demand_type == "regular"
+        assert not result.is_intermittent()
+        assert result.n_observations == 100
+        assert result.zero_proportion < 0.3
+
+    def test_intermittent_demand(self):
+        """Test classification of intermittent demand."""
+        np.random.seed(42)
+        # Intermittent demand - many zeros
+        demand = np.where(np.random.random(100) < 0.5, 0, np.random.poisson(5, 100)).astype(float)
+
+        result = Aid(intermittent_threshold=0.3).classify(demand)
+
+        assert result.demand_type == "intermittent"
+        assert result.is_intermittent()
+        assert result.zero_proportion >= 0.3
+
+    def test_distribution_selection(self):
+        """Test that a distribution is selected."""
+        np.random.seed(42)
+        demand = np.random.poisson(10, 100).astype(float)
+
+        result = Aid().classify(demand)
+
+        assert result.distribution in ["poisson", "negative_binomial", "normal", "gamma", "lognormal", "geometric", "rectified_normal"]
+
+    def test_fractional_detection(self):
+        """Test fractional data detection."""
+        np.random.seed(42)
+        # Fractional demand
+        demand = np.random.gamma(2, 5, 100)
+
+        result = Aid().classify(demand)
+
+        assert result.is_fractional
+
+    def test_count_data(self):
+        """Test count (integer) data detection."""
+        np.random.seed(42)
+        demand = np.random.poisson(10, 100).astype(float)
+
+        result = Aid().classify(demand)
+
+        assert not result.is_fractional
+
+    def test_anomaly_detection(self):
+        """Test anomaly detection capability."""
+        np.random.seed(42)
+        demand = np.random.poisson(10, 100).astype(float)
+
+        result = Aid(detect_anomalies=True).classify(demand)
+
+        # Should have anomaly flags (list of same length as demand)
+        assert len(list(result.anomalies)) == 100
