@@ -2740,8 +2740,9 @@ def aid_anomalies(
 ) -> pl.Expr:
     """AID anomaly detection - returns per-observation anomaly flags.
 
-    Analyzes demand time series and returns boolean lists indicating which
-    observations are flagged as each anomaly type.
+    Analyzes demand time series and returns per-row boolean flags indicating
+    which observations are flagged as each anomaly type. Use with `.over()`
+    to add anomaly columns back to the original DataFrame.
 
     Parameters
     ----------
@@ -2753,7 +2754,7 @@ def aid_anomalies(
     Returns
     -------
     pl.Expr
-        Struct containing lists of boolean flags for each anomaly type:
+        Struct with per-row boolean flags for each anomaly type:
         stockout, new_product, obsolete_product, high_outlier, low_outlier.
 
     Examples
@@ -2762,20 +2763,18 @@ def aid_anomalies(
     >>> import polars_statistics as ps
     >>>
     >>> df = pl.DataFrame({
-    ...     "sku": ["A"] * 100 + ["B"] * 100,
+    ...     "sku": ["A"] * 20 + ["B"] * 20,
     ...     "demand": [...]
     ... })
     >>>
-    >>> # Get anomaly flags per SKU
-    >>> df.group_by("sku").agg(
-    ...     ps.aid_anomalies("demand").alias("anomalies")
+    >>> # Add anomaly flags per SKU using .over()
+    >>> result = df.with_columns(
+    ...     ps.aid_anomalies("demand").over("sku").alias("anomalies")
     ... )
     >>>
-    >>> # Access individual anomaly lists
-    >>> result.with_columns(
-    ...     pl.col("anomalies").struct.field("stockout"),
-    ...     pl.col("anomalies").struct.field("high_outlier"),
-    ... )
+    >>> # Unnest to get individual columns
+    >>> result = result.unnest("anomalies")
+    >>> # Now has columns: sku, demand, stockout, new_product, ...
     """
     if isinstance(y, str):
         y = pl.col(y)
@@ -2787,7 +2786,7 @@ def aid_anomalies(
             y.cast(pl.Float64),
             pl.lit(intermittent_threshold, dtype=pl.Float64),
         ],
-        returns_scalar=True,
+        returns_scalar=False,
     )
 
 

@@ -2948,31 +2948,16 @@ fn pl_aid(inputs: &[Series]) -> PolarsResult<Series> {
 /// Output type for AID anomalies (per-observation)
 fn aid_anomalies_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
     let fields = vec![
-        Field::new(
-            "stockout".into(),
-            DataType::List(Box::new(DataType::Boolean)),
-        ),
-        Field::new(
-            "new_product".into(),
-            DataType::List(Box::new(DataType::Boolean)),
-        ),
-        Field::new(
-            "obsolete_product".into(),
-            DataType::List(Box::new(DataType::Boolean)),
-        ),
-        Field::new(
-            "high_outlier".into(),
-            DataType::List(Box::new(DataType::Boolean)),
-        ),
-        Field::new(
-            "low_outlier".into(),
-            DataType::List(Box::new(DataType::Boolean)),
-        ),
+        Field::new("stockout".into(), DataType::Boolean),
+        Field::new("new_product".into(), DataType::Boolean),
+        Field::new("obsolete_product".into(), DataType::Boolean),
+        Field::new("high_outlier".into(), DataType::Boolean),
+        Field::new("low_outlier".into(), DataType::Boolean),
     ];
     Ok(Field::new("aid_anomalies".into(), DataType::Struct(fields)))
 }
 
-/// Create AID anomalies output struct
+/// Create AID anomalies output struct (per-row, not aggregated)
 fn aid_anomalies_output(
     stockout: Vec<bool>,
     new_product: Vec<bool>,
@@ -2980,27 +2965,32 @@ fn aid_anomalies_output(
     high_outlier: Vec<bool>,
     low_outlier: Vec<bool>,
 ) -> PolarsResult<Series> {
-    let stockout_series = Series::new("".into(), stockout);
-    let new_product_series = Series::new("".into(), new_product);
-    let obsolete_product_series = Series::new("".into(), obsolete_product);
-    let high_outlier_series = Series::new("".into(), high_outlier);
-    let low_outlier_series = Series::new("".into(), low_outlier);
+    let n = stockout.len();
 
-    let fields = vec![
-        Series::new("stockout".into(), vec![stockout_series]),
-        Series::new("new_product".into(), vec![new_product_series]),
-        Series::new("obsolete_product".into(), vec![obsolete_product_series]),
-        Series::new("high_outlier".into(), vec![high_outlier_series]),
-        Series::new("low_outlier".into(), vec![low_outlier_series]),
-    ];
+    let stockout_s = Series::new("stockout".into(), stockout);
+    let new_product_s = Series::new("new_product".into(), new_product);
+    let obsolete_product_s = Series::new("obsolete_product".into(), obsolete_product);
+    let high_outlier_s = Series::new("high_outlier".into(), high_outlier);
+    let low_outlier_s = Series::new("low_outlier".into(), low_outlier);
 
-    StructChunked::from_series("aid_anomalies".into(), 1, fields.iter())
-        .map(|ca| ca.into_series())
+    let struct_ca = StructChunked::from_series(
+        "aid_anomalies".into(),
+        n,
+        [&stockout_s, &new_product_s, &obsolete_product_s, &high_outlier_s, &low_outlier_s].into_iter(),
+    )?;
+
+    Ok(struct_ca.into_series())
 }
 
 /// Create AID anomalies empty output
-fn aid_anomalies_nan_output() -> PolarsResult<Series> {
-    aid_anomalies_output(vec![], vec![], vec![], vec![], vec![])
+fn aid_anomalies_nan_output(n_rows: usize) -> PolarsResult<Series> {
+    aid_anomalies_output(
+        vec![false; n_rows],
+        vec![false; n_rows],
+        vec![false; n_rows],
+        vec![false; n_rows],
+        vec![false; n_rows],
+    )
 }
 
 /// AID Anomalies expression - returns per-observation anomaly flags.
@@ -3016,7 +3006,7 @@ fn pl_aid_anomalies(inputs: &[Series]) -> PolarsResult<Series> {
     let n_rows = y_series.len();
 
     if n_rows == 0 {
-        return aid_anomalies_nan_output();
+        return aid_anomalies_nan_output(0);
     }
 
     // Build y vector
