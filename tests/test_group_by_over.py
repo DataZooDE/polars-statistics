@@ -782,6 +782,317 @@ class TestALMRegressionOver:
 
 
 # =============================================================================
+# OLS Predict Tests with Null Handling
+# =============================================================================
+
+
+class TestOlsPredictNullHandling:
+    """Tests for ols_predict with null values in target variable."""
+
+    @pytest.fixture
+    def df_with_nulls(self):
+        """DataFrame with null values in y for testing null_policy."""
+        return pl.DataFrame({
+            "y": [1.0, 2.0, None, 4.0, 5.0],
+            "x": [1.0, 2.0, 3.0, 4.0, 5.0],
+        })
+
+    def test_ols_predict_drop_policy(self, df_with_nulls):
+        """Test null_policy='drop': row with null y gets NaN prediction."""
+        result = df_with_nulls.with_columns(
+            ps.ols_predict("y", "x", null_policy="drop").alias("pred")
+        ).unnest("pred")
+
+        # Row 2 (y=null) should have NaN prediction
+        assert math.isnan(result["prediction"][2])
+        # Other rows should have valid predictions
+        assert not math.isnan(result["prediction"][0])
+        assert not math.isnan(result["prediction"][1])
+        assert not math.isnan(result["prediction"][3])
+        assert not math.isnan(result["prediction"][4])
+
+    def test_ols_predict_drop_y_zero_x_policy(self, df_with_nulls):
+        """Test null_policy='drop_y_zero_x': row with null y still gets prediction."""
+        result = df_with_nulls.with_columns(
+            ps.ols_predict("y", "x", null_policy="drop_y_zero_x").alias("pred")
+        ).unnest("pred")
+
+        # All rows should have valid predictions (including row 2)
+        for i in range(5):
+            assert not math.isnan(result["prediction"][i]), f"Row {i} should have valid prediction"
+
+        # Model should be y = x (perfect fit on points 1,2,4,5)
+        # So prediction for row 2 (x=3) should be 3.0
+        assert abs(result["prediction"][2] - 3.0) < 0.01
+
+    def test_ols_predict_with_intervals(self, df_with_nulls):
+        """Test ols_predict with prediction intervals and nulls."""
+        result = df_with_nulls.with_columns(
+            ps.ols_predict("y", "x", interval="prediction", null_policy="drop_y_zero_x")
+                .alias("pred")
+        ).unnest("pred")
+
+        # All rows should have valid predictions and intervals
+        for i in range(5):
+            assert not math.isnan(result["prediction"][i])
+            assert not math.isnan(result["lower"][i])
+            assert not math.isnan(result["upper"][i])
+            # Interval should contain prediction
+            assert result["lower"][i] < result["prediction"][i] < result["upper"][i]
+
+    def test_ols_predict_over_with_nulls(self):
+        """Test ols_predict with .over() context and nulls."""
+        df = pl.DataFrame({
+            "group": ["A", "A", "A", "B", "B", "B"],
+            "y": [1.0, None, 3.0, 4.0, 5.0, None],
+            "x": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+        })
+
+        result = df.with_columns(
+            ps.ols_predict("y", "x", null_policy="drop_y_zero_x").over("group").alias("pred")
+        ).unnest("pred")
+
+        # Each group should fit its own model
+        assert result.shape[0] == 6
+        # Rows with null y should still get predictions
+        assert not math.isnan(result["prediction"][1])  # Group A, y=null
+        assert not math.isnan(result["prediction"][5])  # Group B, y=null
+
+    def test_ols_predict_group_by_with_nulls(self):
+        """Test ols_predict with group_by context and nulls."""
+        df = pl.DataFrame({
+            "group": ["A", "A", "A", "B", "B", "B"],
+            "y": [1.0, None, 3.0, 4.0, 5.0, None],
+            "x": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+        })
+
+        result = df.group_by("group").agg(
+            ps.ols_predict("y", "x", null_policy="drop_y_zero_x").alias("predictions")
+        )
+
+        # Should have 2 groups
+        assert result.shape[0] == 2
+        # Each group should have 3 predictions (list)
+        for row in result["predictions"]:
+            assert len(row) == 3
+
+
+# =============================================================================
+# Regression Predict Expressions Tests
+# =============================================================================
+
+
+class TestRegressionPredictFunctions:
+    """Smoke tests for all regression predict functions."""
+
+    @pytest.fixture
+    def df_regression_simple(self):
+        """Simple regression data for prediction tests."""
+        np.random.seed(42)
+        n = 50
+        x = np.random.randn(n)
+        y = 2.0 + 1.5 * x + np.random.randn(n) * 0.1
+        return pl.DataFrame({
+            "group": ["A"] * 25 + ["B"] * 25,
+            "y": y,
+            "x": x,
+        })
+
+    @pytest.fixture
+    def df_binary_simple(self):
+        """Binary data for GLM prediction tests."""
+        np.random.seed(42)
+        n = 50
+        x = np.random.randn(n)
+        p = 1 / (1 + np.exp(-(0.5 + 1.0 * x)))
+        y = (np.random.rand(n) < p).astype(float)
+        return pl.DataFrame({
+            "group": ["A"] * 25 + ["B"] * 25,
+            "y": y,
+            "x": x,
+        })
+
+    @pytest.fixture
+    def df_count_simple(self):
+        """Count data for Poisson prediction tests."""
+        np.random.seed(42)
+        n = 50
+        x = np.random.randn(n)
+        mu = np.exp(1.0 + 0.5 * x)
+        y = np.random.poisson(mu)
+        return pl.DataFrame({
+            "group": ["A"] * 25 + ["B"] * 25,
+            "y": y.astype(float),
+            "x": x,
+        })
+
+    # Linear model predict tests
+    def test_ridge_predict_over(self, df_regression_simple):
+        result = df_regression_simple.with_columns(
+            ps.ridge_predict("y", "x", lambda_=0.1).over("group").alias("pred")
+        ).unnest("pred")
+        assert result.shape[0] == 50
+        assert not math.isnan(result["prediction"][0])
+
+    def test_elastic_net_predict_over(self, df_regression_simple):
+        result = df_regression_simple.with_columns(
+            ps.elastic_net_predict("y", "x", lambda_=0.1, alpha=0.5).over("group").alias("pred")
+        ).unnest("pred")
+        assert result.shape[0] == 50
+        assert not math.isnan(result["prediction"][0])
+
+    def test_wls_predict_over(self, df_regression_simple):
+        df = df_regression_simple.with_columns(pl.lit(1.0).alias("w"))
+        result = df.with_columns(
+            ps.wls_predict("y", "w", "x").over("group").alias("pred")
+        ).unnest("pred")
+        assert result.shape[0] == 50
+        assert not math.isnan(result["prediction"][0])
+
+    def test_rls_predict_over(self, df_regression_simple):
+        result = df_regression_simple.with_columns(
+            ps.rls_predict("y", "x", forgetting_factor=0.99).over("group").alias("pred")
+        ).unnest("pred")
+        assert result.shape[0] == 50
+        assert not math.isnan(result["prediction"][0])
+
+    def test_bls_predict_over(self, df_regression_simple):
+        result = df_regression_simple.with_columns(
+            ps.bls_predict("y", "x").over("group").alias("pred")
+        ).unnest("pred")
+        assert result.shape[0] == 50
+        assert not math.isnan(result["prediction"][0])
+
+    def test_nnls_predict_over(self):
+        # NNLS needs positive data
+        np.random.seed(42)
+        df = pl.DataFrame({
+            "group": ["A"] * 25 + ["B"] * 25,
+            "y": np.abs(np.random.randn(50)) * 10,
+            "x": np.abs(np.random.randn(50)) * 5,
+        })
+        result = df.with_columns(
+            ps.nnls_predict("y", "x").over("group").alias("pred")
+        ).unnest("pred")
+        assert result.shape[0] == 50
+        assert not math.isnan(result["prediction"][0])
+
+    # GLM predict tests
+    def test_logistic_predict_over(self, df_binary_simple):
+        result = df_binary_simple.with_columns(
+            ps.logistic_predict("y", "x").over("group").alias("pred")
+        ).unnest("pred")
+        assert result.shape[0] == 50
+        # Predictions should be probabilities
+        valid_preds = [p for p in result["prediction"] if not math.isnan(p)]
+        assert len(valid_preds) > 0
+
+    def test_poisson_predict_over(self, df_count_simple):
+        result = df_count_simple.with_columns(
+            ps.poisson_predict("y", "x").over("group").alias("pred")
+        ).unnest("pred")
+        assert result.shape[0] == 50
+        # Predictions should be positive (expected counts)
+        valid_preds = [p for p in result["prediction"] if not math.isnan(p)]
+        assert len(valid_preds) > 0
+
+    def test_negative_binomial_predict_over(self, df_count_simple):
+        result = df_count_simple.with_columns(
+            ps.negative_binomial_predict("y", "x").over("group").alias("pred")
+        ).unnest("pred")
+        assert result.shape[0] == 50
+        valid_preds = [p for p in result["prediction"] if not math.isnan(p)]
+        assert len(valid_preds) > 0
+
+    def test_tweedie_predict_over(self):
+        # Tweedie needs positive data
+        np.random.seed(42)
+        df = pl.DataFrame({
+            "group": ["A"] * 25 + ["B"] * 25,
+            "y": np.abs(np.random.randn(50)) * 10 + 1,
+            "x": np.random.randn(50),
+        })
+        result = df.with_columns(
+            ps.tweedie_predict("y", "x", var_power=1.5).over("group").alias("pred")
+        ).unnest("pred")
+        assert result.shape[0] == 50
+        valid_preds = [p for p in result["prediction"] if not math.isnan(p)]
+        assert len(valid_preds) > 0
+
+    def test_probit_predict_over(self, df_binary_simple):
+        result = df_binary_simple.with_columns(
+            ps.probit_predict("y", "x").over("group").alias("pred")
+        ).unnest("pred")
+        assert result.shape[0] == 50
+        valid_preds = [p for p in result["prediction"] if not math.isnan(p)]
+        assert len(valid_preds) > 0
+
+    def test_cloglog_predict_over(self, df_binary_simple):
+        result = df_binary_simple.with_columns(
+            ps.cloglog_predict("y", "x").over("group").alias("pred")
+        ).unnest("pred")
+        assert result.shape[0] == 50
+        # cloglog can be sensitive, check at least some valid predictions
+        valid_preds = [p for p in result["prediction"] if not math.isnan(p)]
+        assert len(valid_preds) >= 25, "At least half should have valid predictions"
+
+    def test_alm_predict_over(self, df_regression_simple):
+        result = df_regression_simple.with_columns(
+            ps.alm_predict("y", "x", distribution="normal").over("group").alias("pred")
+        ).unnest("pred")
+        assert result.shape[0] == 50
+        assert not math.isnan(result["prediction"][0])
+
+    # Null handling tests for other models
+    def test_ridge_predict_null_policy(self):
+        """Test null_policy for ridge_predict."""
+        df = pl.DataFrame({
+            "y": [1.0, None, 3.0, 4.0, 5.0],
+            "x": [1.0, 2.0, 3.0, 4.0, 5.0],
+        })
+        result = df.with_columns(
+            ps.ridge_predict("y", "x", null_policy="drop_y_zero_x").alias("pred")
+        ).unnest("pred")
+        # Row 1 (y=null) should still get a prediction
+        assert not math.isnan(result["prediction"][1])
+
+    def test_logistic_predict_null_policy(self):
+        """Test null_policy for logistic_predict."""
+        df = pl.DataFrame({
+            "y": [0.0, None, 1.0, 0.0, 1.0],
+            "x": [1.0, 2.0, 3.0, 4.0, 5.0],
+        })
+        result = df.with_columns(
+            ps.logistic_predict("y", "x", null_policy="drop_y_zero_x").alias("pred")
+        ).unnest("pred")
+        # Row 1 (y=null) should still get a prediction
+        assert not math.isnan(result["prediction"][1])
+
+    # Interval tests
+    def test_ridge_predict_with_intervals(self, df_regression_simple):
+        result = df_regression_simple.with_columns(
+            ps.ridge_predict("y", "x", interval="prediction", level=0.95)
+                .over("group").alias("pred")
+        ).unnest("pred")
+        # Check intervals exist and are ordered correctly
+        for i in range(min(10, len(result))):
+            if not math.isnan(result["prediction"][i]):
+                assert result["lower"][i] < result["prediction"][i] < result["upper"][i]
+
+    def test_logistic_predict_with_intervals(self, df_binary_simple):
+        result = df_binary_simple.with_columns(
+            ps.logistic_predict("y", "x", interval="confidence", level=0.95)
+                .over("group").alias("pred")
+        ).unnest("pred")
+        # Check at least some have valid intervals
+        valid_count = sum(1 for i in range(len(result))
+                        if not math.isnan(result["prediction"][i])
+                        and not math.isnan(result["lower"][i])
+                        and not math.isnan(result["upper"][i]))
+        assert valid_count > 0
+
+
+# =============================================================================
 # Lazy Evaluation Tests
 # =============================================================================
 

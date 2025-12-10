@@ -80,6 +80,21 @@ from polars_statistics.exprs import (
     probit_summary,
     cloglog_summary,
     alm_summary,
+    # Prediction expressions
+    ols_predict,
+    ridge_predict,
+    elastic_net_predict,
+    wls_predict,
+    rls_predict,
+    bls_predict,
+    nnls_predict,
+    logistic_predict,
+    poisson_predict,
+    negative_binomial_predict,
+    tweedie_predict,
+    probit_predict,
+    cloglog_predict,
+    alm_predict,
 )
 
 __version__ = "0.1.0"
@@ -161,6 +176,21 @@ __all__ = [
     "probit_summary",
     "cloglog_summary",
     "alm_summary",
+    # Prediction expressions
+    "ols_predict",
+    "ridge_predict",
+    "elastic_net_predict",
+    "wls_predict",
+    "rls_predict",
+    "bls_predict",
+    "nnls_predict",
+    "logistic_predict",
+    "poisson_predict",
+    "negative_binomial_predict",
+    "tweedie_predict",
+    "probit_predict",
+    "cloglog_predict",
+    "alm_predict",
     # Library path
     "LIB",
 ]

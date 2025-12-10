@@ -11,6 +11,7 @@ use anofox_regression::solvers::{
     FittedRegressor, NegativeBinomialRegressor, OlsRegressor, PoissonRegressor, Regressor,
     RidgeRegressor, RlsRegressor, TweedieRegressor, WlsRegressor,
 };
+use anofox_regression::IntervalType;
 
 // ============================================================================
 // Output Type Definitions
@@ -1520,6 +1521,1135 @@ fn pl_cloglog_summary(inputs: &[Series]) -> PolarsResult<Series> {
         Err(_) => summary_nan_output(),
     }
 }
+
+// ============================================================================
+// Prediction Expressions
+// ============================================================================
+
+/// Output type for prediction with intervals - returns struct per row
+fn predict_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
+    let fields = vec![
+        Field::new("prediction".into(), DataType::Float64),
+        Field::new("lower".into(), DataType::Float64),
+        Field::new("upper".into(), DataType::Float64),
+    ];
+    Ok(Field::new("predictions".into(), DataType::Struct(fields)))
+}
+
+/// Create prediction output as Struct{prediction, lower, upper} per row
+fn prediction_output(
+    predictions: Vec<f64>,
+    lower: Vec<f64>,
+    upper: Vec<f64>,
+) -> PolarsResult<Series> {
+    let n = predictions.len();
+
+    let pred_s = Series::new("prediction".into(), predictions);
+    let lower_s = Series::new("lower".into(), lower);
+    let upper_s = Series::new("upper".into(), upper);
+
+    let struct_ca = StructChunked::from_series(
+        "predictions".into(),
+        n,
+        [&pred_s, &lower_s, &upper_s].into_iter(),
+    )?;
+
+    Ok(struct_ca.into_series())
+}
+
+/// Create empty prediction output on error
+fn prediction_nan_output(n: usize) -> PolarsResult<Series> {
+    prediction_output(vec![f64::NAN; n], vec![f64::NAN; n], vec![f64::NAN; n])
+}
+
+/// Build X matrix and y vector with null handling based on policy.
+/// Returns (X, y, valid_mask) where valid_mask indicates which original rows were used.
+fn build_xy_with_null_policy(
+    inputs: &[Series],
+    y_idx: usize,
+    x_start_idx: usize,
+    null_policy: &str,
+) -> PolarsResult<(Mat<f64>, Col<f64>, Vec<bool>, Mat<f64>)> {
+    let y_series = inputs[y_idx].f64()?;
+    let n_rows = y_series.len();
+    let n_features = inputs.len() - x_start_idx;
+
+    match null_policy {
+        "drop_y_zero_x" => {
+            // Drop rows with null y, zero fill X
+            let mut valid_mask = vec![true; n_rows];
+
+            // Check y for nulls only
+            for i in 0..n_rows {
+                if y_series.get(i).is_none() {
+                    valid_mask[i] = false;
+                }
+            }
+
+            let valid_indices: Vec<usize> = valid_mask
+                .iter()
+                .enumerate()
+                .filter_map(|(i, &v)| if v { Some(i) } else { None })
+                .collect();
+
+            let n_valid = valid_indices.len();
+
+            if n_valid == 0 {
+                return Err(polars_err!(ComputeError: "No valid rows after dropping null targets"));
+            }
+
+            // Build y for fitting (only valid rows)
+            let y = Col::from_fn(n_valid, |i| y_series.get(valid_indices[i]).unwrap());
+
+            // Build X for fitting (valid rows, zero fill nulls)
+            let x_fit = Mat::from_fn(n_valid, n_features, |row, col| {
+                inputs[x_start_idx + col]
+                    .f64()
+                    .ok()
+                    .and_then(|ca| ca.get(valid_indices[row]))
+                    .unwrap_or(0.0)
+            });
+
+            // Build X for prediction (all rows, zero fill nulls)
+            let x_pred = Mat::from_fn(n_rows, n_features, |row, col| {
+                inputs[x_start_idx + col]
+                    .f64()
+                    .ok()
+                    .and_then(|ca| ca.get(row))
+                    .unwrap_or(0.0)
+            });
+
+            Ok((x_fit, y, valid_mask, x_pred))
+        }
+        // Default: "drop" - drop rows with any nulls
+        _ => {
+            // Drop rows with any nulls - create mask of valid rows
+            let mut valid_mask = vec![true; n_rows];
+
+            // Check y for nulls
+            for i in 0..n_rows {
+                if y_series.get(i).is_none() {
+                    valid_mask[i] = false;
+                }
+            }
+
+            // Check X columns for nulls
+            for col_idx in 0..n_features {
+                if let Ok(col) = inputs[x_start_idx + col_idx].f64() {
+                    for i in 0..n_rows {
+                        if col.get(i).is_none() {
+                            valid_mask[i] = false;
+                        }
+                    }
+                }
+            }
+
+            let valid_indices: Vec<usize> = valid_mask
+                .iter()
+                .enumerate()
+                .filter_map(|(i, &v)| if v { Some(i) } else { None })
+                .collect();
+
+            let n_valid = valid_indices.len();
+
+            if n_valid == 0 {
+                return Err(polars_err!(ComputeError: "No valid rows after dropping nulls"));
+            }
+
+            // Build y and X for fitting (only valid rows)
+            let y = Col::from_fn(n_valid, |i| y_series.get(valid_indices[i]).unwrap());
+            let x_fit = Mat::from_fn(n_valid, n_features, |row, col| {
+                inputs[x_start_idx + col]
+                    .f64()
+                    .ok()
+                    .and_then(|ca| ca.get(valid_indices[row]))
+                    .unwrap()
+            });
+
+            // X for prediction - same as fitting data (predictions will be masked later)
+            // But we need full X for prediction with NaN where nulls exist
+            let x_pred = Mat::from_fn(n_rows, n_features, |row, col| {
+                inputs[x_start_idx + col]
+                    .f64()
+                    .ok()
+                    .and_then(|ca| ca.get(row))
+                    .unwrap_or(f64::NAN)
+            });
+
+            Ok((x_fit, y, valid_mask, x_pred))
+        }
+    }
+}
+
+/// OLS prediction expression - returns predictions with optional intervals.
+/// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval (string or null),
+/// inputs[3] = level, inputs[4] = null_policy, inputs[5..] = x columns
+#[polars_expr(output_type_func=predict_output_dtype)]
+fn pl_ols_predict(inputs: &[Series]) -> PolarsResult<Series> {
+    let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
+    let interval = inputs[2].str()?.get(0); // None, "confidence", or "prediction"
+    let level = inputs[3].f64()?.get(0).unwrap_or(0.95);
+    let null_policy = inputs[4].str()?.get(0).unwrap_or("drop");
+
+    // Get number of rows from the first series
+    let n_rows = inputs[0].len();
+
+    // Build data with null handling
+    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 5, null_policy) {
+        Ok(data) => data,
+        Err(_) => return prediction_nan_output(n_rows),
+    };
+
+    let model = OlsRegressor::builder()
+        .with_intercept(with_intercept)
+        .build();
+
+    match model.fit(&x_fit, &y) {
+        Ok(fitted) => {
+            // Determine interval type
+            let interval_type = match interval {
+                Some("confidence") => Some(IntervalType::Confidence),
+                Some("prediction") => Some(IntervalType::Prediction),
+                _ => None,
+            };
+
+            // Get predictions on full data (x_pred)
+            let pred_result = fitted.predict_with_interval(&x_pred, interval_type, level);
+
+            // Apply mask for "drop" policy - set predictions to NaN where data was invalid
+            let predictions: Vec<f64> = (0..n_rows)
+                .map(|i| {
+                    if null_policy == "drop" && !valid_mask[i] {
+                        f64::NAN
+                    } else {
+                        pred_result.fit[i]
+                    }
+                })
+                .collect();
+
+            let (lower, upper) = if interval_type.is_some() {
+                let lower: Vec<f64> = (0..n_rows)
+                    .map(|i| {
+                        if null_policy == "drop" && !valid_mask[i] {
+                            f64::NAN
+                        } else {
+                            pred_result.lower[i]
+                        }
+                    })
+                    .collect();
+                let upper: Vec<f64> = (0..n_rows)
+                    .map(|i| {
+                        if null_policy == "drop" && !valid_mask[i] {
+                            f64::NAN
+                        } else {
+                            pred_result.upper[i]
+                        }
+                    })
+                    .collect();
+                (lower, upper)
+            } else {
+                (vec![f64::NAN; n_rows], vec![f64::NAN; n_rows])
+            };
+
+            prediction_output(predictions, lower, upper)
+        }
+        Err(_) => prediction_nan_output(n_rows),
+    }
+}
+
+/// Ridge prediction expression
+/// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval, inputs[3] = level,
+/// inputs[4] = null_policy, inputs[5] = lambda, inputs[6..] = x columns
+#[polars_expr(output_type_func=predict_output_dtype)]
+fn pl_ridge_predict(inputs: &[Series]) -> PolarsResult<Series> {
+    let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
+    let interval = inputs[2].str()?.get(0);
+    let level = inputs[3].f64()?.get(0).unwrap_or(0.95);
+    let null_policy = inputs[4].str()?.get(0).unwrap_or("drop");
+    let lambda = inputs[5].f64()?.get(0).unwrap_or(1.0);
+
+    let n_rows = inputs[0].len();
+
+    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 6, null_policy) {
+        Ok(data) => data,
+        Err(_) => return prediction_nan_output(n_rows),
+    };
+
+    let model = RidgeRegressor::builder()
+        .lambda(lambda)
+        .with_intercept(with_intercept)
+        .build();
+
+    match model.fit(&x_fit, &y) {
+        Ok(fitted) => {
+            let interval_type = match interval {
+                Some("confidence") => Some(IntervalType::Confidence),
+                Some("prediction") => Some(IntervalType::Prediction),
+                _ => None,
+            };
+
+            let pred_result = fitted.predict_with_interval(&x_pred, interval_type, level);
+
+            let predictions: Vec<f64> = (0..n_rows)
+                .map(|i| {
+                    if null_policy == "drop" && !valid_mask[i] {
+                        f64::NAN
+                    } else {
+                        pred_result.fit[i]
+                    }
+                })
+                .collect();
+
+            let (lower, upper) = if interval_type.is_some() {
+                let lower: Vec<f64> = (0..n_rows)
+                    .map(|i| {
+                        if null_policy == "drop" && !valid_mask[i] {
+                            f64::NAN
+                        } else {
+                            pred_result.lower[i]
+                        }
+                    })
+                    .collect();
+                let upper: Vec<f64> = (0..n_rows)
+                    .map(|i| {
+                        if null_policy == "drop" && !valid_mask[i] {
+                            f64::NAN
+                        } else {
+                            pred_result.upper[i]
+                        }
+                    })
+                    .collect();
+                (lower, upper)
+            } else {
+                (vec![f64::NAN; n_rows], vec![f64::NAN; n_rows])
+            };
+
+            prediction_output(predictions, lower, upper)
+        }
+        Err(_) => prediction_nan_output(n_rows),
+    }
+}
+
+/// Elastic Net prediction expression
+/// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval, inputs[3] = level,
+/// inputs[4] = null_policy, inputs[5] = lambda, inputs[6] = alpha, inputs[7..] = x columns
+#[polars_expr(output_type_func=predict_output_dtype)]
+fn pl_elastic_net_predict(inputs: &[Series]) -> PolarsResult<Series> {
+    let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
+    let interval = inputs[2].str()?.get(0);
+    let level = inputs[3].f64()?.get(0).unwrap_or(0.95);
+    let null_policy = inputs[4].str()?.get(0).unwrap_or("drop");
+    let lambda = inputs[5].f64()?.get(0).unwrap_or(1.0);
+    let alpha = inputs[6].f64()?.get(0).unwrap_or(0.5);
+
+    let n_rows = inputs[0].len();
+
+    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 7, null_policy) {
+        Ok(data) => data,
+        Err(_) => return prediction_nan_output(n_rows),
+    };
+
+    let model = ElasticNetRegressor::builder()
+        .lambda(lambda)
+        .alpha(alpha)
+        .with_intercept(with_intercept)
+        .build();
+
+    match model.fit(&x_fit, &y) {
+        Ok(fitted) => {
+            let interval_type = match interval {
+                Some("confidence") => Some(IntervalType::Confidence),
+                Some("prediction") => Some(IntervalType::Prediction),
+                _ => None,
+            };
+
+            let pred_result = fitted.predict_with_interval(&x_pred, interval_type, level);
+
+            let predictions: Vec<f64> = (0..n_rows)
+                .map(|i| {
+                    if null_policy == "drop" && !valid_mask[i] {
+                        f64::NAN
+                    } else {
+                        pred_result.fit[i]
+                    }
+                })
+                .collect();
+
+            let (lower, upper) = if interval_type.is_some() {
+                let lower: Vec<f64> = (0..n_rows)
+                    .map(|i| {
+                        if null_policy == "drop" && !valid_mask[i] {
+                            f64::NAN
+                        } else {
+                            pred_result.lower[i]
+                        }
+                    })
+                    .collect();
+                let upper: Vec<f64> = (0..n_rows)
+                    .map(|i| {
+                        if null_policy == "drop" && !valid_mask[i] {
+                            f64::NAN
+                        } else {
+                            pred_result.upper[i]
+                        }
+                    })
+                    .collect();
+                (lower, upper)
+            } else {
+                (vec![f64::NAN; n_rows], vec![f64::NAN; n_rows])
+            };
+
+            prediction_output(predictions, lower, upper)
+        }
+        Err(_) => prediction_nan_output(n_rows),
+    }
+}
+
+/// WLS prediction expression (weights column is inputs[6])
+/// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval, inputs[3] = level,
+/// inputs[4] = null_policy, inputs[5] = weights, inputs[6..] = x columns
+#[polars_expr(output_type_func=predict_output_dtype)]
+fn pl_wls_predict(inputs: &[Series]) -> PolarsResult<Series> {
+    let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
+    let interval = inputs[2].str()?.get(0);
+    let level = inputs[3].f64()?.get(0).unwrap_or(0.95);
+    let null_policy = inputs[4].str()?.get(0).unwrap_or("drop");
+
+    let n_rows = inputs[0].len();
+
+    // Build weights
+    let weights_series = inputs[5].f64()?;
+    let weights = Col::from_fn(n_rows, |i| weights_series.get(i).unwrap_or(1.0));
+
+    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 6, null_policy) {
+        Ok(data) => data,
+        Err(_) => return prediction_nan_output(n_rows),
+    };
+
+    // Build weights for fitting (only valid rows)
+    let valid_indices: Vec<usize> = valid_mask
+        .iter()
+        .enumerate()
+        .filter_map(|(i, &v)| if v { Some(i) } else { None })
+        .collect();
+    let weights_fit = Col::from_fn(valid_indices.len(), |i| weights[valid_indices[i]]);
+
+    let model = WlsRegressor::builder()
+        .with_intercept(with_intercept)
+        .weights(weights_fit)
+        .build();
+
+    match model.fit(&x_fit, &y) {
+        Ok(fitted) => {
+            let interval_type = match interval {
+                Some("confidence") => Some(IntervalType::Confidence),
+                Some("prediction") => Some(IntervalType::Prediction),
+                _ => None,
+            };
+
+            let pred_result = fitted.predict_with_interval(&x_pred, interval_type, level);
+
+            let predictions: Vec<f64> = (0..n_rows)
+                .map(|i| {
+                    if null_policy == "drop" && !valid_mask[i] {
+                        f64::NAN
+                    } else {
+                        pred_result.fit[i]
+                    }
+                })
+                .collect();
+
+            let (lower, upper) = if interval_type.is_some() {
+                let lower: Vec<f64> = (0..n_rows)
+                    .map(|i| {
+                        if null_policy == "drop" && !valid_mask[i] {
+                            f64::NAN
+                        } else {
+                            pred_result.lower[i]
+                        }
+                    })
+                    .collect();
+                let upper: Vec<f64> = (0..n_rows)
+                    .map(|i| {
+                        if null_policy == "drop" && !valid_mask[i] {
+                            f64::NAN
+                        } else {
+                            pred_result.upper[i]
+                        }
+                    })
+                    .collect();
+                (lower, upper)
+            } else {
+                (vec![f64::NAN; n_rows], vec![f64::NAN; n_rows])
+            };
+
+            prediction_output(predictions, lower, upper)
+        }
+        Err(_) => prediction_nan_output(n_rows),
+    }
+}
+
+/// RLS prediction expression
+/// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval, inputs[3] = level,
+/// inputs[4] = null_policy, inputs[5] = forgetting_factor, inputs[6..] = x columns
+#[polars_expr(output_type_func=predict_output_dtype)]
+fn pl_rls_predict(inputs: &[Series]) -> PolarsResult<Series> {
+    let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
+    let interval = inputs[2].str()?.get(0);
+    let level = inputs[3].f64()?.get(0).unwrap_or(0.95);
+    let null_policy = inputs[4].str()?.get(0).unwrap_or("drop");
+    let forgetting_factor = inputs[5].f64()?.get(0).unwrap_or(0.99);
+
+    let n_rows = inputs[0].len();
+
+    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 6, null_policy) {
+        Ok(data) => data,
+        Err(_) => return prediction_nan_output(n_rows),
+    };
+
+    let model = RlsRegressor::builder()
+        .forgetting_factor(forgetting_factor)
+        .with_intercept(with_intercept)
+        .build();
+
+    match model.fit(&x_fit, &y) {
+        Ok(fitted) => {
+            let interval_type = match interval {
+                Some("confidence") => Some(IntervalType::Confidence),
+                Some("prediction") => Some(IntervalType::Prediction),
+                _ => None,
+            };
+
+            let pred_result = fitted.predict_with_interval(&x_pred, interval_type, level);
+
+            let predictions: Vec<f64> = (0..n_rows)
+                .map(|i| {
+                    if null_policy == "drop" && !valid_mask[i] {
+                        f64::NAN
+                    } else {
+                        pred_result.fit[i]
+                    }
+                })
+                .collect();
+
+            let (lower, upper) = if interval_type.is_some() {
+                let lower: Vec<f64> = (0..n_rows)
+                    .map(|i| {
+                        if null_policy == "drop" && !valid_mask[i] {
+                            f64::NAN
+                        } else {
+                            pred_result.lower[i]
+                        }
+                    })
+                    .collect();
+                let upper: Vec<f64> = (0..n_rows)
+                    .map(|i| {
+                        if null_policy == "drop" && !valid_mask[i] {
+                            f64::NAN
+                        } else {
+                            pred_result.upper[i]
+                        }
+                    })
+                    .collect();
+                (lower, upper)
+            } else {
+                (vec![f64::NAN; n_rows], vec![f64::NAN; n_rows])
+            };
+
+            prediction_output(predictions, lower, upper)
+        }
+        Err(_) => prediction_nan_output(n_rows),
+    }
+}
+
+/// BLS prediction expression
+/// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval, inputs[3] = level,
+/// inputs[4] = null_policy, inputs[5] = lower_bound (or null), inputs[6] = upper_bound (or null),
+/// inputs[7..] = x columns
+#[polars_expr(output_type_func=predict_output_dtype)]
+fn pl_bls_predict(inputs: &[Series]) -> PolarsResult<Series> {
+    let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
+    let interval = inputs[2].str()?.get(0);
+    let level = inputs[3].f64()?.get(0).unwrap_or(0.95);
+    let null_policy = inputs[4].str()?.get(0).unwrap_or("drop");
+    let lower_bound = inputs[5].f64()?.get(0);
+    let upper_bound = inputs[6].f64()?.get(0);
+
+    let n_rows = inputs[0].len();
+
+    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 7, null_policy) {
+        Ok(data) => data,
+        Err(_) => return prediction_nan_output(n_rows),
+    };
+
+    let mut builder = BlsRegressor::builder().with_intercept(with_intercept);
+    if let Some(lb) = lower_bound {
+        builder = builder.lower_bound_all(lb);
+    }
+    if let Some(ub) = upper_bound {
+        builder = builder.upper_bound_all(ub);
+    }
+    let model = builder.build();
+
+    match model.fit(&x_fit, &y) {
+        Ok(fitted) => {
+            let interval_type = match interval {
+                Some("confidence") => Some(IntervalType::Confidence),
+                Some("prediction") => Some(IntervalType::Prediction),
+                _ => None,
+            };
+
+            let pred_result = fitted.predict_with_interval(&x_pred, interval_type, level);
+
+            let predictions: Vec<f64> = (0..n_rows)
+                .map(|i| {
+                    if null_policy == "drop" && !valid_mask[i] {
+                        f64::NAN
+                    } else {
+                        pred_result.fit[i]
+                    }
+                })
+                .collect();
+
+            let (lower, upper) = if interval_type.is_some() {
+                let lower: Vec<f64> = (0..n_rows)
+                    .map(|i| {
+                        if null_policy == "drop" && !valid_mask[i] {
+                            f64::NAN
+                        } else {
+                            pred_result.lower[i]
+                        }
+                    })
+                    .collect();
+                let upper: Vec<f64> = (0..n_rows)
+                    .map(|i| {
+                        if null_policy == "drop" && !valid_mask[i] {
+                            f64::NAN
+                        } else {
+                            pred_result.upper[i]
+                        }
+                    })
+                    .collect();
+                (lower, upper)
+            } else {
+                (vec![f64::NAN; n_rows], vec![f64::NAN; n_rows])
+            };
+
+            prediction_output(predictions, lower, upper)
+        }
+        Err(_) => prediction_nan_output(n_rows),
+    }
+}
+
+/// Logistic prediction expression
+/// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval, inputs[3] = level,
+/// inputs[4] = null_policy, inputs[5..] = x columns
+#[polars_expr(output_type_func=predict_output_dtype)]
+fn pl_logistic_predict(inputs: &[Series]) -> PolarsResult<Series> {
+    let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
+    let interval = inputs[2].str()?.get(0);
+    let level = inputs[3].f64()?.get(0).unwrap_or(0.95);
+    let null_policy = inputs[4].str()?.get(0).unwrap_or("drop");
+
+    let n_rows = inputs[0].len();
+
+    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 5, null_policy) {
+        Ok(data) => data,
+        Err(_) => return prediction_nan_output(n_rows),
+    };
+
+    let model = BinomialRegressor::builder()
+        .with_intercept(with_intercept)
+        .build();
+
+    match model.fit(&x_fit, &y) {
+        Ok(fitted) => {
+            let interval_type = match interval {
+                Some("confidence") => Some(IntervalType::Confidence),
+                Some("prediction") => Some(IntervalType::Prediction),
+                _ => None,
+            };
+
+            let pred_result = fitted.predict_with_interval(&x_pred, interval_type, level);
+
+            let predictions: Vec<f64> = (0..n_rows)
+                .map(|i| {
+                    if null_policy == "drop" && !valid_mask[i] {
+                        f64::NAN
+                    } else {
+                        pred_result.fit[i]
+                    }
+                })
+                .collect();
+
+            let (lower, upper) = if interval_type.is_some() {
+                let lower: Vec<f64> = (0..n_rows)
+                    .map(|i| {
+                        if null_policy == "drop" && !valid_mask[i] {
+                            f64::NAN
+                        } else {
+                            pred_result.lower[i]
+                        }
+                    })
+                    .collect();
+                let upper: Vec<f64> = (0..n_rows)
+                    .map(|i| {
+                        if null_policy == "drop" && !valid_mask[i] {
+                            f64::NAN
+                        } else {
+                            pred_result.upper[i]
+                        }
+                    })
+                    .collect();
+                (lower, upper)
+            } else {
+                (vec![f64::NAN; n_rows], vec![f64::NAN; n_rows])
+            };
+
+            prediction_output(predictions, lower, upper)
+        }
+        Err(_) => prediction_nan_output(n_rows),
+    }
+}
+
+/// Poisson prediction expression
+/// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval, inputs[3] = level,
+/// inputs[4] = null_policy, inputs[5..] = x columns
+#[polars_expr(output_type_func=predict_output_dtype)]
+fn pl_poisson_predict(inputs: &[Series]) -> PolarsResult<Series> {
+    let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
+    let interval = inputs[2].str()?.get(0);
+    let level = inputs[3].f64()?.get(0).unwrap_or(0.95);
+    let null_policy = inputs[4].str()?.get(0).unwrap_or("drop");
+
+    let n_rows = inputs[0].len();
+
+    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 5, null_policy) {
+        Ok(data) => data,
+        Err(_) => return prediction_nan_output(n_rows),
+    };
+
+    let model = PoissonRegressor::builder()
+        .with_intercept(with_intercept)
+        .build();
+
+    match model.fit(&x_fit, &y) {
+        Ok(fitted) => {
+            let interval_type = match interval {
+                Some("confidence") => Some(IntervalType::Confidence),
+                Some("prediction") => Some(IntervalType::Prediction),
+                _ => None,
+            };
+
+            let pred_result = fitted.predict_with_interval(&x_pred, interval_type, level);
+
+            let predictions: Vec<f64> = (0..n_rows)
+                .map(|i| {
+                    if null_policy == "drop" && !valid_mask[i] {
+                        f64::NAN
+                    } else {
+                        pred_result.fit[i]
+                    }
+                })
+                .collect();
+
+            let (lower, upper) = if interval_type.is_some() {
+                let lower: Vec<f64> = (0..n_rows)
+                    .map(|i| {
+                        if null_policy == "drop" && !valid_mask[i] {
+                            f64::NAN
+                        } else {
+                            pred_result.lower[i]
+                        }
+                    })
+                    .collect();
+                let upper: Vec<f64> = (0..n_rows)
+                    .map(|i| {
+                        if null_policy == "drop" && !valid_mask[i] {
+                            f64::NAN
+                        } else {
+                            pred_result.upper[i]
+                        }
+                    })
+                    .collect();
+                (lower, upper)
+            } else {
+                (vec![f64::NAN; n_rows], vec![f64::NAN; n_rows])
+            };
+
+            prediction_output(predictions, lower, upper)
+        }
+        Err(_) => prediction_nan_output(n_rows),
+    }
+}
+
+/// Negative Binomial prediction expression
+/// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval, inputs[3] = level,
+/// inputs[4] = null_policy, inputs[5..] = x columns
+#[polars_expr(output_type_func=predict_output_dtype)]
+fn pl_negative_binomial_predict(inputs: &[Series]) -> PolarsResult<Series> {
+    let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
+    let interval = inputs[2].str()?.get(0);
+    let level = inputs[3].f64()?.get(0).unwrap_or(0.95);
+    let null_policy = inputs[4].str()?.get(0).unwrap_or("drop");
+
+    let n_rows = inputs[0].len();
+
+    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 5, null_policy) {
+        Ok(data) => data,
+        Err(_) => return prediction_nan_output(n_rows),
+    };
+
+    let model = NegativeBinomialRegressor::builder()
+        .with_intercept(with_intercept)
+        .build();
+
+    match model.fit(&x_fit, &y) {
+        Ok(fitted) => {
+            let interval_type = match interval {
+                Some("confidence") => Some(IntervalType::Confidence),
+                Some("prediction") => Some(IntervalType::Prediction),
+                _ => None,
+            };
+
+            let pred_result = fitted.predict_with_interval(&x_pred, interval_type, level);
+
+            let predictions: Vec<f64> = (0..n_rows)
+                .map(|i| {
+                    if null_policy == "drop" && !valid_mask[i] {
+                        f64::NAN
+                    } else {
+                        pred_result.fit[i]
+                    }
+                })
+                .collect();
+
+            let (lower, upper) = if interval_type.is_some() {
+                let lower: Vec<f64> = (0..n_rows)
+                    .map(|i| {
+                        if null_policy == "drop" && !valid_mask[i] {
+                            f64::NAN
+                        } else {
+                            pred_result.lower[i]
+                        }
+                    })
+                    .collect();
+                let upper: Vec<f64> = (0..n_rows)
+                    .map(|i| {
+                        if null_policy == "drop" && !valid_mask[i] {
+                            f64::NAN
+                        } else {
+                            pred_result.upper[i]
+                        }
+                    })
+                    .collect();
+                (lower, upper)
+            } else {
+                (vec![f64::NAN; n_rows], vec![f64::NAN; n_rows])
+            };
+
+            prediction_output(predictions, lower, upper)
+        }
+        Err(_) => prediction_nan_output(n_rows),
+    }
+}
+
+/// Tweedie prediction expression
+/// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval, inputs[3] = level,
+/// inputs[4] = null_policy, inputs[5] = var_power, inputs[6..] = x columns
+#[polars_expr(output_type_func=predict_output_dtype)]
+fn pl_tweedie_predict(inputs: &[Series]) -> PolarsResult<Series> {
+    let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
+    let interval = inputs[2].str()?.get(0);
+    let level = inputs[3].f64()?.get(0).unwrap_or(0.95);
+    let null_policy = inputs[4].str()?.get(0).unwrap_or("drop");
+    let var_power = inputs[5].f64()?.get(0).unwrap_or(1.5);
+
+    let n_rows = inputs[0].len();
+
+    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 6, null_policy) {
+        Ok(data) => data,
+        Err(_) => return prediction_nan_output(n_rows),
+    };
+
+    let model = TweedieRegressor::builder()
+        .var_power(var_power)
+        .with_intercept(with_intercept)
+        .build();
+
+    match model.fit(&x_fit, &y) {
+        Ok(fitted) => {
+            let interval_type = match interval {
+                Some("confidence") => Some(IntervalType::Confidence),
+                Some("prediction") => Some(IntervalType::Prediction),
+                _ => None,
+            };
+
+            let pred_result = fitted.predict_with_interval(&x_pred, interval_type, level);
+
+            let predictions: Vec<f64> = (0..n_rows)
+                .map(|i| {
+                    if null_policy == "drop" && !valid_mask[i] {
+                        f64::NAN
+                    } else {
+                        pred_result.fit[i]
+                    }
+                })
+                .collect();
+
+            let (lower, upper) = if interval_type.is_some() {
+                let lower: Vec<f64> = (0..n_rows)
+                    .map(|i| {
+                        if null_policy == "drop" && !valid_mask[i] {
+                            f64::NAN
+                        } else {
+                            pred_result.lower[i]
+                        }
+                    })
+                    .collect();
+                let upper: Vec<f64> = (0..n_rows)
+                    .map(|i| {
+                        if null_policy == "drop" && !valid_mask[i] {
+                            f64::NAN
+                        } else {
+                            pred_result.upper[i]
+                        }
+                    })
+                    .collect();
+                (lower, upper)
+            } else {
+                (vec![f64::NAN; n_rows], vec![f64::NAN; n_rows])
+            };
+
+            prediction_output(predictions, lower, upper)
+        }
+        Err(_) => prediction_nan_output(n_rows),
+    }
+}
+
+/// Probit prediction expression
+/// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval, inputs[3] = level,
+/// inputs[4] = null_policy, inputs[5..] = x columns
+#[polars_expr(output_type_func=predict_output_dtype)]
+fn pl_probit_predict(inputs: &[Series]) -> PolarsResult<Series> {
+    let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
+    let interval = inputs[2].str()?.get(0);
+    let level = inputs[3].f64()?.get(0).unwrap_or(0.95);
+    let null_policy = inputs[4].str()?.get(0).unwrap_or("drop");
+
+    let n_rows = inputs[0].len();
+
+    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 5, null_policy) {
+        Ok(data) => data,
+        Err(_) => return prediction_nan_output(n_rows),
+    };
+
+    let model = BinomialRegressor::probit()
+        .with_intercept(with_intercept)
+        .build();
+
+    match model.fit(&x_fit, &y) {
+        Ok(fitted) => {
+            let interval_type = match interval {
+                Some("confidence") => Some(IntervalType::Confidence),
+                Some("prediction") => Some(IntervalType::Prediction),
+                _ => None,
+            };
+
+            let pred_result = fitted.predict_with_interval(&x_pred, interval_type, level);
+
+            let predictions: Vec<f64> = (0..n_rows)
+                .map(|i| {
+                    if null_policy == "drop" && !valid_mask[i] {
+                        f64::NAN
+                    } else {
+                        pred_result.fit[i]
+                    }
+                })
+                .collect();
+
+            let (lower, upper) = if interval_type.is_some() {
+                let lower: Vec<f64> = (0..n_rows)
+                    .map(|i| {
+                        if null_policy == "drop" && !valid_mask[i] {
+                            f64::NAN
+                        } else {
+                            pred_result.lower[i]
+                        }
+                    })
+                    .collect();
+                let upper: Vec<f64> = (0..n_rows)
+                    .map(|i| {
+                        if null_policy == "drop" && !valid_mask[i] {
+                            f64::NAN
+                        } else {
+                            pred_result.upper[i]
+                        }
+                    })
+                    .collect();
+                (lower, upper)
+            } else {
+                (vec![f64::NAN; n_rows], vec![f64::NAN; n_rows])
+            };
+
+            prediction_output(predictions, lower, upper)
+        }
+        Err(_) => prediction_nan_output(n_rows),
+    }
+}
+
+/// Cloglog prediction expression
+/// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval, inputs[3] = level,
+/// inputs[4] = null_policy, inputs[5..] = x columns
+#[polars_expr(output_type_func=predict_output_dtype)]
+fn pl_cloglog_predict(inputs: &[Series]) -> PolarsResult<Series> {
+    let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
+    let interval = inputs[2].str()?.get(0);
+    let level = inputs[3].f64()?.get(0).unwrap_or(0.95);
+    let null_policy = inputs[4].str()?.get(0).unwrap_or("drop");
+
+    let n_rows = inputs[0].len();
+
+    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 5, null_policy) {
+        Ok(data) => data,
+        Err(_) => return prediction_nan_output(n_rows),
+    };
+
+    let model = BinomialRegressor::cloglog()
+        .with_intercept(with_intercept)
+        .build();
+
+    match model.fit(&x_fit, &y) {
+        Ok(fitted) => {
+            let interval_type = match interval {
+                Some("confidence") => Some(IntervalType::Confidence),
+                Some("prediction") => Some(IntervalType::Prediction),
+                _ => None,
+            };
+
+            let pred_result = fitted.predict_with_interval(&x_pred, interval_type, level);
+
+            let predictions: Vec<f64> = (0..n_rows)
+                .map(|i| {
+                    if null_policy == "drop" && !valid_mask[i] {
+                        f64::NAN
+                    } else {
+                        pred_result.fit[i]
+                    }
+                })
+                .collect();
+
+            let (lower, upper) = if interval_type.is_some() {
+                let lower: Vec<f64> = (0..n_rows)
+                    .map(|i| {
+                        if null_policy == "drop" && !valid_mask[i] {
+                            f64::NAN
+                        } else {
+                            pred_result.lower[i]
+                        }
+                    })
+                    .collect();
+                let upper: Vec<f64> = (0..n_rows)
+                    .map(|i| {
+                        if null_policy == "drop" && !valid_mask[i] {
+                            f64::NAN
+                        } else {
+                            pred_result.upper[i]
+                        }
+                    })
+                    .collect();
+                (lower, upper)
+            } else {
+                (vec![f64::NAN; n_rows], vec![f64::NAN; n_rows])
+            };
+
+            prediction_output(predictions, lower, upper)
+        }
+        Err(_) => prediction_nan_output(n_rows),
+    }
+}
+
+/// ALM prediction expression
+/// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval, inputs[3] = level,
+/// inputs[4] = null_policy, inputs[5] = distribution, inputs[6..] = x columns
+#[polars_expr(output_type_func=predict_output_dtype)]
+fn pl_alm_predict(inputs: &[Series]) -> PolarsResult<Series> {
+    let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
+    let interval = inputs[2].str()?.get(0);
+    let level = inputs[3].f64()?.get(0).unwrap_or(0.95);
+    let null_policy = inputs[4].str()?.get(0).unwrap_or("drop");
+    let dist_str = inputs[5].str()?.get(0).unwrap_or("normal");
+
+    let n_rows = inputs[0].len();
+
+    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 6, null_policy) {
+        Ok(data) => data,
+        Err(_) => return prediction_nan_output(n_rows),
+    };
+
+    let distribution = match parse_alm_distribution(dist_str) {
+        Some(d) => d,
+        None => return prediction_nan_output(n_rows),
+    };
+
+    let model = AlmRegressor::builder()
+        .distribution(distribution)
+        .with_intercept(with_intercept)
+        .build();
+
+    match model.fit(&x_fit, &y) {
+        Ok(fitted) => {
+            let interval_type = match interval {
+                Some("confidence") => Some(IntervalType::Confidence),
+                Some("prediction") => Some(IntervalType::Prediction),
+                _ => None,
+            };
+
+            let pred_result = fitted.predict_with_interval(&x_pred, interval_type, level);
+
+            let predictions: Vec<f64> = (0..n_rows)
+                .map(|i| {
+                    if null_policy == "drop" && !valid_mask[i] {
+                        f64::NAN
+                    } else {
+                        pred_result.fit[i]
+                    }
+                })
+                .collect();
+
+            let (lower, upper) = if interval_type.is_some() {
+                let lower: Vec<f64> = (0..n_rows)
+                    .map(|i| {
+                        if null_policy == "drop" && !valid_mask[i] {
+                            f64::NAN
+                        } else {
+                            pred_result.lower[i]
+                        }
+                    })
+                    .collect();
+                let upper: Vec<f64> = (0..n_rows)
+                    .map(|i| {
+                        if null_policy == "drop" && !valid_mask[i] {
+                            f64::NAN
+                        } else {
+                            pred_result.upper[i]
+                        }
+                    })
+                    .collect();
+                (lower, upper)
+            } else {
+                (vec![f64::NAN; n_rows], vec![f64::NAN; n_rows])
+            };
+
+            prediction_output(predictions, lower, upper)
+        }
+        Err(_) => prediction_nan_output(n_rows),
+    }
+}
+
+// ============================================================================
+// GLM Summary Expressions
+// ============================================================================
 
 /// ALM summary expression
 /// inputs[0] = y, inputs[1] = distribution, inputs[2] = with_intercept, inputs[3..] = x columns

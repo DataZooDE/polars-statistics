@@ -1110,3 +1110,846 @@ def alm_summary(
         ],
         returns_scalar=True,
     )
+
+
+# ============================================================================
+# Prediction Expressions
+# ============================================================================
+
+
+def ols_predict(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    add_intercept: bool = True,
+    interval: str | None = None,
+    level: float = 0.95,
+    null_policy: str = "drop",
+) -> pl.Expr:
+    """OLS predictions with optional confidence/prediction intervals.
+
+    Returns per-row predictions. Works with both group_by and over operations.
+
+    Parameters
+    ----------
+    y : pl.Expr or str
+        Target variable.
+    *x : pl.Expr or str
+        Feature variables (one or more).
+    add_intercept : bool, default True
+        Whether to include an intercept term in the model.
+    interval : str or None, default None
+        Type of interval to compute:
+        - None: No intervals (lower/upper will be NaN)
+        - "confidence": Confidence interval for mean response
+        - "prediction": Prediction interval for new observation (wider)
+    level : float, default 0.95
+        Confidence level for intervals (e.g., 0.95 for 95% intervals).
+    null_policy : str, default "drop"
+        How to handle missing values:
+        - "drop": Drop rows with any nulls for fitting, mask predictions with NaN
+        - "drop_y_zero_x": Drop rows with null targets, zero fill null features.
+          Model is fit on non-null target rows, predictions made on all rows.
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing {prediction, lower, upper} per row.
+        In `.over()` context, gives per-row predictions.
+        In `group_by` context, returns list of structs per group.
+
+    Examples
+    --------
+    >>> # Per-row predictions with .over()
+    >>> df.with_columns(
+    ...     ps.ols_predict("y", "x1", "x2").over("group").alias("pred")
+    ... ).unnest("pred")
+
+    >>> # With prediction intervals
+    >>> df.with_columns(
+    ...     ps.ols_predict("y", "x1", "x2", interval="prediction", level=0.95)
+    ...         .over("group").alias("pred")
+    ... ).unnest("pred")
+
+    >>> # Handle missing data - fit on complete cases, predict on all
+    >>> df.with_columns(
+    ...     ps.ols_predict("y", "x1", "x2", null_policy="drop_y_zero_x")
+    ...         .over("group").alias("pred")
+    ... ).unnest("pred")
+
+    >>> # In group_by context
+    >>> df.group_by("group").agg(
+    ...     ps.ols_predict("y", "x1", "x2").alias("predictions")
+    ... )
+    """
+    if isinstance(y, str):
+        y = pl.col(y)
+
+    x_exprs = []
+    for xi in x:
+        if isinstance(xi, str):
+            xi = pl.col(xi)
+        x_exprs.append(xi.cast(pl.Float64))
+
+    # Handle interval parameter - pass as string or null
+    interval_lit = pl.lit(interval, dtype=pl.String) if interval else pl.lit(None, dtype=pl.String)
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_ols_predict",
+        args=[
+            y.cast(pl.Float64),
+            pl.lit(add_intercept, dtype=pl.Boolean),
+            interval_lit,
+            pl.lit(level, dtype=pl.Float64),
+            pl.lit(null_policy, dtype=pl.String),
+            *x_exprs,
+        ],
+        returns_scalar=False,
+    )
+
+
+def ridge_predict(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    lambda_: float = 1.0,
+    add_intercept: bool = True,
+    interval: str | None = None,
+    level: float = 0.95,
+    null_policy: str = "drop",
+) -> pl.Expr:
+    """Ridge regression predictions with optional intervals.
+
+    Parameters
+    ----------
+    y : pl.Expr or str
+        Target variable.
+    *x : pl.Expr or str
+        Feature variables.
+    lambda_ : float, default 1.0
+        Regularization strength.
+    add_intercept : bool, default True
+        Whether to include an intercept term.
+    interval : str or None, default None
+        "confidence" or "prediction" intervals.
+    level : float, default 0.95
+        Confidence level for intervals.
+    null_policy : str, default "drop"
+        "drop" or "drop_y_zero_x".
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing {prediction, lower, upper} per row.
+    """
+    if isinstance(y, str):
+        y = pl.col(y)
+
+    x_exprs = []
+    for xi in x:
+        if isinstance(xi, str):
+            xi = pl.col(xi)
+        x_exprs.append(xi.cast(pl.Float64))
+
+    interval_lit = pl.lit(interval, dtype=pl.String) if interval else pl.lit(None, dtype=pl.String)
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_ridge_predict",
+        args=[
+            y.cast(pl.Float64),
+            pl.lit(add_intercept, dtype=pl.Boolean),
+            interval_lit,
+            pl.lit(level, dtype=pl.Float64),
+            pl.lit(null_policy, dtype=pl.String),
+            pl.lit(lambda_, dtype=pl.Float64),
+            *x_exprs,
+        ],
+        returns_scalar=False,
+    )
+
+
+def elastic_net_predict(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    lambda_: float = 1.0,
+    alpha: float = 0.5,
+    add_intercept: bool = True,
+    interval: str | None = None,
+    level: float = 0.95,
+    null_policy: str = "drop",
+) -> pl.Expr:
+    """Elastic Net regression predictions with optional intervals.
+
+    Parameters
+    ----------
+    y : pl.Expr or str
+        Target variable.
+    *x : pl.Expr or str
+        Feature variables.
+    lambda_ : float, default 1.0
+        Total regularization strength.
+    alpha : float, default 0.5
+        L1 ratio (0 = Ridge, 1 = Lasso).
+    add_intercept : bool, default True
+        Whether to include an intercept term.
+    interval : str or None, default None
+        "confidence" or "prediction" intervals.
+    level : float, default 0.95
+        Confidence level for intervals.
+    null_policy : str, default "drop"
+        "drop" or "drop_y_zero_x".
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing {prediction, lower, upper} per row.
+    """
+    if isinstance(y, str):
+        y = pl.col(y)
+
+    x_exprs = []
+    for xi in x:
+        if isinstance(xi, str):
+            xi = pl.col(xi)
+        x_exprs.append(xi.cast(pl.Float64))
+
+    interval_lit = pl.lit(interval, dtype=pl.String) if interval else pl.lit(None, dtype=pl.String)
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_elastic_net_predict",
+        args=[
+            y.cast(pl.Float64),
+            pl.lit(add_intercept, dtype=pl.Boolean),
+            interval_lit,
+            pl.lit(level, dtype=pl.Float64),
+            pl.lit(null_policy, dtype=pl.String),
+            pl.lit(lambda_, dtype=pl.Float64),
+            pl.lit(alpha, dtype=pl.Float64),
+            *x_exprs,
+        ],
+        returns_scalar=False,
+    )
+
+
+def wls_predict(
+    y: Union[pl.Expr, str],
+    weights: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    add_intercept: bool = True,
+    interval: str | None = None,
+    level: float = 0.95,
+    null_policy: str = "drop",
+) -> pl.Expr:
+    """Weighted Least Squares predictions with optional intervals.
+
+    Parameters
+    ----------
+    y : pl.Expr or str
+        Target variable.
+    weights : pl.Expr or str
+        Observation weights.
+    *x : pl.Expr or str
+        Feature variables.
+    add_intercept : bool, default True
+        Whether to include an intercept term.
+    interval : str or None, default None
+        "confidence" or "prediction" intervals.
+    level : float, default 0.95
+        Confidence level for intervals.
+    null_policy : str, default "drop"
+        "drop" or "drop_y_zero_x".
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing {prediction, lower, upper} per row.
+    """
+    if isinstance(y, str):
+        y = pl.col(y)
+    if isinstance(weights, str):
+        weights = pl.col(weights)
+
+    x_exprs = []
+    for xi in x:
+        if isinstance(xi, str):
+            xi = pl.col(xi)
+        x_exprs.append(xi.cast(pl.Float64))
+
+    interval_lit = pl.lit(interval, dtype=pl.String) if interval else pl.lit(None, dtype=pl.String)
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_wls_predict",
+        args=[
+            y.cast(pl.Float64),
+            pl.lit(add_intercept, dtype=pl.Boolean),
+            interval_lit,
+            pl.lit(level, dtype=pl.Float64),
+            pl.lit(null_policy, dtype=pl.String),
+            weights.cast(pl.Float64),
+            *x_exprs,
+        ],
+        returns_scalar=False,
+    )
+
+
+def rls_predict(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    forgetting_factor: float = 0.99,
+    add_intercept: bool = True,
+    interval: str | None = None,
+    level: float = 0.95,
+    null_policy: str = "drop",
+) -> pl.Expr:
+    """Recursive Least Squares predictions with optional intervals.
+
+    Parameters
+    ----------
+    y : pl.Expr or str
+        Target variable.
+    *x : pl.Expr or str
+        Feature variables.
+    forgetting_factor : float, default 0.99
+        Forgetting factor (0 < lambda <= 1).
+    add_intercept : bool, default True
+        Whether to include an intercept term.
+    interval : str or None, default None
+        "confidence" or "prediction" intervals.
+    level : float, default 0.95
+        Confidence level for intervals.
+    null_policy : str, default "drop"
+        "drop" or "drop_y_zero_x".
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing {prediction, lower, upper} per row.
+    """
+    if isinstance(y, str):
+        y = pl.col(y)
+
+    x_exprs = []
+    for xi in x:
+        if isinstance(xi, str):
+            xi = pl.col(xi)
+        x_exprs.append(xi.cast(pl.Float64))
+
+    interval_lit = pl.lit(interval, dtype=pl.String) if interval else pl.lit(None, dtype=pl.String)
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_rls_predict",
+        args=[
+            y.cast(pl.Float64),
+            pl.lit(add_intercept, dtype=pl.Boolean),
+            interval_lit,
+            pl.lit(level, dtype=pl.Float64),
+            pl.lit(null_policy, dtype=pl.String),
+            pl.lit(forgetting_factor, dtype=pl.Float64),
+            *x_exprs,
+        ],
+        returns_scalar=False,
+    )
+
+
+def bls_predict(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    lower_bound: float | None = None,
+    upper_bound: float | None = None,
+    add_intercept: bool = True,
+    interval: str | None = None,
+    level: float = 0.95,
+    null_policy: str = "drop",
+) -> pl.Expr:
+    """Bounded Least Squares predictions with optional intervals.
+
+    Parameters
+    ----------
+    y : pl.Expr or str
+        Target variable.
+    *x : pl.Expr or str
+        Feature variables.
+    lower_bound : float or None
+        Lower bound for coefficients.
+    upper_bound : float or None
+        Upper bound for coefficients.
+    add_intercept : bool, default True
+        Whether to include an intercept term.
+    interval : str or None, default None
+        "confidence" or "prediction" intervals.
+    level : float, default 0.95
+        Confidence level for intervals.
+    null_policy : str, default "drop"
+        "drop" or "drop_y_zero_x".
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing {prediction, lower, upper} per row.
+    """
+    if isinstance(y, str):
+        y = pl.col(y)
+
+    x_exprs = []
+    for xi in x:
+        if isinstance(xi, str):
+            xi = pl.col(xi)
+        x_exprs.append(xi.cast(pl.Float64))
+
+    interval_lit = pl.lit(interval, dtype=pl.String) if interval else pl.lit(None, dtype=pl.String)
+    lb = pl.lit(lower_bound, dtype=pl.Float64) if lower_bound is not None else pl.lit(None, dtype=pl.Float64)
+    ub = pl.lit(upper_bound, dtype=pl.Float64) if upper_bound is not None else pl.lit(None, dtype=pl.Float64)
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_bls_predict",
+        args=[
+            y.cast(pl.Float64),
+            pl.lit(add_intercept, dtype=pl.Boolean),
+            interval_lit,
+            pl.lit(level, dtype=pl.Float64),
+            pl.lit(null_policy, dtype=pl.String),
+            lb,
+            ub,
+            *x_exprs,
+        ],
+        returns_scalar=False,
+    )
+
+
+def nnls_predict(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    add_intercept: bool = True,
+    interval: str | None = None,
+    level: float = 0.95,
+    null_policy: str = "drop",
+) -> pl.Expr:
+    """Non-negative Least Squares predictions.
+
+    Shorthand for bls_predict(..., lower_bound=0).
+    """
+    return bls_predict(
+        y, *x,
+        lower_bound=0.0,
+        add_intercept=add_intercept,
+        interval=interval,
+        level=level,
+        null_policy=null_policy,
+    )
+
+
+# ============================================================================
+# GLM Prediction Expressions
+# ============================================================================
+
+
+def logistic_predict(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    add_intercept: bool = True,
+    interval: str | None = None,
+    level: float = 0.95,
+    null_policy: str = "drop",
+) -> pl.Expr:
+    """Logistic regression predictions with optional intervals.
+
+    Parameters
+    ----------
+    y : pl.Expr or str
+        Binary target variable (0/1).
+    *x : pl.Expr or str
+        Feature variables.
+    add_intercept : bool, default True
+        Whether to include an intercept term.
+    interval : str or None, default None
+        "confidence" or "prediction" intervals.
+    level : float, default 0.95
+        Confidence level for intervals.
+    null_policy : str, default "drop"
+        "drop" or "drop_y_zero_x".
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing {prediction, lower, upper} per row.
+        Predictions are probabilities in [0, 1].
+    """
+    if isinstance(y, str):
+        y = pl.col(y)
+
+    x_exprs = []
+    for xi in x:
+        if isinstance(xi, str):
+            xi = pl.col(xi)
+        x_exprs.append(xi.cast(pl.Float64))
+
+    interval_lit = pl.lit(interval, dtype=pl.String) if interval else pl.lit(None, dtype=pl.String)
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_logistic_predict",
+        args=[
+            y.cast(pl.Float64),
+            pl.lit(add_intercept, dtype=pl.Boolean),
+            interval_lit,
+            pl.lit(level, dtype=pl.Float64),
+            pl.lit(null_policy, dtype=pl.String),
+            *x_exprs,
+        ],
+        returns_scalar=False,
+    )
+
+
+def poisson_predict(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    add_intercept: bool = True,
+    interval: str | None = None,
+    level: float = 0.95,
+    null_policy: str = "drop",
+) -> pl.Expr:
+    """Poisson regression predictions with optional intervals.
+
+    Parameters
+    ----------
+    y : pl.Expr or str
+        Count target variable.
+    *x : pl.Expr or str
+        Feature variables.
+    add_intercept : bool, default True
+        Whether to include an intercept term.
+    interval : str or None, default None
+        "confidence" or "prediction" intervals.
+    level : float, default 0.95
+        Confidence level for intervals.
+    null_policy : str, default "drop"
+        "drop" or "drop_y_zero_x".
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing {prediction, lower, upper} per row.
+        Predictions are expected counts.
+    """
+    if isinstance(y, str):
+        y = pl.col(y)
+
+    x_exprs = []
+    for xi in x:
+        if isinstance(xi, str):
+            xi = pl.col(xi)
+        x_exprs.append(xi.cast(pl.Float64))
+
+    interval_lit = pl.lit(interval, dtype=pl.String) if interval else pl.lit(None, dtype=pl.String)
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_poisson_predict",
+        args=[
+            y.cast(pl.Float64),
+            pl.lit(add_intercept, dtype=pl.Boolean),
+            interval_lit,
+            pl.lit(level, dtype=pl.Float64),
+            pl.lit(null_policy, dtype=pl.String),
+            *x_exprs,
+        ],
+        returns_scalar=False,
+    )
+
+
+def negative_binomial_predict(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    add_intercept: bool = True,
+    interval: str | None = None,
+    level: float = 0.95,
+    null_policy: str = "drop",
+) -> pl.Expr:
+    """Negative Binomial regression predictions with optional intervals.
+
+    Parameters
+    ----------
+    y : pl.Expr or str
+        Overdispersed count target variable.
+    *x : pl.Expr or str
+        Feature variables.
+    add_intercept : bool, default True
+        Whether to include an intercept term.
+    interval : str or None, default None
+        "confidence" or "prediction" intervals.
+    level : float, default 0.95
+        Confidence level for intervals.
+    null_policy : str, default "drop"
+        "drop" or "drop_y_zero_x".
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing {prediction, lower, upper} per row.
+    """
+    if isinstance(y, str):
+        y = pl.col(y)
+
+    x_exprs = []
+    for xi in x:
+        if isinstance(xi, str):
+            xi = pl.col(xi)
+        x_exprs.append(xi.cast(pl.Float64))
+
+    interval_lit = pl.lit(interval, dtype=pl.String) if interval else pl.lit(None, dtype=pl.String)
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_negative_binomial_predict",
+        args=[
+            y.cast(pl.Float64),
+            pl.lit(add_intercept, dtype=pl.Boolean),
+            interval_lit,
+            pl.lit(level, dtype=pl.Float64),
+            pl.lit(null_policy, dtype=pl.String),
+            *x_exprs,
+        ],
+        returns_scalar=False,
+    )
+
+
+def tweedie_predict(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    var_power: float = 1.5,
+    add_intercept: bool = True,
+    interval: str | None = None,
+    level: float = 0.95,
+    null_policy: str = "drop",
+) -> pl.Expr:
+    """Tweedie GLM predictions with optional intervals.
+
+    Parameters
+    ----------
+    y : pl.Expr or str
+        Target variable.
+    *x : pl.Expr or str
+        Feature variables.
+    var_power : float, default 1.5
+        Variance power (0=Gaussian, 1=Poisson, 2=Gamma, 3=Inverse Gaussian).
+    add_intercept : bool, default True
+        Whether to include an intercept term.
+    interval : str or None, default None
+        "confidence" or "prediction" intervals.
+    level : float, default 0.95
+        Confidence level for intervals.
+    null_policy : str, default "drop"
+        "drop" or "drop_y_zero_x".
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing {prediction, lower, upper} per row.
+    """
+    if isinstance(y, str):
+        y = pl.col(y)
+
+    x_exprs = []
+    for xi in x:
+        if isinstance(xi, str):
+            xi = pl.col(xi)
+        x_exprs.append(xi.cast(pl.Float64))
+
+    interval_lit = pl.lit(interval, dtype=pl.String) if interval else pl.lit(None, dtype=pl.String)
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_tweedie_predict",
+        args=[
+            y.cast(pl.Float64),
+            pl.lit(add_intercept, dtype=pl.Boolean),
+            interval_lit,
+            pl.lit(level, dtype=pl.Float64),
+            pl.lit(null_policy, dtype=pl.String),
+            pl.lit(var_power, dtype=pl.Float64),
+            *x_exprs,
+        ],
+        returns_scalar=False,
+    )
+
+
+def probit_predict(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    add_intercept: bool = True,
+    interval: str | None = None,
+    level: float = 0.95,
+    null_policy: str = "drop",
+) -> pl.Expr:
+    """Probit regression predictions with optional intervals.
+
+    Parameters
+    ----------
+    y : pl.Expr or str
+        Binary target variable (0/1).
+    *x : pl.Expr or str
+        Feature variables.
+    add_intercept : bool, default True
+        Whether to include an intercept term.
+    interval : str or None, default None
+        "confidence" or "prediction" intervals.
+    level : float, default 0.95
+        Confidence level for intervals.
+    null_policy : str, default "drop"
+        "drop" or "drop_y_zero_x".
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing {prediction, lower, upper} per row.
+        Predictions are probabilities in [0, 1].
+    """
+    if isinstance(y, str):
+        y = pl.col(y)
+
+    x_exprs = []
+    for xi in x:
+        if isinstance(xi, str):
+            xi = pl.col(xi)
+        x_exprs.append(xi.cast(pl.Float64))
+
+    interval_lit = pl.lit(interval, dtype=pl.String) if interval else pl.lit(None, dtype=pl.String)
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_probit_predict",
+        args=[
+            y.cast(pl.Float64),
+            pl.lit(add_intercept, dtype=pl.Boolean),
+            interval_lit,
+            pl.lit(level, dtype=pl.Float64),
+            pl.lit(null_policy, dtype=pl.String),
+            *x_exprs,
+        ],
+        returns_scalar=False,
+    )
+
+
+def cloglog_predict(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    add_intercept: bool = True,
+    interval: str | None = None,
+    level: float = 0.95,
+    null_policy: str = "drop",
+) -> pl.Expr:
+    """Complementary log-log regression predictions with optional intervals.
+
+    Parameters
+    ----------
+    y : pl.Expr or str
+        Binary target variable (0/1).
+    *x : pl.Expr or str
+        Feature variables.
+    add_intercept : bool, default True
+        Whether to include an intercept term.
+    interval : str or None, default None
+        "confidence" or "prediction" intervals.
+    level : float, default 0.95
+        Confidence level for intervals.
+    null_policy : str, default "drop"
+        "drop" or "drop_y_zero_x".
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing {prediction, lower, upper} per row.
+        Predictions are probabilities in [0, 1].
+    """
+    if isinstance(y, str):
+        y = pl.col(y)
+
+    x_exprs = []
+    for xi in x:
+        if isinstance(xi, str):
+            xi = pl.col(xi)
+        x_exprs.append(xi.cast(pl.Float64))
+
+    interval_lit = pl.lit(interval, dtype=pl.String) if interval else pl.lit(None, dtype=pl.String)
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_cloglog_predict",
+        args=[
+            y.cast(pl.Float64),
+            pl.lit(add_intercept, dtype=pl.Boolean),
+            interval_lit,
+            pl.lit(level, dtype=pl.Float64),
+            pl.lit(null_policy, dtype=pl.String),
+            *x_exprs,
+        ],
+        returns_scalar=False,
+    )
+
+
+def alm_predict(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    distribution: str = "normal",
+    add_intercept: bool = True,
+    interval: str | None = None,
+    level: float = 0.95,
+    null_policy: str = "drop",
+) -> pl.Expr:
+    """Augmented Linear Model (ALM) predictions with optional intervals.
+
+    Parameters
+    ----------
+    y : pl.Expr or str
+        Target variable.
+    *x : pl.Expr or str
+        Feature variables.
+    distribution : str, default "normal"
+        Distribution family. Options include:
+        - Continuous: "normal", "laplace", "student_t", "logistic"
+        - Positive: "lognormal", "loglaplace", "gamma", "inverse_gaussian", "exponential"
+        - Bounded (0,1): "beta"
+        - Count: "poisson", "negative_binomial", "binomial", "geometric"
+    add_intercept : bool, default True
+        Whether to include an intercept term.
+    interval : str or None, default None
+        "confidence" or "prediction" intervals.
+    level : float, default 0.95
+        Confidence level for intervals.
+    null_policy : str, default "drop"
+        "drop" or "drop_y_zero_x".
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing {prediction, lower, upper} per row.
+    """
+    if isinstance(y, str):
+        y = pl.col(y)
+
+    x_exprs = []
+    for xi in x:
+        if isinstance(xi, str):
+            xi = pl.col(xi)
+        x_exprs.append(xi.cast(pl.Float64))
+
+    interval_lit = pl.lit(interval, dtype=pl.String) if interval else pl.lit(None, dtype=pl.String)
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_alm_predict",
+        args=[
+            y.cast(pl.Float64),
+            pl.lit(add_intercept, dtype=pl.Boolean),
+            interval_lit,
+            pl.lit(level, dtype=pl.Float64),
+            pl.lit(null_policy, dtype=pl.String),
+            pl.lit(distribution, dtype=pl.String),
+            *x_exprs,
+        ],
+        returns_scalar=False,
+    )
