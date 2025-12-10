@@ -13,6 +13,9 @@ use anofox_regression::solvers::{
 };
 use anofox_regression::IntervalType;
 
+/// Result type for build_xy_with_null_policy: (X_fit, y, valid_mask, X_pred)
+type XyNullPolicyResult = (Mat<f64>, Col<f64>, Vec<bool>, Mat<f64>);
+
 // ============================================================================
 // Output Type Definitions
 // ============================================================================
@@ -1569,7 +1572,7 @@ fn build_xy_with_null_policy(
     y_idx: usize,
     x_start_idx: usize,
     null_policy: &str,
-) -> PolarsResult<(Mat<f64>, Col<f64>, Vec<bool>, Mat<f64>)> {
+) -> PolarsResult<XyNullPolicyResult> {
     let y_series = inputs[y_idx].f64()?;
     let n_rows = y_series.len();
     let n_features = inputs.len() - x_start_idx;
@@ -1580,9 +1583,9 @@ fn build_xy_with_null_policy(
             let mut valid_mask = vec![true; n_rows];
 
             // Check y for nulls only
-            for i in 0..n_rows {
+            for (i, mask) in valid_mask.iter_mut().enumerate() {
                 if y_series.get(i).is_none() {
-                    valid_mask[i] = false;
+                    *mask = false;
                 }
             }
 
@@ -1627,18 +1630,18 @@ fn build_xy_with_null_policy(
             let mut valid_mask = vec![true; n_rows];
 
             // Check y for nulls
-            for i in 0..n_rows {
+            for (i, mask) in valid_mask.iter_mut().enumerate() {
                 if y_series.get(i).is_none() {
-                    valid_mask[i] = false;
+                    *mask = false;
                 }
             }
 
             // Check X columns for nulls
             for col_idx in 0..n_features {
                 if let Ok(col) = inputs[x_start_idx + col_idx].f64() {
-                    for i in 0..n_rows {
+                    for (i, mask) in valid_mask.iter_mut().enumerate() {
                         if col.get(i).is_none() {
-                            valid_mask[i] = false;
+                            *mask = false;
                         }
                     }
                 }
