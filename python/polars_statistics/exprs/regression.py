@@ -1953,3 +1953,628 @@ def alm_predict(
         ],
         returns_scalar=False,
     )
+
+
+# ============================================================================
+# Formula-Based Regression Expressions
+# ============================================================================
+
+
+def _parse_formula(formula: str):
+    """Parse a formula and return response variable and feature expressions."""
+    from polars_statistics.formula import FormulaParser, expand_terms_to_expressions
+
+    parser = FormulaParser()
+    parsed = parser.parse(formula)
+    x_exprs, term_names = expand_terms_to_expressions(parsed.terms)
+    return parsed.response, x_exprs, term_names
+
+
+def ols_formula(
+    formula: str,
+    with_intercept: bool = True,
+) -> pl.Expr:
+    """OLS regression using R-style formula syntax.
+
+    Supports polynomial terms, interactions, and transforms that work
+    per-group with group_by and over operations.
+
+    Parameters
+    ----------
+    formula : str
+        R-style formula like "y ~ x1 + x2 + x1:x2" or "y ~ poly(x, 2)".
+        Supported syntax:
+        - Main effects: "y ~ x1 + x2"
+        - Interaction only: "y ~ x1:x2"
+        - Full crossing: "y ~ x1 * x2" (expands to x1 + x2 + x1:x2)
+        - Polynomial: "y ~ poly(x, 2)" (centered) or "y ~ poly(x, 2, raw=True)"
+        - Transform: "y ~ I(x^2)"
+    with_intercept : bool, default True
+        Whether to include an intercept term.
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing regression results.
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> import polars_statistics as ps
+    >>>
+    >>> df = pl.DataFrame({
+    ...     "group": ["A"] * 50 + ["B"] * 50,
+    ...     "y": [...],
+    ...     "x1": [...],
+    ...     "x2": [...],
+    ... })
+    >>>
+    >>> # Main effects + interaction per group
+    >>> df.group_by("group").agg(
+    ...     ps.ols_formula("y ~ x1 * x2").alias("model")
+    ... )
+    >>>
+    >>> # Polynomial regression per group (centered within each group)
+    >>> df.group_by("group").agg(
+    ...     ps.ols_formula("y ~ poly(x1, 2)").alias("model")
+    ... )
+    """
+    response, x_exprs, _ = _parse_formula(formula)
+    return ols(response, *x_exprs, with_intercept=with_intercept)
+
+
+def ridge_formula(
+    formula: str,
+    lambda_: float = 1.0,
+    with_intercept: bool = True,
+) -> pl.Expr:
+    """Ridge regression using R-style formula syntax.
+
+    Parameters
+    ----------
+    formula : str
+        R-style formula (see ols_formula for syntax).
+    lambda_ : float, default 1.0
+        Regularization strength.
+    with_intercept : bool, default True
+        Whether to include an intercept term.
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing regression results.
+    """
+    response, x_exprs, _ = _parse_formula(formula)
+    return ridge(response, *x_exprs, lambda_=lambda_, with_intercept=with_intercept)
+
+
+def elastic_net_formula(
+    formula: str,
+    lambda_: float = 1.0,
+    alpha: float = 0.5,
+    with_intercept: bool = True,
+) -> pl.Expr:
+    """Elastic Net regression using R-style formula syntax.
+
+    Parameters
+    ----------
+    formula : str
+        R-style formula (see ols_formula for syntax).
+    lambda_ : float, default 1.0
+        Total regularization strength.
+    alpha : float, default 0.5
+        L1 ratio (0 = Ridge, 1 = Lasso).
+    with_intercept : bool, default True
+        Whether to include an intercept term.
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing regression results.
+    """
+    response, x_exprs, _ = _parse_formula(formula)
+    return elastic_net(
+        response, *x_exprs, lambda_=lambda_, alpha=alpha, with_intercept=with_intercept
+    )
+
+
+def wls_formula(
+    formula: str,
+    weights: Union[pl.Expr, str],
+    with_intercept: bool = True,
+) -> pl.Expr:
+    """Weighted Least Squares regression using R-style formula syntax.
+
+    Parameters
+    ----------
+    formula : str
+        R-style formula (see ols_formula for syntax).
+    weights : pl.Expr or str
+        Observation weights column.
+    with_intercept : bool, default True
+        Whether to include an intercept term.
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing regression results.
+    """
+    response, x_exprs, _ = _parse_formula(formula)
+    return wls(response, weights, *x_exprs, with_intercept=with_intercept)
+
+
+def rls_formula(
+    formula: str,
+    forgetting_factor: float = 0.99,
+    with_intercept: bool = True,
+) -> pl.Expr:
+    """Recursive Least Squares regression using R-style formula syntax.
+
+    Parameters
+    ----------
+    formula : str
+        R-style formula (see ols_formula for syntax).
+    forgetting_factor : float, default 0.99
+        Forgetting factor (0 < lambda <= 1).
+    with_intercept : bool, default True
+        Whether to include an intercept term.
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing regression results.
+    """
+    response, x_exprs, _ = _parse_formula(formula)
+    return rls(
+        response, *x_exprs, forgetting_factor=forgetting_factor, with_intercept=with_intercept
+    )
+
+
+def bls_formula(
+    formula: str,
+    lower_bound: float | None = None,
+    upper_bound: float | None = None,
+    with_intercept: bool = True,
+) -> pl.Expr:
+    """Bounded Least Squares regression using R-style formula syntax.
+
+    Parameters
+    ----------
+    formula : str
+        R-style formula (see ols_formula for syntax).
+    lower_bound : float or None
+        Lower bound for coefficients.
+    upper_bound : float or None
+        Upper bound for coefficients.
+    with_intercept : bool, default True
+        Whether to include an intercept term.
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing regression results.
+    """
+    response, x_exprs, _ = _parse_formula(formula)
+    return bls(
+        response,
+        *x_exprs,
+        lower_bound=lower_bound,
+        upper_bound=upper_bound,
+        with_intercept=with_intercept,
+    )
+
+
+def nnls_formula(
+    formula: str,
+    with_intercept: bool = True,
+) -> pl.Expr:
+    """Non-negative Least Squares regression using R-style formula syntax.
+
+    Parameters
+    ----------
+    formula : str
+        R-style formula (see ols_formula for syntax).
+    with_intercept : bool, default True
+        Whether to include an intercept term.
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing regression results.
+    """
+    return bls_formula(formula, lower_bound=0.0, with_intercept=with_intercept)
+
+
+def logistic_formula(
+    formula: str,
+    with_intercept: bool = True,
+) -> pl.Expr:
+    """Logistic regression using R-style formula syntax.
+
+    Parameters
+    ----------
+    formula : str
+        R-style formula (see ols_formula for syntax).
+    with_intercept : bool, default True
+        Whether to include an intercept term.
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing GLM results.
+    """
+    response, x_exprs, _ = _parse_formula(formula)
+    return logistic(response, *x_exprs, with_intercept=with_intercept)
+
+
+def poisson_formula(
+    formula: str,
+    with_intercept: bool = True,
+) -> pl.Expr:
+    """Poisson regression using R-style formula syntax.
+
+    Parameters
+    ----------
+    formula : str
+        R-style formula (see ols_formula for syntax).
+    with_intercept : bool, default True
+        Whether to include an intercept term.
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing GLM results.
+    """
+    response, x_exprs, _ = _parse_formula(formula)
+    return poisson(response, *x_exprs, with_intercept=with_intercept)
+
+
+def negative_binomial_formula(
+    formula: str,
+    theta: float | None = None,
+    with_intercept: bool = True,
+) -> pl.Expr:
+    """Negative Binomial regression using R-style formula syntax.
+
+    Parameters
+    ----------
+    formula : str
+        R-style formula (see ols_formula for syntax).
+    theta : float or None
+        Dispersion parameter. If None, estimated from data.
+    with_intercept : bool, default True
+        Whether to include an intercept term.
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing GLM results.
+    """
+    response, x_exprs, _ = _parse_formula(formula)
+    return negative_binomial(response, *x_exprs, theta=theta, with_intercept=with_intercept)
+
+
+def tweedie_formula(
+    formula: str,
+    var_power: float = 1.5,
+    with_intercept: bool = True,
+) -> pl.Expr:
+    """Tweedie GLM using R-style formula syntax.
+
+    Parameters
+    ----------
+    formula : str
+        R-style formula (see ols_formula for syntax).
+    var_power : float, default 1.5
+        Variance power.
+    with_intercept : bool, default True
+        Whether to include an intercept term.
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing GLM results.
+    """
+    response, x_exprs, _ = _parse_formula(formula)
+    return tweedie(response, *x_exprs, var_power=var_power, with_intercept=with_intercept)
+
+
+def probit_formula(
+    formula: str,
+    with_intercept: bool = True,
+) -> pl.Expr:
+    """Probit regression using R-style formula syntax.
+
+    Parameters
+    ----------
+    formula : str
+        R-style formula (see ols_formula for syntax).
+    with_intercept : bool, default True
+        Whether to include an intercept term.
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing GLM results.
+    """
+    response, x_exprs, _ = _parse_formula(formula)
+    return probit(response, *x_exprs, with_intercept=with_intercept)
+
+
+def cloglog_formula(
+    formula: str,
+    with_intercept: bool = True,
+) -> pl.Expr:
+    """Complementary log-log regression using R-style formula syntax.
+
+    Parameters
+    ----------
+    formula : str
+        R-style formula (see ols_formula for syntax).
+    with_intercept : bool, default True
+        Whether to include an intercept term.
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing GLM results.
+    """
+    response, x_exprs, _ = _parse_formula(formula)
+    return cloglog(response, *x_exprs, with_intercept=with_intercept)
+
+
+def alm_formula(
+    formula: str,
+    distribution: str = "normal",
+    with_intercept: bool = True,
+) -> pl.Expr:
+    """Augmented Linear Model using R-style formula syntax.
+
+    Parameters
+    ----------
+    formula : str
+        R-style formula (see ols_formula for syntax).
+    distribution : str, default "normal"
+        Distribution family.
+    with_intercept : bool, default True
+        Whether to include an intercept term.
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing ALM results.
+    """
+    response, x_exprs, _ = _parse_formula(formula)
+    return alm(response, *x_exprs, distribution=distribution, with_intercept=with_intercept)
+
+
+# ============================================================================
+# Formula-Based Summary Expressions
+# ============================================================================
+
+
+def ols_formula_summary(
+    formula: str,
+    with_intercept: bool = True,
+) -> pl.Expr:
+    """OLS coefficient summary using R-style formula syntax.
+
+    Parameters
+    ----------
+    formula : str
+        R-style formula (see ols_formula for syntax).
+    with_intercept : bool, default True
+        Whether to include an intercept term.
+
+    Returns
+    -------
+    pl.Expr
+        List of structs containing coefficient statistics.
+    """
+    response, x_exprs, _ = _parse_formula(formula)
+    return ols_summary(response, *x_exprs, with_intercept=with_intercept)
+
+
+def ridge_formula_summary(
+    formula: str,
+    lambda_: float = 1.0,
+    with_intercept: bool = True,
+) -> pl.Expr:
+    """Ridge coefficient summary using R-style formula syntax."""
+    response, x_exprs, _ = _parse_formula(formula)
+    return ridge_summary(response, *x_exprs, lambda_=lambda_, with_intercept=with_intercept)
+
+
+def elastic_net_formula_summary(
+    formula: str,
+    lambda_: float = 1.0,
+    alpha: float = 0.5,
+    with_intercept: bool = True,
+) -> pl.Expr:
+    """Elastic Net coefficient summary using R-style formula syntax."""
+    response, x_exprs, _ = _parse_formula(formula)
+    return elastic_net_summary(
+        response, *x_exprs, lambda_=lambda_, alpha=alpha, with_intercept=with_intercept
+    )
+
+
+def logistic_formula_summary(
+    formula: str,
+    with_intercept: bool = True,
+) -> pl.Expr:
+    """Logistic regression coefficient summary using R-style formula syntax."""
+    response, x_exprs, _ = _parse_formula(formula)
+    return logistic_summary(response, *x_exprs, with_intercept=with_intercept)
+
+
+def poisson_formula_summary(
+    formula: str,
+    with_intercept: bool = True,
+) -> pl.Expr:
+    """Poisson regression coefficient summary using R-style formula syntax."""
+    response, x_exprs, _ = _parse_formula(formula)
+    return poisson_summary(response, *x_exprs, with_intercept=with_intercept)
+
+
+def alm_formula_summary(
+    formula: str,
+    distribution: str = "normal",
+    with_intercept: bool = True,
+) -> pl.Expr:
+    """ALM coefficient summary using R-style formula syntax."""
+    response, x_exprs, _ = _parse_formula(formula)
+    return alm_summary(response, *x_exprs, distribution=distribution, with_intercept=with_intercept)
+
+
+# ============================================================================
+# Formula-Based Prediction Expressions
+# ============================================================================
+
+
+def ols_formula_predict(
+    formula: str,
+    add_intercept: bool = True,
+    interval: str | None = None,
+    level: float = 0.95,
+    null_policy: str = "drop",
+) -> pl.Expr:
+    """OLS predictions using R-style formula syntax.
+
+    Parameters
+    ----------
+    formula : str
+        R-style formula (see ols_formula for syntax).
+    add_intercept : bool, default True
+        Whether to include an intercept term.
+    interval : str or None, default None
+        "confidence" or "prediction" intervals.
+    level : float, default 0.95
+        Confidence level for intervals.
+    null_policy : str, default "drop"
+        "drop" or "drop_y_zero_x".
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing {prediction, lower, upper} per row.
+
+    Examples
+    --------
+    >>> # Per-row predictions with formula
+    >>> df.with_columns(
+    ...     ps.ols_formula_predict("y ~ x1 * x2", interval="prediction")
+    ...         .over("group").alias("pred")
+    ... ).unnest("pred")
+    """
+    response, x_exprs, _ = _parse_formula(formula)
+    return ols_predict(
+        response,
+        *x_exprs,
+        add_intercept=add_intercept,
+        interval=interval,
+        level=level,
+        null_policy=null_policy,
+    )
+
+
+def ridge_formula_predict(
+    formula: str,
+    lambda_: float = 1.0,
+    add_intercept: bool = True,
+    interval: str | None = None,
+    level: float = 0.95,
+    null_policy: str = "drop",
+) -> pl.Expr:
+    """Ridge predictions using R-style formula syntax."""
+    response, x_exprs, _ = _parse_formula(formula)
+    return ridge_predict(
+        response,
+        *x_exprs,
+        lambda_=lambda_,
+        add_intercept=add_intercept,
+        interval=interval,
+        level=level,
+        null_policy=null_policy,
+    )
+
+
+def elastic_net_formula_predict(
+    formula: str,
+    lambda_: float = 1.0,
+    alpha: float = 0.5,
+    add_intercept: bool = True,
+    interval: str | None = None,
+    level: float = 0.95,
+    null_policy: str = "drop",
+) -> pl.Expr:
+    """Elastic Net predictions using R-style formula syntax."""
+    response, x_exprs, _ = _parse_formula(formula)
+    return elastic_net_predict(
+        response,
+        *x_exprs,
+        lambda_=lambda_,
+        alpha=alpha,
+        add_intercept=add_intercept,
+        interval=interval,
+        level=level,
+        null_policy=null_policy,
+    )
+
+
+def logistic_formula_predict(
+    formula: str,
+    add_intercept: bool = True,
+    interval: str | None = None,
+    level: float = 0.95,
+    null_policy: str = "drop",
+) -> pl.Expr:
+    """Logistic regression predictions using R-style formula syntax."""
+    response, x_exprs, _ = _parse_formula(formula)
+    return logistic_predict(
+        response,
+        *x_exprs,
+        add_intercept=add_intercept,
+        interval=interval,
+        level=level,
+        null_policy=null_policy,
+    )
+
+
+def poisson_formula_predict(
+    formula: str,
+    add_intercept: bool = True,
+    interval: str | None = None,
+    level: float = 0.95,
+    null_policy: str = "drop",
+) -> pl.Expr:
+    """Poisson regression predictions using R-style formula syntax."""
+    response, x_exprs, _ = _parse_formula(formula)
+    return poisson_predict(
+        response,
+        *x_exprs,
+        add_intercept=add_intercept,
+        interval=interval,
+        level=level,
+        null_policy=null_policy,
+    )
+
+
+def alm_formula_predict(
+    formula: str,
+    distribution: str = "normal",
+    add_intercept: bool = True,
+    interval: str | None = None,
+    level: float = 0.95,
+    null_policy: str = "drop",
+) -> pl.Expr:
+    """ALM predictions using R-style formula syntax."""
+    response, x_exprs, _ = _parse_formula(formula)
+    return alm_predict(
+        response,
+        *x_exprs,
+        distribution=distribution,
+        add_intercept=add_intercept,
+        interval=interval,
+        level=level,
+        null_policy=null_policy,
+    )
