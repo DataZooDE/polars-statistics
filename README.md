@@ -6,15 +6,15 @@
 
 > **Note:** This extension is in early stage development. APIs may change and some features are experimental.
 
-High-performance statistical testing for [Polars](https://pola.rs/) DataFrames, powered by Rust.
+High-performance statistical testing and regression for [Polars](https://pola.rs/) DataFrames, powered by Rust.
 
 ## Features
 
 - **Native Polars Expressions**: Full support for `group_by`, `over`, and lazy evaluation
-- **Comprehensive Statistical Tests**: Parametric, non-parametric, distributional, and forecast comparison tests
-- **Modern Distribution Tests**: Energy Distance and Maximum Mean Discrepancy (MMD)
-- **High Performance**: Rust-powered computations with zero-copy data transfer
-- **Regression Models**: OLS, Ridge, Elastic Net, WLS, GLMs, ALM (24+ distributions), and more
+- **Statistical Tests**: Parametric, non-parametric, distributional, and forecast comparison tests
+- **Regression Models**: OLS, Ridge, Elastic Net, WLS, GLMs, ALM (24+ distributions)
+- **Formula Syntax**: R-style formulas with polynomial and interaction effects
+- **High Performance**: Rust-powered with zero-copy data transfer
 
 ## Installation
 
@@ -24,128 +24,21 @@ pip install polars-statistics
 
 ## Quick Start
 
+All functions work as Polars expressions, integrating with `group_by` and `over`:
+
 ```python
 import polars as pl
 import polars_statistics as ps
 
 df = pl.DataFrame({
     "group": ["A"] * 50 + ["B"] * 50,
-    "treatment": [1.2, 2.3, 1.8, 2.1, ...],
-    "control": [1.0, 2.1, 1.5, 1.9, ...],
+    "y": [...],
+    "x1": [...],
+    "x2": [...],
 })
 
-# Run t-test per group
+# Run OLS regression per group
 result = df.group_by("group").agg(
-    ps.ttest_ind(pl.col("treatment"), pl.col("control")).alias("ttest")
-)
-
-# Extract results
-result.with_columns(
-    pl.col("ttest").struct.field("statistic"),
-    pl.col("ttest").struct.field("p_value"),
-)
-```
-
-All test functions return a struct with `statistic` and `p_value` fields.
-
-## Expression API
-
-### Parametric Tests
-
-```python
-import polars as pl
-import polars_statistics as ps
-
-# Independent samples t-test (Welch's by default)
-ps.ttest_ind(pl.col("x"), pl.col("y"), alternative="two-sided", equal_var=False)
-
-# Paired samples t-test
-ps.ttest_paired(pl.col("before"), pl.col("after"), alternative="two-sided")
-
-# Brown-Forsythe test for equality of variances
-ps.brown_forsythe(pl.col("x"), pl.col("y"))
-
-# Yuen's test for trimmed means (robust to outliers)
-ps.yuen_test(pl.col("x"), pl.col("y"), trim=0.2)
-```
-
-### Non-Parametric Tests
-
-```python
-# Mann-Whitney U test (Wilcoxon rank-sum)
-ps.mann_whitney_u(pl.col("x"), pl.col("y"))
-
-# Wilcoxon signed-rank test (paired)
-ps.wilcoxon_signed_rank(pl.col("x"), pl.col("y"))
-
-# Kruskal-Wallis H test (3+ groups)
-ps.kruskal_wallis(pl.col("group1"), pl.col("group2"), pl.col("group3"))
-
-# Brunner-Munzel test for stochastic equality
-ps.brunner_munzel(pl.col("x"), pl.col("y"), alternative="two-sided")
-```
-
-### Distributional Tests
-
-```python
-# Shapiro-Wilk normality test
-ps.shapiro_wilk(pl.col("x"))
-
-# D'Agostino-Pearson normality test
-ps.dagostino(pl.col("x"))
-```
-
-### Forecast Comparison Tests
-
-```python
-# Diebold-Mariano test for equal predictive accuracy
-ps.diebold_mariano(pl.col("errors1"), pl.col("errors2"), loss="squared", horizon=1)
-
-# Permutation t-test (non-parametric)
-ps.permutation_t_test(pl.col("x"), pl.col("y"), n_permutations=999, seed=42)
-
-# Clark-West test for nested model comparison
-ps.clark_west(pl.col("restricted_errors"), pl.col("unrestricted_errors"), horizon=1)
-
-# Superior Predictive Ability (SPA) test
-ps.spa_test(
-    pl.col("benchmark_loss"),
-    pl.col("model1_loss"), pl.col("model2_loss"),
-    n_bootstrap=999,
-    block_length=5.0,
-)
-
-# Model Confidence Set (MCS)
-ps.model_confidence_set(
-    pl.col("model1_loss"), pl.col("model2_loss"), pl.col("model3_loss"),
-    alpha=0.1,
-    statistic="range",
-)
-
-# MSPE-Adjusted SPA test for nested models
-ps.mspe_adjusted(
-    pl.col("benchmark_errors"),
-    pl.col("model1_errors"), pl.col("model2_errors"),
-)
-```
-
-### Modern Distribution Tests
-
-```python
-# Energy Distance test
-ps.energy_distance(pl.col("x"), pl.col("y"), n_permutations=999, seed=42)
-
-# Maximum Mean Discrepancy (MMD) test
-ps.mmd_test(pl.col("x"), pl.col("y"), n_permutations=999, seed=42)
-```
-
-### Regression Expressions
-
-Fit regression models per group using `group_by` or `over`:
-
-```python
-# OLS regression per group
-df.group_by("group").agg(
     ps.ols("y", "x1", "x2").alias("model")
 )
 
@@ -154,314 +47,109 @@ result.with_columns(
     pl.col("model").struct.field("r_squared"),
     pl.col("model").struct.field("coefficients"),
 )
-
-# Window function - fit model per group, broadcast to all rows
-df.with_columns(
-    ps.ols("y", "x1", "x2").over("group").alias("model")
-)
 ```
 
-**Linear Models:**
+## Statistical Tests
 
 ```python
-# Ordinary Least Squares
-ps.ols("y", "x1", "x2", with_intercept=True)
+# Parametric tests
+ps.ttest_ind("treatment", "control", alternative="two-sided")
+ps.ttest_paired("before", "after")
 
-# Ridge Regression (L2 regularization)
+# Non-parametric tests
+ps.mann_whitney_u("x", "y")
+ps.kruskal_wallis("group1", "group2", "group3")
+
+# Normality tests
+ps.shapiro_wilk("x")
+
+# Forecast comparison
+ps.diebold_mariano("errors1", "errors2", horizon=1)
+```
+
+All tests return a struct with `statistic` and `p_value` fields.
+
+## Regression Models
+
+### Expression API
+
+```python
+# Linear models
+ps.ols("y", "x1", "x2")
 ps.ridge("y", "x1", "x2", lambda_=1.0)
-
-# Elastic Net (L1 + L2 regularization)
 ps.elastic_net("y", "x1", "x2", lambda_=1.0, alpha=0.5)
 
-# Weighted Least Squares
-ps.wls("y", "weights", "x1", "x2")
+# GLM models
+ps.logistic("y", "x1", "x2")      # Binary classification
+ps.poisson("y", "x1", "x2")       # Count data
 
-# Recursive Least Squares
-ps.rls("y", "x1", "x2", forgetting_factor=0.99)
-
-# Bounded Least Squares
-ps.bls("y", "x1", "x2", lower_bound=0.0, upper_bound=None)
-
-# Non-negative Least Squares (shorthand for bls with lower_bound=0)
-ps.nnls("y", "x1", "x2")
+# ALM - 24+ distributions
+ps.alm("y", "x1", "x2", distribution="laplace")  # Robust to outliers
 ```
 
-**GLM Models:**
+### Formula Syntax
+
+R-style formulas with polynomial and interaction effects:
 
 ```python
-# Logistic Regression (binary classification)
-ps.logistic("y", "x1", "x2")
+# Main effects + interaction
+ps.ols_formula("y ~ x1 * x2")  # Expands to: x1 + x2 + x1:x2
 
-# Poisson Regression (count data)
-ps.poisson("y", "x1", "x2")
+# Polynomial regression (centered per group)
+ps.ols_formula("y ~ poly(x, 2)")
 
-# Negative Binomial (overdispersed counts)
-ps.negative_binomial("y", "x1", "x2", theta=None)
-
-# Tweedie GLM
-ps.tweedie("y", "x1", "x2", var_power=1.5)
-
-# Probit Regression
-ps.probit("y", "x1", "x2")
-
-# Complementary Log-Log
-ps.cloglog("y", "x1", "x2")
+# Explicit transform
+ps.ols_formula("y ~ x1 + I(x^2)")
 ```
 
-**Augmented Linear Model (ALM):**
-
-ALM supports 24+ distributions with flexible link functions:
+### Predictions with Intervals
 
 ```python
-# Normal (default) - equivalent to OLS
-ps.alm("y", "x1", "x2", distribution="normal")
-
-# Laplace distribution (robust to outliers)
-ps.alm("y", "x1", "x2", distribution="laplace")
-
-# Student-t (heavy tails)
-ps.alm("y", "x1", "x2", distribution="student_t")
-
-# Gamma (positive continuous data)
-ps.alm("y", "x1", "x2", distribution="gamma")
-
-# Available distributions:
-# normal, laplace, student_t, logistic, gamma, inverse_gaussian,
-# exponential, beta, poisson, negative_binomial, geometric, binomial,
-# multinomial, dirichlet
-```
-
-**Output Fields:**
-
-Linear models return a struct with: `intercept`, `coefficients`, `r_squared`, `adj_r_squared`, `mse`, `rmse`, `f_statistic`, `f_pvalue`, `aic`, `bic`, `n_observations`.
-
-GLM models return a struct with: `intercept`, `coefficients`, `aic`, `bic`, `n_observations`.
-
-ALM models return a struct with: `intercept`, `coefficients`, `aic`, `bic`, `log_likelihood`, `n_observations`.
-
-## Working with Group Operations
-
-The expression API integrates seamlessly with Polars' `group_by` and `over`:
-
-```python
-df = pl.DataFrame({
-    "experiment": ["exp1"] * 100 + ["exp2"] * 100,
-    "treatment": [...],
-    "control": [...],
-})
-
-# Test per experiment
-df.group_by("experiment").agg(
-    ps.ttest_ind("treatment", "control").alias("ttest"),
-    ps.mann_whitney_u("treatment", "control").alias("mwu"),
-)
-
-# Window function
 df.with_columns(
-    ps.shapiro_wilk("treatment").over("experiment").alias("normality")
-)
+    ps.ols_predict("y", "x1", "x2", interval="prediction", level=0.95)
+        .over("group").alias("pred")
+).unnest("pred")  # Columns: prediction, lower, upper
+```
 
-# Lazy evaluation
-df.lazy().group_by("experiment").agg(
-    ps.brunner_munzel("treatment", "control")
-).collect()
+### Tidy Coefficient Summary
+
+```python
+df.group_by("group").agg(
+    ps.ols_summary("y", "x1", "x2").alias("coef")
+).explode("coef").unnest("coef")
+# Columns: term, estimate, std_error, statistic, p_value
+```
+
+## Model Classes
+
+For direct model access outside Polars expressions:
+
+```python
+from polars_statistics import OLS, Ridge, Logistic, ALM
+
+# Fit model
+model = OLS(compute_inference=True).fit(X, y)
+print(model.coefficients, model.r_squared, model.p_values)
+
+# ALM with various distributions
+alm = ALM.laplace().fit(X, y)  # Robust to outliers
 ```
 
 ## API Reference
 
-### Expression Functions
-
-| Function | Description | Key Parameters |
-|----------|-------------|----------------|
-| **Parametric** | | |
-| `ttest_ind` | Independent samples t-test | `alternative`, `equal_var` |
-| `ttest_paired` | Paired samples t-test | `alternative` |
-| `brown_forsythe` | Test for equality of variances | - |
-| `yuen_test` | Trimmed means comparison | `trim` |
-| **Non-Parametric** | | |
-| `mann_whitney_u` | Mann-Whitney U test | - |
-| `wilcoxon_signed_rank` | Wilcoxon signed-rank test | - |
-| `kruskal_wallis` | Kruskal-Wallis H test | - |
-| `brunner_munzel` | Brunner-Munzel test | `alternative` |
-| **Distributional** | | |
-| `shapiro_wilk` | Shapiro-Wilk normality test | - |
-| `dagostino` | D'Agostino-Pearson test | - |
-| **Forecast** | | |
-| `diebold_mariano` | Diebold-Mariano test | `loss`, `horizon` |
-| `permutation_t_test` | Permutation t-test | `alternative`, `n_permutations`, `seed` |
-| `clark_west` | Clark-West nested model test | `horizon` |
-| `spa_test` | Superior Predictive Ability | `n_bootstrap`, `block_length`, `seed` |
-| `model_confidence_set` | Model Confidence Set | `alpha`, `statistic`, `n_bootstrap` |
-| `mspe_adjusted` | MSPE-Adjusted SPA test | `n_bootstrap`, `block_length`, `seed` |
-| **Modern** | | |
-| `energy_distance` | Energy Distance test | `n_permutations`, `seed` |
-| `mmd_test` | Maximum Mean Discrepancy | `n_permutations`, `seed` |
-| **Regression (Linear)** | | |
-| `ols` | Ordinary Least Squares | `with_intercept` |
-| `ridge` | Ridge Regression (L2) | `lambda_`, `with_intercept` |
-| `elastic_net` | Elastic Net (L1+L2) | `lambda_`, `alpha`, `with_intercept` |
-| `wls` | Weighted Least Squares | `with_intercept` |
-| `rls` | Recursive Least Squares | `forgetting_factor`, `with_intercept` |
-| `bls` | Bounded Least Squares | `lower_bound`, `upper_bound`, `with_intercept` |
-| `nnls` | Non-negative Least Squares | `with_intercept` |
-| **Regression (GLM)** | | |
-| `logistic` | Logistic Regression | `with_intercept` |
-| `poisson` | Poisson Regression | `with_intercept` |
-| `negative_binomial` | Negative Binomial | `theta`, `with_intercept` |
-| `tweedie` | Tweedie GLM | `var_power`, `with_intercept` |
-| `probit` | Probit Regression | `with_intercept` |
-| `cloglog` | Complementary Log-Log | `with_intercept` |
-| **Regression (ALM)** | | |
-| `alm` | Augmented Linear Model | `distribution`, `with_intercept` |
-
----
-
-## Regression Models (Supplementary)
-
-For users who need regression models, polars-statistics also provides high-performance implementations:
-
-### Linear Models
-
-```python
-import numpy as np
-from polars_statistics import OLS, Ridge, ElasticNet, WLS, RLS, BLS
-
-X = np.random.randn(100, 3)
-y = X @ [1, 2, 3] + np.random.randn(100) * 0.1
-
-# Ordinary Least Squares
-ols = OLS(compute_inference=True).fit(X, y)
-print(ols.coefficients, ols.r_squared, ols.p_values)
-
-# Ridge Regression (L2)
-ridge = Ridge(lambda_=0.1).fit(X, y)
-
-# Elastic Net (L1 + L2)
-enet = ElasticNet(lambda_=0.1, alpha=0.5).fit(X, y)
-
-# Weighted Least Squares
-weights = np.ones(100)
-wls = WLS().fit(X, y, weights)
-
-# Recursive Least Squares (online learning)
-rls = RLS(forgetting_factor=0.99).fit(X, y)
-
-# Bounded Least Squares / Non-negative LS
-bls = BLS.nnls().fit(np.abs(X), y)  # coefficients >= 0
-```
-
-### Generalized Linear Models
-
-```python
-from polars_statistics import Logistic, Poisson, NegativeBinomial, Tweedie, Probit, Cloglog, ALM
-
-# Logistic Regression
-y_binary = (y > 0).astype(float)
-logit = Logistic().fit(X, y_binary)
-probs = logit.predict_proba(X)
-
-# Poisson Regression (count data)
-y_counts = np.random.poisson(5, 100).astype(float)
-poisson = Poisson().fit(X, y_counts)
-
-# Negative Binomial (overdispersed counts)
-negbin = NegativeBinomial(estimate_theta=True).fit(X, y_counts)
-print(negbin.theta_estimated)
-
-# Tweedie GLM (flexible distribution)
-tweedie = Tweedie(var_power=1.5).fit(X, y_counts)
-# Or use factory methods:
-gamma_glm = Tweedie.gamma().fit(X, np.abs(y))
-
-# Probit Regression
-probit = Probit().fit(X, y_binary)
-
-# Complementary Log-Log
-cloglog = Cloglog().fit(X, y_binary)
-```
-
-### Augmented Linear Model (ALM)
-
-ALM provides a flexible framework supporting 24+ distributions with customizable link functions:
-
-```python
-from polars_statistics import ALM
-
-# Normal distribution (equivalent to OLS)
-alm = ALM.normal().fit(X, y)
-
-# Laplace distribution (robust to outliers)
-alm_laplace = ALM.laplace().fit(X, y)
-
-# Student-t distribution (heavy tails)
-alm_t = ALM.student_t(df=5.0).fit(X, y)
-
-# Gamma distribution (positive continuous data)
-alm_gamma = ALM.gamma().fit(np.abs(X), np.abs(y))
-
-# Poisson distribution (count data)
-alm_poisson = ALM.poisson().fit(X, y_counts)
-
-# Custom distribution with link function
-alm_custom = ALM(
-    distribution="inverse_gaussian",
-    link="inverse",
-    with_intercept=True,
-    compute_inference=True,
-).fit(X, y)
-
-# Supported distributions:
-# normal, laplace, student_t, logistic, gamma, inverse_gaussian,
-# exponential, beta, poisson, negative_binomial, geometric, binomial,
-# multinomial, dirichlet
-
-# Supported link functions:
-# identity, log, logit, probit, inverse, sqrt, cloglog
-```
-
-### Bootstrap Methods
-
-```python
-from polars_statistics import StationaryBootstrap, CircularBlockBootstrap
-
-data = np.random.randn(100)
-
-# Stationary bootstrap (random block lengths)
-bootstrap = StationaryBootstrap(expected_block_length=5.0, seed=42)
-samples = bootstrap.samples(data, n_samples=1000)
-
-# Circular block bootstrap (fixed block length)
-cbb = CircularBlockBootstrap(block_length=10, seed=42)
-samples = cbb.samples(data, n_samples=1000)
-```
-
-### Model Properties
-
-```python
-model.coefficients      # Regression coefficients
-model.intercept         # Intercept term (if fitted)
-model.r_squared         # R-squared (linear models)
-model.std_errors        # Standard errors (if compute_inference=True)
-model.p_values          # P-values (if compute_inference=True)
-model.aic               # Akaike Information Criterion
-model.bic               # Bayesian Information Criterion
-model.log_likelihood    # Log-likelihood (ALM models)
-```
-
----
+See [docs/API_REFERENCE.md](docs/API_REFERENCE.md) for complete documentation of all functions, parameters, and output structures.
 
 ## Performance
 
-polars-statistics is built on high-performance Rust libraries:
-
-- **[regress-rs](https://github.com/sipemu/regress-rs)**: Fast regression using [faer](https://github.com/sarah-ek/faer-rs) linear algebra
-- **[anofox-statistics](https://github.com/sipemu/anofox-statistics-rs)**: Statistical tests with SIMD optimizations
-- **Zero-copy integration**: Direct memory sharing between Python and Rust
+Built on high-performance Rust libraries:
+- **[faer](https://github.com/sarah-ek/faer-rs)**: Fast linear algebra with SIMD
+- **Zero-copy**: Direct memory sharing between Python and Rust
+- **Automatic parallelization**: For `group_by` operations
 
 ## Development
 
 ```bash
-git clone https://github.com/sipemu/polars-statistics.git
+git clone https://github.com/DataZooDE/polars-statistics.git
 cd polars-statistics
 python -m venv .venv && source .venv/bin/activate
 pip install maturin numpy polars pytest
@@ -472,10 +160,3 @@ pytest
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
-
-## Acknowledgments
-
-- [Polars](https://pola.rs/) - Fast DataFrame library
-- [PyO3](https://pyo3.rs/) - Rust bindings for Python
-- [pyo3-polars](https://github.com/pola-rs/pyo3-polars) - Polars plugin framework
-- [faer](https://github.com/sarah-ek/faer-rs) - High-performance linear algebra
