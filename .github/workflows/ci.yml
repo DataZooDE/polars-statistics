@@ -97,6 +97,49 @@ jobs:
           pytest tests/ -v
         shell: cmd
 
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+
+      - name: Create virtual environment
+        run: python -m venv .venv
+
+      - name: Install dependencies
+        run: |
+          source .venv/bin/activate
+          python -m pip install --upgrade pip
+          pip install maturin numpy polars pytest pytest-cov scipy statsmodels
+
+      - name: Build and install
+        run: |
+          source .venv/bin/activate
+          maturin develop --release
+
+      - name: Run tests with coverage
+        run: |
+          source .venv/bin/activate
+          pytest tests/ --cov=polars_statistics --cov-report=xml --cov-report=term
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage.xml
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+
   build-wheels:
     name: Build wheels (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
