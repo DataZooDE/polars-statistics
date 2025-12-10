@@ -733,6 +733,8 @@ result.filter(pl.col("high_outlier") | pl.col("stockout"))
 
 Formula-based regression using R-style syntax. Supports polynomial and interaction effects that are computed per-group with `group_by`/`over`.
 
+> **Note:** Unlike R, the intercept is controlled via the `with_intercept` parameter, not in the formula. R's `y ~ x - 1` or `y ~ 0 + x` syntax for removing the intercept is not supported. Use `with_intercept=False` instead.
+
 #### Supported Formula Syntax
 
 | Pattern | Example | Expansion |
