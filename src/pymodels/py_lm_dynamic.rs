@@ -182,10 +182,7 @@ impl PyLmDynamic {
     ///
     /// If with_intercept, column 0 is the intercept.
     #[getter]
-    fn dynamic_coefficients<'py>(
-        &self,
-        py: Python<'py>,
-    ) -> PyResult<Bound<'py, PyArray2<f64>>> {
+    fn dynamic_coefficients<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyArray2<f64>>> {
         let fitted = self
             .fitted
             .as_ref()
@@ -196,9 +193,12 @@ impl PyLmDynamic {
         let p = dyn_coef.ncols();
 
         // Convert faer Mat to numpy 2D array
-        let arr = PyArray2::from_vec2(py, &(0..n).map(|i| {
-            (0..p).map(|j| dyn_coef[(i, j)]).collect::<Vec<_>>()
-        }).collect::<Vec<_>>())
+        let arr = PyArray2::from_vec2(
+            py,
+            &(0..n)
+                .map(|i| (0..p).map(|j| dyn_coef[(i, j)]).collect::<Vec<_>>())
+                .collect::<Vec<_>>(),
+        )
         .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?;
 
         Ok(arr)
@@ -216,9 +216,12 @@ impl PyLmDynamic {
         let n = weights.nrows();
         let m = weights.ncols();
 
-        let arr = PyArray2::from_vec2(py, &(0..n).map(|i| {
-            (0..m).map(|j| weights[(i, j)]).collect::<Vec<_>>()
-        }).collect::<Vec<_>>())
+        let arr = PyArray2::from_vec2(
+            py,
+            &(0..n)
+                .map(|i| (0..m).map(|j| weights[(i, j)]).collect::<Vec<_>>())
+                .collect::<Vec<_>>(),
+        )
         .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?;
 
         Ok(arr)
@@ -240,9 +243,12 @@ impl PyLmDynamic {
                 let n = weights.nrows();
                 let m = weights.ncols();
 
-                let arr = PyArray2::from_vec2(py, &(0..n).map(|i| {
-                    (0..m).map(|j| weights[(i, j)]).collect::<Vec<_>>()
-                }).collect::<Vec<_>>())
+                let arr = PyArray2::from_vec2(
+                    py,
+                    &(0..n)
+                        .map(|i| (0..m).map(|j| weights[(i, j)]).collect::<Vec<_>>())
+                        .collect::<Vec<_>>(),
+                )
                 .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?;
 
                 Ok(Some(arr))
@@ -263,9 +269,12 @@ impl PyLmDynamic {
         let n = ic.nrows();
         let m = ic.ncols();
 
-        let arr = PyArray2::from_vec2(py, &(0..n).map(|i| {
-            (0..m).map(|j| ic[(i, j)]).collect::<Vec<_>>()
-        }).collect::<Vec<_>>())
+        let arr = PyArray2::from_vec2(
+            py,
+            &(0..n)
+                .map(|i| (0..m).map(|j| ic[(i, j)]).collect::<Vec<_>>())
+                .collect::<Vec<_>>(),
+        )
         .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?;
 
         Ok(arr)

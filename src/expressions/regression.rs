@@ -2871,17 +2871,28 @@ fn aid_output(
         Series::new("n_observations".into(), vec![n_observations]),
         // Anomaly summary fields
         Series::new("has_stockouts".into(), vec![anomaly_counts.has_stockouts()]),
-        Series::new("is_new_product".into(), vec![anomaly_counts.is_new_product()]),
-        Series::new("is_obsolete_product".into(), vec![anomaly_counts.is_obsolete_product()]),
+        Series::new(
+            "is_new_product".into(),
+            vec![anomaly_counts.is_new_product()],
+        ),
+        Series::new(
+            "is_obsolete_product".into(),
+            vec![anomaly_counts.is_obsolete_product()],
+        ),
         Series::new("stockout_count".into(), vec![anomaly_counts.stockout]),
         Series::new("new_product_count".into(), vec![anomaly_counts.new_product]),
-        Series::new("obsolete_product_count".into(), vec![anomaly_counts.obsolete_product]),
-        Series::new("high_outlier_count".into(), vec![anomaly_counts.high_outlier]),
+        Series::new(
+            "obsolete_product_count".into(),
+            vec![anomaly_counts.obsolete_product],
+        ),
+        Series::new(
+            "high_outlier_count".into(),
+            vec![anomaly_counts.high_outlier],
+        ),
         Series::new("low_outlier_count".into(), vec![anomaly_counts.low_outlier]),
     ];
 
-    StructChunked::from_series("aid".into(), 1, fields.iter())
-        .map(|ca| ca.into_series())
+    StructChunked::from_series("aid".into(), 1, fields.iter()).map(|ca| ca.into_series())
 }
 
 /// Create AID NaN output
@@ -2893,7 +2904,17 @@ fn aid_nan_output() -> PolarsResult<Series> {
         high_outlier: 0,
         low_outlier: 0,
     };
-    aid_output("unknown", false, false, "unknown", f64::NAN, f64::NAN, f64::NAN, 0, &empty_counts)
+    aid_output(
+        "unknown",
+        false,
+        false,
+        "unknown",
+        f64::NAN,
+        f64::NAN,
+        f64::NAN,
+        0,
+        &empty_counts,
+    )
 }
 
 /// Automatic Identification of Demand (AID) classifier.
@@ -2977,7 +2998,14 @@ fn aid_anomalies_output(
     let struct_ca = StructChunked::from_series(
         "aid_anomalies".into(),
         n,
-        [&stockout_s, &new_product_s, &obsolete_product_s, &high_outlier_s, &low_outlier_s].into_iter(),
+        [
+            &stockout_s,
+            &new_product_s,
+            &obsolete_product_s,
+            &high_outlier_s,
+            &low_outlier_s,
+        ]
+        .into_iter(),
     )?;
 
     Ok(struct_ca.into_series())
@@ -3039,7 +3067,13 @@ fn pl_aid_anomalies(inputs: &[Series]) -> PolarsResult<Series> {
         }
     }
 
-    aid_anomalies_output(stockout, new_product, obsolete_product, high_outlier, low_outlier)
+    aid_anomalies_output(
+        stockout,
+        new_product,
+        obsolete_product,
+        high_outlier,
+        low_outlier,
+    )
 }
 
 // ============================================================================
@@ -3095,8 +3129,7 @@ fn lm_dynamic_output(
         Series::new("n_observations".into(), vec![n_observations]),
     ];
 
-    StructChunked::from_series("lm_dynamic".into(), 1, fields.iter())
-        .map(|ca| ca.into_series())
+    StructChunked::from_series("lm_dynamic".into(), 1, fields.iter()).map(|ca| ca.into_series())
 }
 
 /// Create dynamic linear model NaN output

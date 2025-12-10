@@ -66,10 +66,13 @@ fn parse_loss(s: &str, role_trim: Option<f64>) -> PyResult<AlmLoss> {
         "mse" => Ok(AlmLoss::MSE),
         "mae" => Ok(AlmLoss::MAE),
         "ham" => Ok(AlmLoss::HAM),
-        "role" => Ok(AlmLoss::ROLE { trim: role_trim.unwrap_or(0.05) }),
-        _ => Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
-            format!("Unknown loss function: '{}'. Available: likelihood, mse, mae, ham, role", s)
-        )),
+        "role" => Ok(AlmLoss::ROLE {
+            trim: role_trim.unwrap_or(0.05),
+        }),
+        _ => Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
+            "Unknown loss function: '{}'. Available: likelihood, mse, mae, ham, role",
+            s
+        ))),
     }
 }
 

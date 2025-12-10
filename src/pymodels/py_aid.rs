@@ -138,7 +138,12 @@ impl PyAidResult {
     /// Get anomaly flags as a list of strings.
     #[getter]
     fn anomalies<'py>(&self, py: Python<'py>) -> Bound<'py, pyo3::types::PyList> {
-        let anomaly_strs: Vec<&str> = self.result.anomalies.iter().map(|a| anomaly_to_str(*a)).collect();
+        let anomaly_strs: Vec<&str> = self
+            .result
+            .anomalies
+            .iter()
+            .map(|a| anomaly_to_str(*a))
+            .collect();
         pyo3::types::PyList::new(py, anomaly_strs).unwrap()
     }
 
@@ -239,10 +244,7 @@ impl PyAid {
     /// -------
     /// AidResult
     ///     Classification result containing demand type, best distribution, and anomalies.
-    fn classify<'py>(
-        &self,
-        y: PyReadonlyArray1<'py, f64>,
-    ) -> PyResult<PyAidResult> {
+    fn classify<'py>(&self, y: PyReadonlyArray1<'py, f64>) -> PyResult<PyAidResult> {
         let y_col = y.to_faer();
         let _ic_type = parse_ic(&self.ic)?;
 
