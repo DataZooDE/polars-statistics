@@ -20,6 +20,8 @@ Complete API reference for polars-statistics. For quick start examples, see the 
   - [Linear Models](#linear-models)
   - [GLM Models](#glm-models)
   - [Augmented Linear Model (ALM)](#augmented-linear-model-alm)
+  - [Dynamic Linear Model (LmDynamic)](#dynamic-linear-model-lmdynamic)
+  - [Demand Classification (AID)](#demand-classification-aid)
   - [Formula Syntax](#formula-syntax)
   - [Summary Functions](#summary-functions)
   - [Prediction Functions](#prediction-functions)
@@ -27,6 +29,8 @@ Complete API reference for polars-statistics. For quick start examples, see the 
   - [Linear Model Classes](#linear-model-classes)
   - [GLM Model Classes](#glm-model-classes)
   - [ALM Class](#alm-class)
+  - [LmDynamic Class](#lmdynamic-class)
+  - [Aid Class](#aid-class)
   - [Test Model Classes](#test-model-classes)
 - [Bootstrap Methods](#bootstrap-methods)
 - [Output Structures](#output-structures)
@@ -629,6 +633,102 @@ ps.alm(
 
 ---
 
+### Dynamic Linear Model (LmDynamic)
+
+Time-varying coefficient regression using information criterion-weighted model averaging with optional LOWESS smoothing.
+
+#### `lm_dynamic`
+
+```python
+ps.lm_dynamic(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    ic: str = "aicc",              # "aic", "aicc", "bic"
+    distribution: str = "normal",  # "normal", "laplace", "student_t", etc.
+    lowess_span: float = 0.3,      # LOWESS smoothing span (0.05-1.0)
+    max_models: int = 64,          # Max candidate models
+    with_intercept: bool = True,
+) -> pl.Expr
+```
+
+**Returns:** See [LmDynamic Output](#lmdynamic-output)
+
+**Example:**
+
+```python
+# Fit dynamic model per group
+df.group_by("group").agg(
+    ps.lm_dynamic("y", "x1", "x2", lowess_span=0.3).alias("model")
+).unnest("model")
+```
+
+---
+
+### Demand Classification (AID)
+
+Automatic Identification of Demand patterns with anomaly detection.
+
+#### `aid`
+
+Classifies demand time series as regular or intermittent, fits the best distribution, and detects anomalies.
+
+```python
+ps.aid(
+    y: Union[pl.Expr, str],
+    intermittent_threshold: float = 0.3,  # Zero proportion threshold
+) -> pl.Expr
+```
+
+**Returns:** See [AID Output](#aid-output)
+
+**Example:**
+
+```python
+# Classify demand per SKU
+df.group_by("sku").agg(
+    ps.aid("demand").alias("classification")
+).unnest("classification")
+```
+
+---
+
+#### `aid_anomalies`
+
+Returns per-observation anomaly flags. Use with `.over()` to add anomaly columns to the original DataFrame.
+
+```python
+ps.aid_anomalies(
+    y: Union[pl.Expr, str],
+    intermittent_threshold: float = 0.3,
+) -> pl.Expr
+```
+
+**Returns:** `Struct{stockout: Boolean, new_product: Boolean, obsolete_product: Boolean, high_outlier: Boolean, low_outlier: Boolean}` per row
+
+**Anomaly Types:**
+
+| Type | Description |
+|------|-------------|
+| `stockout` | Unexpected zero in otherwise positive demand |
+| `new_product` | Leading zeros pattern (product launch) |
+| `obsolete_product` | Trailing zeros pattern (product phase-out) |
+| `high_outlier` | Unusually high demand value |
+| `low_outlier` | Unusually low demand value |
+
+**Example:**
+
+```python
+# Add per-row anomaly flags
+result = df.with_columns(
+    ps.aid_anomalies("demand").over("sku").alias("anomalies")
+).unnest("anomalies")
+
+# Filter to flagged observations
+result.filter(pl.col("high_outlier") | pl.col("stockout"))
+```
+
+---
+
 ### Formula Syntax
 
 Formula-based regression using R-style syntax. Supports polynomial and interaction effects that are computed per-group with `group_by`/`over`.
@@ -838,6 +938,81 @@ print(model.log_likelihood, model.aic, model.bic)
 
 ---
 
+### LmDynamic Class
+
+Dynamic linear model with time-varying coefficients.
+
+```python
+from polars_statistics import LmDynamic
+
+model = LmDynamic(
+    ic="aicc",                # "aic", "aicc", "bic"
+    distribution="normal",   # Error distribution
+    lowess_span=0.3,         # Smoothing span (0.05-1.0), None to disable
+    max_models=64,           # Max candidate models
+    with_intercept=True,
+)
+
+model.fit(X, y)
+
+# Properties
+model.coefficients           # np.ndarray - final coefficients
+model.intercept              # float or None
+model.r_squared              # float
+model.dynamic_coefficients   # np.ndarray (n_obs x n_coef) - time-varying coefficients
+model.model_weights          # np.ndarray (n_obs x n_models) - raw IC weights
+model.smoothed_weights       # np.ndarray or None - LOWESS smoothed weights
+model.pointwise_ic           # np.ndarray (n_obs x n_models) - per-observation IC values
+
+# Predict
+predictions = model.predict(X_new)
+```
+
+---
+
+### Aid Class
+
+Automatic Identification of Demand patterns.
+
+```python
+from polars_statistics import Aid
+
+classifier = Aid(
+    intermittent_threshold=0.3,  # Zero proportion threshold
+    ic="aicc",                   # "aic", "aicc", "bic"
+)
+
+result = classifier.classify(y)  # y: 1D numpy array
+
+# AidResult properties
+result.demand_type        # str: "regular" or "intermittent"
+result.distribution       # str: best-fit distribution name
+result.is_fractional      # bool: whether data has fractional values
+result.mean               # float: estimated mean
+result.variance           # float: estimated variance
+result.zero_proportion    # float: proportion of zeros
+result.n_observations     # int: number of observations
+result.anomalies          # list[str]: per-observation anomaly flags
+result.ic_values          # dict: IC values for each candidate distribution
+
+# Convenience methods
+result.is_regular()           # bool
+result.is_intermittent()      # bool
+result.has_stockouts()        # bool
+result.is_new_product()       # bool (leading zeros pattern)
+result.is_obsolete_product()  # bool (trailing zeros pattern)
+result.anomaly_counts()       # dict: counts by anomaly type
+```
+
+**Supported Distributions:**
+
+| Category | Distributions |
+|----------|---------------|
+| Count | `poisson`, `negative_binomial`, `geometric` |
+| Continuous | `normal`, `gamma`, `lognormal`, `rectified_normal` |
+
+---
+
 ### Test Model Classes
 
 Statistical tests available as model classes with `.fit()`, `.statistic`, `.p_value`, and `.summary()` methods.
@@ -1012,6 +1187,57 @@ Struct {
     bic: Float64,
     log_likelihood: Float64,
     n_observations: UInt32,
+}
+```
+
+### LmDynamic Output
+
+```
+Struct {
+    intercept: Float64,
+    coefficients: List[Float64],
+    r_squared: Float64,
+    adj_r_squared: Float64,
+    mse: Float64,
+    rmse: Float64,
+    n_observations: UInt32,
+}
+```
+
+### AID Output
+
+```
+Struct {
+    demand_type: String,           # "regular" or "intermittent"
+    is_intermittent: Boolean,
+    is_fractional: Boolean,
+    distribution: String,          # Best-fit distribution name
+    mean: Float64,
+    variance: Float64,
+    zero_proportion: Float64,
+    n_observations: UInt32,
+    has_stockouts: Boolean,
+    is_new_product: Boolean,
+    is_obsolete_product: Boolean,
+    stockout_count: UInt32,
+    new_product_count: UInt32,
+    obsolete_product_count: UInt32,
+    high_outlier_count: UInt32,
+    low_outlier_count: UInt32,
+}
+```
+
+### AID Anomalies Output
+
+Per-row struct (use with `.over()` and `.unnest()`):
+
+```
+Struct {
+    stockout: Boolean,
+    new_product: Boolean,
+    obsolete_product: Boolean,
+    high_outlier: Boolean,
+    low_outlier: Boolean,
 }
 ```
 
