@@ -668,6 +668,8 @@ df.group_by("group").agg(
 
 Automatic Identification of Demand patterns with anomaly detection.
 
+> **Reference:** Svetunkov, I. & Sroginis, A. (2025). *Why do zeroes happen? A model-based approach for demand classification*. [arXiv:2504.05894](https://arxiv.org/abs/2504.05894)
+
 #### `aid`
 
 Classifies demand time series as regular or intermittent, fits the best distribution, and detects anomalies.
