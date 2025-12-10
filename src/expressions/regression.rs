@@ -2848,6 +2848,7 @@ impl AnomalyCounts {
 }
 
 /// Create AID output struct
+#[allow(clippy::too_many_arguments)]
 fn aid_output(
     demand_type: &str,
     is_intermittent: bool,
@@ -3084,12 +3085,9 @@ fn lm_dynamic_output(
 ) -> PolarsResult<Series> {
     let coef_series = Series::new("".into(), coefficients);
 
-    let fields = vec![
+    let fields = [
         Series::new("intercept".into(), vec![intercept.unwrap_or(f64::NAN)]),
-        Series::new(
-            "coefficients".into(),
-            vec![coef_series],
-        ),
+        Series::new("coefficients".into(), vec![coef_series]),
         Series::new("r_squared".into(), vec![r_squared]),
         Series::new("adj_r_squared".into(), vec![adj_r_squared]),
         Series::new("mse".into(), vec![mse]),
