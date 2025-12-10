@@ -255,7 +255,6 @@ fn pl_ols(inputs: &[Series]) -> PolarsResult<Series> {
 
     let model = OlsRegressor::builder()
         .with_intercept(with_intercept)
-        
         .build();
 
     match model.fit(&x, &y) {
@@ -768,7 +767,6 @@ fn pl_ols_summary(inputs: &[Series]) -> PolarsResult<Series> {
 
     let model = OlsRegressor::builder()
         .with_intercept(with_intercept)
-        
         .build();
 
     match model.fit(&x, &y) {
@@ -833,7 +831,6 @@ fn pl_ridge_summary(inputs: &[Series]) -> PolarsResult<Series> {
     let model = RidgeRegressor::builder()
         .lambda(lambda)
         .with_intercept(with_intercept)
-        
         .build();
 
     match model.fit(&x, &y) {
@@ -898,7 +895,6 @@ fn pl_elastic_net_summary(inputs: &[Series]) -> PolarsResult<Series> {
         .lambda(lambda)
         .alpha(alpha)
         .with_intercept(with_intercept)
-        
         .build();
 
     match model.fit(&x, &y) {
@@ -964,7 +960,6 @@ fn pl_wls_summary(inputs: &[Series]) -> PolarsResult<Series> {
     let model = WlsRegressor::builder()
         .with_intercept(with_intercept)
         .weights(weights)
-        
         .build();
 
     match model.fit(&x, &y) {
@@ -1027,7 +1022,6 @@ fn pl_rls_summary(inputs: &[Series]) -> PolarsResult<Series> {
     let model = RlsRegressor::builder()
         .forgetting_factor(forgetting_factor)
         .with_intercept(with_intercept)
-        
         .build();
 
     match model.fit(&x, &y) {
@@ -1088,9 +1082,7 @@ fn pl_bls_summary(inputs: &[Series]) -> PolarsResult<Series> {
         Err(_) => return summary_nan_output(),
     };
 
-    let mut builder = BlsRegressor::builder()
-        .with_intercept(with_intercept)
-        ;
+    let mut builder = BlsRegressor::builder().with_intercept(with_intercept);
 
     if let Some(lb) = lower_bound {
         builder = builder.lower_bound_all(lb);
@@ -1163,7 +1155,6 @@ fn pl_logistic_summary(inputs: &[Series]) -> PolarsResult<Series> {
 
     let model = BinomialRegressor::logistic()
         .with_intercept(with_intercept)
-        
         .build();
 
     match model.fit(&x, &y) {
@@ -1224,7 +1215,6 @@ fn pl_poisson_summary(inputs: &[Series]) -> PolarsResult<Series> {
 
     let model = PoissonRegressor::builder()
         .with_intercept(with_intercept)
-        
         .build();
 
     match model.fit(&x, &y) {
@@ -1284,9 +1274,7 @@ fn pl_negative_binomial_summary(inputs: &[Series]) -> PolarsResult<Series> {
         Err(_) => return summary_nan_output(),
     };
 
-    let mut builder = NegativeBinomialRegressor::builder()
-        .with_intercept(with_intercept)
-        ;
+    let mut builder = NegativeBinomialRegressor::builder().with_intercept(with_intercept);
 
     if let Some(t) = theta {
         builder = builder.theta(t);
@@ -1356,7 +1344,6 @@ fn pl_tweedie_summary(inputs: &[Series]) -> PolarsResult<Series> {
     let model = TweedieRegressor::builder()
         .var_power(var_power)
         .with_intercept(with_intercept)
-        
         .build();
 
     match model.fit(&x, &y) {
@@ -1417,7 +1404,6 @@ fn pl_probit_summary(inputs: &[Series]) -> PolarsResult<Series> {
 
     let model = BinomialRegressor::probit()
         .with_intercept(with_intercept)
-        
         .build();
 
     match model.fit(&x, &y) {
@@ -1478,7 +1464,6 @@ fn pl_cloglog_summary(inputs: &[Series]) -> PolarsResult<Series> {
 
     let model = BinomialRegressor::cloglog()
         .with_intercept(with_intercept)
-        
         .build();
 
     match model.fit(&x, &y) {
@@ -1698,7 +1683,8 @@ fn pl_ols_predict(inputs: &[Series]) -> PolarsResult<Series> {
     let n_rows = inputs[0].len();
 
     // Build data with null handling
-    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 5, null_policy) {
+    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 5, null_policy)
+    {
         Ok(data) => data,
         Err(_) => return prediction_nan_output(n_rows),
     };
@@ -1773,7 +1759,8 @@ fn pl_ridge_predict(inputs: &[Series]) -> PolarsResult<Series> {
 
     let n_rows = inputs[0].len();
 
-    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 6, null_policy) {
+    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 6, null_policy)
+    {
         Ok(data) => data,
         Err(_) => return prediction_nan_output(n_rows),
     };
@@ -1847,7 +1834,8 @@ fn pl_elastic_net_predict(inputs: &[Series]) -> PolarsResult<Series> {
 
     let n_rows = inputs[0].len();
 
-    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 7, null_policy) {
+    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 7, null_policy)
+    {
         Ok(data) => data,
         Err(_) => return prediction_nan_output(n_rows),
     };
@@ -1924,7 +1912,8 @@ fn pl_wls_predict(inputs: &[Series]) -> PolarsResult<Series> {
     let weights_series = inputs[5].f64()?;
     let weights = Col::from_fn(n_rows, |i| weights_series.get(i).unwrap_or(1.0));
 
-    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 6, null_policy) {
+    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 6, null_policy)
+    {
         Ok(data) => data,
         Err(_) => return prediction_nan_output(n_rows),
     };
@@ -2005,7 +1994,8 @@ fn pl_rls_predict(inputs: &[Series]) -> PolarsResult<Series> {
 
     let n_rows = inputs[0].len();
 
-    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 6, null_policy) {
+    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 6, null_policy)
+    {
         Ok(data) => data,
         Err(_) => return prediction_nan_output(n_rows),
     };
@@ -2080,7 +2070,8 @@ fn pl_bls_predict(inputs: &[Series]) -> PolarsResult<Series> {
 
     let n_rows = inputs[0].len();
 
-    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 7, null_policy) {
+    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 7, null_policy)
+    {
         Ok(data) => data,
         Err(_) => return prediction_nan_output(n_rows),
     };
@@ -2156,7 +2147,8 @@ fn pl_logistic_predict(inputs: &[Series]) -> PolarsResult<Series> {
 
     let n_rows = inputs[0].len();
 
-    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 5, null_policy) {
+    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 5, null_policy)
+    {
         Ok(data) => data,
         Err(_) => return prediction_nan_output(n_rows),
     };
@@ -2227,7 +2219,8 @@ fn pl_poisson_predict(inputs: &[Series]) -> PolarsResult<Series> {
 
     let n_rows = inputs[0].len();
 
-    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 5, null_policy) {
+    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 5, null_policy)
+    {
         Ok(data) => data,
         Err(_) => return prediction_nan_output(n_rows),
     };
@@ -2298,7 +2291,8 @@ fn pl_negative_binomial_predict(inputs: &[Series]) -> PolarsResult<Series> {
 
     let n_rows = inputs[0].len();
 
-    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 5, null_policy) {
+    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 5, null_policy)
+    {
         Ok(data) => data,
         Err(_) => return prediction_nan_output(n_rows),
     };
@@ -2370,7 +2364,8 @@ fn pl_tweedie_predict(inputs: &[Series]) -> PolarsResult<Series> {
 
     let n_rows = inputs[0].len();
 
-    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 6, null_policy) {
+    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 6, null_policy)
+    {
         Ok(data) => data,
         Err(_) => return prediction_nan_output(n_rows),
     };
@@ -2442,7 +2437,8 @@ fn pl_probit_predict(inputs: &[Series]) -> PolarsResult<Series> {
 
     let n_rows = inputs[0].len();
 
-    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 5, null_policy) {
+    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 5, null_policy)
+    {
         Ok(data) => data,
         Err(_) => return prediction_nan_output(n_rows),
     };
@@ -2513,7 +2509,8 @@ fn pl_cloglog_predict(inputs: &[Series]) -> PolarsResult<Series> {
 
     let n_rows = inputs[0].len();
 
-    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 5, null_policy) {
+    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 5, null_policy)
+    {
         Ok(data) => data,
         Err(_) => return prediction_nan_output(n_rows),
     };
@@ -2585,7 +2582,8 @@ fn pl_alm_predict(inputs: &[Series]) -> PolarsResult<Series> {
 
     let n_rows = inputs[0].len();
 
-    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 6, null_policy) {
+    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 6, null_policy)
+    {
         Ok(data) => data,
         Err(_) => return prediction_nan_output(n_rows),
     };
@@ -2675,7 +2673,6 @@ fn pl_alm_summary(inputs: &[Series]) -> PolarsResult<Series> {
     let model = AlmRegressor::builder()
         .distribution(distribution)
         .with_intercept(with_intercept)
-        
         .build();
 
     match model.fit(&x, &y) {
