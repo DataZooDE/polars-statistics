@@ -385,9 +385,9 @@ class TestFormulaPredictFunctions:
             ps.ridge_formula_predict("y ~ x1 + x2", lambda_=1.0, interval="prediction").alias("pred")
         )
         pred = result["pred"][0]
-        assert "prediction" in pred
-        assert "lower" in pred
-        assert "upper" in pred
+        assert "ridge_prediction" in pred
+        assert "ridge_lower" in pred
+        assert "ridge_upper" in pred
 
 
 # =============================================================================

@@ -5,6 +5,7 @@
 use faer::{Col, Mat};
 use polars::prelude::*;
 use pyo3_polars::derive::polars_expr;
+use serde::Deserialize;
 
 use anofox_regression::solvers::{
     AlmDistribution, AlmRegressor, BinomialRegressor, BlsRegressor, ElasticNetRegressor,
@@ -1514,30 +1515,45 @@ fn pl_cloglog_summary(inputs: &[Series]) -> PolarsResult<Series> {
 // Prediction Expressions
 // ============================================================================
 
-/// Output type for prediction with intervals - returns struct per row
-fn predict_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
-    let fields = vec![
-        Field::new("prediction".into(), DataType::Float64),
-        Field::new("lower".into(), DataType::Float64),
-        Field::new("upper".into(), DataType::Float64),
-    ];
-    Ok(Field::new("predictions".into(), DataType::Struct(fields)))
+/// Kwargs for prediction functions - contains the prefix for output column names
+#[derive(Deserialize)]
+pub struct PredictKwargs {
+    /// Prefix for output column names (e.g., "ols", "ridge", or user-provided)
+    pub prefix: String,
 }
 
-/// Create prediction output as Struct{prediction, lower, upper} per row
-fn prediction_output(
+/// Output type for prediction with intervals - uses prefix from kwargs
+fn predict_output_dtype_with_prefix(
+    _input_fields: &[Field],
+    kwargs: PredictKwargs,
+) -> PolarsResult<Field> {
+    let prefix = &kwargs.prefix;
+    let fields = vec![
+        Field::new(format!("{}_prediction", prefix).into(), DataType::Float64),
+        Field::new(format!("{}_lower", prefix).into(), DataType::Float64),
+        Field::new(format!("{}_upper", prefix).into(), DataType::Float64),
+    ];
+    Ok(Field::new(
+        format!("{}_predictions", prefix).into(),
+        DataType::Struct(fields),
+    ))
+}
+
+/// Create prediction output with prefixed field names
+fn prediction_output_with_prefix(
     predictions: Vec<f64>,
     lower: Vec<f64>,
     upper: Vec<f64>,
+    prefix: &str,
 ) -> PolarsResult<Series> {
     let n = predictions.len();
 
-    let pred_s = Series::new("prediction".into(), predictions);
-    let lower_s = Series::new("lower".into(), lower);
-    let upper_s = Series::new("upper".into(), upper);
+    let pred_s = Series::new(format!("{}_prediction", prefix).into(), predictions);
+    let lower_s = Series::new(format!("{}_lower", prefix).into(), lower);
+    let upper_s = Series::new(format!("{}_upper", prefix).into(), upper);
 
     let struct_ca = StructChunked::from_series(
-        "predictions".into(),
+        format!("{}_predictions", prefix).into(),
         n,
         [&pred_s, &lower_s, &upper_s].into_iter(),
     )?;
@@ -1545,9 +1561,14 @@ fn prediction_output(
     Ok(struct_ca.into_series())
 }
 
-/// Create empty prediction output on error
-fn prediction_nan_output(n: usize) -> PolarsResult<Series> {
-    prediction_output(vec![f64::NAN; n], vec![f64::NAN; n], vec![f64::NAN; n])
+/// Create empty prediction output with prefixed field names
+fn prediction_nan_output_with_prefix(n: usize, prefix: &str) -> PolarsResult<Series> {
+    prediction_output_with_prefix(
+        vec![f64::NAN; n],
+        vec![f64::NAN; n],
+        vec![f64::NAN; n],
+        prefix,
+    )
 }
 
 /// Build X matrix and y vector with null handling based on policy.
@@ -1672,12 +1693,13 @@ fn build_xy_with_null_policy(
 /// OLS prediction expression - returns predictions with optional intervals.
 /// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval (string or null),
 /// inputs[3] = level, inputs[4] = null_policy, inputs[5..] = x columns
-#[polars_expr(output_type_func=predict_output_dtype)]
-fn pl_ols_predict(inputs: &[Series]) -> PolarsResult<Series> {
+#[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
+fn pl_ols_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
     let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
     let interval = inputs[2].str()?.get(0); // None, "confidence", or "prediction"
     let level = inputs[3].f64()?.get(0).unwrap_or(0.95);
     let null_policy = inputs[4].str()?.get(0).unwrap_or("drop");
+    let prefix = &kwargs.prefix;
 
     // Get number of rows from the first series
     let n_rows = inputs[0].len();
@@ -1686,7 +1708,7 @@ fn pl_ols_predict(inputs: &[Series]) -> PolarsResult<Series> {
     let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 5, null_policy)
     {
         Ok(data) => data,
-        Err(_) => return prediction_nan_output(n_rows),
+        Err(_) => return prediction_nan_output_with_prefix(n_rows, prefix),
     };
 
     let model = OlsRegressor::builder()
@@ -1740,29 +1762,30 @@ fn pl_ols_predict(inputs: &[Series]) -> PolarsResult<Series> {
                 (vec![f64::NAN; n_rows], vec![f64::NAN; n_rows])
             };
 
-            prediction_output(predictions, lower, upper)
+            prediction_output_with_prefix(predictions, lower, upper, prefix)
         }
-        Err(_) => prediction_nan_output(n_rows),
+        Err(_) => prediction_nan_output_with_prefix(n_rows, prefix),
     }
 }
 
 /// Ridge prediction expression
 /// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval, inputs[3] = level,
 /// inputs[4] = null_policy, inputs[5] = lambda, inputs[6..] = x columns
-#[polars_expr(output_type_func=predict_output_dtype)]
-fn pl_ridge_predict(inputs: &[Series]) -> PolarsResult<Series> {
+#[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
+fn pl_ridge_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
     let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
     let interval = inputs[2].str()?.get(0);
     let level = inputs[3].f64()?.get(0).unwrap_or(0.95);
     let null_policy = inputs[4].str()?.get(0).unwrap_or("drop");
     let lambda = inputs[5].f64()?.get(0).unwrap_or(1.0);
+    let prefix = &kwargs.prefix;
 
     let n_rows = inputs[0].len();
 
     let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 6, null_policy)
     {
         Ok(data) => data,
-        Err(_) => return prediction_nan_output(n_rows),
+        Err(_) => return prediction_nan_output_with_prefix(n_rows, prefix),
     };
 
     let model = RidgeRegressor::builder()
@@ -1814,30 +1837,31 @@ fn pl_ridge_predict(inputs: &[Series]) -> PolarsResult<Series> {
                 (vec![f64::NAN; n_rows], vec![f64::NAN; n_rows])
             };
 
-            prediction_output(predictions, lower, upper)
+            prediction_output_with_prefix(predictions, lower, upper, prefix)
         }
-        Err(_) => prediction_nan_output(n_rows),
+        Err(_) => prediction_nan_output_with_prefix(n_rows, prefix),
     }
 }
 
 /// Elastic Net prediction expression
 /// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval, inputs[3] = level,
 /// inputs[4] = null_policy, inputs[5] = lambda, inputs[6] = alpha, inputs[7..] = x columns
-#[polars_expr(output_type_func=predict_output_dtype)]
-fn pl_elastic_net_predict(inputs: &[Series]) -> PolarsResult<Series> {
+#[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
+fn pl_elastic_net_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
     let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
     let interval = inputs[2].str()?.get(0);
     let level = inputs[3].f64()?.get(0).unwrap_or(0.95);
     let null_policy = inputs[4].str()?.get(0).unwrap_or("drop");
     let lambda = inputs[5].f64()?.get(0).unwrap_or(1.0);
     let alpha = inputs[6].f64()?.get(0).unwrap_or(0.5);
+    let prefix = &kwargs.prefix;
 
     let n_rows = inputs[0].len();
 
     let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 7, null_policy)
     {
         Ok(data) => data,
-        Err(_) => return prediction_nan_output(n_rows),
+        Err(_) => return prediction_nan_output_with_prefix(n_rows, prefix),
     };
 
     let model = ElasticNetRegressor::builder()
@@ -1890,21 +1914,22 @@ fn pl_elastic_net_predict(inputs: &[Series]) -> PolarsResult<Series> {
                 (vec![f64::NAN; n_rows], vec![f64::NAN; n_rows])
             };
 
-            prediction_output(predictions, lower, upper)
+            prediction_output_with_prefix(predictions, lower, upper, prefix)
         }
-        Err(_) => prediction_nan_output(n_rows),
+        Err(_) => prediction_nan_output_with_prefix(n_rows, prefix),
     }
 }
 
 /// WLS prediction expression (weights column is inputs[6])
 /// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval, inputs[3] = level,
 /// inputs[4] = null_policy, inputs[5] = weights, inputs[6..] = x columns
-#[polars_expr(output_type_func=predict_output_dtype)]
-fn pl_wls_predict(inputs: &[Series]) -> PolarsResult<Series> {
+#[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
+fn pl_wls_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
     let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
     let interval = inputs[2].str()?.get(0);
     let level = inputs[3].f64()?.get(0).unwrap_or(0.95);
     let null_policy = inputs[4].str()?.get(0).unwrap_or("drop");
+    let prefix = &kwargs.prefix;
 
     let n_rows = inputs[0].len();
 
@@ -1915,7 +1940,7 @@ fn pl_wls_predict(inputs: &[Series]) -> PolarsResult<Series> {
     let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 6, null_policy)
     {
         Ok(data) => data,
-        Err(_) => return prediction_nan_output(n_rows),
+        Err(_) => return prediction_nan_output_with_prefix(n_rows, prefix),
     };
 
     // Build weights for fitting (only valid rows)
@@ -1975,29 +2000,30 @@ fn pl_wls_predict(inputs: &[Series]) -> PolarsResult<Series> {
                 (vec![f64::NAN; n_rows], vec![f64::NAN; n_rows])
             };
 
-            prediction_output(predictions, lower, upper)
+            prediction_output_with_prefix(predictions, lower, upper, prefix)
         }
-        Err(_) => prediction_nan_output(n_rows),
+        Err(_) => prediction_nan_output_with_prefix(n_rows, prefix),
     }
 }
 
 /// RLS prediction expression
 /// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval, inputs[3] = level,
 /// inputs[4] = null_policy, inputs[5] = forgetting_factor, inputs[6..] = x columns
-#[polars_expr(output_type_func=predict_output_dtype)]
-fn pl_rls_predict(inputs: &[Series]) -> PolarsResult<Series> {
+#[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
+fn pl_rls_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
     let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
     let interval = inputs[2].str()?.get(0);
     let level = inputs[3].f64()?.get(0).unwrap_or(0.95);
     let null_policy = inputs[4].str()?.get(0).unwrap_or("drop");
     let forgetting_factor = inputs[5].f64()?.get(0).unwrap_or(0.99);
+    let prefix = &kwargs.prefix;
 
     let n_rows = inputs[0].len();
 
     let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 6, null_policy)
     {
         Ok(data) => data,
-        Err(_) => return prediction_nan_output(n_rows),
+        Err(_) => return prediction_nan_output_with_prefix(n_rows, prefix),
     };
 
     let model = RlsRegressor::builder()
@@ -2049,9 +2075,9 @@ fn pl_rls_predict(inputs: &[Series]) -> PolarsResult<Series> {
                 (vec![f64::NAN; n_rows], vec![f64::NAN; n_rows])
             };
 
-            prediction_output(predictions, lower, upper)
+            prediction_output_with_prefix(predictions, lower, upper, prefix)
         }
-        Err(_) => prediction_nan_output(n_rows),
+        Err(_) => prediction_nan_output_with_prefix(n_rows, prefix),
     }
 }
 
@@ -2059,21 +2085,22 @@ fn pl_rls_predict(inputs: &[Series]) -> PolarsResult<Series> {
 /// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval, inputs[3] = level,
 /// inputs[4] = null_policy, inputs[5] = lower_bound (or null), inputs[6] = upper_bound (or null),
 /// inputs[7..] = x columns
-#[polars_expr(output_type_func=predict_output_dtype)]
-fn pl_bls_predict(inputs: &[Series]) -> PolarsResult<Series> {
+#[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
+fn pl_bls_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
     let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
     let interval = inputs[2].str()?.get(0);
     let level = inputs[3].f64()?.get(0).unwrap_or(0.95);
     let null_policy = inputs[4].str()?.get(0).unwrap_or("drop");
     let lower_bound = inputs[5].f64()?.get(0);
     let upper_bound = inputs[6].f64()?.get(0);
+    let prefix = &kwargs.prefix;
 
     let n_rows = inputs[0].len();
 
     let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 7, null_policy)
     {
         Ok(data) => data,
-        Err(_) => return prediction_nan_output(n_rows),
+        Err(_) => return prediction_nan_output_with_prefix(n_rows, prefix),
     };
 
     let mut builder = BlsRegressor::builder().with_intercept(with_intercept);
@@ -2129,28 +2156,29 @@ fn pl_bls_predict(inputs: &[Series]) -> PolarsResult<Series> {
                 (vec![f64::NAN; n_rows], vec![f64::NAN; n_rows])
             };
 
-            prediction_output(predictions, lower, upper)
+            prediction_output_with_prefix(predictions, lower, upper, prefix)
         }
-        Err(_) => prediction_nan_output(n_rows),
+        Err(_) => prediction_nan_output_with_prefix(n_rows, prefix),
     }
 }
 
 /// Logistic prediction expression
 /// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval, inputs[3] = level,
 /// inputs[4] = null_policy, inputs[5..] = x columns
-#[polars_expr(output_type_func=predict_output_dtype)]
-fn pl_logistic_predict(inputs: &[Series]) -> PolarsResult<Series> {
+#[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
+fn pl_logistic_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
     let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
     let interval = inputs[2].str()?.get(0);
     let level = inputs[3].f64()?.get(0).unwrap_or(0.95);
     let null_policy = inputs[4].str()?.get(0).unwrap_or("drop");
+    let prefix = &kwargs.prefix;
 
     let n_rows = inputs[0].len();
 
     let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 5, null_policy)
     {
         Ok(data) => data,
-        Err(_) => return prediction_nan_output(n_rows),
+        Err(_) => return prediction_nan_output_with_prefix(n_rows, prefix),
     };
 
     let model = BinomialRegressor::builder()
@@ -2201,28 +2229,29 @@ fn pl_logistic_predict(inputs: &[Series]) -> PolarsResult<Series> {
                 (vec![f64::NAN; n_rows], vec![f64::NAN; n_rows])
             };
 
-            prediction_output(predictions, lower, upper)
+            prediction_output_with_prefix(predictions, lower, upper, prefix)
         }
-        Err(_) => prediction_nan_output(n_rows),
+        Err(_) => prediction_nan_output_with_prefix(n_rows, prefix),
     }
 }
 
 /// Poisson prediction expression
 /// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval, inputs[3] = level,
 /// inputs[4] = null_policy, inputs[5..] = x columns
-#[polars_expr(output_type_func=predict_output_dtype)]
-fn pl_poisson_predict(inputs: &[Series]) -> PolarsResult<Series> {
+#[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
+fn pl_poisson_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
     let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
     let interval = inputs[2].str()?.get(0);
     let level = inputs[3].f64()?.get(0).unwrap_or(0.95);
     let null_policy = inputs[4].str()?.get(0).unwrap_or("drop");
+    let prefix = &kwargs.prefix;
 
     let n_rows = inputs[0].len();
 
     let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 5, null_policy)
     {
         Ok(data) => data,
-        Err(_) => return prediction_nan_output(n_rows),
+        Err(_) => return prediction_nan_output_with_prefix(n_rows, prefix),
     };
 
     let model = PoissonRegressor::builder()
@@ -2273,28 +2302,29 @@ fn pl_poisson_predict(inputs: &[Series]) -> PolarsResult<Series> {
                 (vec![f64::NAN; n_rows], vec![f64::NAN; n_rows])
             };
 
-            prediction_output(predictions, lower, upper)
+            prediction_output_with_prefix(predictions, lower, upper, prefix)
         }
-        Err(_) => prediction_nan_output(n_rows),
+        Err(_) => prediction_nan_output_with_prefix(n_rows, prefix),
     }
 }
 
 /// Negative Binomial prediction expression
 /// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval, inputs[3] = level,
 /// inputs[4] = null_policy, inputs[5..] = x columns
-#[polars_expr(output_type_func=predict_output_dtype)]
-fn pl_negative_binomial_predict(inputs: &[Series]) -> PolarsResult<Series> {
+#[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
+fn pl_negative_binomial_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
     let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
     let interval = inputs[2].str()?.get(0);
     let level = inputs[3].f64()?.get(0).unwrap_or(0.95);
     let null_policy = inputs[4].str()?.get(0).unwrap_or("drop");
+    let prefix = &kwargs.prefix;
 
     let n_rows = inputs[0].len();
 
     let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 5, null_policy)
     {
         Ok(data) => data,
-        Err(_) => return prediction_nan_output(n_rows),
+        Err(_) => return prediction_nan_output_with_prefix(n_rows, prefix),
     };
 
     let model = NegativeBinomialRegressor::builder()
@@ -2345,29 +2375,30 @@ fn pl_negative_binomial_predict(inputs: &[Series]) -> PolarsResult<Series> {
                 (vec![f64::NAN; n_rows], vec![f64::NAN; n_rows])
             };
 
-            prediction_output(predictions, lower, upper)
+            prediction_output_with_prefix(predictions, lower, upper, prefix)
         }
-        Err(_) => prediction_nan_output(n_rows),
+        Err(_) => prediction_nan_output_with_prefix(n_rows, prefix),
     }
 }
 
 /// Tweedie prediction expression
 /// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval, inputs[3] = level,
 /// inputs[4] = null_policy, inputs[5] = var_power, inputs[6..] = x columns
-#[polars_expr(output_type_func=predict_output_dtype)]
-fn pl_tweedie_predict(inputs: &[Series]) -> PolarsResult<Series> {
+#[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
+fn pl_tweedie_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
     let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
     let interval = inputs[2].str()?.get(0);
     let level = inputs[3].f64()?.get(0).unwrap_or(0.95);
     let null_policy = inputs[4].str()?.get(0).unwrap_or("drop");
     let var_power = inputs[5].f64()?.get(0).unwrap_or(1.5);
+    let prefix = &kwargs.prefix;
 
     let n_rows = inputs[0].len();
 
     let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 6, null_policy)
     {
         Ok(data) => data,
-        Err(_) => return prediction_nan_output(n_rows),
+        Err(_) => return prediction_nan_output_with_prefix(n_rows, prefix),
     };
 
     let model = TweedieRegressor::builder()
@@ -2419,28 +2450,29 @@ fn pl_tweedie_predict(inputs: &[Series]) -> PolarsResult<Series> {
                 (vec![f64::NAN; n_rows], vec![f64::NAN; n_rows])
             };
 
-            prediction_output(predictions, lower, upper)
+            prediction_output_with_prefix(predictions, lower, upper, prefix)
         }
-        Err(_) => prediction_nan_output(n_rows),
+        Err(_) => prediction_nan_output_with_prefix(n_rows, prefix),
     }
 }
 
 /// Probit prediction expression
 /// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval, inputs[3] = level,
 /// inputs[4] = null_policy, inputs[5..] = x columns
-#[polars_expr(output_type_func=predict_output_dtype)]
-fn pl_probit_predict(inputs: &[Series]) -> PolarsResult<Series> {
+#[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
+fn pl_probit_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
     let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
     let interval = inputs[2].str()?.get(0);
     let level = inputs[3].f64()?.get(0).unwrap_or(0.95);
     let null_policy = inputs[4].str()?.get(0).unwrap_or("drop");
+    let prefix = &kwargs.prefix;
 
     let n_rows = inputs[0].len();
 
     let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 5, null_policy)
     {
         Ok(data) => data,
-        Err(_) => return prediction_nan_output(n_rows),
+        Err(_) => return prediction_nan_output_with_prefix(n_rows, prefix),
     };
 
     let model = BinomialRegressor::probit()
@@ -2491,28 +2523,29 @@ fn pl_probit_predict(inputs: &[Series]) -> PolarsResult<Series> {
                 (vec![f64::NAN; n_rows], vec![f64::NAN; n_rows])
             };
 
-            prediction_output(predictions, lower, upper)
+            prediction_output_with_prefix(predictions, lower, upper, prefix)
         }
-        Err(_) => prediction_nan_output(n_rows),
+        Err(_) => prediction_nan_output_with_prefix(n_rows, prefix),
     }
 }
 
 /// Cloglog prediction expression
 /// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval, inputs[3] = level,
 /// inputs[4] = null_policy, inputs[5..] = x columns
-#[polars_expr(output_type_func=predict_output_dtype)]
-fn pl_cloglog_predict(inputs: &[Series]) -> PolarsResult<Series> {
+#[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
+fn pl_cloglog_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
     let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
     let interval = inputs[2].str()?.get(0);
     let level = inputs[3].f64()?.get(0).unwrap_or(0.95);
     let null_policy = inputs[4].str()?.get(0).unwrap_or("drop");
+    let prefix = &kwargs.prefix;
 
     let n_rows = inputs[0].len();
 
     let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 5, null_policy)
     {
         Ok(data) => data,
-        Err(_) => return prediction_nan_output(n_rows),
+        Err(_) => return prediction_nan_output_with_prefix(n_rows, prefix),
     };
 
     let model = BinomialRegressor::cloglog()
@@ -2563,34 +2596,35 @@ fn pl_cloglog_predict(inputs: &[Series]) -> PolarsResult<Series> {
                 (vec![f64::NAN; n_rows], vec![f64::NAN; n_rows])
             };
 
-            prediction_output(predictions, lower, upper)
+            prediction_output_with_prefix(predictions, lower, upper, prefix)
         }
-        Err(_) => prediction_nan_output(n_rows),
+        Err(_) => prediction_nan_output_with_prefix(n_rows, prefix),
     }
 }
 
 /// ALM prediction expression
 /// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval, inputs[3] = level,
 /// inputs[4] = null_policy, inputs[5] = distribution, inputs[6..] = x columns
-#[polars_expr(output_type_func=predict_output_dtype)]
-fn pl_alm_predict(inputs: &[Series]) -> PolarsResult<Series> {
+#[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
+fn pl_alm_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
     let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
     let interval = inputs[2].str()?.get(0);
     let level = inputs[3].f64()?.get(0).unwrap_or(0.95);
     let null_policy = inputs[4].str()?.get(0).unwrap_or("drop");
     let dist_str = inputs[5].str()?.get(0).unwrap_or("normal");
+    let prefix = &kwargs.prefix;
 
     let n_rows = inputs[0].len();
 
     let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 6, null_policy)
     {
         Ok(data) => data,
-        Err(_) => return prediction_nan_output(n_rows),
+        Err(_) => return prediction_nan_output_with_prefix(n_rows, prefix),
     };
 
     let distribution = match parse_alm_distribution(dist_str) {
         Some(d) => d,
-        None => return prediction_nan_output(n_rows),
+        None => return prediction_nan_output_with_prefix(n_rows, prefix),
     };
 
     let model = AlmRegressor::builder()
@@ -2642,9 +2676,9 @@ fn pl_alm_predict(inputs: &[Series]) -> PolarsResult<Series> {
                 (vec![f64::NAN; n_rows], vec![f64::NAN; n_rows])
             };
 
-            prediction_output(predictions, lower, upper)
+            prediction_output_with_prefix(predictions, lower, upper, prefix)
         }
-        Err(_) => prediction_nan_output(n_rows),
+        Err(_) => prediction_nan_output_with_prefix(n_rows, prefix),
     }
 }
 

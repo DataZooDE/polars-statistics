@@ -1124,6 +1124,7 @@ def ols_predict(
     interval: str | None = None,
     level: float = 0.95,
     null_policy: str = "drop",
+    name: str | None = None,
 ) -> pl.Expr:
     """OLS predictions with optional confidence/prediction intervals.
 
@@ -1149,11 +1150,15 @@ def ols_predict(
         - "drop": Drop rows with any nulls for fitting, mask predictions with NaN
         - "drop_y_zero_x": Drop rows with null targets, zero fill null features.
           Model is fit on non-null target rows, predictions made on all rows.
+    name : str or None, default None
+        Custom prefix for output column names. If None, uses "ols".
+        Output columns will be: {name}_prediction, {name}_lower, {name}_upper.
 
     Returns
     -------
     pl.Expr
-        Struct containing {prediction, lower, upper} per row.
+        Struct containing {name}_prediction, {name}_lower, {name}_upper per row.
+        Default names: ols_prediction, ols_lower, ols_upper.
         In `.over()` context, gives per-row predictions.
         In `group_by` context, returns list of structs per group.
 
@@ -1176,9 +1181,10 @@ def ols_predict(
     ...         .over("group").alias("pred")
     ... ).unnest("pred")
 
-    >>> # In group_by context
-    >>> df.group_by("group").agg(
-    ...     ps.ols_predict("y", "x1", "x2").alias("predictions")
+    >>> # Custom name for multiple models
+    >>> df.with_columns(
+    ...     ps.ols_predict("y", "x1", name="model1").over("group"),
+    ...     ps.ols_predict("y", "x2", name="model2").over("group"),
     ... )
     """
     if isinstance(y, str):
@@ -1193,6 +1199,9 @@ def ols_predict(
     # Handle interval parameter - pass as string or null
     interval_lit = pl.lit(interval, dtype=pl.String) if interval else pl.lit(None, dtype=pl.String)
 
+    # Determine prefix for output column names
+    prefix = name if name is not None else "ols"
+
     return register_plugin_function(
         plugin_path=LIB,
         function_name="pl_ols_predict",
@@ -1204,6 +1213,7 @@ def ols_predict(
             pl.lit(null_policy, dtype=pl.String),
             *x_exprs,
         ],
+        kwargs={"prefix": prefix},
         returns_scalar=False,
     )
 
@@ -1216,6 +1226,7 @@ def ridge_predict(
     interval: str | None = None,
     level: float = 0.95,
     null_policy: str = "drop",
+    name: str | None = None,
 ) -> pl.Expr:
     """Ridge regression predictions with optional intervals.
 
@@ -1235,11 +1246,13 @@ def ridge_predict(
         Confidence level for intervals.
     null_policy : str, default "drop"
         "drop" or "drop_y_zero_x".
+    name : str or None, default None
+        Custom prefix for output column names. If None, uses "ridge".
 
     Returns
     -------
     pl.Expr
-        Struct containing {prediction, lower, upper} per row.
+        Struct containing {name}_prediction, {name}_lower, {name}_upper per row.
     """
     if isinstance(y, str):
         y = pl.col(y)
@@ -1251,6 +1264,7 @@ def ridge_predict(
         x_exprs.append(xi.cast(pl.Float64))
 
     interval_lit = pl.lit(interval, dtype=pl.String) if interval else pl.lit(None, dtype=pl.String)
+    prefix = name if name is not None else "ridge"
 
     return register_plugin_function(
         plugin_path=LIB,
@@ -1264,6 +1278,7 @@ def ridge_predict(
             pl.lit(lambda_, dtype=pl.Float64),
             *x_exprs,
         ],
+        kwargs={"prefix": prefix},
         returns_scalar=False,
     )
 
@@ -1277,6 +1292,7 @@ def elastic_net_predict(
     interval: str | None = None,
     level: float = 0.95,
     null_policy: str = "drop",
+    name: str | None = None,
 ) -> pl.Expr:
     """Elastic Net regression predictions with optional intervals.
 
@@ -1298,11 +1314,13 @@ def elastic_net_predict(
         Confidence level for intervals.
     null_policy : str, default "drop"
         "drop" or "drop_y_zero_x".
+    name : str or None, default None
+        Custom prefix for output column names. If None, uses "elastic_net".
 
     Returns
     -------
     pl.Expr
-        Struct containing {prediction, lower, upper} per row.
+        Struct containing {name}_prediction, {name}_lower, {name}_upper per row.
     """
     if isinstance(y, str):
         y = pl.col(y)
@@ -1314,6 +1332,7 @@ def elastic_net_predict(
         x_exprs.append(xi.cast(pl.Float64))
 
     interval_lit = pl.lit(interval, dtype=pl.String) if interval else pl.lit(None, dtype=pl.String)
+    prefix = name if name is not None else "elastic_net"
 
     return register_plugin_function(
         plugin_path=LIB,
@@ -1328,6 +1347,7 @@ def elastic_net_predict(
             pl.lit(alpha, dtype=pl.Float64),
             *x_exprs,
         ],
+        kwargs={"prefix": prefix},
         returns_scalar=False,
     )
 
@@ -1340,6 +1360,7 @@ def wls_predict(
     interval: str | None = None,
     level: float = 0.95,
     null_policy: str = "drop",
+    name: str | None = None,
 ) -> pl.Expr:
     """Weighted Least Squares predictions with optional intervals.
 
@@ -1359,11 +1380,13 @@ def wls_predict(
         Confidence level for intervals.
     null_policy : str, default "drop"
         "drop" or "drop_y_zero_x".
+    name : str or None, default None
+        Custom prefix for output column names. If None, uses "wls".
 
     Returns
     -------
     pl.Expr
-        Struct containing {prediction, lower, upper} per row.
+        Struct containing {name}_prediction, {name}_lower, {name}_upper per row.
     """
     if isinstance(y, str):
         y = pl.col(y)
@@ -1377,6 +1400,7 @@ def wls_predict(
         x_exprs.append(xi.cast(pl.Float64))
 
     interval_lit = pl.lit(interval, dtype=pl.String) if interval else pl.lit(None, dtype=pl.String)
+    prefix = name if name is not None else "wls"
 
     return register_plugin_function(
         plugin_path=LIB,
@@ -1390,6 +1414,7 @@ def wls_predict(
             weights.cast(pl.Float64),
             *x_exprs,
         ],
+        kwargs={"prefix": prefix},
         returns_scalar=False,
     )
 
@@ -1402,6 +1427,7 @@ def rls_predict(
     interval: str | None = None,
     level: float = 0.95,
     null_policy: str = "drop",
+    name: str | None = None,
 ) -> pl.Expr:
     """Recursive Least Squares predictions with optional intervals.
 
@@ -1421,11 +1447,13 @@ def rls_predict(
         Confidence level for intervals.
     null_policy : str, default "drop"
         "drop" or "drop_y_zero_x".
+    name : str or None, default None
+        Custom prefix for output column names. If None, uses "rls".
 
     Returns
     -------
     pl.Expr
-        Struct containing {prediction, lower, upper} per row.
+        Struct containing {name}_prediction, {name}_lower, {name}_upper per row.
     """
     if isinstance(y, str):
         y = pl.col(y)
@@ -1437,6 +1465,7 @@ def rls_predict(
         x_exprs.append(xi.cast(pl.Float64))
 
     interval_lit = pl.lit(interval, dtype=pl.String) if interval else pl.lit(None, dtype=pl.String)
+    prefix = name if name is not None else "rls"
 
     return register_plugin_function(
         plugin_path=LIB,
@@ -1450,6 +1479,7 @@ def rls_predict(
             pl.lit(forgetting_factor, dtype=pl.Float64),
             *x_exprs,
         ],
+        kwargs={"prefix": prefix},
         returns_scalar=False,
     )
 
@@ -1463,6 +1493,7 @@ def bls_predict(
     interval: str | None = None,
     level: float = 0.95,
     null_policy: str = "drop",
+    name: str | None = None,
 ) -> pl.Expr:
     """Bounded Least Squares predictions with optional intervals.
 
@@ -1484,11 +1515,13 @@ def bls_predict(
         Confidence level for intervals.
     null_policy : str, default "drop"
         "drop" or "drop_y_zero_x".
+    name : str or None, default None
+        Custom prefix for output column names. If None, uses "bls".
 
     Returns
     -------
     pl.Expr
-        Struct containing {prediction, lower, upper} per row.
+        Struct containing {name}_prediction, {name}_lower, {name}_upper per row.
     """
     if isinstance(y, str):
         y = pl.col(y)
@@ -1502,6 +1535,7 @@ def bls_predict(
     interval_lit = pl.lit(interval, dtype=pl.String) if interval else pl.lit(None, dtype=pl.String)
     lb = pl.lit(lower_bound, dtype=pl.Float64) if lower_bound is not None else pl.lit(None, dtype=pl.Float64)
     ub = pl.lit(upper_bound, dtype=pl.Float64) if upper_bound is not None else pl.lit(None, dtype=pl.Float64)
+    prefix = name if name is not None else "bls"
 
     return register_plugin_function(
         plugin_path=LIB,
@@ -1516,6 +1550,7 @@ def bls_predict(
             ub,
             *x_exprs,
         ],
+        kwargs={"prefix": prefix},
         returns_scalar=False,
     )
 
@@ -1527,6 +1562,7 @@ def nnls_predict(
     interval: str | None = None,
     level: float = 0.95,
     null_policy: str = "drop",
+    name: str | None = None,
 ) -> pl.Expr:
     """Non-negative Least Squares predictions.
 
@@ -1539,6 +1575,7 @@ def nnls_predict(
         interval=interval,
         level=level,
         null_policy=null_policy,
+        name=name if name is not None else "nnls",
     )
 
 
@@ -1554,6 +1591,7 @@ def logistic_predict(
     interval: str | None = None,
     level: float = 0.95,
     null_policy: str = "drop",
+    name: str | None = None,
 ) -> pl.Expr:
     """Logistic regression predictions with optional intervals.
 
@@ -1571,11 +1609,13 @@ def logistic_predict(
         Confidence level for intervals.
     null_policy : str, default "drop"
         "drop" or "drop_y_zero_x".
+    name : str or None, default None
+        Custom prefix for output column names. If None, uses "logistic".
 
     Returns
     -------
     pl.Expr
-        Struct containing {prediction, lower, upper} per row.
+        Struct containing {name}_prediction, {name}_lower, {name}_upper per row.
         Predictions are probabilities in [0, 1].
     """
     if isinstance(y, str):
@@ -1588,6 +1628,7 @@ def logistic_predict(
         x_exprs.append(xi.cast(pl.Float64))
 
     interval_lit = pl.lit(interval, dtype=pl.String) if interval else pl.lit(None, dtype=pl.String)
+    prefix = name if name is not None else "logistic"
 
     return register_plugin_function(
         plugin_path=LIB,
@@ -1600,6 +1641,7 @@ def logistic_predict(
             pl.lit(null_policy, dtype=pl.String),
             *x_exprs,
         ],
+        kwargs={"prefix": prefix},
         returns_scalar=False,
     )
 
@@ -1611,6 +1653,7 @@ def poisson_predict(
     interval: str | None = None,
     level: float = 0.95,
     null_policy: str = "drop",
+    name: str | None = None,
 ) -> pl.Expr:
     """Poisson regression predictions with optional intervals.
 
@@ -1628,11 +1671,13 @@ def poisson_predict(
         Confidence level for intervals.
     null_policy : str, default "drop"
         "drop" or "drop_y_zero_x".
+    name : str or None, default None
+        Custom prefix for output column names. If None, uses "poisson".
 
     Returns
     -------
     pl.Expr
-        Struct containing {prediction, lower, upper} per row.
+        Struct containing {name}_prediction, {name}_lower, {name}_upper per row.
         Predictions are expected counts.
     """
     if isinstance(y, str):
@@ -1645,6 +1690,7 @@ def poisson_predict(
         x_exprs.append(xi.cast(pl.Float64))
 
     interval_lit = pl.lit(interval, dtype=pl.String) if interval else pl.lit(None, dtype=pl.String)
+    prefix = name if name is not None else "poisson"
 
     return register_plugin_function(
         plugin_path=LIB,
@@ -1657,6 +1703,7 @@ def poisson_predict(
             pl.lit(null_policy, dtype=pl.String),
             *x_exprs,
         ],
+        kwargs={"prefix": prefix},
         returns_scalar=False,
     )
 
@@ -1668,6 +1715,7 @@ def negative_binomial_predict(
     interval: str | None = None,
     level: float = 0.95,
     null_policy: str = "drop",
+    name: str | None = None,
 ) -> pl.Expr:
     """Negative Binomial regression predictions with optional intervals.
 
@@ -1685,11 +1733,13 @@ def negative_binomial_predict(
         Confidence level for intervals.
     null_policy : str, default "drop"
         "drop" or "drop_y_zero_x".
+    name : str or None, default None
+        Custom prefix for output column names. If None, uses "negative_binomial".
 
     Returns
     -------
     pl.Expr
-        Struct containing {prediction, lower, upper} per row.
+        Struct containing {name}_prediction, {name}_lower, {name}_upper per row.
     """
     if isinstance(y, str):
         y = pl.col(y)
@@ -1701,6 +1751,7 @@ def negative_binomial_predict(
         x_exprs.append(xi.cast(pl.Float64))
 
     interval_lit = pl.lit(interval, dtype=pl.String) if interval else pl.lit(None, dtype=pl.String)
+    prefix = name if name is not None else "negative_binomial"
 
     return register_plugin_function(
         plugin_path=LIB,
@@ -1713,6 +1764,7 @@ def negative_binomial_predict(
             pl.lit(null_policy, dtype=pl.String),
             *x_exprs,
         ],
+        kwargs={"prefix": prefix},
         returns_scalar=False,
     )
 
@@ -1725,6 +1777,7 @@ def tweedie_predict(
     interval: str | None = None,
     level: float = 0.95,
     null_policy: str = "drop",
+    name: str | None = None,
 ) -> pl.Expr:
     """Tweedie GLM predictions with optional intervals.
 
@@ -1744,11 +1797,13 @@ def tweedie_predict(
         Confidence level for intervals.
     null_policy : str, default "drop"
         "drop" or "drop_y_zero_x".
+    name : str or None, default None
+        Custom prefix for output column names. If None, uses "tweedie".
 
     Returns
     -------
     pl.Expr
-        Struct containing {prediction, lower, upper} per row.
+        Struct containing {name}_prediction, {name}_lower, {name}_upper per row.
     """
     if isinstance(y, str):
         y = pl.col(y)
@@ -1760,6 +1815,7 @@ def tweedie_predict(
         x_exprs.append(xi.cast(pl.Float64))
 
     interval_lit = pl.lit(interval, dtype=pl.String) if interval else pl.lit(None, dtype=pl.String)
+    prefix = name if name is not None else "tweedie"
 
     return register_plugin_function(
         plugin_path=LIB,
@@ -1773,6 +1829,7 @@ def tweedie_predict(
             pl.lit(var_power, dtype=pl.Float64),
             *x_exprs,
         ],
+        kwargs={"prefix": prefix},
         returns_scalar=False,
     )
 
@@ -1784,6 +1841,7 @@ def probit_predict(
     interval: str | None = None,
     level: float = 0.95,
     null_policy: str = "drop",
+    name: str | None = None,
 ) -> pl.Expr:
     """Probit regression predictions with optional intervals.
 
@@ -1801,11 +1859,13 @@ def probit_predict(
         Confidence level for intervals.
     null_policy : str, default "drop"
         "drop" or "drop_y_zero_x".
+    name : str or None, default None
+        Custom prefix for output column names. If None, uses "probit".
 
     Returns
     -------
     pl.Expr
-        Struct containing {prediction, lower, upper} per row.
+        Struct containing {name}_prediction, {name}_lower, {name}_upper per row.
         Predictions are probabilities in [0, 1].
     """
     if isinstance(y, str):
@@ -1818,6 +1878,7 @@ def probit_predict(
         x_exprs.append(xi.cast(pl.Float64))
 
     interval_lit = pl.lit(interval, dtype=pl.String) if interval else pl.lit(None, dtype=pl.String)
+    prefix = name if name is not None else "probit"
 
     return register_plugin_function(
         plugin_path=LIB,
@@ -1830,6 +1891,7 @@ def probit_predict(
             pl.lit(null_policy, dtype=pl.String),
             *x_exprs,
         ],
+        kwargs={"prefix": prefix},
         returns_scalar=False,
     )
 
@@ -1841,6 +1903,7 @@ def cloglog_predict(
     interval: str | None = None,
     level: float = 0.95,
     null_policy: str = "drop",
+    name: str | None = None,
 ) -> pl.Expr:
     """Complementary log-log regression predictions with optional intervals.
 
@@ -1858,11 +1921,13 @@ def cloglog_predict(
         Confidence level for intervals.
     null_policy : str, default "drop"
         "drop" or "drop_y_zero_x".
+    name : str or None, default None
+        Custom prefix for output column names. If None, uses "cloglog".
 
     Returns
     -------
     pl.Expr
-        Struct containing {prediction, lower, upper} per row.
+        Struct containing {name}_prediction, {name}_lower, {name}_upper per row.
         Predictions are probabilities in [0, 1].
     """
     if isinstance(y, str):
@@ -1875,6 +1940,7 @@ def cloglog_predict(
         x_exprs.append(xi.cast(pl.Float64))
 
     interval_lit = pl.lit(interval, dtype=pl.String) if interval else pl.lit(None, dtype=pl.String)
+    prefix = name if name is not None else "cloglog"
 
     return register_plugin_function(
         plugin_path=LIB,
@@ -1887,6 +1953,7 @@ def cloglog_predict(
             pl.lit(null_policy, dtype=pl.String),
             *x_exprs,
         ],
+        kwargs={"prefix": prefix},
         returns_scalar=False,
     )
 
@@ -1899,6 +1966,7 @@ def alm_predict(
     interval: str | None = None,
     level: float = 0.95,
     null_policy: str = "drop",
+    name: str | None = None,
 ) -> pl.Expr:
     """Augmented Linear Model (ALM) predictions with optional intervals.
 
@@ -1922,11 +1990,13 @@ def alm_predict(
         Confidence level for intervals.
     null_policy : str, default "drop"
         "drop" or "drop_y_zero_x".
+    name : str or None, default None
+        Custom prefix for output column names. If None, uses "alm".
 
     Returns
     -------
     pl.Expr
-        Struct containing {prediction, lower, upper} per row.
+        Struct containing {name}_prediction, {name}_lower, {name}_upper per row.
     """
     if isinstance(y, str):
         y = pl.col(y)
@@ -1938,6 +2008,7 @@ def alm_predict(
         x_exprs.append(xi.cast(pl.Float64))
 
     interval_lit = pl.lit(interval, dtype=pl.String) if interval else pl.lit(None, dtype=pl.String)
+    prefix = name if name is not None else "alm"
 
     return register_plugin_function(
         plugin_path=LIB,
@@ -1951,6 +2022,7 @@ def alm_predict(
             pl.lit(distribution, dtype=pl.String),
             *x_exprs,
         ],
+        kwargs={"prefix": prefix},
         returns_scalar=False,
     )
 
@@ -2437,6 +2509,7 @@ def ols_formula_predict(
     interval: str | None = None,
     level: float = 0.95,
     null_policy: str = "drop",
+    name: str | None = None,
 ) -> pl.Expr:
     """OLS predictions using R-style formula syntax.
 
@@ -2452,11 +2525,13 @@ def ols_formula_predict(
         Confidence level for intervals.
     null_policy : str, default "drop"
         "drop" or "drop_y_zero_x".
+    name : str or None, default None
+        Custom prefix for output column names. Defaults to "ols".
 
     Returns
     -------
     pl.Expr
-        Struct containing {prediction, lower, upper} per row.
+        Struct containing {prefix}_prediction, {prefix}_lower, {prefix}_upper per row.
 
     Examples
     --------
@@ -2474,6 +2549,7 @@ def ols_formula_predict(
         interval=interval,
         level=level,
         null_policy=null_policy,
+        name=name,
     )
 
 
@@ -2484,6 +2560,7 @@ def ridge_formula_predict(
     interval: str | None = None,
     level: float = 0.95,
     null_policy: str = "drop",
+    name: str | None = None,
 ) -> pl.Expr:
     """Ridge predictions using R-style formula syntax."""
     response, x_exprs, _ = _parse_formula(formula)
@@ -2495,6 +2572,7 @@ def ridge_formula_predict(
         interval=interval,
         level=level,
         null_policy=null_policy,
+        name=name,
     )
 
 
@@ -2506,6 +2584,7 @@ def elastic_net_formula_predict(
     interval: str | None = None,
     level: float = 0.95,
     null_policy: str = "drop",
+    name: str | None = None,
 ) -> pl.Expr:
     """Elastic Net predictions using R-style formula syntax."""
     response, x_exprs, _ = _parse_formula(formula)
@@ -2518,6 +2597,7 @@ def elastic_net_formula_predict(
         interval=interval,
         level=level,
         null_policy=null_policy,
+        name=name,
     )
 
 
@@ -2527,6 +2607,7 @@ def logistic_formula_predict(
     interval: str | None = None,
     level: float = 0.95,
     null_policy: str = "drop",
+    name: str | None = None,
 ) -> pl.Expr:
     """Logistic regression predictions using R-style formula syntax."""
     response, x_exprs, _ = _parse_formula(formula)
@@ -2537,6 +2618,7 @@ def logistic_formula_predict(
         interval=interval,
         level=level,
         null_policy=null_policy,
+        name=name,
     )
 
 
@@ -2546,6 +2628,7 @@ def poisson_formula_predict(
     interval: str | None = None,
     level: float = 0.95,
     null_policy: str = "drop",
+    name: str | None = None,
 ) -> pl.Expr:
     """Poisson regression predictions using R-style formula syntax."""
     response, x_exprs, _ = _parse_formula(formula)
@@ -2556,6 +2639,7 @@ def poisson_formula_predict(
         interval=interval,
         level=level,
         null_policy=null_policy,
+        name=name,
     )
 
 
@@ -2566,6 +2650,7 @@ def alm_formula_predict(
     interval: str | None = None,
     level: float = 0.95,
     null_policy: str = "drop",
+    name: str | None = None,
 ) -> pl.Expr:
     """ALM predictions using R-style formula syntax."""
     response, x_exprs, _ = _parse_formula(formula)
@@ -2577,4 +2662,5 @@ def alm_formula_predict(
         interval=interval,
         level=level,
         null_policy=null_policy,
+        name=name,
     )

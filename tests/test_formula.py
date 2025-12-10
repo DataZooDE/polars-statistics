@@ -381,4 +381,4 @@ class TestOtherModelFormulas:
         preds = result["pred"].to_list()
         for p in preds:
             assert p is not None
-            assert "prediction" in p
+            assert "ols_prediction" in p
