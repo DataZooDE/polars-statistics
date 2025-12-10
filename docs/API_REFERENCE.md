@@ -27,6 +27,7 @@ Complete API reference for polars-statistics. For quick start examples, see the 
   - [Linear Model Classes](#linear-model-classes)
   - [GLM Model Classes](#glm-model-classes)
   - [ALM Class](#alm-class)
+  - [Test Model Classes](#test-model-classes)
 - [Bootstrap Methods](#bootstrap-methods)
 - [Output Structures](#output-structures)
 
@@ -68,6 +69,8 @@ ps.ols("y", pl.col("x1") * 2)       # Mixed / transformed
 - **Regression models** return a struct with model-specific fields (see [Output Structures](#output-structures))
 - **Summary functions** return `List[Struct]` with coefficient statistics
 - **Prediction functions** return `Struct{prediction, lower, upper}` per row
+
+[↑ Back to top](#table-of-contents)
 
 ---
 
@@ -372,6 +375,8 @@ ps.mmd_test(
 ```
 
 **Returns:** `Struct{statistic: Float64, p_value: Float64}`
+
+[↑ Back to top](#table-of-contents)
 
 ---
 
@@ -741,6 +746,8 @@ df.with_columns(
 ).unnest("pred")
 ```
 
+[↑ Back to top](#table-of-contents)
+
 ---
 
 ## Model Classes
@@ -831,6 +838,118 @@ print(model.log_likelihood, model.aic, model.bic)
 
 ---
 
+### Test Model Classes
+
+Statistical tests available as model classes with `.fit()`, `.statistic`, `.p_value`, and `.summary()` methods.
+
+#### Parametric Test Classes
+
+```python
+from polars_statistics import TTestInd, TTestPaired, BrownForsythe, YuenTest
+
+# Independent samples t-test
+test = TTestInd(alternative="two-sided", equal_var=False)
+test.fit(x, y)
+print(test.statistic, test.p_value)
+print(test.summary())
+
+# Paired samples t-test
+test = TTestPaired(alternative="two-sided")
+test.fit(before, after)
+
+# Brown-Forsythe test for variance equality
+test = BrownForsythe().fit(x, y)
+
+# Yuen's trimmed mean test
+test = YuenTest(trim=0.2).fit(x, y)
+```
+
+| Class | Parameters | Input |
+|-------|------------|-------|
+| `TTestInd` | `alternative`, `equal_var` | `fit(x, y)` |
+| `TTestPaired` | `alternative` | `fit(x, y)` |
+| `BrownForsythe` | - | `fit(x, y)` |
+| `YuenTest` | `trim` | `fit(x, y)` |
+
+---
+
+#### Non-Parametric Test Classes
+
+```python
+from polars_statistics import MannWhitneyU, WilcoxonSignedRank, KruskalWallis, BrunnerMunzel
+
+# Mann-Whitney U test
+test = MannWhitneyU().fit(x, y)
+
+# Wilcoxon signed-rank test (paired)
+test = WilcoxonSignedRank().fit(before, after)
+
+# Kruskal-Wallis H test (multiple groups)
+test = KruskalWallis().fit(g1, g2, g3)
+
+# Brunner-Munzel test
+test = BrunnerMunzel(alternative="two-sided").fit(x, y)
+```
+
+| Class | Parameters | Input |
+|-------|------------|-------|
+| `MannWhitneyU` | - | `fit(x, y)` |
+| `WilcoxonSignedRank` | - | `fit(x, y)` |
+| `KruskalWallis` | - | `fit(*groups)` |
+| `BrunnerMunzel` | `alternative` | `fit(x, y)` |
+
+---
+
+#### Distributional Test Classes
+
+```python
+from polars_statistics import ShapiroWilk, DAgostino
+
+# Shapiro-Wilk normality test
+test = ShapiroWilk().fit(x)
+print(test.statistic, test.p_value)
+
+# D'Agostino-Pearson normality test
+test = DAgostino().fit(x)
+```
+
+| Class | Parameters | Input |
+|-------|------------|-------|
+| `ShapiroWilk` | - | `fit(x)` |
+| `DAgostino` | - | `fit(x)` |
+
+---
+
+#### Test Class Properties and Methods
+
+All test classes share these common properties and methods:
+
+```python
+test.is_fitted()    # bool: Check if test has been performed
+test.statistic      # float: Test statistic value
+test.p_value        # float: P-value
+test.summary()      # str: Formatted summary of results
+```
+
+**Example summary output:**
+
+```
+Independent Samples T-Test
+==========================
+
+Test statistic:       -2.3412
+P-value:           2.1400e-02
+Alternative:        two-sided
+Equal variance:         False (Welch's t)
+Sample sizes:    n1=50, n2=50
+
+Result: Reject H0 at alpha=0.05
+```
+
+[↑ Back to top](#table-of-contents)
+
+---
+
 ## Bootstrap Methods
 
 ```python
@@ -844,6 +963,8 @@ samples = bootstrap.samples(data, n_samples=1000)
 cbb = CircularBlockBootstrap(block_length=10, seed=42)
 samples = cbb.samples(data, n_samples=1000)
 ```
+
+[↑ Back to top](#table-of-contents)
 
 ---
 
@@ -916,6 +1037,8 @@ Struct {
 }
 ```
 
+[↑ Back to top](#table-of-contents)
+
 ---
 
 ## Performance Notes
@@ -925,6 +1048,8 @@ Struct {
 - **Parallelization**: Automatic for `group_by` operations
 - **SIMD**: Optimized statistical computations
 
+[↑ Back to top](#table-of-contents)
+
 ---
 
 ## See Also
@@ -932,3 +1057,5 @@ Struct {
 - [README](../README.md) - Quick start guide
 - [Polars Documentation](https://docs.pola.rs/)
 - [faer](https://github.com/sarah-ek/faer-rs) - Linear algebra backend
+
+[↑ Back to top](#table-of-contents)

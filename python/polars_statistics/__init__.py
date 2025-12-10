@@ -23,6 +23,19 @@ from polars_statistics._polars_statistics import (
     # Bootstrap
     StationaryBootstrap,
     CircularBlockBootstrap,
+    # Parametric Tests
+    TTestInd,
+    TTestPaired,
+    BrownForsythe,
+    YuenTest,
+    # Non-Parametric Tests
+    MannWhitneyU,
+    WilcoxonSignedRank,
+    KruskalWallis,
+    BrunnerMunzel,
+    # Distributional Tests
+    ShapiroWilk,
+    DAgostino,
 )
 
 # Import expression API
@@ -151,6 +164,19 @@ __all__ = [
     # Bootstrap
     "StationaryBootstrap",
     "CircularBlockBootstrap",
+    # Parametric Test Models
+    "TTestInd",
+    "TTestPaired",
+    "BrownForsythe",
+    "YuenTest",
+    # Non-Parametric Test Models
+    "MannWhitneyU",
+    "WilcoxonSignedRank",
+    "KruskalWallis",
+    "BrunnerMunzel",
+    # Distributional Test Models
+    "ShapiroWilk",
+    "DAgostino",
     # Expression API module
     "exprs",
     # Parametric test expressions

@@ -39,5 +39,21 @@ fn _polars_statistics(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<pymodels::PyStationaryBootstrap>()?;
     m.add_class::<pymodels::PyCircularBlockBootstrap>()?;
 
+    // Parametric Tests
+    m.add_class::<pymodels::PyTTestInd>()?;
+    m.add_class::<pymodels::PyTTestPaired>()?;
+    m.add_class::<pymodels::PyBrownForsythe>()?;
+    m.add_class::<pymodels::PyYuenTest>()?;
+
+    // Non-Parametric Tests
+    m.add_class::<pymodels::PyMannWhitneyU>()?;
+    m.add_class::<pymodels::PyWilcoxonSignedRank>()?;
+    m.add_class::<pymodels::PyKruskalWallis>()?;
+    m.add_class::<pymodels::PyBrunnerMunzel>()?;
+
+    // Distributional Tests
+    m.add_class::<pymodels::PyShapiroWilk>()?;
+    m.add_class::<pymodels::PyDAgostino>()?;
+
     Ok(())
 }

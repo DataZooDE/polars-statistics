@@ -135,6 +135,30 @@ print(model.coefficients, model.r_squared, model.p_values)
 alm = ALM.laplace().fit(X, y)  # Robust to outliers
 ```
 
+## Test Model Classes
+
+Statistical tests are also available as model classes with `.fit()`, `.statistic`, `.p_value`, and `.summary()`:
+
+```python
+from polars_statistics import TTestInd, ShapiroWilk, KruskalWallis
+import numpy as np
+
+# Two-sample t-test
+test = TTestInd(alternative="two-sided").fit(x, y)
+print(test.statistic, test.p_value)
+print(test.summary())
+
+# Normality test
+test = ShapiroWilk().fit(x)
+print(test.p_value)
+
+# Multi-group comparison
+test = KruskalWallis().fit(g1, g2, g3)
+print(test.summary())
+```
+
+Available test classes: `TTestInd`, `TTestPaired`, `BrownForsythe`, `YuenTest`, `MannWhitneyU`, `WilcoxonSignedRank`, `KruskalWallis`, `BrunnerMunzel`, `ShapiroWilk`, `DAgostino`.
+
 ## API Reference
 
 See [docs/API_REFERENCE.md](docs/API_REFERENCE.md) for complete documentation of all functions, parameters, and output structures.
