@@ -1,11 +1,11 @@
 //! PyO3 wrapper for independent samples t-test.
 
-use numpy::PyReadonlyArray1;
+use numpy::{PyArray1, PyReadonlyArray1};
 use pyo3::prelude::*;
 
-use anofox_statistics::{t_test, Alternative, TTestKind};
+use anofox_statistics::{t_test, Alternative, TTestKind, TTestResult};
 
-/// Result of a statistical test.
+/// Result of a statistical test (basic version for backward compat).
 pub(crate) struct TestResult {
     pub statistic: f64,
     pub p_value: f64,
@@ -24,6 +24,10 @@ pub(crate) struct TestResult {
 /// equal_var : bool, default False
 ///     If True, perform a standard independent t-test assuming equal
 ///     population variances. If False (default), perform Welch's t-test.
+/// mu : float, default 0.0
+///     The hypothesized difference in means under the null hypothesis.
+/// conf_level : float, default 0.95
+///     Confidence level for the confidence interval.
 ///
 /// Examples
 /// --------
@@ -40,15 +44,17 @@ pub(crate) struct TestResult {
 pub struct PyTTestInd {
     alternative: Alternative,
     equal_var: bool,
-    fitted: Option<TestResult>,
+    mu: f64,
+    conf_level: f64,
+    fitted: Option<TTestResult>,
 }
 
 #[pymethods]
 impl PyTTestInd {
     /// Create a new independent samples t-test.
     #[new]
-    #[pyo3(signature = (alternative="two-sided", equal_var=false))]
-    fn new(alternative: &str, equal_var: bool) -> PyResult<Self> {
+    #[pyo3(signature = (alternative="two-sided", equal_var=false, mu=0.0, conf_level=0.95))]
+    fn new(alternative: &str, equal_var: bool, mu: f64, conf_level: f64) -> PyResult<Self> {
         let alt = match alternative.to_lowercase().as_str() {
             "two-sided" | "two_sided" => Alternative::TwoSided,
             "less" => Alternative::Less,
@@ -60,9 +66,17 @@ impl PyTTestInd {
             }
         };
 
+        if !(0.0..=1.0).contains(&conf_level) {
+            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                "conf_level must be between 0 and 1",
+            ));
+        }
+
         Ok(Self {
             alternative: alt,
             equal_var,
+            mu,
+            conf_level,
             fitted: None,
         })
     }
@@ -94,15 +108,17 @@ impl PyTTestInd {
             TTestKind::Welch
         };
 
-        let result = t_test(&x_vec, &y_vec, kind, slf.alternative)
-            .map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>(e.to_string()))?;
+        let result = t_test(
+            &x_vec,
+            &y_vec,
+            kind,
+            slf.alternative,
+            slf.mu,
+            Some(slf.conf_level),
+        )
+        .map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>(e.to_string()))?;
 
-        slf.fitted = Some(TestResult {
-            statistic: result.statistic,
-            p_value: result.p_value,
-            n1: x_vec.len(),
-            n2: Some(y_vec.len()),
-        });
+        slf.fitted = Some(result);
 
         Ok(slf)
     }
@@ -130,6 +146,56 @@ impl PyTTestInd {
             .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))
     }
 
+    /// Get the degrees of freedom.
+    #[getter]
+    fn df(&self) -> PyResult<f64> {
+        self.fitted
+            .as_ref()
+            .map(|r| r.df)
+            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))
+    }
+
+    /// Get the mean of the first sample.
+    #[getter]
+    fn mean_x(&self) -> PyResult<f64> {
+        self.fitted
+            .as_ref()
+            .map(|r| r.mean_x)
+            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))
+    }
+
+    /// Get the mean of the second sample.
+    #[getter]
+    fn mean_y(&self) -> PyResult<Option<f64>> {
+        self.fitted
+            .as_ref()
+            .map(|r| r.mean_y)
+            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))
+    }
+
+    /// Get the null hypothesis value.
+    #[getter]
+    fn null_value(&self) -> PyResult<f64> {
+        self.fitted
+            .as_ref()
+            .map(|r| r.null_value)
+            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))
+    }
+
+    /// Get the confidence interval as a numpy array [lower, upper].
+    #[getter]
+    fn conf_int<'py>(&self, py: Python<'py>) -> PyResult<Option<Bound<'py, PyArray1<f64>>>> {
+        let result = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))?;
+
+        match &result.conf_int {
+            Some(ci) => Ok(Some(PyArray1::from_vec(py, vec![ci.lower, ci.upper]))),
+            None => Ok(None),
+        }
+    }
+
     /// Get a formatted summary of the test results.
     fn summary(&self) -> PyResult<String> {
         let result = self
@@ -155,21 +221,38 @@ impl PyTTestInd {
             "Fail to reject H0 at alpha=0.05"
         };
 
+        let conf_int_str = match &result.conf_int {
+            Some(ci) => format!("[{:.4}, {:.4}]", ci.lower, ci.upper),
+            None => "N/A".to_string(),
+        };
+
+        let mean_y_str = match result.mean_y {
+            Some(my) => format!("{:.4}", my),
+            None => "N/A".to_string(),
+        };
+
         Ok(format!(
             "Independent Samples T-Test\n\
              ==========================\n\n\
              Test statistic:  {:>12.4}\n\
              P-value:         {:>12.4e}\n\
+             Degrees of freedom: {:>9.2}\n\
+             Mean x:          {:>12.4}\n\
+             Mean y:          {:>12}\n\
+             Confidence int:  {:>12}\n\
              Alternative:     {:>12}\n\
              Equal variance:  {:>12}\n\
-             Sample sizes:    n1={}, n2={}\n\n\
+             Null value (mu): {:>12.4}\n\n\
              Result: {}",
             result.statistic,
             result.p_value,
+            result.df,
+            result.mean_x,
+            mean_y_str,
+            conf_int_str,
             alt_str,
             var_str,
-            result.n1,
-            result.n2.unwrap_or(0),
+            result.null_value,
             significance
         ))
     }

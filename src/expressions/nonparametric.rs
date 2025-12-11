@@ -18,35 +18,61 @@ fn parse_alternative(s: &str) -> Alternative {
     }
 }
 
-/// Mann-Whitney U test (two-sided)
+/// Mann-Whitney U test
 #[polars_expr(output_type_func=stats_output_dtype)]
 fn pl_mann_whitney_u(inputs: &[Series]) -> PolarsResult<Series> {
     let x = inputs[0].f64()?;
     let y = inputs[1].f64()?;
-    // Note: alternative parameter is ignored as the underlying library only supports two-sided
-    // let _alt_str = inputs[2].str()?.get(0).unwrap_or("two-sided");
+    let alt_str = inputs[2].str()?.get(0).unwrap_or("two-sided");
+    let continuity_correction = inputs[3].bool()?.get(0).unwrap_or(true);
+    let exact = inputs[4].bool()?.get(0).unwrap_or(false);
+    let conf_level = inputs[5].f64()?.get(0);
+    let mu = inputs[6].f64()?.get(0);
 
     let x_vec: Vec<f64> = x.into_no_null_iter().collect();
     let y_vec: Vec<f64> = y.into_no_null_iter().collect();
 
-    match mann_whitney_u(&x_vec, &y_vec) {
+    let alternative = parse_alternative(alt_str);
+
+    match mann_whitney_u(
+        &x_vec,
+        &y_vec,
+        alternative,
+        continuity_correction,
+        exact,
+        conf_level,
+        mu,
+    ) {
         Ok(result) => generic_stats_output(result.statistic, result.p_value, "mann_whitney_u"),
         Err(_) => generic_stats_output(f64::NAN, f64::NAN, "mann_whitney_u"),
     }
 }
 
-/// Wilcoxon signed-rank test (two-sided)
+/// Wilcoxon signed-rank test
 #[polars_expr(output_type_func=stats_output_dtype)]
 fn pl_wilcoxon_signed_rank(inputs: &[Series]) -> PolarsResult<Series> {
     let x = inputs[0].f64()?;
     let y = inputs[1].f64()?;
-    // Note: alternative parameter is ignored as the underlying library only supports two-sided
-    // let _alt_str = inputs[2].str()?.get(0).unwrap_or("two-sided");
+    let alt_str = inputs[2].str()?.get(0).unwrap_or("two-sided");
+    let continuity_correction = inputs[3].bool()?.get(0).unwrap_or(true);
+    let exact = inputs[4].bool()?.get(0).unwrap_or(false);
+    let conf_level = inputs[5].f64()?.get(0);
+    let mu = inputs[6].f64()?.get(0);
 
     let x_vec: Vec<f64> = x.into_no_null_iter().collect();
     let y_vec: Vec<f64> = y.into_no_null_iter().collect();
 
-    match wilcoxon_signed_rank(&x_vec, &y_vec) {
+    let alternative = parse_alternative(alt_str);
+
+    match wilcoxon_signed_rank(
+        &x_vec,
+        &y_vec,
+        alternative,
+        continuity_correction,
+        exact,
+        conf_level,
+        mu,
+    ) {
         Ok(result) => {
             generic_stats_output(result.statistic, result.p_value, "wilcoxon_signed_rank")
         }
@@ -77,13 +103,14 @@ fn pl_brunner_munzel(inputs: &[Series]) -> PolarsResult<Series> {
     let x = inputs[0].f64()?;
     let y = inputs[1].f64()?;
     let alt_str = inputs[2].str()?.get(0).unwrap_or("two-sided");
+    let alpha = inputs[3].f64()?.get(0);
 
     let x_vec: Vec<f64> = x.into_no_null_iter().collect();
     let y_vec: Vec<f64> = y.into_no_null_iter().collect();
 
     let alternative = parse_alternative(alt_str);
 
-    match brunner_munzel(&x_vec, &y_vec, alternative) {
+    match brunner_munzel(&x_vec, &y_vec, alternative, alpha) {
         Ok(result) => generic_stats_output(result.statistic, result.p_value, "brunner_munzel"),
         Err(_) => generic_stats_output(f64::NAN, f64::NAN, "brunner_munzel"),
     }

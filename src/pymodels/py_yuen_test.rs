@@ -1,11 +1,9 @@
 //! PyO3 wrapper for Yuen's trimmed mean test.
 
-use numpy::PyReadonlyArray1;
+use numpy::{PyArray1, PyReadonlyArray1};
 use pyo3::prelude::*;
 
-use anofox_statistics::yuen_test;
-
-use super::py_ttest_ind::TestResult;
+use anofox_statistics::{yuen_test, Alternative, YuenResult};
 
 /// Yuen's test for trimmed means.
 ///
@@ -17,6 +15,10 @@ use super::py_ttest_ind::TestResult;
 /// trim : float, default 0.2
 ///     Proportion of observations to trim from each end of the
 ///     distribution. Must be between 0 and 0.5.
+/// alternative : str, default "two-sided"
+///     The alternative hypothesis: "two-sided", "less", or "greater".
+/// conf_level : float, default 0.95
+///     Confidence level for the confidence interval.
 ///
 /// Examples
 /// --------
@@ -32,22 +34,46 @@ use super::py_ttest_ind::TestResult;
 #[pyclass(name = "YuenTest")]
 pub struct PyYuenTest {
     trim: f64,
-    fitted: Option<TestResult>,
+    alternative: Alternative,
+    conf_level: f64,
+    fitted: Option<YuenResult>,
 }
 
 #[pymethods]
 impl PyYuenTest {
     /// Create a new Yuen test.
     #[new]
-    #[pyo3(signature = (trim=0.2))]
-    fn new(trim: f64) -> PyResult<Self> {
+    #[pyo3(signature = (trim=0.2, alternative="two-sided", conf_level=0.95))]
+    fn new(trim: f64, alternative: &str, conf_level: f64) -> PyResult<Self> {
         if !(0.0..=0.5).contains(&trim) {
             return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
                 "trim must be between 0 and 0.5",
             ));
         }
 
-        Ok(Self { trim, fitted: None })
+        let alt = match alternative.to_lowercase().as_str() {
+            "two-sided" | "two_sided" => Alternative::TwoSided,
+            "less" => Alternative::Less,
+            "greater" => Alternative::Greater,
+            _ => {
+                return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                    "alternative must be 'two-sided', 'less', or 'greater'",
+                ))
+            }
+        };
+
+        if !(0.0..=1.0).contains(&conf_level) {
+            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                "conf_level must be between 0 and 1",
+            ));
+        }
+
+        Ok(Self {
+            trim,
+            alternative: alt,
+            conf_level,
+            fitted: None,
+        })
     }
 
     /// Perform Yuen's test on two samples.
@@ -71,15 +97,16 @@ impl PyYuenTest {
         let x_vec: Vec<f64> = x.as_slice()?.to_vec();
         let y_vec: Vec<f64> = y.as_slice()?.to_vec();
 
-        let result = yuen_test(&x_vec, &y_vec, slf.trim)
-            .map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>(e.to_string()))?;
+        let result = yuen_test(
+            &x_vec,
+            &y_vec,
+            slf.trim,
+            slf.alternative,
+            Some(slf.conf_level),
+        )
+        .map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>(e.to_string()))?;
 
-        slf.fitted = Some(TestResult {
-            statistic: result.statistic,
-            p_value: result.p_value,
-            n1: x_vec.len(),
-            n2: Some(y_vec.len()),
-        });
+        slf.fitted = Some(result);
 
         Ok(slf)
     }
@@ -107,6 +134,56 @@ impl PyYuenTest {
             .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))
     }
 
+    /// Get the degrees of freedom.
+    #[getter]
+    fn df(&self) -> PyResult<f64> {
+        self.fitted
+            .as_ref()
+            .map(|r| r.df)
+            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))
+    }
+
+    /// Get the difference in trimmed means.
+    #[getter]
+    fn diff(&self) -> PyResult<f64> {
+        self.fitted
+            .as_ref()
+            .map(|r| r.diff)
+            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))
+    }
+
+    /// Get the trimmed mean of the first sample.
+    #[getter]
+    fn trimmed_mean_x(&self) -> PyResult<f64> {
+        self.fitted
+            .as_ref()
+            .map(|r| r.trimmed_mean_x)
+            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))
+    }
+
+    /// Get the trimmed mean of the second sample.
+    #[getter]
+    fn trimmed_mean_y(&self) -> PyResult<f64> {
+        self.fitted
+            .as_ref()
+            .map(|r| r.trimmed_mean_y)
+            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))
+    }
+
+    /// Get the confidence interval as a numpy array [lower, upper].
+    #[getter]
+    fn conf_int<'py>(&self, py: Python<'py>) -> PyResult<Option<Bound<'py, PyArray1<f64>>>> {
+        let result = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))?;
+
+        match &result.conf_int {
+            Some(ci) => Ok(Some(PyArray1::from_vec(py, vec![ci.lower, ci.upper]))),
+            None => Ok(None),
+        }
+    }
+
     /// Get a formatted summary of the test results.
     fn summary(&self) -> PyResult<String> {
         let result = self
@@ -114,10 +191,21 @@ impl PyYuenTest {
             .as_ref()
             .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))?;
 
+        let alt_str = match self.alternative {
+            Alternative::TwoSided => "two-sided",
+            Alternative::Less => "less",
+            Alternative::Greater => "greater",
+        };
+
         let significance = if result.p_value < 0.05 {
             "Reject H0 at alpha=0.05"
         } else {
             "Fail to reject H0 at alpha=0.05"
+        };
+
+        let conf_int_str = match &result.conf_int {
+            Some(ci) => format!("[{:.4}, {:.4}]", ci.lower, ci.upper),
+            None => "N/A".to_string(),
         };
 
         Ok(format!(
@@ -125,15 +213,24 @@ impl PyYuenTest {
              ========================\n\n\
              Test statistic:  {:>12.4}\n\
              P-value:         {:>12.4e}\n\
+             Degrees of freedom: {:>9.2}\n\
+             Difference:      {:>12.4}\n\
+             Trimmed mean x:  {:>12.4}\n\
+             Trimmed mean y:  {:>12.4}\n\
+             Confidence int:  {:>12}\n\
              Trim proportion: {:>12.2}\n\
-             Sample sizes:    n1={}, n2={}\n\n\
+             Alternative:     {:>12}\n\n\
              H0: Trimmed means are equal\n\
              Result: {}",
             result.statistic,
             result.p_value,
+            result.df,
+            result.diff,
+            result.trimmed_mean_x,
+            result.trimmed_mean_y,
+            conf_int_str,
             self.trim,
-            result.n1,
-            result.n2.unwrap_or(0),
+            alt_str,
             significance
         ))
     }

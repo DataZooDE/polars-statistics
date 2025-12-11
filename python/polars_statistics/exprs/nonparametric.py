@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Union
+from typing import Literal, Optional, Union
 
 import polars as pl
 from polars.plugins import register_plugin_function
@@ -14,12 +14,17 @@ LIB = Path(__file__).parent.parent
 def mann_whitney_u(
     x: Union[pl.Expr, str],
     y: Union[pl.Expr, str],
+    alternative: Literal["two-sided", "less", "greater"] = "two-sided",
+    continuity_correction: bool = True,
+    exact: bool = False,
+    conf_level: Optional[float] = None,
+    mu: Optional[float] = None,
 ) -> pl.Expr:
     """
     Perform Mann-Whitney U test (Wilcoxon rank-sum test).
 
     A non-parametric test for testing whether two independent samples
-    were drawn from the same distribution. Uses two-sided test.
+    were drawn from the same distribution.
 
     Parameters
     ----------
@@ -27,6 +32,16 @@ def mann_whitney_u(
         First sample expression or column name.
     y : pl.Expr or str
         Second sample expression or column name.
+    alternative : {"two-sided", "less", "greater"}, default "two-sided"
+        Alternative hypothesis direction.
+    continuity_correction : bool, default True
+        Whether to apply continuity correction for the normal approximation.
+    exact : bool, default False
+        Whether to use exact method (only for small samples).
+    conf_level : float, optional
+        Confidence level for the Hodges-Lehmann estimator confidence interval.
+    mu : float, optional
+        Hypothesized location shift under null hypothesis.
 
     Returns
     -------
@@ -53,10 +68,21 @@ def mann_whitney_u(
     x_clean = x.filter(x.is_finite())
     y_clean = y.filter(y.is_finite())
 
+    conf_level_expr = pl.lit(conf_level, dtype=pl.Float64) if conf_level is not None else pl.lit(None, dtype=pl.Float64)
+    mu_expr = pl.lit(mu, dtype=pl.Float64) if mu is not None else pl.lit(None, dtype=pl.Float64)
+
     return register_plugin_function(
         plugin_path=LIB,
         function_name="pl_mann_whitney_u",
-        args=[x_clean, y_clean],
+        args=[
+            x_clean,
+            y_clean,
+            pl.lit(alternative, dtype=pl.String),
+            pl.lit(continuity_correction, dtype=pl.Boolean),
+            pl.lit(exact, dtype=pl.Boolean),
+            conf_level_expr,
+            mu_expr,
+        ],
         returns_scalar=True,
     )
 
@@ -64,13 +90,17 @@ def mann_whitney_u(
 def wilcoxon_signed_rank(
     x: Union[pl.Expr, str],
     y: Union[pl.Expr, str],
+    alternative: Literal["two-sided", "less", "greater"] = "two-sided",
+    continuity_correction: bool = True,
+    exact: bool = False,
+    conf_level: Optional[float] = None,
+    mu: Optional[float] = None,
 ) -> pl.Expr:
     """
     Perform Wilcoxon signed-rank test.
 
     A non-parametric test for paired samples, testing whether
     paired differences come from a symmetric distribution around zero.
-    Uses two-sided test.
 
     Parameters
     ----------
@@ -78,6 +108,16 @@ def wilcoxon_signed_rank(
         First sample expression or column name.
     y : pl.Expr or str
         Second sample expression or column name.
+    alternative : {"two-sided", "less", "greater"}, default "two-sided"
+        Alternative hypothesis direction.
+    continuity_correction : bool, default True
+        Whether to apply continuity correction for the normal approximation.
+    exact : bool, default False
+        Whether to use exact method (only for small samples).
+    conf_level : float, optional
+        Confidence level for the pseudomedian confidence interval.
+    mu : float, optional
+        Hypothesized location under null hypothesis.
 
     Returns
     -------
@@ -92,10 +132,21 @@ def wilcoxon_signed_rank(
     x_clean = x.filter(x.is_finite() & y.is_finite())
     y_clean = y.filter(x.is_finite() & y.is_finite())
 
+    conf_level_expr = pl.lit(conf_level, dtype=pl.Float64) if conf_level is not None else pl.lit(None, dtype=pl.Float64)
+    mu_expr = pl.lit(mu, dtype=pl.Float64) if mu is not None else pl.lit(None, dtype=pl.Float64)
+
     return register_plugin_function(
         plugin_path=LIB,
         function_name="pl_wilcoxon_signed_rank",
-        args=[x_clean, y_clean],
+        args=[
+            x_clean,
+            y_clean,
+            pl.lit(alternative, dtype=pl.String),
+            pl.lit(continuity_correction, dtype=pl.Boolean),
+            pl.lit(exact, dtype=pl.Boolean),
+            conf_level_expr,
+            mu_expr,
+        ],
         returns_scalar=True,
     )
 
@@ -149,7 +200,8 @@ def kruskal_wallis(
 def brunner_munzel(
     x: Union[pl.Expr, str],
     y: Union[pl.Expr, str],
-    alternative: str = "two-sided",
+    alternative: Literal["two-sided", "less", "greater"] = "two-sided",
+    alpha: Optional[float] = None,
 ) -> pl.Expr:
     """
     Perform Brunner-Munzel test for stochastic equality.
@@ -166,6 +218,8 @@ def brunner_munzel(
         Second sample expression or column name.
     alternative : {"two-sided", "less", "greater"}, default "two-sided"
         Alternative hypothesis direction.
+    alpha : float, optional
+        Significance level for the confidence interval.
 
     Returns
     -------
@@ -192,6 +246,8 @@ def brunner_munzel(
     x_clean = x.filter(x.is_finite())
     y_clean = y.filter(y.is_finite())
 
+    alpha_expr = pl.lit(alpha, dtype=pl.Float64) if alpha is not None else pl.lit(None, dtype=pl.Float64)
+
     return register_plugin_function(
         plugin_path=LIB,
         function_name="pl_brunner_munzel",
@@ -199,6 +255,7 @@ def brunner_munzel(
             x_clean,
             y_clean,
             pl.lit(alternative, dtype=pl.String),
+            alpha_expr,
         ],
         returns_scalar=True,
     )

@@ -22,6 +22,8 @@ def diebold_mariano(
     e2: Union[pl.Expr, str],
     loss: Literal["squared", "absolute"] = "squared",
     horizon: int = 1,
+    alternative: Literal["two-sided", "less", "greater"] = "two-sided",
+    varestimator: Literal["acf", "bartlett"] = "acf",
 ) -> pl.Expr:
     """Diebold-Mariano test for comparing forecast accuracy.
 
@@ -37,6 +39,10 @@ def diebold_mariano(
         Loss function to use.
     horizon : int, default 1
         Forecast horizon (for variance adjustment).
+    alternative : {"two-sided", "less", "greater"}, default "two-sided"
+        Alternative hypothesis direction.
+    varestimator : {"acf", "bartlett"}, default "acf"
+        Variance estimator to use.
 
     Returns
     -------
@@ -58,6 +64,8 @@ def diebold_mariano(
             e2_clean,
             pl.lit(loss, dtype=pl.String),
             pl.lit(horizon, dtype=pl.UInt32),
+            pl.lit(alternative, dtype=pl.String),
+            pl.lit(varestimator, dtype=pl.String),
         ],
         returns_scalar=True,
     )

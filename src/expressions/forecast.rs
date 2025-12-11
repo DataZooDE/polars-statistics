@@ -5,7 +5,7 @@ use pyo3_polars::derive::polars_expr;
 
 use anofox_statistics::{
     clark_west, diebold_mariano, model_confidence_set, mspe_adjusted_spa, permutation_t_test,
-    spa_test, Alternative, LossFunction, MCSStatistic,
+    spa_test, Alternative, LossFunction, MCSStatistic, VarEstimator,
 };
 
 use crate::expressions::output_types::{generic_stats_output, stats_output_dtype};
@@ -27,6 +27,14 @@ fn parse_alternative(s: &str) -> Alternative {
     }
 }
 
+/// Helper to parse variance estimator from string
+fn parse_var_estimator(s: &str) -> VarEstimator {
+    match s.to_lowercase().as_str() {
+        "bartlett" => VarEstimator::Bartlett,
+        _ => VarEstimator::Acf,
+    }
+}
+
 /// Diebold-Mariano test for comparing forecast accuracy.
 #[polars_expr(output_type_func=stats_output_dtype)]
 fn pl_diebold_mariano(inputs: &[Series]) -> PolarsResult<Series> {
@@ -34,13 +42,17 @@ fn pl_diebold_mariano(inputs: &[Series]) -> PolarsResult<Series> {
     let e2 = inputs[1].f64()?;
     let loss_str = inputs[2].str()?.get(0).unwrap_or("squared");
     let h = inputs[3].u32()?.get(0).unwrap_or(1) as usize;
+    let alt_str = inputs[4].str()?.get(0).unwrap_or("two-sided");
+    let var_est_str = inputs[5].str()?.get(0).unwrap_or("acf");
 
     let e1_vec: Vec<f64> = e1.into_no_null_iter().collect();
     let e2_vec: Vec<f64> = e2.into_no_null_iter().collect();
 
     let loss = parse_loss_function(loss_str);
+    let alternative = parse_alternative(alt_str);
+    let varestimator = parse_var_estimator(var_est_str);
 
-    match diebold_mariano(&e1_vec, &e2_vec, loss, h) {
+    match diebold_mariano(&e1_vec, &e2_vec, loss, h, alternative, varestimator) {
         Ok(result) => generic_stats_output(result.statistic, result.p_value, "diebold_mariano"),
         Err(_) => generic_stats_output(f64::NAN, f64::NAN, "diebold_mariano"),
     }

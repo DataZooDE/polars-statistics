@@ -23,6 +23,8 @@ fn pl_ttest_ind(inputs: &[Series]) -> PolarsResult<Series> {
     let y = inputs[1].f64()?;
     let alt_str = inputs[2].str()?.get(0).unwrap_or("two-sided");
     let equal_var = inputs[3].bool()?.get(0).unwrap_or(false);
+    let mu = inputs[4].f64()?.get(0).unwrap_or(0.0);
+    let conf_level = inputs[5].f64()?.get(0).unwrap_or(0.95);
 
     let x_vec: Vec<f64> = x.into_no_null_iter().collect();
     let y_vec: Vec<f64> = y.into_no_null_iter().collect();
@@ -34,7 +36,7 @@ fn pl_ttest_ind(inputs: &[Series]) -> PolarsResult<Series> {
         TTestKind::Welch
     };
 
-    match t_test(&x_vec, &y_vec, kind, alternative) {
+    match t_test(&x_vec, &y_vec, kind, alternative, mu, Some(conf_level)) {
         Ok(result) => generic_stats_output(result.statistic, result.p_value, "ttest_ind"),
         Err(_) => generic_stats_output(f64::NAN, f64::NAN, "ttest_ind"),
     }
@@ -46,13 +48,22 @@ fn pl_ttest_paired(inputs: &[Series]) -> PolarsResult<Series> {
     let x = inputs[0].f64()?;
     let y = inputs[1].f64()?;
     let alt_str = inputs[2].str()?.get(0).unwrap_or("two-sided");
+    let mu = inputs[3].f64()?.get(0).unwrap_or(0.0);
+    let conf_level = inputs[4].f64()?.get(0).unwrap_or(0.95);
 
     let x_vec: Vec<f64> = x.into_no_null_iter().collect();
     let y_vec: Vec<f64> = y.into_no_null_iter().collect();
 
     let alternative = parse_alternative(alt_str);
 
-    match t_test(&x_vec, &y_vec, TTestKind::Paired, alternative) {
+    match t_test(
+        &x_vec,
+        &y_vec,
+        TTestKind::Paired,
+        alternative,
+        mu,
+        Some(conf_level),
+    ) {
         Ok(result) => generic_stats_output(result.statistic, result.p_value, "ttest_paired"),
         Err(_) => generic_stats_output(f64::NAN, f64::NAN, "ttest_paired"),
     }
@@ -82,11 +93,15 @@ fn pl_yuen_test(inputs: &[Series]) -> PolarsResult<Series> {
     let x = inputs[0].f64()?;
     let y = inputs[1].f64()?;
     let trim = inputs[2].f64()?.get(0).unwrap_or(0.2);
+    let alt_str = inputs[3].str()?.get(0).unwrap_or("two-sided");
+    let conf_level = inputs[4].f64()?.get(0).unwrap_or(0.95);
 
     let x_vec: Vec<f64> = x.into_no_null_iter().collect();
     let y_vec: Vec<f64> = y.into_no_null_iter().collect();
 
-    match yuen_test(&x_vec, &y_vec, trim) {
+    let alternative = parse_alternative(alt_str);
+
+    match yuen_test(&x_vec, &y_vec, trim, alternative, Some(conf_level)) {
         Ok(result) => generic_stats_output(result.statistic, result.p_value, "yuen_test"),
         Err(_) => generic_stats_output(f64::NAN, f64::NAN, "yuen_test"),
     }

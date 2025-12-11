@@ -59,7 +59,7 @@ serde = { version = "1.0", features = ["derive"] }
 anofox-regression = "0.3.2"
 
 # Statistics
-anofox-statistics = "0.2"
+anofox-statistics = "0.3"
 
 [profile.release]
 codegen-units = 1

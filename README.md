@@ -53,6 +53,8 @@ result.with_columns(
 
 ## Statistical Tests
 
+Statistical tests are powered by [anofox-statistics](https://github.com/sipemu/anofox-statistics-rs), providing full API parity with R's statistical functions and validated against R implementations.
+
 ```python
 # Parametric tests
 ps.ttest_ind("treatment", "control", alternative="two-sided")

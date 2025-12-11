@@ -1,11 +1,9 @@
 //! PyO3 wrapper for Brunner-Munzel test.
 
-use numpy::PyReadonlyArray1;
+use numpy::{PyArray1, PyReadonlyArray1};
 use pyo3::prelude::*;
 
-use anofox_statistics::{brunner_munzel, Alternative};
-
-use super::py_ttest_ind::TestResult;
+use anofox_statistics::{brunner_munzel, Alternative, BrunnerMunzelResult};
 
 /// Brunner-Munzel test for stochastic equality.
 ///
@@ -17,6 +15,8 @@ use super::py_ttest_ind::TestResult;
 /// ----------
 /// alternative : str, default "two-sided"
 ///     The alternative hypothesis: "two-sided", "less", or "greater".
+/// alpha : float, optional
+///     Significance level for the confidence interval.
 ///
 /// Examples
 /// --------
@@ -32,15 +32,16 @@ use super::py_ttest_ind::TestResult;
 #[pyclass(name = "BrunnerMunzel")]
 pub struct PyBrunnerMunzel {
     alternative: Alternative,
-    fitted: Option<TestResult>,
+    alpha: Option<f64>,
+    fitted: Option<BrunnerMunzelResult>,
 }
 
 #[pymethods]
 impl PyBrunnerMunzel {
     /// Create a new Brunner-Munzel test.
     #[new]
-    #[pyo3(signature = (alternative="two-sided"))]
-    fn new(alternative: &str) -> PyResult<Self> {
+    #[pyo3(signature = (alternative="two-sided", alpha=None))]
+    fn new(alternative: &str, alpha: Option<f64>) -> PyResult<Self> {
         let alt = match alternative.to_lowercase().as_str() {
             "two-sided" | "two_sided" => Alternative::TwoSided,
             "less" => Alternative::Less,
@@ -52,8 +53,17 @@ impl PyBrunnerMunzel {
             }
         };
 
+        if let Some(a) = alpha {
+            if !(0.0..=1.0).contains(&a) {
+                return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                    "alpha must be between 0 and 1",
+                ));
+            }
+        }
+
         Ok(Self {
             alternative: alt,
+            alpha,
             fitted: None,
         })
     }
@@ -79,15 +89,10 @@ impl PyBrunnerMunzel {
         let x_vec: Vec<f64> = x.as_slice()?.to_vec();
         let y_vec: Vec<f64> = y.as_slice()?.to_vec();
 
-        let result = brunner_munzel(&x_vec, &y_vec, slf.alternative)
+        let result = brunner_munzel(&x_vec, &y_vec, slf.alternative, slf.alpha)
             .map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>(e.to_string()))?;
 
-        slf.fitted = Some(TestResult {
-            statistic: result.statistic,
-            p_value: result.p_value,
-            n1: x_vec.len(),
-            n2: Some(y_vec.len()),
-        });
+        slf.fitted = Some(result);
 
         Ok(slf)
     }
@@ -115,6 +120,38 @@ impl PyBrunnerMunzel {
             .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))
     }
 
+    /// Get the degrees of freedom.
+    #[getter]
+    fn df(&self) -> PyResult<f64> {
+        self.fitted
+            .as_ref()
+            .map(|r| r.df)
+            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))
+    }
+
+    /// Get the stochastic superiority estimate P(X < Y).
+    #[getter]
+    fn estimate(&self) -> PyResult<f64> {
+        self.fitted
+            .as_ref()
+            .map(|r| r.estimate)
+            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))
+    }
+
+    /// Get the confidence interval as a numpy array [lower, upper].
+    #[getter]
+    fn conf_int<'py>(&self, py: Python<'py>) -> PyResult<Option<Bound<'py, PyArray1<f64>>>> {
+        let result = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))?;
+
+        match &result.conf_int {
+            Some(ci) => Ok(Some(PyArray1::from_vec(py, vec![ci.lower, ci.upper]))),
+            None => Ok(None),
+        }
+    }
+
     /// Get a formatted summary of the test results.
     fn summary(&self) -> PyResult<String> {
         let result = self
@@ -134,20 +171,28 @@ impl PyBrunnerMunzel {
             "Fail to reject H0 at alpha=0.05"
         };
 
+        let conf_int_str = match &result.conf_int {
+            Some(ci) => format!("[{:.4}, {:.4}]", ci.lower, ci.upper),
+            None => "N/A".to_string(),
+        };
+
         Ok(format!(
             "Brunner-Munzel Test\n\
              ===================\n\n\
              Test statistic:  {:>12.4}\n\
              P-value:         {:>12.4e}\n\
-             Alternative:     {:>12}\n\
-             Sample sizes:    n1={}, n2={}\n\n\
+             Degrees of freedom: {:>9.2}\n\
+             Estimate P(X<Y): {:>12.4}\n\
+             Confidence int:  {:>12}\n\
+             Alternative:     {:>12}\n\n\
              H0: P(X < Y) = P(Y < X) (stochastic equality)\n\
              Result: {}",
             result.statistic,
             result.p_value,
+            result.df,
+            result.estimate,
+            conf_int_str,
             alt_str,
-            result.n1,
-            result.n2.unwrap_or(0),
             significance
         ))
     }

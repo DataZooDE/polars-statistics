@@ -16,6 +16,8 @@ def ttest_ind(
     y: Union[pl.Expr, str],
     alternative: Literal["two-sided", "less", "greater"] = "two-sided",
     equal_var: bool = False,
+    mu: float = 0.0,
+    conf_level: float = 0.95,
 ) -> pl.Expr:
     """
     Perform independent samples t-test.
@@ -34,6 +36,10 @@ def ttest_ind(
     equal_var : bool, default False
         If True, use Student's t-test (assumes equal variances).
         If False, use Welch's t-test.
+    mu : float, default 0.0
+        The hypothesized difference in means under the null hypothesis.
+    conf_level : float, default 0.95
+        Confidence level for the confidence interval.
 
     Returns
     -------
@@ -74,6 +80,8 @@ def ttest_ind(
             y_clean,
             pl.lit(alternative, dtype=pl.String),
             pl.lit(equal_var, dtype=pl.Boolean),
+            pl.lit(mu, dtype=pl.Float64),
+            pl.lit(conf_level, dtype=pl.Float64),
         ],
         returns_scalar=True,
     )
@@ -83,6 +91,8 @@ def ttest_paired(
     x: Union[pl.Expr, str],
     y: Union[pl.Expr, str],
     alternative: Literal["two-sided", "less", "greater"] = "two-sided",
+    mu: float = 0.0,
+    conf_level: float = 0.95,
 ) -> pl.Expr:
     """
     Perform paired samples t-test.
@@ -95,6 +105,10 @@ def ttest_paired(
         Second sample (after treatment).
     alternative : {"two-sided", "less", "greater"}, default "two-sided"
         Alternative hypothesis direction.
+    mu : float, default 0.0
+        The hypothesized difference in means under the null hypothesis.
+    conf_level : float, default 0.95
+        Confidence level for the confidence interval.
 
     Returns
     -------
@@ -129,6 +143,8 @@ def ttest_paired(
             x_clean,
             y_clean,
             pl.lit(alternative, dtype=pl.String),
+            pl.lit(mu, dtype=pl.Float64),
+            pl.lit(conf_level, dtype=pl.Float64),
         ],
         returns_scalar=True,
     )
@@ -176,6 +192,8 @@ def yuen_test(
     x: Union[pl.Expr, str],
     y: Union[pl.Expr, str],
     trim: float = 0.2,
+    alternative: Literal["two-sided", "less", "greater"] = "two-sided",
+    conf_level: float = 0.95,
 ) -> pl.Expr:
     """
     Perform Yuen's test for trimmed means.
@@ -191,6 +209,10 @@ def yuen_test(
         Second sample expression or column name.
     trim : float, default 0.2
         Proportion to trim from each end (0 to 0.5).
+    alternative : {"two-sided", "less", "greater"}, default "two-sided"
+        Alternative hypothesis direction.
+    conf_level : float, default 0.95
+        Confidence level for the confidence interval.
 
     Returns
     -------
@@ -225,6 +247,8 @@ def yuen_test(
             x_clean,
             y_clean,
             pl.lit(trim, dtype=pl.Float64),
+            pl.lit(alternative, dtype=pl.String),
+            pl.lit(conf_level, dtype=pl.Float64),
         ],
         returns_scalar=True,
     )
