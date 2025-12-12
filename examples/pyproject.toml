@@ -1,0 +1,15 @@
+[project]
+name = "polars-statistics-examples"
+version = "0.1.0"
+description = "Examples for polars-statistics"
+requires-python = ">=3.9"
+dependencies = [
+    "polars>=1.0",
+    "polars-statistics",
+]
+
+[dependency-groups]
+dev = []
+
+[tool.uv.sources]
+polars-statistics = { path = ".." }
