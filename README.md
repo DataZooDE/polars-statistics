@@ -75,6 +75,8 @@ All tests return a struct with `statistic` and `p_value` fields.
 
 ## Regression Models
 
+Regression models are powered by [anofox-regression](https://github.com/sipemu/anofox-regression), providing validated implementations against R.
+
 ### Expression API
 
 ```python
