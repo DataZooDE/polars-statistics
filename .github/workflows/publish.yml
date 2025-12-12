@@ -120,6 +120,11 @@ jobs:
     needs: [build-sdist, build-wheels]
     runs-on: ubuntu-latest
     if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.publish_to == 'pypi')
+
+    permissions:
+      id-token: write  # MANDATORY for Trusted Publishing
+      contents: read
+    
     environment:
       name: pypi
       url: https://pypi.org/p/polars-statistics
@@ -134,4 +139,4 @@ jobs:
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          password: ${{ secrets.PYPI_API_TOKEN }}
+          verbose: true
