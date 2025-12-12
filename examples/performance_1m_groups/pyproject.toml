@@ -1,0 +1,14 @@
+[project]
+name = "polars-statistics-benchmark"
+version = "0.1.0"
+description = "Performance benchmarks for polars-statistics regression functions"
+requires-python = ">=3.9"
+dependencies = [
+    "polars>=1.0.0",
+    "polars-statistics>=0.1.0",
+    "numpy",
+    "psutil",
+]
+
+[tool.uv]
+dev-dependencies = []
