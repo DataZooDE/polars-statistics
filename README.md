@@ -69,9 +69,47 @@ ps.shapiro_wilk("x")
 
 # Forecast comparison
 ps.diebold_mariano("errors1", "errors2", horizon=1)
+
+# Correlation tests
+ps.pearson("x", "y")                    # Pearson correlation with CI
+ps.spearman("x", "y")                   # Spearman rank correlation
+ps.kendall("x", "y", variant="b")       # Kendall's tau
+ps.distance_cor("x", "y")               # Distance correlation (detects nonlinear)
+ps.partial_cor("x", "y", ["z1", "z2"])  # Partial correlation
+
+# Categorical tests
+ps.binom_test(successes=7, n=10, p0=0.5)  # Exact binomial test
+ps.chisq_test("counts", n_rows=2, n_cols=2)  # Chi-square independence
+ps.fisher_exact(a=10, b=2, c=3, d=15)   # Fisher's exact test
+ps.mcnemar_test(a=45, b=15, c=5, d=35)  # McNemar's test
+ps.cohen_kappa("counts", n_categories=3) # Inter-rater agreement
+ps.cramers_v("counts", n_rows=3, n_cols=3) # Association strength
 ```
 
 All tests return a struct with `statistic` and `p_value` fields.
+
+### TOST Equivalence Tests
+
+Test for practical equivalence using Two One-Sided Tests (TOST) procedure:
+
+```python
+# t-test based equivalence
+ps.tost_t_test_two_sample("x", "y", delta=0.5, alpha=0.05)
+ps.tost_t_test_paired("before", "after", bounds_type="cohen_d", delta=0.3)
+
+# Correlation equivalence (test if correlation is near zero)
+ps.tost_correlation("x", "y", delta=0.3, method="pearson")
+
+# Proportion equivalence
+ps.tost_prop_two(successes1=45, n1=100, successes2=48, n2=100, delta=0.1)
+
+# Non-parametric and robust equivalence
+ps.tost_wilcoxon_paired("x", "y", delta=0.5)
+ps.tost_yuen("x", "y", trim=0.2, delta=0.5)  # Trimmed means
+ps.tost_bootstrap("x", "y", n_bootstrap=1000)  # Bootstrap-based
+```
+
+Returns struct with `estimate`, `ci_lower`, `ci_upper`, `tost_p_value`, `equivalent`.
 
 ## Regression Models
 

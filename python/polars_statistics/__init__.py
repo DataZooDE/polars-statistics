@@ -69,6 +69,39 @@ from polars_statistics.exprs import (
     # Modern tests
     energy_distance,
     mmd_test,
+    # TOST equivalence tests
+    tost_t_test_one_sample,
+    tost_t_test_two_sample,
+    tost_t_test_paired,
+    tost_correlation,
+    tost_prop_one,
+    tost_prop_two,
+    tost_wilcoxon_paired,
+    tost_wilcoxon_two_sample,
+    tost_bootstrap,
+    tost_yuen,
+    # Correlation tests
+    pearson,
+    spearman,
+    kendall,
+    distance_cor,
+    partial_cor,
+    semi_partial_cor,
+    icc,
+    # Categorical tests
+    binom_test,
+    prop_test_one,
+    prop_test_two,
+    chisq_test,
+    chisq_goodness_of_fit,
+    g_test,
+    fisher_exact,
+    mcnemar_test,
+    mcnemar_exact,
+    cohen_kappa,
+    cramers_v,
+    phi_coefficient,
+    contingency_coef,
     # Regression expressions
     ols,
     ridge,
@@ -148,7 +181,7 @@ from polars_statistics.exprs import (
     lm_dynamic,
 )
 
-__version__ = "0.1.0"
+__version__ = "0.3.0"
 
 # Library path for plugin registration
 LIB = Path(__file__).parent
@@ -216,6 +249,39 @@ __all__ = [
     # Modern test expressions
     "energy_distance",
     "mmd_test",
+    # TOST equivalence test expressions
+    "tost_t_test_one_sample",
+    "tost_t_test_two_sample",
+    "tost_t_test_paired",
+    "tost_correlation",
+    "tost_prop_one",
+    "tost_prop_two",
+    "tost_wilcoxon_paired",
+    "tost_wilcoxon_two_sample",
+    "tost_bootstrap",
+    "tost_yuen",
+    # Correlation test expressions
+    "pearson",
+    "spearman",
+    "kendall",
+    "distance_cor",
+    "partial_cor",
+    "semi_partial_cor",
+    "icc",
+    # Categorical test expressions
+    "binom_test",
+    "prop_test_one",
+    "prop_test_two",
+    "chisq_test",
+    "chisq_goodness_of_fit",
+    "g_test",
+    "fisher_exact",
+    "mcnemar_test",
+    "mcnemar_exact",
+    "cohen_kappa",
+    "cramers_v",
+    "phi_coefficient",
+    "contingency_coef",
     # Regression expressions
     "ols",
     "ridge",

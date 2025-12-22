@@ -16,6 +16,9 @@ Complete API reference for polars-statistics. For quick start examples, see the 
   - [Distributional Tests](#distributional-tests)
   - [Forecast Comparison Tests](#forecast-comparison-tests)
   - [Modern Distribution Tests](#modern-distribution-tests)
+  - [Correlation Tests](#correlation-tests)
+  - [Categorical Tests](#categorical-tests)
+  - [TOST Equivalence Tests](#tost-equivalence-tests)
 - [Regression Models](#regression-models)
   - [Linear Models](#linear-models)
   - [GLM Models](#glm-models)
@@ -379,6 +382,543 @@ ps.mmd_test(
 ```
 
 **Returns:** `Struct{statistic: Float64, p_value: Float64}`
+
+---
+
+### Correlation Tests
+
+#### `pearson`
+
+Pearson correlation coefficient with hypothesis test.
+
+```python
+ps.pearson(
+    x: Union[pl.Expr, str],
+    y: Union[pl.Expr, str],
+    conf_level: float = 0.95,
+) -> pl.Expr
+```
+
+**Returns:** `Struct{estimate: Float64, statistic: Float64, p_value: Float64, ci_lower: Float64, ci_upper: Float64, n: UInt32}`
+
+---
+
+#### `spearman`
+
+Spearman rank correlation coefficient with hypothesis test.
+
+```python
+ps.spearman(
+    x: Union[pl.Expr, str],
+    y: Union[pl.Expr, str],
+    conf_level: float = 0.95,
+) -> pl.Expr
+```
+
+**Returns:** `Struct{estimate: Float64, statistic: Float64, p_value: Float64, ci_lower: Float64, ci_upper: Float64, n: UInt32}`
+
+---
+
+#### `kendall`
+
+Kendall's tau correlation coefficient with hypothesis test.
+
+```python
+ps.kendall(
+    x: Union[pl.Expr, str],
+    y: Union[pl.Expr, str],
+    variant: str = "b",  # "a", "b", or "c"
+) -> pl.Expr
+```
+
+**Returns:** `Struct{estimate: Float64, statistic: Float64, p_value: Float64, ci_lower: Float64, ci_upper: Float64, n: UInt32}`
+
+---
+
+#### `distance_cor`
+
+Distance correlation with permutation test. Detects both linear and nonlinear associations.
+
+```python
+ps.distance_cor(
+    x: Union[pl.Expr, str],
+    y: Union[pl.Expr, str],
+    n_permutations: int = 999,
+    seed: int | None = None,
+) -> pl.Expr
+```
+
+**Returns:** `Struct{estimate: Float64, statistic: Float64, p_value: Float64, ci_lower: Float64, ci_upper: Float64, n: UInt32}`
+
+---
+
+#### `partial_cor`
+
+Partial correlation controlling for covariates.
+
+```python
+ps.partial_cor(
+    x: Union[pl.Expr, str],
+    y: Union[pl.Expr, str],
+    covariates: list[Union[pl.Expr, str]],
+) -> pl.Expr
+```
+
+**Returns:** `Struct{estimate: Float64, statistic: Float64, p_value: Float64, ci_lower: Float64, ci_upper: Float64, n: UInt32}`
+
+---
+
+#### `semi_partial_cor`
+
+Semi-partial (part) correlation. Controls for covariates in y only.
+
+```python
+ps.semi_partial_cor(
+    x: Union[pl.Expr, str],
+    y: Union[pl.Expr, str],
+    covariates: list[Union[pl.Expr, str]],
+) -> pl.Expr
+```
+
+**Returns:** `Struct{estimate: Float64, statistic: Float64, p_value: Float64, ci_lower: Float64, ci_upper: Float64, n: UInt32}`
+
+---
+
+#### `icc`
+
+Intraclass Correlation Coefficient (ICC). Note: Placeholder implementation.
+
+```python
+ps.icc(
+    values: Union[pl.Expr, str],
+    icc_type: str = "icc1",  # "icc1", "icc2", "icc3", "icc2k", "icc3k"
+    conf_level: float = 0.95,
+) -> pl.Expr
+```
+
+**Returns:** `Struct{estimate: Float64, statistic: Float64, p_value: Float64, ci_lower: Float64, ci_upper: Float64, n: UInt32}`
+
+---
+
+### Categorical Tests
+
+#### `binom_test`
+
+Exact binomial test.
+
+```python
+ps.binom_test(
+    successes: int,
+    n: int,
+    p0: float = 0.5,
+    alternative: str = "two-sided",  # "two-sided", "less", "greater"
+) -> pl.Expr
+```
+
+**Returns:** `Struct{estimate: Float64, statistic: Float64, p_value: Float64, ci_lower: Float64, ci_upper: Float64, n: UInt32}`
+
+---
+
+#### `prop_test_one`
+
+One-sample proportion test (normal approximation).
+
+```python
+ps.prop_test_one(
+    successes: int,
+    n: int,
+    p0: float = 0.5,
+    alternative: str = "two-sided",
+) -> pl.Expr
+```
+
+**Returns:** `Struct{estimate: Float64, statistic: Float64, p_value: Float64, ci_lower: Float64, ci_upper: Float64, n: UInt32}`
+
+---
+
+#### `prop_test_two`
+
+Two-sample proportion test.
+
+```python
+ps.prop_test_two(
+    successes1: int,
+    n1: int,
+    successes2: int,
+    n2: int,
+    alternative: str = "two-sided",
+    correction: bool = False,  # Yates' continuity correction
+) -> pl.Expr
+```
+
+**Returns:** `Struct{estimate: Float64, statistic: Float64, p_value: Float64, ci_lower: Float64, ci_upper: Float64, n: UInt32}`
+
+---
+
+#### `chisq_test`
+
+Chi-square test for independence in contingency table.
+
+```python
+ps.chisq_test(
+    data: Union[pl.Expr, str],  # Flattened contingency table (row-major)
+    n_rows: int = 2,
+    n_cols: int = 2,
+    correction: bool = False,  # Yates' continuity correction
+) -> pl.Expr
+```
+
+**Returns:** `Struct{statistic: Float64, p_value: Float64, df: Float64, n: UInt32}`
+
+---
+
+#### `chisq_goodness_of_fit`
+
+Chi-square goodness-of-fit test.
+
+```python
+ps.chisq_goodness_of_fit(
+    observed: Union[pl.Expr, str],
+    expected: Union[pl.Expr, str] | None = None,  # None = uniform distribution
+) -> pl.Expr
+```
+
+**Returns:** `Struct{statistic: Float64, p_value: Float64, df: Float64, n: UInt32}`
+
+---
+
+#### `g_test`
+
+G-test (likelihood ratio test) for independence.
+
+```python
+ps.g_test(
+    data: Union[pl.Expr, str],
+    n_rows: int = 2,
+    n_cols: int = 2,
+) -> pl.Expr
+```
+
+**Returns:** `Struct{statistic: Float64, p_value: Float64, df: Float64, n: UInt32}`
+
+---
+
+#### `fisher_exact`
+
+Fisher's exact test for 2x2 contingency tables.
+
+```python
+ps.fisher_exact(
+    a: int, b: int, c: int, d: int,  # 2x2 table cells
+    alternative: str = "two-sided",
+) -> pl.Expr
+```
+
+**Returns:** `Struct{statistic: Float64 (odds ratio), p_value: Float64}`
+
+---
+
+#### `mcnemar_test`
+
+McNemar's test for paired proportions.
+
+```python
+ps.mcnemar_test(
+    a: int, b: int, c: int, d: int,  # 2x2 table cells
+    correction: bool = False,  # Edwards' continuity correction
+) -> pl.Expr
+```
+
+**Returns:** `Struct{statistic: Float64, p_value: Float64, df: Float64, n: UInt32}`
+
+---
+
+#### `mcnemar_exact`
+
+McNemar's exact test for paired proportions.
+
+```python
+ps.mcnemar_exact(
+    a: int, b: int, c: int, d: int,
+) -> pl.Expr
+```
+
+**Returns:** `Struct{statistic: Float64, p_value: Float64}`
+
+---
+
+#### `cohen_kappa`
+
+Cohen's Kappa for inter-rater agreement.
+
+```python
+ps.cohen_kappa(
+    data: Union[pl.Expr, str],  # Flattened confusion matrix
+    n_categories: int = 2,
+    weighted: bool = False,  # Linear weights
+) -> pl.Expr
+```
+
+**Returns:** `Struct{estimate: Float64 (kappa), statistic: Float64 (se), p_value: Float64}`
+
+---
+
+#### `cramers_v`
+
+Cramer's V for association strength (0 to 1).
+
+```python
+ps.cramers_v(
+    data: Union[pl.Expr, str],
+    n_rows: int = 2,
+    n_cols: int = 2,
+) -> pl.Expr
+```
+
+**Returns:** `Struct{estimate: Float64, statistic: Float64, p_value: Float64}`
+
+---
+
+#### `phi_coefficient`
+
+Phi coefficient for 2x2 tables.
+
+```python
+ps.phi_coefficient(
+    a: int, b: int, c: int, d: int,
+) -> pl.Expr
+```
+
+**Returns:** `Struct{estimate: Float64, statistic: Float64, p_value: Float64}`
+
+---
+
+#### `contingency_coef`
+
+Contingency coefficient (Pearson's C).
+
+```python
+ps.contingency_coef(
+    data: Union[pl.Expr, str],
+    n_rows: int = 2,
+    n_cols: int = 2,
+) -> pl.Expr
+```
+
+**Returns:** `Struct{estimate: Float64, statistic: Float64, p_value: Float64}`
+
+---
+
+### TOST Equivalence Tests
+
+Two One-Sided Tests (TOST) for testing practical equivalence.
+
+#### `tost_t_test_one_sample`
+
+One-sample TOST equivalence test.
+
+```python
+ps.tost_t_test_one_sample(
+    x: Union[pl.Expr, str],
+    mu: float = 0.0,
+    bounds_type: str = "symmetric",  # "symmetric", "raw", "cohen_d"
+    delta: float = 0.5,              # For symmetric/cohen_d bounds
+    lower: float = -0.5,             # For raw bounds
+    upper: float = 0.5,              # For raw bounds
+    alpha: float = 0.05,
+) -> pl.Expr
+```
+
+**Returns:** `Struct{estimate, ci_lower, ci_upper, bound_lower, bound_upper, tost_p_value, equivalent, alpha, n}`
+
+---
+
+#### `tost_t_test_two_sample`
+
+Two-sample TOST equivalence test.
+
+```python
+ps.tost_t_test_two_sample(
+    x: Union[pl.Expr, str],
+    y: Union[pl.Expr, str],
+    bounds_type: str = "symmetric",
+    delta: float = 0.5,
+    lower: float = -0.5,
+    upper: float = 0.5,
+    alpha: float = 0.05,
+    pooled: bool = False,
+) -> pl.Expr
+```
+
+**Returns:** `Struct{estimate, ci_lower, ci_upper, bound_lower, bound_upper, tost_p_value, equivalent, alpha, n}`
+
+---
+
+#### `tost_t_test_paired`
+
+Paired-samples TOST equivalence test.
+
+```python
+ps.tost_t_test_paired(
+    x: Union[pl.Expr, str],
+    y: Union[pl.Expr, str],
+    bounds_type: str = "symmetric",
+    delta: float = 0.5,
+    lower: float = -0.5,
+    upper: float = 0.5,
+    alpha: float = 0.05,
+) -> pl.Expr
+```
+
+**Returns:** `Struct{estimate, ci_lower, ci_upper, bound_lower, bound_upper, tost_p_value, equivalent, alpha, n}`
+
+---
+
+#### `tost_correlation`
+
+Correlation TOST equivalence test using Fisher's z-transformation.
+
+```python
+ps.tost_correlation(
+    x: Union[pl.Expr, str],
+    y: Union[pl.Expr, str],
+    method: str = "pearson",  # "pearson" or "spearman"
+    rho_null: float = 0.0,
+    bounds_type: str = "symmetric",
+    delta: float = 0.3,
+    lower: float = -0.3,
+    upper: float = 0.3,
+    alpha: float = 0.05,
+) -> pl.Expr
+```
+
+**Returns:** `Struct{estimate, ci_lower, ci_upper, bound_lower, bound_upper, tost_p_value, equivalent, alpha, n}`
+
+---
+
+#### `tost_prop_one`
+
+One-proportion TOST equivalence test.
+
+```python
+ps.tost_prop_one(
+    successes: int,
+    n: int,
+    p0: float = 0.5,
+    bounds_type: str = "symmetric",
+    delta: float = 0.1,
+    lower: float = -0.1,
+    upper: float = 0.1,
+    alpha: float = 0.05,
+) -> pl.Expr
+```
+
+**Returns:** `Struct{estimate, ci_lower, ci_upper, bound_lower, bound_upper, tost_p_value, equivalent, alpha, n}`
+
+---
+
+#### `tost_prop_two`
+
+Two-proportion TOST equivalence test.
+
+```python
+ps.tost_prop_two(
+    successes1: int,
+    n1: int,
+    successes2: int,
+    n2: int,
+    bounds_type: str = "symmetric",
+    delta: float = 0.1,
+    lower: float = -0.1,
+    upper: float = 0.1,
+    alpha: float = 0.05,
+) -> pl.Expr
+```
+
+**Returns:** `Struct{estimate, ci_lower, ci_upper, bound_lower, bound_upper, tost_p_value, equivalent, alpha, n}`
+
+---
+
+#### `tost_wilcoxon_paired`
+
+Wilcoxon paired-samples TOST equivalence test (non-parametric).
+
+```python
+ps.tost_wilcoxon_paired(
+    x: Union[pl.Expr, str],
+    y: Union[pl.Expr, str],
+    bounds_type: str = "symmetric",
+    delta: float = 0.5,
+    lower: float = -0.5,
+    upper: float = 0.5,
+    alpha: float = 0.05,
+) -> pl.Expr
+```
+
+**Returns:** `Struct{estimate, ci_lower, ci_upper, bound_lower, bound_upper, tost_p_value, equivalent, alpha, n}`
+
+---
+
+#### `tost_wilcoxon_two_sample`
+
+Wilcoxon two-sample TOST equivalence test (non-parametric).
+
+```python
+ps.tost_wilcoxon_two_sample(
+    x: Union[pl.Expr, str],
+    y: Union[pl.Expr, str],
+    bounds_type: str = "symmetric",
+    delta: float = 0.5,
+    lower: float = -0.5,
+    upper: float = 0.5,
+    alpha: float = 0.05,
+) -> pl.Expr
+```
+
+**Returns:** `Struct{estimate, ci_lower, ci_upper, bound_lower, bound_upper, tost_p_value, equivalent, alpha, n}`
+
+---
+
+#### `tost_bootstrap`
+
+Bootstrap TOST equivalence test.
+
+```python
+ps.tost_bootstrap(
+    x: Union[pl.Expr, str],
+    y: Union[pl.Expr, str],
+    bounds_type: str = "symmetric",
+    delta: float = 0.5,
+    lower: float = -0.5,
+    upper: float = 0.5,
+    alpha: float = 0.05,
+    n_bootstrap: int = 1000,
+    seed: int | None = None,
+) -> pl.Expr
+```
+
+**Returns:** `Struct{estimate, ci_lower, ci_upper, bound_lower, bound_upper, tost_p_value, equivalent, alpha, n}`
+
+---
+
+#### `tost_yuen`
+
+Yuen TOST equivalence test using trimmed means (robust).
+
+```python
+ps.tost_yuen(
+    x: Union[pl.Expr, str],
+    y: Union[pl.Expr, str],
+    trim: float = 0.2,
+    bounds_type: str = "symmetric",
+    delta: float = 0.5,
+    lower: float = -0.5,
+    upper: float = 0.5,
+    alpha: float = 0.05,
+) -> pl.Expr
+```
+
+**Returns:** `Struct{estimate, ci_lower, ci_upper, bound_lower, bound_upper, tost_p_value, equivalent, alpha, n}`
 
 [↑ Back to top](#table-of-contents)
 

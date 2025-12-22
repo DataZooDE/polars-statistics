@@ -1,6 +1,6 @@
 [package]
 name = "polars-statistics"
-version = "0.1.0"
+version = "0.3.0"
 edition = "2021"
 authors = ["Simon Müller <sm@data-zoo.de>"]
 description = "Statistical testing and regression for Polars DataFrames"
@@ -56,10 +56,10 @@ thiserror = "2.0"
 serde = { version = "1.0", features = ["derive"] }
 
 # Regression
-anofox-regression = "0.3.2"
+anofox-regression = "0.4.0"
 
 # Statistics
-anofox-statistics = "0.3"
+anofox-statistics = "0.4.0"
 
 [profile.release]
 codegen-units = 1
