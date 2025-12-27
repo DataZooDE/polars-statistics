@@ -1,0 +1,103 @@
+name: Conda Build Test
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'conda/**'
+      - 'src/**'
+      - 'python/**'
+      - 'Cargo.toml'
+      - 'pyproject.toml'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  conda-build:
+    name: Conda Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ['3.11']
+
+    defaults:
+      run:
+        shell: bash -el {0}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Miniconda
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          auto-update-conda: true
+          python-version: ${{ matrix.python-version }}
+          channels: conda-forge
+          channel-priority: strict
+          activate-environment: build-env
+
+      - name: Install conda-build tools
+        run: |
+          conda install -y conda-build conda-verify rattler-build
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-action@stable
+
+      - name: Validate recipe with conda-build
+        run: |
+          conda build --check conda/
+
+      - name: Build conda package
+        run: |
+          conda build conda/ --output-folder ./conda-output --no-anaconda-upload
+        env:
+          CARGO_NET_GIT_FETCH_WITH_CLI: "true"
+
+      - name: Test package installation
+        run: |
+          # Find and install the built package
+          PACKAGE=$(find ./conda-output -name "polars-statistics*.tar.bz2" | head -1)
+          if [ -n "$PACKAGE" ]; then
+            conda install -y "$PACKAGE"
+            python -c "import polars_statistics; print('Version:', polars_statistics.__version__)"
+          else
+            echo "No package found, checking for .conda format..."
+            PACKAGE=$(find ./conda-output -name "polars-statistics*.conda" | head -1)
+            if [ -n "$PACKAGE" ]; then
+              conda install -y "$PACKAGE"
+              python -c "import polars_statistics; print('Version:', polars_statistics.__version__)"
+            fi
+          fi
+
+      - name: Upload conda package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: conda-package-${{ matrix.os }}
+          path: ./conda-output/**/polars-statistics*
+          if-no-files-found: warn
+
+  # Optional: Test with conda-forge CI simulation
+  conda-forge-lint:
+    name: Conda-Forge Recipe Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install conda-smithy
+        run: |
+          pip install conda-smithy
+
+      - name: Lint recipe
+        run: |
+          conda-smithy recipe-lint conda/
+        continue-on-error: true  # Linting may have warnings that don't block

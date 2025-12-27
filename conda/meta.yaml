@@ -1,0 +1,62 @@
+{% set name = "polars-statistics" %}
+{% set version = "0.3.0" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/polars_statistics-{{ version }}.tar.gz
+  sha256: bbf3221e335e7aa6a89a5d4fb7395e84486e92f199bd64d202b4381c2cc25a5d
+
+build:
+  number: 0
+  skip: true  # [py<39]
+  script:
+    - cargo-bundle-licenses --format yaml --output THIRDPARTY.yml
+    - {{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+
+requirements:
+  build:
+    - python                                 # [build_platform != target_platform]
+    - cross-python_{{ target_platform }}     # [build_platform != target_platform]
+    - {{ compiler('c') }}
+    - {{ compiler('rust') }}
+    - cargo-bundle-licenses
+    - maturin >=1.7.4
+  host:
+    - python
+    - pip
+    - maturin >=1.7.4
+  run:
+    - python >=3.9
+    - polars >=1.0.0
+
+test:
+  imports:
+    - polars_statistics
+  requires:
+    - pip
+    - pytest
+  commands:
+    - pip check
+    - python -c "import polars_statistics; print(polars_statistics.__version__)"
+
+about:
+  home: https://github.com/DataZooDE/polars-statistics
+  license: MIT
+  license_family: MIT
+  license_file:
+    - LICENSE
+    - THIRDPARTY.yml
+  summary: High-performance statistical testing and regression for Polars DataFrames, powered by Rust
+  description: |
+    polars-statistics provides high-performance statistical testing and regression
+    analysis for Polars DataFrames. Built with Rust for speed, it offers t-tests,
+    ANOVA, chi-square tests, correlation analysis, OLS regression, GLM, and more.
+  dev_url: https://github.com/DataZooDE/polars-statistics
+  doc_url: https://github.com/DataZooDE/polars-statistics#readme
+
+extra:
+  recipe-maintainers:
+    - DataZooDE
