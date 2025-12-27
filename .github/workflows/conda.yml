@@ -45,7 +45,7 @@ jobs:
           conda install -y conda-build conda-verify rattler-build
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-action@stable
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Validate recipe with conda-build
         run: |
