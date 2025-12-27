@@ -39,13 +39,11 @@ jobs:
           channels: conda-forge
           channel-priority: strict
           activate-environment: build-env
+          conda-remove-defaults: true
 
       - name: Install conda-build tools
         run: |
-          conda install -y conda-build conda-verify rattler-build
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+          conda install -y conda-build conda-verify
 
       - name: Validate recipe with conda-build
         run: |
@@ -59,19 +57,12 @@ jobs:
 
       - name: Test package installation
         run: |
-          # Find and install the built package
-          PACKAGE=$(find ./conda-output -name "polars-statistics*.tar.bz2" | head -1)
-          if [ -n "$PACKAGE" ]; then
-            conda install -y "$PACKAGE"
-            python -c "import polars_statistics; print('Version:', polars_statistics.__version__)"
-          else
-            echo "No package found, checking for .conda format..."
-            PACKAGE=$(find ./conda-output -name "polars-statistics*.conda" | head -1)
-            if [ -n "$PACKAGE" ]; then
-              conda install -y "$PACKAGE"
-              python -c "import polars_statistics; print('Version:', polars_statistics.__version__)"
-            fi
-          fi
+          # Create a fresh test environment and install from local channel
+          conda create -n test-env python=${{ matrix.python-version }} -y
+          conda activate test-env
+          # Install from local channel with dependencies
+          conda install -y -c ./conda-output -c conda-forge polars-statistics
+          python -c "import polars_statistics; print('Version:', polars_statistics.__version__)"
 
       - name: Upload conda package artifact
         uses: actions/upload-artifact@v4
@@ -80,7 +71,6 @@ jobs:
           path: ./conda-output/**/polars-statistics*
           if-no-files-found: warn
 
-  # Optional: Test with conda-forge CI simulation
   conda-forge-lint:
     name: Conda-Forge Recipe Lint
     runs-on: ubuntu-latest
@@ -88,16 +78,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Setup Miniconda
+        uses: conda-incubator/setup-miniconda@v3
         with:
+          auto-update-conda: true
           python-version: '3.11'
+          channels: conda-forge
+          channel-priority: strict
 
       - name: Install conda-smithy
         run: |
-          pip install conda-smithy
+          conda install -y conda-smithy
 
       - name: Lint recipe
         run: |
           conda-smithy recipe-lint conda/
-        continue-on-error: true  # Linting may have warnings that don't block
+        continue-on-error: true
