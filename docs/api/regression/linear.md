@@ -161,7 +161,6 @@ ps.isotonic(
 
 ## See Also
 
-- [Robust Regression](robust.md) - Outlier-resistant regression
 - [GLM Models](glm.md) - Generalized linear models
 - [Formula Syntax](formula.md) - R-style formula interface
 - [Diagnostics](diagnostics.md) - Model diagnostics

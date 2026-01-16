@@ -46,7 +46,7 @@ result.with_columns(
 
 ### Regression Models
 
-Return a struct with model-specific fields. See [Output Structures](output-structures.md) for details.
+Return a struct with model-specific fields. See [Output Structures](outputs.md) for details.
 
 ```python
 result = df.group_by("group").agg(ps.ols("y", "x1").alias("model"))
@@ -91,5 +91,5 @@ df.with_columns(
 
 ## See Also
 
-- [Output Structures](output-structures.md) - Detailed return type definitions
-- [Model Classes](model-classes.md) - Direct model access outside expressions
+- [Output Structures](outputs.md) - Detailed return type definitions
+- [Model Classes](classes/linear.md) - Direct model access outside expressions
