@@ -14,7 +14,8 @@ High-performance statistical testing and regression for [Polars](https://pola.rs
 
 - **Native Polars Expressions**: Full support for `group_by`, `over`, and lazy evaluation
 - **Statistical Tests**: Parametric, non-parametric, distributional, and forecast comparison tests
-- **Regression Models**: OLS, Ridge, Elastic Net, WLS, GLMs, ALM (24+ distributions)
+- **Regression Models**: OLS, Ridge, Elastic Net, WLS, Quantile, Isotonic, GLMs, ALM (24+ distributions)
+- **Diagnostics**: Condition number, quasi-separation detection for GLMs
 - **Formula Syntax**: R-style formulas with polynomial and interaction effects
 - **High Performance**: Rust-powered with zero-copy data transfer
 
@@ -123,12 +124,21 @@ ps.ols("y", "x1", "x2")
 ps.ridge("y", "x1", "x2", lambda_=1.0)
 ps.elastic_net("y", "x1", "x2", lambda_=1.0, alpha=0.5)
 
-# GLM models
-ps.logistic("y", "x1", "x2")      # Binary classification
-ps.poisson("y", "x1", "x2")       # Count data
+# Robust regression
+ps.quantile("y", "x1", "x2", tau=0.5)  # Median regression
+ps.isotonic("y", "x")                   # Monotonic regression
+
+# GLM models (with optional Ridge regularization)
+ps.logistic("y", "x1", "x2", lambda_=0.1)  # Binary classification
+ps.poisson("y", "x1", "x2")                 # Count data
 
 # ALM - 24+ distributions
 ps.alm("y", "x1", "x2", distribution="laplace")  # Robust to outliers
+
+# Diagnostics
+ps.condition_number("x1", "x2")            # Multicollinearity check
+ps.check_binary_separation("y", "x1")      # Quasi-separation detection
+ps.check_count_sparsity("y", "x1")         # Sparse count data check
 ```
 
 ### Formula Syntax

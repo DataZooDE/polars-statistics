@@ -21,6 +21,8 @@ Complete API reference for polars-statistics. For quick start examples, see the 
   - [TOST Equivalence Tests](#tost-equivalence-tests)
 - [Regression Models](#regression-models)
   - [Linear Models](#linear-models)
+  - [Robust Regression](#robust-regression)
+  - [Diagnostics](#diagnostics)
   - [GLM Models](#glm-models)
   - [Augmented Linear Model (ALM)](#augmented-linear-model-alm)
   - [Dynamic Linear Model (LmDynamic)](#dynamic-linear-model-lmdynamic)
@@ -1047,7 +1049,100 @@ ps.nnls(
 
 ---
 
+#### `quantile`
+
+Quantile regression for estimating conditional quantiles (e.g., median).
+
+```python
+ps.quantile(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    tau: float = 0.5,            # Quantile to estimate (0.5 = median)
+    with_intercept: bool = True,
+) -> pl.Expr
+```
+
+**Returns:** `Struct{intercept, coefficients, tau, pseudo_r_squared, check_loss, n_observations}`
+
+---
+
+#### `isotonic`
+
+Isotonic (monotonic) regression for calibration curves and monotone relationships.
+
+```python
+ps.isotonic(
+    y: Union[pl.Expr, str],
+    x: Union[pl.Expr, str],
+    increasing: bool = True,     # True = increasing, False = decreasing
+) -> pl.Expr
+```
+
+**Returns:** `Struct{r_squared, increasing, fitted_values, n_observations}`
+
+---
+
+### Diagnostics
+
+#### `condition_number`
+
+Compute condition number diagnostics to detect multicollinearity in design matrices.
+
+```python
+ps.condition_number(
+    *x: Union[pl.Expr, str],
+    with_intercept: bool = True,
+) -> pl.Expr
+```
+
+**Returns:** `Struct{condition_number, condition_number_xtx, singular_values, condition_indices, severity, warning}`
+
+**Interpretation:**
+- κ < 30: Well-conditioned, numerically stable
+- 30 ≤ κ < 100: Moderate collinearity
+- 100 ≤ κ < 1000: High collinearity
+- κ ≥ 1000: Severe collinearity
+
+---
+
+#### `check_binary_separation`
+
+Detect quasi-separation in binary response data (logistic/probit regression).
+
+```python
+ps.check_binary_separation(
+    y: Union[pl.Expr, str],      # Binary (0/1)
+    *x: Union[pl.Expr, str],
+) -> pl.Expr
+```
+
+**Returns:** `Struct{has_separation, separated_predictors, separation_types, warning}`
+
+**Separation Types:**
+- `Complete`: Predictor perfectly divides the classes
+- `Quasi`: Nearly perfect separation with 1-2 observations crossing
+- `MonotonicResponse`: Each predictor level has all observations in same class
+
+---
+
+#### `check_count_sparsity`
+
+Detect sparsity-induced separation in count data (Poisson/NegBin regression).
+
+```python
+ps.check_count_sparsity(
+    y: Union[pl.Expr, str],      # Non-negative counts
+    *x: Union[pl.Expr, str],
+) -> pl.Expr
+```
+
+**Returns:** `Struct{has_separation, separated_predictors, separation_types, warning}`
+
+---
+
 ### GLM Models
+
+All GLM models support optional Ridge regularization via the `lambda_` parameter.
 
 #### `logistic`
 
@@ -1057,6 +1152,7 @@ Logistic regression for binary classification.
 ps.logistic(
     y: Union[pl.Expr, str],  # Binary (0/1)
     *x: Union[pl.Expr, str],
+    lambda_: float = 0.0,        # L2 (Ridge) regularization strength
     with_intercept: bool = True,
 ) -> pl.Expr
 ```
@@ -1073,6 +1169,7 @@ Poisson regression for count data.
 ps.poisson(
     y: Union[pl.Expr, str],  # Non-negative counts
     *x: Union[pl.Expr, str],
+    lambda_: float = 0.0,        # L2 (Ridge) regularization strength
     with_intercept: bool = True,
 ) -> pl.Expr
 ```
@@ -1090,6 +1187,7 @@ ps.negative_binomial(
     y: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
     theta: float | None = None,  # Dispersion; None = estimate
+    lambda_: float = 0.0,        # L2 (Ridge) regularization strength
     with_intercept: bool = True,
 ) -> pl.Expr
 ```
@@ -1106,7 +1204,8 @@ Tweedie GLM for flexible variance structures.
 ps.tweedie(
     y: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
-    var_power: float = 1.5,  # 0=Gaussian, 1=Poisson, 2=Gamma, 3=InvGaussian
+    var_power: float = 1.5,      # 0=Gaussian, 1=Poisson, 2=Gamma, 3=InvGaussian
+    lambda_: float = 0.0,        # L2 (Ridge) regularization strength
     with_intercept: bool = True,
 ) -> pl.Expr
 ```
@@ -1123,6 +1222,7 @@ Probit regression for binary classification.
 ps.probit(
     y: Union[pl.Expr, str],  # Binary (0/1)
     *x: Union[pl.Expr, str],
+    lambda_: float = 0.0,        # L2 (Ridge) regularization strength
     with_intercept: bool = True,
 ) -> pl.Expr
 ```
@@ -1139,6 +1239,7 @@ Complementary log-log regression for binary classification.
 ps.cloglog(
     y: Union[pl.Expr, str],  # Binary (0/1)
     *x: Union[pl.Expr, str],
+    lambda_: float = 0.0,        # L2 (Ridge) regularization strength
     with_intercept: bool = True,
 ) -> pl.Expr
 ```
@@ -1401,7 +1502,7 @@ For users who need direct model access outside of Polars expressions.
 ### Linear Model Classes
 
 ```python
-from polars_statistics import OLS, Ridge, ElasticNet, WLS, RLS, BLS
+from polars_statistics import OLS, Ridge, ElasticNet, WLS, RLS, BLS, Quantile, Isotonic
 
 # Fit
 model = OLS(with_intercept=True, compute_inference=True)
@@ -1429,6 +1530,8 @@ predictions = model.predict(X_new)
 | `WLS` | `with_intercept`, `compute_inference` |
 | `RLS` | `forgetting_factor`, `with_intercept` |
 | `BLS` | `lower_bound`, `upper_bound`, `with_intercept` |
+| `Quantile` | `tau`, `with_intercept` |
+| `Isotonic` | `increasing` |
 
 ---
 
@@ -1447,12 +1550,12 @@ probs = model.predict_proba(X_new)  # For classification models
 
 | Class | Parameters |
 |-------|------------|
-| `Logistic` | `with_intercept` |
-| `Poisson` | `with_intercept` |
-| `NegativeBinomial` | `theta`, `estimate_theta`, `with_intercept` |
-| `Tweedie` | `var_power`, `with_intercept` |
-| `Probit` | `with_intercept` |
-| `Cloglog` | `with_intercept` |
+| `Logistic` | `lambda_`, `with_intercept` |
+| `Poisson` | `lambda_`, `with_intercept` |
+| `NegativeBinomial` | `theta`, `estimate_theta`, `lambda_`, `with_intercept` |
+| `Tweedie` | `var_power`, `lambda_`, `with_intercept` |
+| `Probit` | `lambda_`, `with_intercept` |
+| `Cloglog` | `lambda_`, `with_intercept` |
 
 ---
 
@@ -1704,6 +1807,54 @@ Struct {
     aic: Float64,
     bic: Float64,
     n_observations: UInt32,
+}
+```
+
+### Quantile Regression Output
+
+```
+Struct {
+    intercept: Float64,
+    coefficients: List[Float64],
+    tau: Float64,
+    pseudo_r_squared: Float64,
+    check_loss: Float64,
+    n_observations: UInt32,
+}
+```
+
+### Isotonic Regression Output
+
+```
+Struct {
+    r_squared: Float64,
+    increasing: Boolean,
+    fitted_values: List[Float64],
+    n_observations: UInt32,
+}
+```
+
+### Condition Number Output
+
+```
+Struct {
+    condition_number: Float64,
+    condition_number_xtx: Float64,
+    singular_values: List[Float64],
+    condition_indices: List[Float64],
+    severity: String,           # "WellConditioned", "Moderate", "High", "Severe"
+    warning: String,
+}
+```
+
+### Separation Check Output
+
+```
+Struct {
+    has_separation: Boolean,
+    separated_predictors: List[UInt32],
+    separation_types: List[String],  # "Complete", "Quasi", "MonotonicResponse"
+    warning: String,
 }
 ```
 
