@@ -1,7 +1,10 @@
 # polars-statistics API Reference
 
-> **Version:** 0.1.0
-> **Last Updated:** 2025-12-10
+> **Note:** This documentation has been reorganized into modular files for easier navigation.
+> See the **[new modular API documentation](api/README.md)** for a better experience.
+
+> **Version:** 0.3.0
+> **Last Updated:** 2026-01-17
 
 Complete API reference for polars-statistics. For quick start examples, see the [README](../README.md).
 

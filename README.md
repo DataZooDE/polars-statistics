@@ -213,9 +213,15 @@ print(test.summary())
 
 Available test classes: `TTestInd`, `TTestPaired`, `BrownForsythe`, `YuenTest`, `MannWhitneyU`, `WilcoxonSignedRank`, `KruskalWallis`, `BrunnerMunzel`, `ShapiroWilk`, `DAgostino`.
 
-## API Reference
+## Documentation
 
-See [docs/API_REFERENCE.md](docs/API_REFERENCE.md) for complete documentation of all functions, parameters, and output structures.
+- **[API Reference](docs/api/README.md)** - Complete API documentation
+  - [Statistical Tests](docs/api/tests/) - Parametric, non-parametric, TOST equivalence
+  - [Regression Models](docs/api/regression/) - Linear, GLM, ALM, dynamic
+  - [Model Classes](docs/api/classes/) - Python classes for direct access
+  - [Output Structures](docs/api/outputs.md) - Return type definitions
+
+For the legacy monolithic reference, see [docs/API_REFERENCE.md](docs/API_REFERENCE.md).
 
 ## Performance
 
