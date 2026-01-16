@@ -285,10 +285,7 @@ impl PyIsotonic {
 
         let mut summary = String::new();
 
-        summary.push_str(&format!(
-            "Isotonic Regression Results ({})\n",
-            direction
-        ));
+        summary.push_str(&format!("Isotonic Regression Results ({})\n", direction));
         summary.push_str("==========================================\n\n");
 
         summary.push_str(&format!(

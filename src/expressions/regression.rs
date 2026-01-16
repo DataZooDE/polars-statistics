@@ -7,16 +7,16 @@ use polars::prelude::*;
 use pyo3_polars::derive::polars_expr;
 use serde::Deserialize;
 
+use anofox_regression::diagnostics::{
+    check_binary_separation, check_count_sparsity, condition_diagnostic, ConditionSeverity,
+    SeparationCheck, SeparationType,
+};
 use anofox_regression::solvers::{
     AidClassifier, AlmDistribution, AlmRegressor, AnomalyType, BinomialRegressor, BlsRegressor,
     DemandDistribution, DemandType, ElasticNetRegressor, FittedRegressor, InformationCriterion,
     IsotonicRegressor, LmDynamicRegressor, NegativeBinomialRegressor, OlsRegressor,
-    PoissonRegressor, QuantileRegressor, Regressor, RidgeRegressor, RlsRegressor,
-    TweedieRegressor, WlsRegressor,
-};
-use anofox_regression::diagnostics::{
-    check_binary_separation, check_count_sparsity, condition_diagnostic, ConditionSeverity,
-    SeparationCheck, SeparationType,
+    PoissonRegressor, QuantileRegressor, Regressor, RidgeRegressor, RlsRegressor, TweedieRegressor,
+    WlsRegressor,
 };
 use anofox_regression::IntervalType;
 
@@ -791,7 +791,11 @@ fn separation_type_to_string(sep_type: &SeparationType) -> &'static str {
 /// Separation check output helper.
 fn separation_output(check: &SeparationCheck) -> PolarsResult<Series> {
     let has_separation_s = Series::new("has_separation".into(), &[check.has_separation]);
-    let predictors_u32: Vec<u32> = check.separated_predictors.iter().map(|&p| p as u32).collect();
+    let predictors_u32: Vec<u32> = check
+        .separated_predictors
+        .iter()
+        .map(|&p| p as u32)
+        .collect();
     let predictors_inner = Series::new("item".into(), &predictors_u32);
     let predictors_s = Series::new("separated_predictors".into(), &[predictors_inner]);
     let types_strs: Vec<&str> = check

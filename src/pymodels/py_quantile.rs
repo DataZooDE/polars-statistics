@@ -223,7 +223,10 @@ impl PyQuantile {
         let result = fitted.result();
         let mut summary = String::new();
 
-        summary.push_str(&format!("Quantile Regression Results (tau = {:.2})\n", self.tau));
+        summary.push_str(&format!(
+            "Quantile Regression Results (tau = {:.2})\n",
+            self.tau
+        ));
         summary.push_str("==========================================\n\n");
 
         summary.push_str(&format!(
@@ -250,7 +253,11 @@ impl PyQuantile {
 
         // Coefficients
         for i in 0..result.coefficients.nrows() {
-            summary.push_str(&format!("x{}      {:>12.6}\n", i + 1, result.coefficients[i]));
+            summary.push_str(&format!(
+                "x{}      {:>12.6}\n",
+                i + 1,
+                result.coefficients[i]
+            ));
         }
         summary.push_str("-------------------------------------------------\n");
 
