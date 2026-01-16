@@ -72,6 +72,13 @@ from polars_statistics.exprs.regression import (
     rls,
     bls,
     nnls,
+    quantile,
+    isotonic,
+    # Diagnostics
+    condition_number,
+    check_binary_separation,
+    check_count_sparsity,
+    # GLM
     logistic,
     poisson,
     negative_binomial,
@@ -208,6 +215,13 @@ __all__ = [
     "rls",
     "bls",
     "nnls",
+    "quantile",
+    "isotonic",
+    # Diagnostics expressions
+    "condition_number",
+    "check_binary_separation",
+    "check_count_sparsity",
+    # GLM expressions
     "logistic",
     "poisson",
     "negative_binomial",

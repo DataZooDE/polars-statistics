@@ -361,6 +361,361 @@ def nnls(
 
 
 # ============================================================================
+# Robust Regression Expressions
+# ============================================================================
+
+
+def quantile(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    tau: float = 0.5,
+    with_intercept: bool = True,
+) -> pl.Expr:
+    """Quantile regression as a Polars expression.
+
+    Estimates conditional quantiles using Iteratively Reweighted Least Squares (IRLS).
+    More robust to outliers than OLS.
+
+    Parameters
+    ----------
+    y : pl.Expr or str
+        Target variable.
+    *x : pl.Expr or str
+        Feature variables (one or more).
+    tau : float, default 0.5
+        The quantile to estimate (must be between 0 and 1).
+        0.5 corresponds to median regression.
+    with_intercept : bool, default True
+        Whether to include an intercept term.
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing: intercept, coefficients, tau, pseudo_r_squared,
+        check_loss, n_observations.
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> import polars_statistics as ps
+    >>>
+    >>> # Median regression (tau=0.5)
+    >>> df.group_by("group").agg(
+    ...     ps.quantile("y", "x1", "x2", tau=0.5).alias("model")
+    ... )
+    >>>
+    >>> # Lower quartile regression
+    >>> df.select(ps.quantile("y", "x1", tau=0.25))
+    """
+    if isinstance(y, str):
+        y = pl.col(y)
+
+    x_exprs = []
+    for xi in x:
+        if isinstance(xi, str):
+            xi = pl.col(xi)
+        x_exprs.append(xi.cast(pl.Float64))
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_quantile",
+        args=[
+            y.cast(pl.Float64),
+            pl.lit(tau, dtype=pl.Float64),
+            pl.lit(with_intercept, dtype=pl.Boolean),
+            *x_exprs,
+        ],
+        returns_scalar=True,
+    )
+
+
+def isotonic(
+    y: Union[pl.Expr, str],
+    x: Union[pl.Expr, str],
+    increasing: bool = True,
+) -> pl.Expr:
+    """Isotonic (monotonic) regression as a Polars expression.
+
+    Fits a non-decreasing (or non-increasing) step function to the data
+    using the Pool Adjacent Violators Algorithm (PAVA).
+
+    Parameters
+    ----------
+    y : pl.Expr or str
+        Target variable.
+    x : pl.Expr or str
+        Single feature variable.
+    increasing : bool, default True
+        Whether to fit an increasing (True) or decreasing (False) function.
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing: r_squared, increasing, fitted_values, n_observations.
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> import polars_statistics as ps
+    >>>
+    >>> # Fit monotonically increasing function
+    >>> df.select(ps.isotonic("y", "x", increasing=True))
+    >>>
+    >>> # Per-group isotonic regression
+    >>> df.group_by("group").agg(
+    ...     ps.isotonic("y", "x").alias("model")
+    ... )
+    """
+    if isinstance(y, str):
+        y = pl.col(y)
+    if isinstance(x, str):
+        x = pl.col(x)
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_isotonic",
+        args=[
+            y.cast(pl.Float64),
+            x.cast(pl.Float64),
+            pl.lit(increasing, dtype=pl.Boolean),
+        ],
+        returns_scalar=True,
+    )
+
+
+# ============================================================================
+# Diagnostics Expressions
+# ============================================================================
+
+
+def condition_number(
+    *x: Union[pl.Expr, str],
+    with_intercept: bool = True,
+) -> pl.Expr:
+    """Compute condition number diagnostics for a design matrix.
+
+    The condition number measures how sensitive the regression is to numerical
+    errors. A high condition number indicates multicollinearity, which can make
+    coefficients unreliable.
+
+    Parameters
+    ----------
+    *x : pl.Expr or str
+        Feature variables (one or more).
+    with_intercept : bool, default True
+        Whether to include an intercept column in the analysis.
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing:
+        - condition_number: κ(X), ratio of max to min singular values
+        - condition_number_xtx: κ(X'X) = κ(X)², useful for some diagnostics
+        - singular_values: List of singular values (descending)
+        - condition_indices: List of max(σ)/σ_j for each singular value
+        - severity: Classification ("WellConditioned", "Moderate", "High", "Severe")
+        - warning: Warning message if condition number is problematic
+
+    Interpretation
+    --------------
+    - κ < 30: Well-conditioned, numerically stable
+    - 30 ≤ κ < 100: Moderate collinearity, some instability possible
+    - 100 ≤ κ < 1000: High collinearity, numerical instability likely
+    - κ ≥ 1000: Severe collinearity, coefficients may be unreliable
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> import polars_statistics as ps
+    >>>
+    >>> df = pl.DataFrame({
+    ...     "x1": [1.0, 2.0, 3.0, 4.0, 5.0],
+    ...     "x2": [2.0, 4.0, 6.0, 8.0, 10.0],  # Collinear with x1
+    ...     "x3": [1.1, 2.3, 2.9, 4.1, 5.2],
+    ... })
+    >>>
+    >>> # Check for multicollinearity
+    >>> df.select(ps.condition_number("x1", "x2", "x3").alias("diagnostics"))
+    >>>
+    >>> # Access specific fields
+    >>> result.with_columns(
+    ...     pl.col("diagnostics").struct.field("severity"),
+    ...     pl.col("diagnostics").struct.field("condition_number"),
+    ... )
+    """
+    x_exprs = []
+    for xi in x:
+        if isinstance(xi, str):
+            xi = pl.col(xi)
+        x_exprs.append(xi.cast(pl.Float64))
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_condition_number",
+        args=[
+            pl.lit(with_intercept, dtype=pl.Boolean),
+            *x_exprs,
+        ],
+        returns_scalar=True,
+    )
+
+
+def check_binary_separation(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+) -> pl.Expr:
+    """Check for quasi-separation in binary response data.
+
+    Quasi-separation occurs when a predictor (or combination of predictors)
+    perfectly or nearly perfectly separates the response categories. This causes
+    coefficient estimates to diverge to infinity in logistic/probit regression.
+
+    Parameters
+    ----------
+    y : pl.Expr or str
+        Binary target variable (0/1).
+    *x : pl.Expr or str
+        Feature variables (one or more).
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing:
+        - has_separation: Boolean indicating if separation was detected
+        - separated_predictors: List of predictor indices showing separation (0-based)
+        - separation_types: List of separation types ("Complete", "Quasi", "MonotonicResponse")
+        - warning: Warning message with details and recommendations
+
+    Separation Types
+    ----------------
+    - Complete: A predictor perfectly divides the classes (all y=0 on one side,
+      all y=1 on the other)
+    - Quasi: Nearly perfect separation with only 1-2 observations crossing the boundary
+    - MonotonicResponse: For categorical-like predictors where each level has all
+      observations in the same class
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> import polars_statistics as ps
+    >>>
+    >>> # Data with perfect separation
+    >>> df = pl.DataFrame({
+    ...     "y": [0, 0, 0, 0, 0, 1, 1, 1, 1, 1],
+    ...     "x": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+    ... })
+    >>>
+    >>> # Check for separation before fitting logistic regression
+    >>> result = df.select(ps.check_binary_separation("y", "x").alias("sep"))
+    >>> print(result["sep"][0]["has_separation"])  # True
+    >>> print(result["sep"][0]["separation_types"])  # ["Complete"]
+
+    Notes
+    -----
+    Run this diagnostic before fitting logistic, probit, or cloglog models.
+    If separation is detected:
+    1. Consider using regularization (lambda_ parameter)
+    2. Remove or combine problematic predictors
+    3. Collect more data with overlap in predictor values
+    """
+    if isinstance(y, str):
+        y = pl.col(y)
+
+    x_exprs = []
+    for xi in x:
+        if isinstance(xi, str):
+            xi = pl.col(xi)
+        x_exprs.append(xi.cast(pl.Float64))
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_check_binary_separation",
+        args=[
+            y.cast(pl.Float64),
+            *x_exprs,
+        ],
+        returns_scalar=True,
+    )
+
+
+def check_count_sparsity(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+) -> pl.Expr:
+    """Check for sparsity-induced separation in count data.
+
+    For Poisson/Negative Binomial regression, extreme sparsity (all-zero segments)
+    can cause coefficient divergence similar to separation in logistic regression.
+    This occurs when some predictor values (especially binary indicators) always
+    have zero responses.
+
+    Parameters
+    ----------
+    y : pl.Expr or str
+        Count target variable (non-negative integers).
+    *x : pl.Expr or str
+        Feature variables (one or more).
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing:
+        - has_separation: Boolean indicating if sparsity issues detected
+        - separated_predictors: List of predictor indices with issues (0-based)
+        - separation_types: List of separation types (typically "MonotonicResponse")
+        - warning: Warning message with details and recommendations
+
+    Notes
+    -----
+    This check is most relevant when:
+    - Data has >90% zero responses
+    - Predictors include binary indicators (e.g., changepoint variables)
+    - A binary indicator has all-zero responses when active
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> import polars_statistics as ps
+    >>>
+    >>> # Sparse data with problematic indicator
+    >>> df = pl.DataFrame({
+    ...     "y": [0, 1, 2, 0, 0, 0, 0, 0, 0, 0] * 10,  # 95% zeros after position 30
+    ...     "indicator": [0]*50 + [1]*50,  # Binary indicator, all y=0 when indicator=1
+    ... })
+    >>>
+    >>> # Check for sparsity issues before fitting Poisson regression
+    >>> result = df.select(ps.check_count_sparsity("y", "indicator").alias("sparse"))
+    >>> if result["sparse"][0]["has_separation"]:
+    ...     print("Warning:", result["sparse"][0]["warning"])
+
+    Recommendations
+    ---------------
+    If sparsity issues are detected:
+    1. Use regularization (lambda_ parameter)
+    2. Remove sparse indicator features
+    3. Aggregate sparse categories
+    """
+    if isinstance(y, str):
+        y = pl.col(y)
+
+    x_exprs = []
+    for xi in x:
+        if isinstance(xi, str):
+            xi = pl.col(xi)
+        x_exprs.append(xi.cast(pl.Float64))
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_check_count_sparsity",
+        args=[
+            y.cast(pl.Float64),
+            *x_exprs,
+        ],
+        returns_scalar=True,
+    )
+
+
+# ============================================================================
 # GLM Expressions
 # ============================================================================
 
@@ -368,6 +723,7 @@ def nnls(
 def logistic(
     y: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
+    lambda_: float = 0.0,
     with_intercept: bool = True,
 ) -> pl.Expr:
     """Logistic regression as a Polars expression.
@@ -378,6 +734,8 @@ def logistic(
         Binary target variable (0/1).
     *x : pl.Expr or str
         Feature variables (one or more).
+    lambda_ : float, default 0.0
+        L2 (Ridge) regularization strength.
     with_intercept : bool, default True
         Whether to include an intercept term.
 
@@ -401,6 +759,7 @@ def logistic(
         function_name="pl_logistic",
         args=[
             y.cast(pl.Float64),
+            pl.lit(lambda_, dtype=pl.Float64),
             pl.lit(with_intercept, dtype=pl.Boolean),
             *x_exprs,
         ],
@@ -411,6 +770,7 @@ def logistic(
 def poisson(
     y: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
+    lambda_: float = 0.0,
     with_intercept: bool = True,
 ) -> pl.Expr:
     """Poisson regression as a Polars expression.
@@ -421,6 +781,8 @@ def poisson(
         Count target variable.
     *x : pl.Expr or str
         Feature variables (one or more).
+    lambda_ : float, default 0.0
+        L2 (Ridge) regularization strength.
     with_intercept : bool, default True
         Whether to include an intercept term.
 
@@ -443,6 +805,7 @@ def poisson(
         function_name="pl_poisson",
         args=[
             y.cast(pl.Float64),
+            pl.lit(lambda_, dtype=pl.Float64),
             pl.lit(with_intercept, dtype=pl.Boolean),
             *x_exprs,
         ],
@@ -454,6 +817,7 @@ def negative_binomial(
     y: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
     theta: float | None = None,
+    lambda_: float = 0.0,
     with_intercept: bool = True,
 ) -> pl.Expr:
     """Negative Binomial regression as a Polars expression.
@@ -466,6 +830,8 @@ def negative_binomial(
         Feature variables (one or more).
     theta : float, optional
         Dispersion parameter. If None, estimated from data.
+    lambda_ : float, default 0.0
+        L2 (Ridge) regularization strength.
     with_intercept : bool, default True
         Whether to include an intercept term.
 
@@ -491,6 +857,7 @@ def negative_binomial(
         args=[
             y.cast(pl.Float64),
             theta_lit,
+            pl.lit(lambda_, dtype=pl.Float64),
             pl.lit(with_intercept, dtype=pl.Boolean),
             *x_exprs,
         ],
@@ -502,6 +869,7 @@ def tweedie(
     y: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
     var_power: float = 1.5,
+    lambda_: float = 0.0,
     with_intercept: bool = True,
 ) -> pl.Expr:
     """Tweedie GLM as a Polars expression.
@@ -514,6 +882,8 @@ def tweedie(
         Feature variables (one or more).
     var_power : float, default 1.5
         Variance power (0=Gaussian, 1=Poisson, 2=Gamma, 3=Inverse Gaussian).
+    lambda_ : float, default 0.0
+        L2 (Ridge) regularization strength.
     with_intercept : bool, default True
         Whether to include an intercept term.
 
@@ -537,6 +907,7 @@ def tweedie(
         args=[
             y.cast(pl.Float64),
             pl.lit(var_power, dtype=pl.Float64),
+            pl.lit(lambda_, dtype=pl.Float64),
             pl.lit(with_intercept, dtype=pl.Boolean),
             *x_exprs,
         ],
@@ -547,6 +918,7 @@ def tweedie(
 def probit(
     y: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
+    lambda_: float = 0.0,
     with_intercept: bool = True,
 ) -> pl.Expr:
     """Probit regression as a Polars expression.
@@ -557,6 +929,8 @@ def probit(
         Binary target variable (0/1).
     *x : pl.Expr or str
         Feature variables (one or more).
+    lambda_ : float, default 0.0
+        L2 (Ridge) regularization strength.
     with_intercept : bool, default True
         Whether to include an intercept term.
 
@@ -579,6 +953,7 @@ def probit(
         function_name="pl_probit",
         args=[
             y.cast(pl.Float64),
+            pl.lit(lambda_, dtype=pl.Float64),
             pl.lit(with_intercept, dtype=pl.Boolean),
             *x_exprs,
         ],
@@ -589,6 +964,7 @@ def probit(
 def cloglog(
     y: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
+    lambda_: float = 0.0,
     with_intercept: bool = True,
 ) -> pl.Expr:
     """Complementary log-log regression as a Polars expression.
@@ -599,6 +975,8 @@ def cloglog(
         Binary target variable (0/1).
     *x : pl.Expr or str
         Feature variables (one or more).
+    lambda_ : float, default 0.0
+        L2 (Ridge) regularization strength.
     with_intercept : bool, default True
         Whether to include an intercept term.
 
@@ -621,6 +999,7 @@ def cloglog(
         function_name="pl_cloglog",
         args=[
             y.cast(pl.Float64),
+            pl.lit(lambda_, dtype=pl.Float64),
             pl.lit(with_intercept, dtype=pl.Boolean),
             *x_exprs,
         ],
@@ -918,6 +1297,7 @@ def bls_summary(
 def logistic_summary(
     y: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
+    lambda_: float = 0.0,
     with_intercept: bool = True,
 ) -> pl.Expr:
     """Logistic regression coefficient summary in tidy format."""
@@ -935,6 +1315,7 @@ def logistic_summary(
         function_name="pl_logistic_summary",
         args=[
             y.cast(pl.Float64),
+            pl.lit(lambda_, dtype=pl.Float64),
             pl.lit(with_intercept, dtype=pl.Boolean),
             *x_exprs,
         ],
@@ -945,6 +1326,7 @@ def logistic_summary(
 def poisson_summary(
     y: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
+    lambda_: float = 0.0,
     with_intercept: bool = True,
 ) -> pl.Expr:
     """Poisson regression coefficient summary in tidy format."""
@@ -962,6 +1344,7 @@ def poisson_summary(
         function_name="pl_poisson_summary",
         args=[
             y.cast(pl.Float64),
+            pl.lit(lambda_, dtype=pl.Float64),
             pl.lit(with_intercept, dtype=pl.Boolean),
             *x_exprs,
         ],
@@ -973,6 +1356,7 @@ def negative_binomial_summary(
     y: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
     theta: float | None = None,
+    lambda_: float = 0.0,
     with_intercept: bool = True,
 ) -> pl.Expr:
     """Negative Binomial regression coefficient summary in tidy format."""
@@ -993,6 +1377,7 @@ def negative_binomial_summary(
         args=[
             y.cast(pl.Float64),
             theta_lit,
+            pl.lit(lambda_, dtype=pl.Float64),
             pl.lit(with_intercept, dtype=pl.Boolean),
             *x_exprs,
         ],
@@ -1004,6 +1389,7 @@ def tweedie_summary(
     y: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
     var_power: float = 1.5,
+    lambda_: float = 0.0,
     with_intercept: bool = True,
 ) -> pl.Expr:
     """Tweedie GLM coefficient summary in tidy format."""
@@ -1022,6 +1408,7 @@ def tweedie_summary(
         args=[
             y.cast(pl.Float64),
             pl.lit(var_power, dtype=pl.Float64),
+            pl.lit(lambda_, dtype=pl.Float64),
             pl.lit(with_intercept, dtype=pl.Boolean),
             *x_exprs,
         ],
@@ -1032,6 +1419,7 @@ def tweedie_summary(
 def probit_summary(
     y: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
+    lambda_: float = 0.0,
     with_intercept: bool = True,
 ) -> pl.Expr:
     """Probit regression coefficient summary in tidy format."""
@@ -1049,6 +1437,7 @@ def probit_summary(
         function_name="pl_probit_summary",
         args=[
             y.cast(pl.Float64),
+            pl.lit(lambda_, dtype=pl.Float64),
             pl.lit(with_intercept, dtype=pl.Boolean),
             *x_exprs,
         ],
@@ -1059,6 +1448,7 @@ def probit_summary(
 def cloglog_summary(
     y: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
+    lambda_: float = 0.0,
     with_intercept: bool = True,
 ) -> pl.Expr:
     """Complementary log-log regression coefficient summary in tidy format."""
@@ -1076,6 +1466,7 @@ def cloglog_summary(
         function_name="pl_cloglog_summary",
         args=[
             y.cast(pl.Float64),
+            pl.lit(lambda_, dtype=pl.Float64),
             pl.lit(with_intercept, dtype=pl.Boolean),
             *x_exprs,
         ],
@@ -1587,6 +1978,7 @@ def nnls_predict(
 def logistic_predict(
     y: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
+    lambda_: float = 0.0,
     add_intercept: bool = True,
     interval: str | None = None,
     level: float = 0.95,
@@ -1601,6 +1993,8 @@ def logistic_predict(
         Binary target variable (0/1).
     *x : pl.Expr or str
         Feature variables.
+    lambda_ : float, default 0.0
+        L2 (Ridge) regularization strength.
     add_intercept : bool, default True
         Whether to include an intercept term.
     interval : str or None, default None
@@ -1635,6 +2029,7 @@ def logistic_predict(
         function_name="pl_logistic_predict",
         args=[
             y.cast(pl.Float64),
+            pl.lit(lambda_, dtype=pl.Float64),
             pl.lit(add_intercept, dtype=pl.Boolean),
             interval_lit,
             pl.lit(level, dtype=pl.Float64),
@@ -1649,6 +2044,7 @@ def logistic_predict(
 def poisson_predict(
     y: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
+    lambda_: float = 0.0,
     add_intercept: bool = True,
     interval: str | None = None,
     level: float = 0.95,
@@ -1663,6 +2059,8 @@ def poisson_predict(
         Count target variable.
     *x : pl.Expr or str
         Feature variables.
+    lambda_ : float, default 0.0
+        L2 (Ridge) regularization strength.
     add_intercept : bool, default True
         Whether to include an intercept term.
     interval : str or None, default None
@@ -1697,6 +2095,7 @@ def poisson_predict(
         function_name="pl_poisson_predict",
         args=[
             y.cast(pl.Float64),
+            pl.lit(lambda_, dtype=pl.Float64),
             pl.lit(add_intercept, dtype=pl.Boolean),
             interval_lit,
             pl.lit(level, dtype=pl.Float64),
@@ -1711,6 +2110,7 @@ def poisson_predict(
 def negative_binomial_predict(
     y: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
+    lambda_: float = 0.0,
     add_intercept: bool = True,
     interval: str | None = None,
     level: float = 0.95,
@@ -1725,6 +2125,8 @@ def negative_binomial_predict(
         Overdispersed count target variable.
     *x : pl.Expr or str
         Feature variables.
+    lambda_ : float, default 0.0
+        L2 (Ridge) regularization strength.
     add_intercept : bool, default True
         Whether to include an intercept term.
     interval : str or None, default None
@@ -1758,6 +2160,7 @@ def negative_binomial_predict(
         function_name="pl_negative_binomial_predict",
         args=[
             y.cast(pl.Float64),
+            pl.lit(lambda_, dtype=pl.Float64),
             pl.lit(add_intercept, dtype=pl.Boolean),
             interval_lit,
             pl.lit(level, dtype=pl.Float64),
@@ -1773,6 +2176,7 @@ def tweedie_predict(
     y: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
     var_power: float = 1.5,
+    lambda_: float = 0.0,
     add_intercept: bool = True,
     interval: str | None = None,
     level: float = 0.95,
@@ -1789,6 +2193,8 @@ def tweedie_predict(
         Feature variables.
     var_power : float, default 1.5
         Variance power (0=Gaussian, 1=Poisson, 2=Gamma, 3=Inverse Gaussian).
+    lambda_ : float, default 0.0
+        L2 (Ridge) regularization strength.
     add_intercept : bool, default True
         Whether to include an intercept term.
     interval : str or None, default None
@@ -1822,6 +2228,7 @@ def tweedie_predict(
         function_name="pl_tweedie_predict",
         args=[
             y.cast(pl.Float64),
+            pl.lit(lambda_, dtype=pl.Float64),
             pl.lit(add_intercept, dtype=pl.Boolean),
             interval_lit,
             pl.lit(level, dtype=pl.Float64),
@@ -1837,6 +2244,7 @@ def tweedie_predict(
 def probit_predict(
     y: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
+    lambda_: float = 0.0,
     add_intercept: bool = True,
     interval: str | None = None,
     level: float = 0.95,
@@ -1851,6 +2259,8 @@ def probit_predict(
         Binary target variable (0/1).
     *x : pl.Expr or str
         Feature variables.
+    lambda_ : float, default 0.0
+        L2 (Ridge) regularization strength.
     add_intercept : bool, default True
         Whether to include an intercept term.
     interval : str or None, default None
@@ -1885,6 +2295,7 @@ def probit_predict(
         function_name="pl_probit_predict",
         args=[
             y.cast(pl.Float64),
+            pl.lit(lambda_, dtype=pl.Float64),
             pl.lit(add_intercept, dtype=pl.Boolean),
             interval_lit,
             pl.lit(level, dtype=pl.Float64),
@@ -1899,6 +2310,7 @@ def probit_predict(
 def cloglog_predict(
     y: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
+    lambda_: float = 0.0,
     add_intercept: bool = True,
     interval: str | None = None,
     level: float = 0.95,
@@ -1913,6 +2325,8 @@ def cloglog_predict(
         Binary target variable (0/1).
     *x : pl.Expr or str
         Feature variables.
+    lambda_ : float, default 0.0
+        L2 (Ridge) regularization strength.
     add_intercept : bool, default True
         Whether to include an intercept term.
     interval : str or None, default None
@@ -1947,6 +2361,7 @@ def cloglog_predict(
         function_name="pl_cloglog_predict",
         args=[
             y.cast(pl.Float64),
+            pl.lit(lambda_, dtype=pl.Float64),
             pl.lit(add_intercept, dtype=pl.Boolean),
             interval_lit,
             pl.lit(level, dtype=pl.Float64),

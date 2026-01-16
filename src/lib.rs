@@ -24,6 +24,10 @@ fn _polars_statistics(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<pymodels::PyRLS>()?;
     m.add_class::<pymodels::PyBLS>()?;
 
+    // Robust Regression
+    m.add_class::<pymodels::PyQuantile>()?;
+    m.add_class::<pymodels::PyIsotonic>()?;
+
     // GLM Models
     m.add_class::<pymodels::PyLogistic>()?;
     m.add_class::<pymodels::PyPoisson>()?;

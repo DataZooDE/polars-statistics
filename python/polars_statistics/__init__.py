@@ -11,6 +11,9 @@ from polars_statistics._polars_statistics import (
     WLS,
     RLS,
     BLS,
+    # Robust regression
+    Quantile,
+    Isotonic,
     # GLM models
     Logistic,
     Poisson,
@@ -110,6 +113,13 @@ from polars_statistics.exprs import (
     rls,
     bls,
     nnls,
+    quantile,
+    isotonic,
+    # Diagnostics expressions
+    condition_number,
+    check_binary_separation,
+    check_count_sparsity,
+    # GLM expressions
     logistic,
     poisson,
     negative_binomial,
@@ -194,6 +204,9 @@ __all__ = [
     "WLS",
     "RLS",
     "BLS",
+    # Robust Regression Models
+    "Quantile",
+    "Isotonic",
     # GLM Models
     "Logistic",
     "Poisson",
@@ -290,6 +303,13 @@ __all__ = [
     "rls",
     "bls",
     "nnls",
+    "quantile",
+    "isotonic",
+    # Diagnostics expressions
+    "condition_number",
+    "check_binary_separation",
+    "check_count_sparsity",
+    # GLM expressions
     "logistic",
     "poisson",
     "negative_binomial",
