@@ -7,11 +7,16 @@ use polars::prelude::*;
 use pyo3_polars::derive::polars_expr;
 use serde::Deserialize;
 
+use anofox_regression::diagnostics::{
+    check_binary_separation, check_count_sparsity, condition_diagnostic, ConditionSeverity,
+    SeparationCheck, SeparationType,
+};
 use anofox_regression::solvers::{
     AidClassifier, AlmDistribution, AlmRegressor, AnomalyType, BinomialRegressor, BlsRegressor,
     DemandDistribution, DemandType, ElasticNetRegressor, FittedRegressor, InformationCriterion,
-    LmDynamicRegressor, NegativeBinomialRegressor, OlsRegressor, PoissonRegressor, Regressor,
-    RidgeRegressor, RlsRegressor, TweedieRegressor, WlsRegressor,
+    IsotonicRegressor, LmDynamicRegressor, NegativeBinomialRegressor, OlsRegressor,
+    PoissonRegressor, QuantileRegressor, Regressor, RidgeRegressor, RlsRegressor, TweedieRegressor,
+    WlsRegressor,
 };
 use anofox_regression::IntervalType;
 
@@ -56,6 +61,72 @@ fn glm_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
         Field::new("n_observations".into(), DataType::UInt32),
     ];
     Ok(Field::new("glm".into(), DataType::Struct(fields)))
+}
+
+/// Output type for Quantile regression
+fn quantile_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
+    let fields = vec![
+        Field::new("intercept".into(), DataType::Float64),
+        Field::new(
+            "coefficients".into(),
+            DataType::List(Box::new(DataType::Float64)),
+        ),
+        Field::new("tau".into(), DataType::Float64),
+        Field::new("pseudo_r_squared".into(), DataType::Float64),
+        Field::new("check_loss".into(), DataType::Float64),
+        Field::new("n_observations".into(), DataType::UInt32),
+    ];
+    Ok(Field::new("quantile".into(), DataType::Struct(fields)))
+}
+
+/// Output type for Isotonic regression
+fn isotonic_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
+    let fields = vec![
+        Field::new("r_squared".into(), DataType::Float64),
+        Field::new("increasing".into(), DataType::Boolean),
+        Field::new(
+            "fitted_values".into(),
+            DataType::List(Box::new(DataType::Float64)),
+        ),
+        Field::new("n_observations".into(), DataType::UInt32),
+    ];
+    Ok(Field::new("isotonic".into(), DataType::Struct(fields)))
+}
+
+/// Output type for condition number diagnostics
+fn condition_number_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
+    let fields = vec![
+        Field::new("condition_number".into(), DataType::Float64),
+        Field::new("condition_number_xtx".into(), DataType::Float64),
+        Field::new(
+            "singular_values".into(),
+            DataType::List(Box::new(DataType::Float64)),
+        ),
+        Field::new(
+            "condition_indices".into(),
+            DataType::List(Box::new(DataType::Float64)),
+        ),
+        Field::new("severity".into(), DataType::String),
+        Field::new("warning".into(), DataType::String),
+    ];
+    Ok(Field::new("condition".into(), DataType::Struct(fields)))
+}
+
+/// Output type for separation check diagnostics
+fn separation_check_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
+    let fields = vec![
+        Field::new("has_separation".into(), DataType::Boolean),
+        Field::new(
+            "separated_predictors".into(),
+            DataType::List(Box::new(DataType::UInt32)),
+        ),
+        Field::new(
+            "separation_types".into(),
+            DataType::List(Box::new(DataType::String)),
+        ),
+        Field::new("warning".into(), DataType::String),
+    ];
+    Ok(Field::new("separation".into(), DataType::Struct(fields)))
 }
 
 // ============================================================================
@@ -182,6 +253,70 @@ fn linear_nan_output() -> PolarsResult<Series> {
 /// Create NaN output for GLM models on error
 fn glm_nan_output() -> PolarsResult<Series> {
     glm_output(None, &[], f64::NAN, f64::NAN, 0)
+}
+
+/// Create Quantile regression output struct
+fn quantile_output(
+    intercept: Option<f64>,
+    coefficients: &[f64],
+    tau: f64,
+    pseudo_r_squared: f64,
+    check_loss: f64,
+    n_obs: usize,
+) -> PolarsResult<Series> {
+    let intercept_s = Series::new("intercept".into(), &[intercept.unwrap_or(f64::NAN)]);
+    let coef_inner = Series::new("item".into(), coefficients);
+    let coef_s = Series::new("coefficients".into(), &[coef_inner]);
+    let tau_s = Series::new("tau".into(), &[tau]);
+    let pseudo_r2_s = Series::new("pseudo_r_squared".into(), &[pseudo_r_squared]);
+    let check_loss_s = Series::new("check_loss".into(), &[check_loss]);
+    let n_s = Series::new("n_observations".into(), &[n_obs as u32]);
+
+    StructChunked::from_series(
+        "quantile".into(),
+        1,
+        [
+            &intercept_s,
+            &coef_s,
+            &tau_s,
+            &pseudo_r2_s,
+            &check_loss_s,
+            &n_s,
+        ]
+        .into_iter(),
+    )
+    .map(|ca| ca.into_series())
+}
+
+/// Create NaN output for Quantile models on error
+fn quantile_nan_output(tau: f64) -> PolarsResult<Series> {
+    quantile_output(None, &[], tau, f64::NAN, f64::NAN, 0)
+}
+
+/// Create Isotonic regression output struct
+fn isotonic_output(
+    r_squared: f64,
+    increasing: bool,
+    fitted_values: &[f64],
+    n_obs: usize,
+) -> PolarsResult<Series> {
+    let r2_s = Series::new("r_squared".into(), &[r_squared]);
+    let inc_s = Series::new("increasing".into(), &[increasing]);
+    let fitted_inner = Series::new("item".into(), fitted_values);
+    let fitted_s = Series::new("fitted_values".into(), &[fitted_inner]);
+    let n_s = Series::new("n_observations".into(), &[n_obs as u32]);
+
+    StructChunked::from_series(
+        "isotonic".into(),
+        1,
+        [&r2_s, &inc_s, &fitted_s, &n_s].into_iter(),
+    )
+    .map(|ca| ca.into_series())
+}
+
+/// Create NaN output for Isotonic models on error
+fn isotonic_nan_output(increasing: bool) -> PolarsResult<Series> {
+    isotonic_output(f64::NAN, increasing, &[], 0)
 }
 
 /// Extract coefficients as Vec<f64>
@@ -483,23 +618,326 @@ fn pl_bls(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 // ============================================================================
+// Robust Regression Expressions
+// ============================================================================
+
+/// Quantile regression expression.
+/// inputs[0] = y, inputs[1] = tau, inputs[2] = with_intercept, inputs[3..] = x columns
+#[polars_expr(output_type_func=quantile_output_dtype)]
+fn pl_quantile(inputs: &[Series]) -> PolarsResult<Series> {
+    let tau = inputs[1].f64()?.get(0).unwrap_or(0.5);
+    let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
+
+    let (x, y) = match build_xy_data(inputs, 0, 3) {
+        Ok(data) => data,
+        Err(_) => return quantile_nan_output(tau),
+    };
+
+    let model = QuantileRegressor::builder()
+        .tau(tau)
+        .with_intercept(with_intercept)
+        .build();
+
+    match model.fit(&x, &y) {
+        Ok(fitted) => {
+            let result = fitted.result();
+            quantile_output(
+                fitted.intercept(),
+                &col_to_vec(fitted.coefficients()),
+                fitted.tau(),
+                fitted.pseudo_r_squared(),
+                fitted.check_loss(),
+                result.n_observations,
+            )
+        }
+        Err(_) => quantile_nan_output(tau),
+    }
+}
+
+/// Isotonic regression expression.
+/// inputs[0] = y, inputs[1] = x (single feature), inputs[2] = increasing
+#[polars_expr(output_type_func=isotonic_output_dtype)]
+fn pl_isotonic(inputs: &[Series]) -> PolarsResult<Series> {
+    let increasing = inputs[2].bool()?.get(0).unwrap_or(true);
+
+    // Extract y values
+    let y_series = inputs[0].f64()?;
+    let y_vec: Vec<f64> = y_series.into_no_null_iter().collect();
+    let y = Col::from_fn(y_vec.len(), |i| y_vec[i]);
+
+    // Extract x values (single column)
+    let x_series = inputs[1].f64()?;
+    let x_vec: Vec<f64> = x_series.into_no_null_iter().collect();
+    let x = Col::from_fn(x_vec.len(), |i| x_vec[i]);
+
+    if x.nrows() != y.nrows() || x.nrows() < 2 {
+        return isotonic_nan_output(increasing);
+    }
+
+    let model = IsotonicRegressor::builder().increasing(increasing).build();
+
+    match model.fit_1d(&x, &y) {
+        Ok(fitted) => {
+            let result = fitted.result();
+            isotonic_output(
+                result.r_squared,
+                fitted.is_increasing(),
+                &col_to_vec(fitted.fitted_values()),
+                result.n_observations,
+            )
+        }
+        Err(_) => isotonic_nan_output(increasing),
+    }
+}
+
+// ============================================================================
+// Diagnostics Expressions
+// ============================================================================
+
+/// Condition number diagnostic output helper.
+fn condition_output(
+    condition_number: f64,
+    condition_number_xtx: f64,
+    singular_values: &[f64],
+    condition_indices: &[f64],
+    severity: &str,
+    warning: Option<&str>,
+) -> PolarsResult<Series> {
+    let cond_s = Series::new("condition_number".into(), &[condition_number]);
+    let cond_xtx_s = Series::new("condition_number_xtx".into(), &[condition_number_xtx]);
+    let sv_inner = Series::new("item".into(), singular_values);
+    let sv_s = Series::new("singular_values".into(), &[sv_inner]);
+    let ci_inner = Series::new("item".into(), condition_indices);
+    let ci_s = Series::new("condition_indices".into(), &[ci_inner]);
+    let severity_s = Series::new("severity".into(), &[severity]);
+    let warning_s = Series::new("warning".into(), &[warning.unwrap_or("")]);
+
+    StructChunked::from_series(
+        "condition".into(),
+        1,
+        [&cond_s, &cond_xtx_s, &sv_s, &ci_s, &severity_s, &warning_s].into_iter(),
+    )
+    .map(|ca| ca.into_series())
+}
+
+/// NaN output for condition number diagnostics on error.
+fn condition_nan_output() -> PolarsResult<Series> {
+    condition_output(f64::NAN, f64::NAN, &[], &[], "Unknown", None)
+}
+
+/// Condition number diagnostics expression.
+/// inputs[0] = with_intercept, inputs[1..] = x columns
+#[polars_expr(output_type_func=condition_number_output_dtype)]
+fn pl_condition_number(inputs: &[Series]) -> PolarsResult<Series> {
+    let with_intercept = inputs[0].bool()?.get(0).unwrap_or(true);
+
+    let n_cols = inputs.len() - 1;
+    if n_cols == 0 {
+        return condition_nan_output();
+    }
+
+    let n_rows = inputs[1].len();
+    if n_rows < 2 {
+        return condition_nan_output();
+    }
+
+    // Build X matrix
+    let x = Mat::from_fn(n_rows, n_cols, |row, col| {
+        inputs[1 + col]
+            .f64()
+            .ok()
+            .and_then(|ca| ca.get(row))
+            .unwrap_or(f64::NAN)
+    });
+
+    // Check for NaN values
+    for i in 0..n_rows {
+        for j in 0..n_cols {
+            if x[(i, j)].is_nan() {
+                return condition_nan_output();
+            }
+        }
+    }
+
+    let diag = condition_diagnostic(&x, with_intercept);
+
+    let severity_str = match diag.severity {
+        ConditionSeverity::WellConditioned => "WellConditioned",
+        ConditionSeverity::Moderate => "Moderate",
+        ConditionSeverity::High => "High",
+        ConditionSeverity::Severe => "Severe",
+    };
+
+    condition_output(
+        diag.condition_number,
+        diag.condition_number_xtx,
+        &diag.singular_values,
+        &diag.condition_indices,
+        severity_str,
+        diag.warning.as_deref(),
+    )
+}
+
+/// Convert SeparationType to string.
+fn separation_type_to_string(sep_type: &SeparationType) -> &'static str {
+    match sep_type {
+        SeparationType::None => "None",
+        SeparationType::Complete => "Complete",
+        SeparationType::Quasi => "Quasi",
+        SeparationType::MonotonicResponse => "MonotonicResponse",
+    }
+}
+
+/// Separation check output helper.
+fn separation_output(check: &SeparationCheck) -> PolarsResult<Series> {
+    let has_separation_s = Series::new("has_separation".into(), &[check.has_separation]);
+    let predictors_u32: Vec<u32> = check
+        .separated_predictors
+        .iter()
+        .map(|&p| p as u32)
+        .collect();
+    let predictors_inner = Series::new("item".into(), &predictors_u32);
+    let predictors_s = Series::new("separated_predictors".into(), &[predictors_inner]);
+    let types_strs: Vec<&str> = check
+        .separation_types
+        .iter()
+        .map(separation_type_to_string)
+        .collect();
+    let types_inner = Series::new("item".into(), &types_strs);
+    let types_s = Series::new("separation_types".into(), &[types_inner]);
+    let warning_s = Series::new(
+        "warning".into(),
+        &[check.warning_message.as_deref().unwrap_or("")],
+    );
+
+    StructChunked::from_series(
+        "separation".into(),
+        1,
+        [&has_separation_s, &predictors_s, &types_s, &warning_s].into_iter(),
+    )
+    .map(|ca| ca.into_series())
+}
+
+/// Empty/default output for separation check.
+fn separation_default_output() -> PolarsResult<Series> {
+    separation_output(&SeparationCheck::default())
+}
+
+/// Check binary response (logistic/probit) data for quasi-separation.
+/// inputs[0] = y (binary), inputs[1..] = x columns
+#[polars_expr(output_type_func=separation_check_output_dtype)]
+fn pl_check_binary_separation(inputs: &[Series]) -> PolarsResult<Series> {
+    if inputs.is_empty() {
+        return separation_default_output();
+    }
+
+    let y_series = inputs[0].f64()?;
+    let n_rows = y_series.len();
+    let n_cols = inputs.len() - 1;
+
+    if n_cols == 0 || n_rows < 2 {
+        return separation_default_output();
+    }
+
+    // Build y vector
+    let y_vec: Vec<f64> = y_series.into_no_null_iter().collect();
+    let y = Col::from_fn(y_vec.len(), |i| y_vec[i]);
+
+    // Build X matrix
+    let x = Mat::from_fn(n_rows, n_cols, |row, col| {
+        inputs[1 + col]
+            .f64()
+            .ok()
+            .and_then(|ca| ca.get(row))
+            .unwrap_or(f64::NAN)
+    });
+
+    // Check for NaN values
+    for i in 0..n_rows {
+        for j in 0..n_cols {
+            if x[(i, j)].is_nan() {
+                return separation_default_output();
+            }
+        }
+    }
+    for i in 0..y_vec.len() {
+        if y[i].is_nan() {
+            return separation_default_output();
+        }
+    }
+
+    let check = check_binary_separation(&x, &y);
+    separation_output(&check)
+}
+
+/// Check count data (Poisson/NegBin) for sparsity-induced separation.
+/// inputs[0] = y (counts), inputs[1..] = x columns
+#[polars_expr(output_type_func=separation_check_output_dtype)]
+fn pl_check_count_sparsity(inputs: &[Series]) -> PolarsResult<Series> {
+    if inputs.is_empty() {
+        return separation_default_output();
+    }
+
+    let y_series = inputs[0].f64()?;
+    let n_rows = y_series.len();
+    let n_cols = inputs.len() - 1;
+
+    if n_cols == 0 || n_rows < 2 {
+        return separation_default_output();
+    }
+
+    // Build y vector
+    let y_vec: Vec<f64> = y_series.into_no_null_iter().collect();
+    let y = Col::from_fn(y_vec.len(), |i| y_vec[i]);
+
+    // Build X matrix
+    let x = Mat::from_fn(n_rows, n_cols, |row, col| {
+        inputs[1 + col]
+            .f64()
+            .ok()
+            .and_then(|ca| ca.get(row))
+            .unwrap_or(f64::NAN)
+    });
+
+    // Check for NaN values
+    for i in 0..n_rows {
+        for j in 0..n_cols {
+            if x[(i, j)].is_nan() {
+                return separation_default_output();
+            }
+        }
+    }
+    for i in 0..y_vec.len() {
+        if y[i].is_nan() {
+            return separation_default_output();
+        }
+    }
+
+    let check = check_count_sparsity(&x, &y);
+    separation_output(&check)
+}
+
+// ============================================================================
 // GLM Expressions
 // ============================================================================
 
 /// Logistic regression expression.
-/// inputs[0] = y, inputs[1] = with_intercept, inputs[2..] = x columns
+/// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3..] = x columns
 #[polars_expr(output_type_func=glm_output_dtype)]
 fn pl_logistic(inputs: &[Series]) -> PolarsResult<Series> {
-    let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
+    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
 
-    let (x, y) = match build_xy_data(inputs, 0, 2) {
+    let (x, y) = match build_xy_data(inputs, 0, 3) {
         Ok(data) => data,
         Err(_) => return glm_nan_output(),
     };
 
-    let model = BinomialRegressor::logistic()
-        .with_intercept(with_intercept)
-        .build();
+    let mut builder = BinomialRegressor::logistic().with_intercept(with_intercept);
+    if lambda > 0.0 {
+        builder = builder.lambda(lambda);
+    }
+    let model = builder.build();
 
     match model.fit(&x, &y) {
         Ok(fitted) => {
@@ -517,19 +955,22 @@ fn pl_logistic(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Poisson regression expression.
-/// inputs[0] = y, inputs[1] = with_intercept, inputs[2..] = x columns
+/// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3..] = x columns
 #[polars_expr(output_type_func=glm_output_dtype)]
 fn pl_poisson(inputs: &[Series]) -> PolarsResult<Series> {
-    let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
+    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
 
-    let (x, y) = match build_xy_data(inputs, 0, 2) {
+    let (x, y) = match build_xy_data(inputs, 0, 3) {
         Ok(data) => data,
         Err(_) => return glm_nan_output(),
     };
 
-    let model = PoissonRegressor::builder()
-        .with_intercept(with_intercept)
-        .build();
+    let mut builder = PoissonRegressor::builder().with_intercept(with_intercept);
+    if lambda > 0.0 {
+        builder = builder.lambda(lambda);
+    }
+    let model = builder.build();
 
     match model.fit(&x, &y) {
         Ok(fitted) => {
@@ -547,13 +988,14 @@ fn pl_poisson(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Negative Binomial regression expression.
-/// inputs[0] = y, inputs[1] = theta (optional), inputs[2] = with_intercept, inputs[3..] = x columns
+/// inputs[0] = y, inputs[1] = theta (optional), inputs[2] = lambda (L2 regularization), inputs[3] = with_intercept, inputs[4..] = x columns
 #[polars_expr(output_type_func=glm_output_dtype)]
 fn pl_negative_binomial(inputs: &[Series]) -> PolarsResult<Series> {
     let theta = inputs[1].f64()?.get(0);
-    let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
+    let lambda = inputs[2].f64()?.get(0).unwrap_or(0.0);
+    let with_intercept = inputs[3].bool()?.get(0).unwrap_or(true);
 
-    let (x, y) = match build_xy_data(inputs, 0, 3) {
+    let (x, y) = match build_xy_data(inputs, 0, 4) {
         Ok(data) => data,
         Err(_) => return glm_nan_output(),
     };
@@ -564,6 +1006,10 @@ fn pl_negative_binomial(inputs: &[Series]) -> PolarsResult<Series> {
         builder = builder.theta(t);
     } else {
         builder = builder.estimate_theta(true);
+    }
+
+    if lambda > 0.0 {
+        builder = builder.lambda(lambda);
     }
 
     let model = builder.build();
@@ -584,21 +1030,27 @@ fn pl_negative_binomial(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Tweedie regression expression.
-/// inputs[0] = y, inputs[1] = var_power, inputs[2] = with_intercept, inputs[3..] = x columns
+/// inputs[0] = y, inputs[1] = var_power, inputs[2] = lambda (L2 regularization), inputs[3] = with_intercept, inputs[4..] = x columns
 #[polars_expr(output_type_func=glm_output_dtype)]
 fn pl_tweedie(inputs: &[Series]) -> PolarsResult<Series> {
     let var_power = inputs[1].f64()?.get(0).unwrap_or(1.5);
-    let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
+    let lambda = inputs[2].f64()?.get(0).unwrap_or(0.0);
+    let with_intercept = inputs[3].bool()?.get(0).unwrap_or(true);
 
-    let (x, y) = match build_xy_data(inputs, 0, 3) {
+    let (x, y) = match build_xy_data(inputs, 0, 4) {
         Ok(data) => data,
         Err(_) => return glm_nan_output(),
     };
 
-    let model = TweedieRegressor::builder()
+    let mut builder = TweedieRegressor::builder()
         .var_power(var_power)
-        .with_intercept(with_intercept)
-        .build();
+        .with_intercept(with_intercept);
+
+    if lambda > 0.0 {
+        builder = builder.lambda(lambda);
+    }
+
+    let model = builder.build();
 
     match model.fit(&x, &y) {
         Ok(fitted) => {
@@ -616,19 +1068,22 @@ fn pl_tweedie(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Probit regression expression.
-/// inputs[0] = y, inputs[1] = with_intercept, inputs[2..] = x columns
+/// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3..] = x columns
 #[polars_expr(output_type_func=glm_output_dtype)]
 fn pl_probit(inputs: &[Series]) -> PolarsResult<Series> {
-    let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
+    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
 
-    let (x, y) = match build_xy_data(inputs, 0, 2) {
+    let (x, y) = match build_xy_data(inputs, 0, 3) {
         Ok(data) => data,
         Err(_) => return glm_nan_output(),
     };
 
-    let model = BinomialRegressor::probit()
-        .with_intercept(with_intercept)
-        .build();
+    let mut builder = BinomialRegressor::probit().with_intercept(with_intercept);
+    if lambda > 0.0 {
+        builder = builder.lambda(lambda);
+    }
+    let model = builder.build();
 
     match model.fit(&x, &y) {
         Ok(fitted) => {
@@ -646,19 +1101,22 @@ fn pl_probit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Complementary log-log regression expression.
-/// inputs[0] = y, inputs[1] = with_intercept, inputs[2..] = x columns
+/// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3..] = x columns
 #[polars_expr(output_type_func=glm_output_dtype)]
 fn pl_cloglog(inputs: &[Series]) -> PolarsResult<Series> {
-    let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
+    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
 
-    let (x, y) = match build_xy_data(inputs, 0, 2) {
+    let (x, y) = match build_xy_data(inputs, 0, 3) {
         Ok(data) => data,
         Err(_) => return glm_nan_output(),
     };
 
-    let model = BinomialRegressor::cloglog()
-        .with_intercept(with_intercept)
-        .build();
+    let mut builder = BinomialRegressor::cloglog().with_intercept(with_intercept);
+    if lambda > 0.0 {
+        builder = builder.lambda(lambda);
+    }
+    let model = builder.build();
 
     match model.fit(&x, &y) {
         Ok(fitted) => {
@@ -1144,20 +1602,23 @@ fn pl_bls_summary(inputs: &[Series]) -> PolarsResult<Series> {
 // ============================================================================
 
 /// Logistic summary expression
-/// inputs[0] = y, inputs[1] = with_intercept, inputs[2..] = x columns
+/// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3..] = x columns
 #[polars_expr(output_type_func=summary_output_dtype)]
 fn pl_logistic_summary(inputs: &[Series]) -> PolarsResult<Series> {
-    let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
-    let n_features = inputs.len() - 2;
+    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
+    let n_features = inputs.len() - 3;
 
-    let (x, y) = match build_xy_data(inputs, 0, 2) {
+    let (x, y) = match build_xy_data(inputs, 0, 3) {
         Ok(data) => data,
         Err(_) => return summary_nan_output(),
     };
 
-    let model = BinomialRegressor::logistic()
-        .with_intercept(with_intercept)
-        .build();
+    let mut builder = BinomialRegressor::logistic().with_intercept(with_intercept);
+    if lambda > 0.0 {
+        builder = builder.lambda(lambda);
+    }
+    let model = builder.build();
 
     match model.fit(&x, &y) {
         Ok(fitted) => {
@@ -1204,20 +1665,23 @@ fn pl_logistic_summary(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Poisson summary expression
-/// inputs[0] = y, inputs[1] = with_intercept, inputs[2..] = x columns
+/// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3..] = x columns
 #[polars_expr(output_type_func=summary_output_dtype)]
 fn pl_poisson_summary(inputs: &[Series]) -> PolarsResult<Series> {
-    let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
-    let n_features = inputs.len() - 2;
+    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
+    let n_features = inputs.len() - 3;
 
-    let (x, y) = match build_xy_data(inputs, 0, 2) {
+    let (x, y) = match build_xy_data(inputs, 0, 3) {
         Ok(data) => data,
         Err(_) => return summary_nan_output(),
     };
 
-    let model = PoissonRegressor::builder()
-        .with_intercept(with_intercept)
-        .build();
+    let mut builder = PoissonRegressor::builder().with_intercept(with_intercept);
+    if lambda > 0.0 {
+        builder = builder.lambda(lambda);
+    }
+    let model = builder.build();
 
     match model.fit(&x, &y) {
         Ok(fitted) => {
@@ -1264,14 +1728,15 @@ fn pl_poisson_summary(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Negative Binomial summary expression
-/// inputs[0] = y, inputs[1] = theta, inputs[2] = with_intercept, inputs[3..] = x columns
+/// inputs[0] = y, inputs[1] = theta, inputs[2] = lambda (L2 regularization), inputs[3] = with_intercept, inputs[4..] = x columns
 #[polars_expr(output_type_func=summary_output_dtype)]
 fn pl_negative_binomial_summary(inputs: &[Series]) -> PolarsResult<Series> {
     let theta = inputs[1].f64()?.get(0);
-    let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
-    let n_features = inputs.len() - 3;
+    let lambda = inputs[2].f64()?.get(0).unwrap_or(0.0);
+    let with_intercept = inputs[3].bool()?.get(0).unwrap_or(true);
+    let n_features = inputs.len() - 4;
 
-    let (x, y) = match build_xy_data(inputs, 0, 3) {
+    let (x, y) = match build_xy_data(inputs, 0, 4) {
         Ok(data) => data,
         Err(_) => return summary_nan_output(),
     };
@@ -1282,6 +1747,10 @@ fn pl_negative_binomial_summary(inputs: &[Series]) -> PolarsResult<Series> {
         builder = builder.theta(t);
     } else {
         builder = builder.estimate_theta(true);
+    }
+
+    if lambda > 0.0 {
+        builder = builder.lambda(lambda);
     }
 
     let model = builder.build();
@@ -1331,22 +1800,28 @@ fn pl_negative_binomial_summary(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Tweedie summary expression
-/// inputs[0] = y, inputs[1] = var_power, inputs[2] = with_intercept, inputs[3..] = x columns
+/// inputs[0] = y, inputs[1] = var_power, inputs[2] = lambda (L2 regularization), inputs[3] = with_intercept, inputs[4..] = x columns
 #[polars_expr(output_type_func=summary_output_dtype)]
 fn pl_tweedie_summary(inputs: &[Series]) -> PolarsResult<Series> {
     let var_power = inputs[1].f64()?.get(0).unwrap_or(1.5);
-    let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
-    let n_features = inputs.len() - 3;
+    let lambda = inputs[2].f64()?.get(0).unwrap_or(0.0);
+    let with_intercept = inputs[3].bool()?.get(0).unwrap_or(true);
+    let n_features = inputs.len() - 4;
 
-    let (x, y) = match build_xy_data(inputs, 0, 3) {
+    let (x, y) = match build_xy_data(inputs, 0, 4) {
         Ok(data) => data,
         Err(_) => return summary_nan_output(),
     };
 
-    let model = TweedieRegressor::builder()
+    let mut builder = TweedieRegressor::builder()
         .var_power(var_power)
-        .with_intercept(with_intercept)
-        .build();
+        .with_intercept(with_intercept);
+
+    if lambda > 0.0 {
+        builder = builder.lambda(lambda);
+    }
+
+    let model = builder.build();
 
     match model.fit(&x, &y) {
         Ok(fitted) => {
@@ -1393,20 +1868,23 @@ fn pl_tweedie_summary(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Probit summary expression
-/// inputs[0] = y, inputs[1] = with_intercept, inputs[2..] = x columns
+/// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3..] = x columns
 #[polars_expr(output_type_func=summary_output_dtype)]
 fn pl_probit_summary(inputs: &[Series]) -> PolarsResult<Series> {
-    let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
-    let n_features = inputs.len() - 2;
+    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
+    let n_features = inputs.len() - 3;
 
-    let (x, y) = match build_xy_data(inputs, 0, 2) {
+    let (x, y) = match build_xy_data(inputs, 0, 3) {
         Ok(data) => data,
         Err(_) => return summary_nan_output(),
     };
 
-    let model = BinomialRegressor::probit()
-        .with_intercept(with_intercept)
-        .build();
+    let mut builder = BinomialRegressor::probit().with_intercept(with_intercept);
+    if lambda > 0.0 {
+        builder = builder.lambda(lambda);
+    }
+    let model = builder.build();
 
     match model.fit(&x, &y) {
         Ok(fitted) => {
@@ -1453,20 +1931,23 @@ fn pl_probit_summary(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Cloglog summary expression
-/// inputs[0] = y, inputs[1] = with_intercept, inputs[2..] = x columns
+/// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3..] = x columns
 #[polars_expr(output_type_func=summary_output_dtype)]
 fn pl_cloglog_summary(inputs: &[Series]) -> PolarsResult<Series> {
-    let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
-    let n_features = inputs.len() - 2;
+    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
+    let n_features = inputs.len() - 3;
 
-    let (x, y) = match build_xy_data(inputs, 0, 2) {
+    let (x, y) = match build_xy_data(inputs, 0, 3) {
         Ok(data) => data,
         Err(_) => return summary_nan_output(),
     };
 
-    let model = BinomialRegressor::cloglog()
-        .with_intercept(with_intercept)
-        .build();
+    let mut builder = BinomialRegressor::cloglog().with_intercept(with_intercept);
+    if lambda > 0.0 {
+        builder = builder.lambda(lambda);
+    }
+    let model = builder.build();
 
     match model.fit(&x, &y) {
         Ok(fitted) => {
@@ -2164,27 +2645,30 @@ fn pl_bls_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Seri
 }
 
 /// Logistic prediction expression
-/// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval, inputs[3] = level,
-/// inputs[4] = null_policy, inputs[5..] = x columns
+/// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3] = interval, inputs[4] = level,
+/// inputs[5] = null_policy, inputs[6..] = x columns
 #[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
 fn pl_logistic_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
-    let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
-    let interval = inputs[2].str()?.get(0);
-    let level = inputs[3].f64()?.get(0).unwrap_or(0.95);
-    let null_policy = inputs[4].str()?.get(0).unwrap_or("drop");
+    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
+    let interval = inputs[3].str()?.get(0);
+    let level = inputs[4].f64()?.get(0).unwrap_or(0.95);
+    let null_policy = inputs[5].str()?.get(0).unwrap_or("drop");
     let prefix = &kwargs.prefix;
 
     let n_rows = inputs[0].len();
 
-    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 5, null_policy)
+    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 6, null_policy)
     {
         Ok(data) => data,
         Err(_) => return prediction_nan_output_with_prefix(n_rows, prefix),
     };
 
-    let model = BinomialRegressor::builder()
-        .with_intercept(with_intercept)
-        .build();
+    let mut builder = BinomialRegressor::builder().with_intercept(with_intercept);
+    if lambda > 0.0 {
+        builder = builder.lambda(lambda);
+    }
+    let model = builder.build();
 
     match model.fit(&x_fit, &y) {
         Ok(fitted) => {
@@ -2237,27 +2721,30 @@ fn pl_logistic_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult
 }
 
 /// Poisson prediction expression
-/// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval, inputs[3] = level,
-/// inputs[4] = null_policy, inputs[5..] = x columns
+/// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3] = interval, inputs[4] = level,
+/// inputs[5] = null_policy, inputs[6..] = x columns
 #[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
 fn pl_poisson_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
-    let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
-    let interval = inputs[2].str()?.get(0);
-    let level = inputs[3].f64()?.get(0).unwrap_or(0.95);
-    let null_policy = inputs[4].str()?.get(0).unwrap_or("drop");
+    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
+    let interval = inputs[3].str()?.get(0);
+    let level = inputs[4].f64()?.get(0).unwrap_or(0.95);
+    let null_policy = inputs[5].str()?.get(0).unwrap_or("drop");
     let prefix = &kwargs.prefix;
 
     let n_rows = inputs[0].len();
 
-    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 5, null_policy)
+    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 6, null_policy)
     {
         Ok(data) => data,
         Err(_) => return prediction_nan_output_with_prefix(n_rows, prefix),
     };
 
-    let model = PoissonRegressor::builder()
-        .with_intercept(with_intercept)
-        .build();
+    let mut builder = PoissonRegressor::builder().with_intercept(with_intercept);
+    if lambda > 0.0 {
+        builder = builder.lambda(lambda);
+    }
+    let model = builder.build();
 
     match model.fit(&x_fit, &y) {
         Ok(fitted) => {
@@ -2310,27 +2797,30 @@ fn pl_poisson_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<
 }
 
 /// Negative Binomial prediction expression
-/// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval, inputs[3] = level,
-/// inputs[4] = null_policy, inputs[5..] = x columns
+/// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3] = interval, inputs[4] = level,
+/// inputs[5] = null_policy, inputs[6..] = x columns
 #[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
 fn pl_negative_binomial_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
-    let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
-    let interval = inputs[2].str()?.get(0);
-    let level = inputs[3].f64()?.get(0).unwrap_or(0.95);
-    let null_policy = inputs[4].str()?.get(0).unwrap_or("drop");
+    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
+    let interval = inputs[3].str()?.get(0);
+    let level = inputs[4].f64()?.get(0).unwrap_or(0.95);
+    let null_policy = inputs[5].str()?.get(0).unwrap_or("drop");
     let prefix = &kwargs.prefix;
 
     let n_rows = inputs[0].len();
 
-    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 5, null_policy)
+    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 6, null_policy)
     {
         Ok(data) => data,
         Err(_) => return prediction_nan_output_with_prefix(n_rows, prefix),
     };
 
-    let model = NegativeBinomialRegressor::builder()
-        .with_intercept(with_intercept)
-        .build();
+    let mut builder = NegativeBinomialRegressor::builder().with_intercept(with_intercept);
+    if lambda > 0.0 {
+        builder = builder.lambda(lambda);
+    }
+    let model = builder.build();
 
     match model.fit(&x_fit, &y) {
         Ok(fitted) => {
@@ -2383,29 +2873,35 @@ fn pl_negative_binomial_predict(inputs: &[Series], kwargs: PredictKwargs) -> Pol
 }
 
 /// Tweedie prediction expression
-/// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval, inputs[3] = level,
-/// inputs[4] = null_policy, inputs[5] = var_power, inputs[6..] = x columns
+/// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3] = interval, inputs[4] = level,
+/// inputs[5] = null_policy, inputs[6] = var_power, inputs[7..] = x columns
 #[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
 fn pl_tweedie_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
-    let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
-    let interval = inputs[2].str()?.get(0);
-    let level = inputs[3].f64()?.get(0).unwrap_or(0.95);
-    let null_policy = inputs[4].str()?.get(0).unwrap_or("drop");
-    let var_power = inputs[5].f64()?.get(0).unwrap_or(1.5);
+    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
+    let interval = inputs[3].str()?.get(0);
+    let level = inputs[4].f64()?.get(0).unwrap_or(0.95);
+    let null_policy = inputs[5].str()?.get(0).unwrap_or("drop");
+    let var_power = inputs[6].f64()?.get(0).unwrap_or(1.5);
     let prefix = &kwargs.prefix;
 
     let n_rows = inputs[0].len();
 
-    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 6, null_policy)
+    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 7, null_policy)
     {
         Ok(data) => data,
         Err(_) => return prediction_nan_output_with_prefix(n_rows, prefix),
     };
 
-    let model = TweedieRegressor::builder()
+    let mut builder = TweedieRegressor::builder()
         .var_power(var_power)
-        .with_intercept(with_intercept)
-        .build();
+        .with_intercept(with_intercept);
+
+    if lambda > 0.0 {
+        builder = builder.lambda(lambda);
+    }
+
+    let model = builder.build();
 
     match model.fit(&x_fit, &y) {
         Ok(fitted) => {
@@ -2458,27 +2954,30 @@ fn pl_tweedie_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<
 }
 
 /// Probit prediction expression
-/// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval, inputs[3] = level,
-/// inputs[4] = null_policy, inputs[5..] = x columns
+/// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3] = interval, inputs[4] = level,
+/// inputs[5] = null_policy, inputs[6..] = x columns
 #[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
 fn pl_probit_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
-    let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
-    let interval = inputs[2].str()?.get(0);
-    let level = inputs[3].f64()?.get(0).unwrap_or(0.95);
-    let null_policy = inputs[4].str()?.get(0).unwrap_or("drop");
+    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
+    let interval = inputs[3].str()?.get(0);
+    let level = inputs[4].f64()?.get(0).unwrap_or(0.95);
+    let null_policy = inputs[5].str()?.get(0).unwrap_or("drop");
     let prefix = &kwargs.prefix;
 
     let n_rows = inputs[0].len();
 
-    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 5, null_policy)
+    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 6, null_policy)
     {
         Ok(data) => data,
         Err(_) => return prediction_nan_output_with_prefix(n_rows, prefix),
     };
 
-    let model = BinomialRegressor::probit()
-        .with_intercept(with_intercept)
-        .build();
+    let mut builder = BinomialRegressor::probit().with_intercept(with_intercept);
+    if lambda > 0.0 {
+        builder = builder.lambda(lambda);
+    }
+    let model = builder.build();
 
     match model.fit(&x_fit, &y) {
         Ok(fitted) => {
@@ -2531,27 +3030,30 @@ fn pl_probit_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<S
 }
 
 /// Cloglog prediction expression
-/// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval, inputs[3] = level,
-/// inputs[4] = null_policy, inputs[5..] = x columns
+/// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3] = interval, inputs[4] = level,
+/// inputs[5] = null_policy, inputs[6..] = x columns
 #[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
 fn pl_cloglog_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
-    let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
-    let interval = inputs[2].str()?.get(0);
-    let level = inputs[3].f64()?.get(0).unwrap_or(0.95);
-    let null_policy = inputs[4].str()?.get(0).unwrap_or("drop");
+    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
+    let interval = inputs[3].str()?.get(0);
+    let level = inputs[4].f64()?.get(0).unwrap_or(0.95);
+    let null_policy = inputs[5].str()?.get(0).unwrap_or("drop");
     let prefix = &kwargs.prefix;
 
     let n_rows = inputs[0].len();
 
-    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 5, null_policy)
+    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 6, null_policy)
     {
         Ok(data) => data,
         Err(_) => return prediction_nan_output_with_prefix(n_rows, prefix),
     };
 
-    let model = BinomialRegressor::cloglog()
-        .with_intercept(with_intercept)
-        .build();
+    let mut builder = BinomialRegressor::cloglog().with_intercept(with_intercept);
+    if lambda > 0.0 {
+        builder = builder.lambda(lambda);
+    }
+    let model = builder.build();
 
     match model.fit(&x_fit, &y) {
         Ok(fitted) => {

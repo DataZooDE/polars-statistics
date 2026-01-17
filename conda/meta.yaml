@@ -13,6 +13,8 @@ build:
   number: 0
   skip: true  # [py<39]
   script:
+    - rm -f Cargo.lock                       # [unix]
+    - del /f Cargo.lock 2>nul || exit 0      # [win]
     - cargo-bundle-licenses --format yaml --output THIRDPARTY.yml
     - {{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
 
