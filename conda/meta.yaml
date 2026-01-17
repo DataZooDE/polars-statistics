@@ -13,6 +13,8 @@ build:
   number: 0
   skip: true  # [py<39]
   script:
+    - rm -f Cargo.lock                       # [unix]
+    - del /f Cargo.lock 2>nul || exit 0      # [win]
     - cargo-bundle-licenses --format yaml --output THIRDPARTY.yml
     - {{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
 
@@ -22,7 +24,6 @@ requirements:
     - cross-python_{{ target_platform }}     # [build_platform != target_platform]
     - {{ compiler('c') }}
     - {{ compiler('rust') }}
-    - rust >=1.78                            # Cargo.lock v4 requires Rust 1.78+
     - cargo-bundle-licenses
     - maturin >=1.7.4
   host:
