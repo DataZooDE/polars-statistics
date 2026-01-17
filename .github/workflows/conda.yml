@@ -20,7 +20,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        # Windows/macOS skipped: conda-forge Rust too old for polars edition2024
+        os: [ubuntu-latest]
         python-version: ['3.11']
 
     defaults:
