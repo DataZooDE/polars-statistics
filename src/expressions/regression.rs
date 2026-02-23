@@ -18,10 +18,29 @@ use anofox_regression::solvers::{
     PoissonRegressor, QuantileRegressor, Regressor, RidgeRegressor, RlsRegressor, TweedieRegressor,
     WlsRegressor,
 };
-use anofox_regression::IntervalType;
+use anofox_regression::{HcType, IntervalType, SolverType};
 
 /// Result type for build_xy_with_null_policy: (X_fit, y, valid_mask, X_pred)
 type XyNullPolicyResult = (Mat<f64>, Col<f64>, Vec<bool>, Mat<f64>);
+
+/// Parse a solver type string into a SolverType enum.
+fn parse_solver_type(s: Option<&str>) -> Option<SolverType> {
+    s.map(|v| match v {
+        "svd" => SolverType::Svd,
+        "cholesky" => SolverType::Cholesky,
+        _ => SolverType::Qr,
+    })
+}
+
+/// Parse an HC type string into an HcType enum.
+fn parse_hc_type(s: Option<&str>) -> Option<HcType> {
+    s.map(|v| match v {
+        "hc0" => HcType::HC0,
+        "hc2" => HcType::HC2,
+        "hc3" => HcType::HC3,
+        _ => HcType::HC1,
+    })
+}
 
 // ============================================================================
 // Output Type Definitions
@@ -380,19 +399,22 @@ fn summary_nan_output() -> PolarsResult<Series> {
 // ============================================================================
 
 /// OLS regression expression.
-/// inputs[0] = y, inputs[1] = with_intercept (bool), inputs[2..] = x columns
+/// inputs[0] = y, inputs[1] = with_intercept (bool), inputs[2] = solve_method (string or null), inputs[3..] = x columns
 #[polars_expr(output_type_func=linear_regression_output_dtype)]
 fn pl_ols(inputs: &[Series]) -> PolarsResult<Series> {
     let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
+    let solve_method = parse_solver_type(inputs[2].str()?.get(0));
 
-    let (x, y) = match build_xy_data(inputs, 0, 2) {
+    let (x, y) = match build_xy_data(inputs, 0, 3) {
         Ok(data) => data,
         Err(_) => return linear_nan_output(),
     };
 
-    let model = OlsRegressor::builder()
-        .with_intercept(with_intercept)
-        .build();
+    let mut builder = OlsRegressor::builder().with_intercept(with_intercept);
+    if let Some(solver) = solve_method {
+        builder = builder.solve_method(solver);
+    }
+    let model = builder.build();
 
     match model.fit(&x, &y) {
         Ok(fitted) => {
@@ -416,21 +438,25 @@ fn pl_ols(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Ridge regression expression.
-/// inputs[0] = y, inputs[1] = lambda, inputs[2] = with_intercept, inputs[3..] = x columns
+/// inputs[0] = y, inputs[1] = lambda, inputs[2] = with_intercept, inputs[3] = solve_method (string or null), inputs[4..] = x columns
 #[polars_expr(output_type_func=linear_regression_output_dtype)]
 fn pl_ridge(inputs: &[Series]) -> PolarsResult<Series> {
     let lambda = inputs[1].f64()?.get(0).unwrap_or(1.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
+    let solve_method = parse_solver_type(inputs[3].str()?.get(0));
 
-    let (x, y) = match build_xy_data(inputs, 0, 3) {
+    let (x, y) = match build_xy_data(inputs, 0, 4) {
         Ok(data) => data,
         Err(_) => return linear_nan_output(),
     };
 
-    let model = RidgeRegressor::builder()
+    let mut builder = RidgeRegressor::builder()
         .lambda(lambda)
-        .with_intercept(with_intercept)
-        .build();
+        .with_intercept(with_intercept);
+    if let Some(solver) = solve_method {
+        builder = builder.solve_method(solver);
+    }
+    let model = builder.build();
 
     match model.fit(&x, &y) {
         Ok(fitted) => {
@@ -494,13 +520,14 @@ fn pl_elastic_net(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// WLS regression expression.
-/// inputs[0] = y, inputs[1] = weights, inputs[2] = with_intercept, inputs[3..] = x columns
+/// inputs[0] = y, inputs[1] = weights, inputs[2] = with_intercept, inputs[3] = solve_method (string or null), inputs[4..] = x columns
 #[polars_expr(output_type_func=linear_regression_output_dtype)]
 fn pl_wls(inputs: &[Series]) -> PolarsResult<Series> {
     let weights_series = inputs[1].f64()?;
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
+    let solve_method = parse_solver_type(inputs[3].str()?.get(0));
 
-    let (x, y) = match build_xy_data(inputs, 0, 3) {
+    let (x, y) = match build_xy_data(inputs, 0, 4) {
         Ok(data) => data,
         Err(_) => return linear_nan_output(),
     };
@@ -508,10 +535,13 @@ fn pl_wls(inputs: &[Series]) -> PolarsResult<Series> {
     let weights_vec: Vec<f64> = weights_series.into_no_null_iter().collect();
     let weights = Col::from_fn(weights_vec.len(), |i| weights_vec[i]);
 
-    let model = WlsRegressor::builder()
+    let mut builder = WlsRegressor::builder()
         .with_intercept(with_intercept)
-        .weights(weights)
-        .build();
+        .weights(weights);
+    if let Some(solver) = solve_method {
+        builder = builder.solve_method(solver);
+    }
+    let model = builder.build();
 
     match model.fit(&x, &y) {
         Ok(fitted) => {
@@ -1214,24 +1244,30 @@ fn build_term_names(n_features: usize, with_intercept: bool) -> Vec<String> {
 }
 
 /// OLS summary expression - returns tidy coefficient table
-/// inputs[0] = y, inputs[1] = with_intercept (bool), inputs[2..] = x columns
+/// inputs[0] = y, inputs[1] = with_intercept (bool), inputs[2] = solve_method (string or null),
+/// inputs[3] = hc_type (string or null), inputs[4..] = x columns
 #[polars_expr(output_type_func=summary_output_dtype)]
 fn pl_ols_summary(inputs: &[Series]) -> PolarsResult<Series> {
     let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
-    let n_features = inputs.len() - 2;
+    let solve_method = parse_solver_type(inputs[2].str()?.get(0));
+    let hc_type = parse_hc_type(inputs[3].str()?.get(0));
+    let n_features = inputs.len() - 4;
 
-    let (x, y) = match build_xy_data(inputs, 0, 2) {
+    let (x, y) = match build_xy_data(inputs, 0, 4) {
         Ok(data) => data,
         Err(_) => return summary_nan_output(),
     };
 
-    let model = OlsRegressor::builder()
+    let mut builder = OlsRegressor::builder()
         .with_intercept(with_intercept)
-        .build();
+        .compute_inference(true);
+    if let Some(solver) = solve_method {
+        builder = builder.solve_method(solver);
+    }
+    let model = builder.build();
 
     match model.fit(&x, &y) {
         Ok(fitted) => {
-            let result = fitted.result();
             let terms = build_term_names(n_features, with_intercept);
 
             // Build coefficient vectors including intercept
@@ -1239,6 +1275,36 @@ fn pl_ols_summary(inputs: &[Series]) -> PolarsResult<Series> {
             let mut std_errors = Vec::new();
             let mut statistics = Vec::new();
             let mut p_values = Vec::new();
+
+            // If HC type is specified, use robust inference
+            if let Some(hc) = hc_type {
+                if let Ok(hc_inf) = fitted.hc_inference(&x, hc) {
+                    if with_intercept {
+                        estimates.push(fitted.intercept().unwrap_or(f64::NAN));
+                        if let Some(ref int_hc) = hc_inf.intercept {
+                            std_errors.push(int_hc.std_error);
+                            statistics.push(int_hc.t_statistic);
+                            p_values.push(int_hc.p_value);
+                        } else {
+                            std_errors.push(f64::NAN);
+                            statistics.push(f64::NAN);
+                            p_values.push(f64::NAN);
+                        }
+                    }
+
+                    let coefs = col_to_vec(fitted.coefficients());
+                    estimates.extend(coefs);
+                    std_errors.extend(col_to_vec(&hc_inf.std_errors));
+                    statistics.extend(col_to_vec(&hc_inf.t_statistics));
+                    p_values.extend(col_to_vec(&hc_inf.p_values));
+
+                    return summary_output(terms, estimates, std_errors, statistics, p_values);
+                }
+                // Fall through to homoskedastic if HC computation fails
+            }
+
+            // Default homoskedastic path
+            let result = fitted.result();
 
             if with_intercept {
                 estimates.push(fitted.intercept().unwrap_or(f64::NAN));
@@ -1276,22 +1342,26 @@ fn pl_ols_summary(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Ridge summary expression
-/// inputs[0] = y, inputs[1] = lambda, inputs[2] = with_intercept, inputs[3..] = x columns
+/// inputs[0] = y, inputs[1] = lambda, inputs[2] = with_intercept, inputs[3] = solve_method (string or null), inputs[4..] = x columns
 #[polars_expr(output_type_func=summary_output_dtype)]
 fn pl_ridge_summary(inputs: &[Series]) -> PolarsResult<Series> {
     let lambda = inputs[1].f64()?.get(0).unwrap_or(1.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
-    let n_features = inputs.len() - 3;
+    let solve_method = parse_solver_type(inputs[3].str()?.get(0));
+    let n_features = inputs.len() - 4;
 
-    let (x, y) = match build_xy_data(inputs, 0, 3) {
+    let (x, y) = match build_xy_data(inputs, 0, 4) {
         Ok(data) => data,
         Err(_) => return summary_nan_output(),
     };
 
-    let model = RidgeRegressor::builder()
+    let mut builder = RidgeRegressor::builder()
         .lambda(lambda)
-        .with_intercept(with_intercept)
-        .build();
+        .with_intercept(with_intercept);
+    if let Some(solver) = solve_method {
+        builder = builder.solve_method(solver);
+    }
+    let model = builder.build();
 
     match model.fit(&x, &y) {
         Ok(fitted) => {
@@ -1402,14 +1472,15 @@ fn pl_elastic_net_summary(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// WLS summary expression
-/// inputs[0] = y, inputs[1] = weights, inputs[2] = with_intercept, inputs[3..] = x columns
+/// inputs[0] = y, inputs[1] = weights, inputs[2] = with_intercept, inputs[3] = solve_method (string or null), inputs[4..] = x columns
 #[polars_expr(output_type_func=summary_output_dtype)]
 fn pl_wls_summary(inputs: &[Series]) -> PolarsResult<Series> {
     let weights_series = inputs[1].f64()?;
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
-    let n_features = inputs.len() - 3;
+    let solve_method = parse_solver_type(inputs[3].str()?.get(0));
+    let n_features = inputs.len() - 4;
 
-    let (x, y) = match build_xy_data(inputs, 0, 3) {
+    let (x, y) = match build_xy_data(inputs, 0, 4) {
         Ok(data) => data,
         Err(_) => return summary_nan_output(),
     };
@@ -1417,10 +1488,13 @@ fn pl_wls_summary(inputs: &[Series]) -> PolarsResult<Series> {
     let weights_vec: Vec<f64> = weights_series.into_no_null_iter().collect();
     let weights = Col::from_fn(weights_vec.len(), |i| weights_vec[i]);
 
-    let model = WlsRegressor::builder()
+    let mut builder = WlsRegressor::builder()
         .with_intercept(with_intercept)
-        .weights(weights)
-        .build();
+        .weights(weights);
+    if let Some(solver) = solve_method {
+        builder = builder.solve_method(solver);
+    }
+    let model = builder.build();
 
     match model.fit(&x, &y) {
         Ok(fitted) => {
@@ -2173,29 +2247,32 @@ fn build_xy_with_null_policy(
 }
 
 /// OLS prediction expression - returns predictions with optional intervals.
-/// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval (string or null),
-/// inputs[3] = level, inputs[4] = null_policy, inputs[5..] = x columns
+/// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = solve_method (string or null),
+/// inputs[3] = interval (string or null), inputs[4] = level, inputs[5] = null_policy, inputs[6..] = x columns
 #[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
 fn pl_ols_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
     let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
-    let interval = inputs[2].str()?.get(0); // None, "confidence", or "prediction"
-    let level = inputs[3].f64()?.get(0).unwrap_or(0.95);
-    let null_policy = inputs[4].str()?.get(0).unwrap_or("drop");
+    let solve_method = parse_solver_type(inputs[2].str()?.get(0));
+    let interval = inputs[3].str()?.get(0); // None, "confidence", or "prediction"
+    let level = inputs[4].f64()?.get(0).unwrap_or(0.95);
+    let null_policy = inputs[5].str()?.get(0).unwrap_or("drop");
     let prefix = &kwargs.prefix;
 
     // Get number of rows from the first series
     let n_rows = inputs[0].len();
 
     // Build data with null handling
-    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 5, null_policy)
+    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 6, null_policy)
     {
         Ok(data) => data,
         Err(_) => return prediction_nan_output_with_prefix(n_rows, prefix),
     };
 
-    let model = OlsRegressor::builder()
-        .with_intercept(with_intercept)
-        .build();
+    let mut builder = OlsRegressor::builder().with_intercept(with_intercept);
+    if let Some(solver) = solve_method {
+        builder = builder.solve_method(solver);
+    }
+    let model = builder.build();
 
     match model.fit(&x_fit, &y) {
         Ok(fitted) => {
@@ -2251,29 +2328,33 @@ fn pl_ols_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Seri
 }
 
 /// Ridge prediction expression
-/// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval, inputs[3] = level,
-/// inputs[4] = null_policy, inputs[5] = lambda, inputs[6..] = x columns
+/// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = solve_method (string or null),
+/// inputs[3] = interval, inputs[4] = level, inputs[5] = null_policy, inputs[6] = lambda, inputs[7..] = x columns
 #[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
 fn pl_ridge_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
     let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
-    let interval = inputs[2].str()?.get(0);
-    let level = inputs[3].f64()?.get(0).unwrap_or(0.95);
-    let null_policy = inputs[4].str()?.get(0).unwrap_or("drop");
-    let lambda = inputs[5].f64()?.get(0).unwrap_or(1.0);
+    let solve_method = parse_solver_type(inputs[2].str()?.get(0));
+    let interval = inputs[3].str()?.get(0);
+    let level = inputs[4].f64()?.get(0).unwrap_or(0.95);
+    let null_policy = inputs[5].str()?.get(0).unwrap_or("drop");
+    let lambda = inputs[6].f64()?.get(0).unwrap_or(1.0);
     let prefix = &kwargs.prefix;
 
     let n_rows = inputs[0].len();
 
-    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 6, null_policy)
+    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 7, null_policy)
     {
         Ok(data) => data,
         Err(_) => return prediction_nan_output_with_prefix(n_rows, prefix),
     };
 
-    let model = RidgeRegressor::builder()
+    let mut builder = RidgeRegressor::builder()
         .lambda(lambda)
-        .with_intercept(with_intercept)
-        .build();
+        .with_intercept(with_intercept);
+    if let Some(solver) = solve_method {
+        builder = builder.solve_method(solver);
+    }
+    let model = builder.build();
 
     match model.fit(&x_fit, &y) {
         Ok(fitted) => {
@@ -2402,24 +2483,25 @@ fn pl_elastic_net_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsRes
     }
 }
 
-/// WLS prediction expression (weights column is inputs[6])
-/// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval, inputs[3] = level,
-/// inputs[4] = null_policy, inputs[5] = weights, inputs[6..] = x columns
+/// WLS prediction expression (weights column is inputs[7])
+/// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = solve_method (string or null),
+/// inputs[3] = interval, inputs[4] = level, inputs[5] = null_policy, inputs[6] = weights, inputs[7..] = x columns
 #[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
 fn pl_wls_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
     let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
-    let interval = inputs[2].str()?.get(0);
-    let level = inputs[3].f64()?.get(0).unwrap_or(0.95);
-    let null_policy = inputs[4].str()?.get(0).unwrap_or("drop");
+    let solve_method = parse_solver_type(inputs[2].str()?.get(0));
+    let interval = inputs[3].str()?.get(0);
+    let level = inputs[4].f64()?.get(0).unwrap_or(0.95);
+    let null_policy = inputs[5].str()?.get(0).unwrap_or("drop");
     let prefix = &kwargs.prefix;
 
     let n_rows = inputs[0].len();
 
     // Build weights
-    let weights_series = inputs[5].f64()?;
+    let weights_series = inputs[6].f64()?;
     let weights = Col::from_fn(n_rows, |i| weights_series.get(i).unwrap_or(1.0));
 
-    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 6, null_policy)
+    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 7, null_policy)
     {
         Ok(data) => data,
         Err(_) => return prediction_nan_output_with_prefix(n_rows, prefix),
@@ -2433,10 +2515,13 @@ fn pl_wls_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Seri
         .collect();
     let weights_fit = Col::from_fn(valid_indices.len(), |i| weights[valid_indices[i]]);
 
-    let model = WlsRegressor::builder()
+    let mut builder = WlsRegressor::builder()
         .with_intercept(with_intercept)
-        .weights(weights_fit)
-        .build();
+        .weights(weights_fit);
+    if let Some(solver) = solve_method {
+        builder = builder.solve_method(solver);
+    }
+    let model = builder.build();
 
     match model.fit(&x_fit, &y) {
         Ok(fitted) => {
