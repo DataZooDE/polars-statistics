@@ -1,5 +1,5 @@
 {% set name = "polars-statistics" %}
-{% set version = "0.3.0" %}
+{% set version = "0.4.0" %}
 
 package:
   name: {{ name|lower }}
@@ -7,7 +7,8 @@ package:
 
 source:
   url: https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/polars_statistics-{{ version }}.tar.gz
-  sha256: bbf3221e335e7aa6a89a5d4fb7395e84486e92f199bd64d202b4381c2cc25a5d
+  # TODO: Update sha256 after publishing to PyPI
+  sha256: PLACEHOLDER_UPDATE_AFTER_PYPI_RELEASE
 
 build:
   number: 0

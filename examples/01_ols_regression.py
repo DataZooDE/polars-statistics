@@ -151,7 +151,7 @@ print("6. Regression Without Intercept")
 print("=" * 60)
 
 no_intercept = df.select(
-    ps.ols("price", "sqft", "bedrooms", with_intercept=False).alias("model")
+    ps.ols("price", "sqft", "bedrooms", add_intercept=False).alias("model")
 )
 model = no_intercept["model"][0]
 print(f"Intercept: {model['intercept']} (forced to 0)")

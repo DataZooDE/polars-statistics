@@ -4,25 +4,56 @@ build-backend = "maturin"
 
 [project]
 name = "polars-statistics"
-version = "0.3.0"
-description = "High-performance statistical testing and regression for Polars DataFrames, powered by Rust"
+version = "0.4.0"
+description = "Statistical tests, regression, and machine learning for Polars - t-tests, ANOVA, chi-square, correlation, OLS, GLM, quantile regression, and more"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.9"
 authors = [{ name = "Simon Müller", email = "sm@data-zoo.de" }]
 maintainers = [{ name = "Simon Müller", email = "sm@data-zoo.de" }]
 keywords = [
+    # Core identifiers
     "polars",
+    "polars-plugin",
     "statistics",
-    "regression",
+    "statistical-analysis",
+    # Hypothesis testing
     "hypothesis-testing",
     "t-test",
+    "chi-square",
+    "anova",
+    "mann-whitney",
+    "wilcoxon",
+    "fisher-exact",
+    # Regression
+    "regression",
+    "linear-regression",
+    "logistic-regression",
     "glm",
     "ols",
-    "logistic-regression",
-    "poisson-regression",
+    "ridge-regression",
+    "elastic-net",
+    "quantile-regression",
+    "robust-regression",
+    # Correlation
+    "correlation",
+    "pearson",
+    "spearman",
+    "kendall",
+    # Other statistical methods
     "bootstrap",
+    "equivalence-testing",
+    "tost",
+    "effect-size",
+    # Data science ecosystem
+    "data-science",
+    "machine-learning",
+    "scikit-learn-alternative",
+    "scipy-alternative",
+    "statsmodels-alternative",
+    # Technical
     "rust",
+    "high-performance",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
