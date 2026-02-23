@@ -5,6 +5,7 @@ These expressions allow fitting regression models within group_by and over opera
 
 from __future__ import annotations
 
+import warnings
 from pathlib import Path
 from typing import Union
 
@@ -12,6 +13,34 @@ import polars as pl
 from polars.plugins import register_plugin_function
 
 LIB = Path(__file__).parent.parent
+
+
+def _resolve_intercept(
+    add_intercept: bool | None,
+    with_intercept: bool | None,
+    default: bool = True,
+) -> bool:
+    """Resolve intercept parameter from either name, with deprecation warning.
+
+    Parameters ``add_intercept`` (preferred) and ``with_intercept`` (deprecated)
+    are mutually exclusive.
+    """
+    if add_intercept is not None and with_intercept is not None:
+        raise ValueError(
+            "Cannot specify both 'add_intercept' and 'with_intercept'. "
+            "Use 'add_intercept' (with_intercept is deprecated)."
+        )
+    if with_intercept is not None:
+        warnings.warn(
+            "Parameter 'with_intercept' is deprecated and will be removed in v0.6.0. "
+            "Use 'add_intercept' instead.",
+            FutureWarning,
+            stacklevel=3,
+        )
+        return with_intercept
+    if add_intercept is not None:
+        return add_intercept
+    return default
 
 
 # ============================================================================
@@ -22,7 +51,8 @@ LIB = Path(__file__).parent.parent
 def ols(
     y: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Ordinary Least Squares regression as a Polars expression.
 
@@ -34,7 +64,7 @@ def ols(
         Target variable.
     *x : pl.Expr or str
         Feature variables (one or more).
-    with_intercept : bool, default True
+    add_intercept : bool, default True
         Whether to include an intercept term.
 
     Returns
@@ -66,6 +96,7 @@ def ols(
     ...     pl.col("model").struct.field("coefficients"),
     ... )
     """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     if isinstance(y, str):
         y = pl.col(y)
 
@@ -80,7 +111,7 @@ def ols(
         function_name="pl_ols",
         args=[
             y.cast(pl.Float64),
-            pl.lit(with_intercept, dtype=pl.Boolean),
+            pl.lit(add_intercept, dtype=pl.Boolean),
             *x_exprs,
         ],
         returns_scalar=True,
@@ -91,7 +122,8 @@ def ridge(
     y: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
     lambda_: float = 1.0,
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Ridge regression (L2 regularization) as a Polars expression.
 
@@ -103,7 +135,7 @@ def ridge(
         Feature variables (one or more).
     lambda_ : float, default 1.0
         Regularization strength.
-    with_intercept : bool, default True
+    add_intercept : bool, default True
         Whether to include an intercept term.
 
     Returns
@@ -111,6 +143,7 @@ def ridge(
     pl.Expr
         Struct containing regression results.
     """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     if isinstance(y, str):
         y = pl.col(y)
 
@@ -126,7 +159,7 @@ def ridge(
         args=[
             y.cast(pl.Float64),
             pl.lit(lambda_, dtype=pl.Float64),
-            pl.lit(with_intercept, dtype=pl.Boolean),
+            pl.lit(add_intercept, dtype=pl.Boolean),
             *x_exprs,
         ],
         returns_scalar=True,
@@ -138,7 +171,8 @@ def elastic_net(
     *x: Union[pl.Expr, str],
     lambda_: float = 1.0,
     alpha: float = 0.5,
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Elastic Net regression (L1 + L2 regularization) as a Polars expression.
 
@@ -152,7 +186,7 @@ def elastic_net(
         Total regularization strength.
     alpha : float, default 0.5
         L1 ratio (0 = Ridge, 1 = Lasso).
-    with_intercept : bool, default True
+    add_intercept : bool, default True
         Whether to include an intercept term.
 
     Returns
@@ -160,6 +194,7 @@ def elastic_net(
     pl.Expr
         Struct containing regression results.
     """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     if isinstance(y, str):
         y = pl.col(y)
 
@@ -176,7 +211,7 @@ def elastic_net(
             y.cast(pl.Float64),
             pl.lit(lambda_, dtype=pl.Float64),
             pl.lit(alpha, dtype=pl.Float64),
-            pl.lit(with_intercept, dtype=pl.Boolean),
+            pl.lit(add_intercept, dtype=pl.Boolean),
             *x_exprs,
         ],
         returns_scalar=True,
@@ -187,7 +222,8 @@ def wls(
     y: Union[pl.Expr, str],
     weights: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Weighted Least Squares regression as a Polars expression.
 
@@ -199,7 +235,7 @@ def wls(
         Observation weights.
     *x : pl.Expr or str
         Feature variables (one or more).
-    with_intercept : bool, default True
+    add_intercept : bool, default True
         Whether to include an intercept term.
 
     Returns
@@ -207,6 +243,7 @@ def wls(
     pl.Expr
         Struct containing regression results.
     """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     if isinstance(y, str):
         y = pl.col(y)
     if isinstance(weights, str):
@@ -224,7 +261,7 @@ def wls(
         args=[
             y.cast(pl.Float64),
             weights.cast(pl.Float64),
-            pl.lit(with_intercept, dtype=pl.Boolean),
+            pl.lit(add_intercept, dtype=pl.Boolean),
             *x_exprs,
         ],
         returns_scalar=True,
@@ -235,7 +272,8 @@ def rls(
     y: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
     forgetting_factor: float = 0.99,
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Recursive Least Squares regression as a Polars expression.
 
@@ -247,7 +285,7 @@ def rls(
         Feature variables (one or more).
     forgetting_factor : float, default 0.99
         Forgetting factor (0 < lambda <= 1).
-    with_intercept : bool, default True
+    add_intercept : bool, default True
         Whether to include an intercept term.
 
     Returns
@@ -255,6 +293,7 @@ def rls(
     pl.Expr
         Struct containing regression results.
     """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     if isinstance(y, str):
         y = pl.col(y)
 
@@ -270,11 +309,41 @@ def rls(
         args=[
             y.cast(pl.Float64),
             pl.lit(forgetting_factor, dtype=pl.Float64),
-            pl.lit(with_intercept, dtype=pl.Boolean),
+            pl.lit(add_intercept, dtype=pl.Boolean),
             *x_exprs,
         ],
         returns_scalar=True,
     )
+
+
+def expanding_ols(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
+) -> pl.Expr:
+    """Expanding window OLS regression as a Polars expression.
+
+    Equivalent to rls(..., forgetting_factor=1.0), i.e. recursive least squares
+    with no forgetting -- all past observations are weighted equally.
+
+    Parameters
+    ----------
+    y : pl.Expr or str
+        Target variable.
+    *x : pl.Expr or str
+        Feature variables (one or more).
+    add_intercept : bool, default True
+        Whether to include an intercept term.
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing regression results.
+    """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    return rls(y, *x, forgetting_factor=1.0, add_intercept=add_intercept)
 
 
 def bls(
@@ -282,7 +351,8 @@ def bls(
     *x: Union[pl.Expr, str],
     lower_bound: float | None = None,
     upper_bound: float | None = None,
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Bounded Least Squares regression as a Polars expression.
 
@@ -296,7 +366,7 @@ def bls(
         Lower bound for coefficients.
     upper_bound : float, optional
         Upper bound for coefficients.
-    with_intercept : bool, default True
+    add_intercept : bool, default True
         Whether to include an intercept term.
 
     Returns
@@ -308,6 +378,7 @@ def bls(
     -----
     For non-negative least squares (NNLS), use lower_bound=0.
     """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     if isinstance(y, str):
         y = pl.col(y)
 
@@ -327,7 +398,7 @@ def bls(
             y.cast(pl.Float64),
             lb,
             ub,
-            pl.lit(with_intercept, dtype=pl.Boolean),
+            pl.lit(add_intercept, dtype=pl.Boolean),
             *x_exprs,
         ],
         returns_scalar=True,
@@ -337,7 +408,8 @@ def bls(
 def nnls(
     y: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Non-negative Least Squares regression as a Polars expression.
 
@@ -349,7 +421,7 @@ def nnls(
         Target variable.
     *x : pl.Expr or str
         Feature variables (one or more).
-    with_intercept : bool, default True
+    add_intercept : bool, default True
         Whether to include an intercept term.
 
     Returns
@@ -357,7 +429,40 @@ def nnls(
     pl.Expr
         Struct containing regression results.
     """
-    return bls(y, *x, lower_bound=0.0, with_intercept=with_intercept)
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    return bls(y, *x, lower_bound=0.0, add_intercept=add_intercept)
+
+
+def lasso(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    lambda_: float = 1.0,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
+) -> pl.Expr:
+    """Lasso regression (L1 regularization) as a Polars expression.
+
+    Shorthand for elastic_net(..., alpha=1.0).
+
+    Parameters
+    ----------
+    y : pl.Expr or str
+        Target variable.
+    *x : pl.Expr or str
+        Feature variables (one or more).
+    lambda_ : float, default 1.0
+        Regularization strength.
+    add_intercept : bool, default True
+        Whether to include an intercept term.
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing regression results.
+    """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    return elastic_net(y, *x, lambda_=lambda_, alpha=1.0, add_intercept=add_intercept)
 
 
 # ============================================================================
@@ -369,7 +474,8 @@ def quantile(
     y: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
     tau: float = 0.5,
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Quantile regression as a Polars expression.
 
@@ -385,7 +491,7 @@ def quantile(
     tau : float, default 0.5
         The quantile to estimate (must be between 0 and 1).
         0.5 corresponds to median regression.
-    with_intercept : bool, default True
+    add_intercept : bool, default True
         Whether to include an intercept term.
 
     Returns
@@ -407,6 +513,7 @@ def quantile(
     >>> # Lower quartile regression
     >>> df.select(ps.quantile("y", "x1", tau=0.25))
     """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     if isinstance(y, str):
         y = pl.col(y)
 
@@ -422,7 +529,7 @@ def quantile(
         args=[
             y.cast(pl.Float64),
             pl.lit(tau, dtype=pl.Float64),
-            pl.lit(with_intercept, dtype=pl.Boolean),
+            pl.lit(add_intercept, dtype=pl.Boolean),
             *x_exprs,
         ],
         returns_scalar=True,
@@ -490,7 +597,8 @@ def isotonic(
 
 def condition_number(
     *x: Union[pl.Expr, str],
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Compute condition number diagnostics for a design matrix.
 
@@ -502,7 +610,7 @@ def condition_number(
     ----------
     *x : pl.Expr or str
         Feature variables (one or more).
-    with_intercept : bool, default True
+    add_intercept : bool, default True
         Whether to include an intercept column in the analysis.
 
     Returns
@@ -543,6 +651,7 @@ def condition_number(
     ...     pl.col("diagnostics").struct.field("condition_number"),
     ... )
     """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     x_exprs = []
     for xi in x:
         if isinstance(xi, str):
@@ -553,7 +662,7 @@ def condition_number(
         plugin_path=LIB,
         function_name="pl_condition_number",
         args=[
-            pl.lit(with_intercept, dtype=pl.Boolean),
+            pl.lit(add_intercept, dtype=pl.Boolean),
             *x_exprs,
         ],
         returns_scalar=True,
@@ -724,7 +833,8 @@ def logistic(
     y: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
     lambda_: float = 0.0,
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Logistic regression as a Polars expression.
 
@@ -736,7 +846,7 @@ def logistic(
         Feature variables (one or more).
     lambda_ : float, default 0.0
         L2 (Ridge) regularization strength.
-    with_intercept : bool, default True
+    add_intercept : bool, default True
         Whether to include an intercept term.
 
     Returns
@@ -745,6 +855,7 @@ def logistic(
         Struct containing: intercept, coefficients, deviance, null_deviance,
         aic, bic, n_observations.
     """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     if isinstance(y, str):
         y = pl.col(y)
 
@@ -760,7 +871,7 @@ def logistic(
         args=[
             y.cast(pl.Float64),
             pl.lit(lambda_, dtype=pl.Float64),
-            pl.lit(with_intercept, dtype=pl.Boolean),
+            pl.lit(add_intercept, dtype=pl.Boolean),
             *x_exprs,
         ],
         returns_scalar=True,
@@ -771,7 +882,8 @@ def poisson(
     y: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
     lambda_: float = 0.0,
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Poisson regression as a Polars expression.
 
@@ -783,7 +895,7 @@ def poisson(
         Feature variables (one or more).
     lambda_ : float, default 0.0
         L2 (Ridge) regularization strength.
-    with_intercept : bool, default True
+    add_intercept : bool, default True
         Whether to include an intercept term.
 
     Returns
@@ -791,6 +903,7 @@ def poisson(
     pl.Expr
         Struct containing GLM results.
     """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     if isinstance(y, str):
         y = pl.col(y)
 
@@ -806,7 +919,7 @@ def poisson(
         args=[
             y.cast(pl.Float64),
             pl.lit(lambda_, dtype=pl.Float64),
-            pl.lit(with_intercept, dtype=pl.Boolean),
+            pl.lit(add_intercept, dtype=pl.Boolean),
             *x_exprs,
         ],
         returns_scalar=True,
@@ -818,7 +931,8 @@ def negative_binomial(
     *x: Union[pl.Expr, str],
     theta: float | None = None,
     lambda_: float = 0.0,
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Negative Binomial regression as a Polars expression.
 
@@ -832,7 +946,7 @@ def negative_binomial(
         Dispersion parameter. If None, estimated from data.
     lambda_ : float, default 0.0
         L2 (Ridge) regularization strength.
-    with_intercept : bool, default True
+    add_intercept : bool, default True
         Whether to include an intercept term.
 
     Returns
@@ -840,6 +954,7 @@ def negative_binomial(
     pl.Expr
         Struct containing GLM results.
     """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     if isinstance(y, str):
         y = pl.col(y)
 
@@ -858,7 +973,7 @@ def negative_binomial(
             y.cast(pl.Float64),
             theta_lit,
             pl.lit(lambda_, dtype=pl.Float64),
-            pl.lit(with_intercept, dtype=pl.Boolean),
+            pl.lit(add_intercept, dtype=pl.Boolean),
             *x_exprs,
         ],
         returns_scalar=True,
@@ -870,7 +985,8 @@ def tweedie(
     *x: Union[pl.Expr, str],
     var_power: float = 1.5,
     lambda_: float = 0.0,
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Tweedie GLM as a Polars expression.
 
@@ -884,7 +1000,7 @@ def tweedie(
         Variance power (0=Gaussian, 1=Poisson, 2=Gamma, 3=Inverse Gaussian).
     lambda_ : float, default 0.0
         L2 (Ridge) regularization strength.
-    with_intercept : bool, default True
+    add_intercept : bool, default True
         Whether to include an intercept term.
 
     Returns
@@ -892,6 +1008,7 @@ def tweedie(
     pl.Expr
         Struct containing GLM results.
     """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     if isinstance(y, str):
         y = pl.col(y)
 
@@ -908,7 +1025,7 @@ def tweedie(
             y.cast(pl.Float64),
             pl.lit(var_power, dtype=pl.Float64),
             pl.lit(lambda_, dtype=pl.Float64),
-            pl.lit(with_intercept, dtype=pl.Boolean),
+            pl.lit(add_intercept, dtype=pl.Boolean),
             *x_exprs,
         ],
         returns_scalar=True,
@@ -919,7 +1036,8 @@ def probit(
     y: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
     lambda_: float = 0.0,
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Probit regression as a Polars expression.
 
@@ -931,7 +1049,7 @@ def probit(
         Feature variables (one or more).
     lambda_ : float, default 0.0
         L2 (Ridge) regularization strength.
-    with_intercept : bool, default True
+    add_intercept : bool, default True
         Whether to include an intercept term.
 
     Returns
@@ -939,6 +1057,7 @@ def probit(
     pl.Expr
         Struct containing GLM results.
     """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     if isinstance(y, str):
         y = pl.col(y)
 
@@ -954,7 +1073,7 @@ def probit(
         args=[
             y.cast(pl.Float64),
             pl.lit(lambda_, dtype=pl.Float64),
-            pl.lit(with_intercept, dtype=pl.Boolean),
+            pl.lit(add_intercept, dtype=pl.Boolean),
             *x_exprs,
         ],
         returns_scalar=True,
@@ -965,7 +1084,8 @@ def cloglog(
     y: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
     lambda_: float = 0.0,
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Complementary log-log regression as a Polars expression.
 
@@ -977,7 +1097,7 @@ def cloglog(
         Feature variables (one or more).
     lambda_ : float, default 0.0
         L2 (Ridge) regularization strength.
-    with_intercept : bool, default True
+    add_intercept : bool, default True
         Whether to include an intercept term.
 
     Returns
@@ -985,6 +1105,7 @@ def cloglog(
     pl.Expr
         Struct containing GLM results.
     """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     if isinstance(y, str):
         y = pl.col(y)
 
@@ -1000,7 +1121,7 @@ def cloglog(
         args=[
             y.cast(pl.Float64),
             pl.lit(lambda_, dtype=pl.Float64),
-            pl.lit(with_intercept, dtype=pl.Boolean),
+            pl.lit(add_intercept, dtype=pl.Boolean),
             *x_exprs,
         ],
         returns_scalar=True,
@@ -1016,7 +1137,8 @@ def alm(
     y: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
     distribution: str = "normal",
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Augmented Linear Model (ALM) as a Polars expression.
 
@@ -1034,7 +1156,7 @@ def alm(
         - Positive: "lognormal", "loglaplace", "gamma", "inverse_gaussian", "exponential"
         - Bounded (0,1): "beta"
         - Count: "poisson", "negative_binomial", "binomial", "geometric"
-    with_intercept : bool, default True
+    add_intercept : bool, default True
         Whether to include an intercept term.
 
     Returns
@@ -1057,6 +1179,7 @@ def alm(
     ...     ps.alm("y", "x1", distribution="gamma").alias("model")
     ... )
     """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     if isinstance(y, str):
         y = pl.col(y)
 
@@ -1072,7 +1195,7 @@ def alm(
         args=[
             y.cast(pl.Float64),
             pl.lit(distribution, dtype=pl.String),
-            pl.lit(with_intercept, dtype=pl.Boolean),
+            pl.lit(add_intercept, dtype=pl.Boolean),
             *x_exprs,
         ],
         returns_scalar=True,
@@ -1087,7 +1210,8 @@ def alm(
 def ols_summary(
     y: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """OLS coefficient summary in tidy format (like R's broom::tidy).
 
@@ -1100,7 +1224,7 @@ def ols_summary(
         Target variable.
     *x : pl.Expr or str
         Feature variables (one or more).
-    with_intercept : bool, default True
+    add_intercept : bool, default True
         Whether to include an intercept term.
 
     Returns
@@ -1114,6 +1238,7 @@ def ols_summary(
     ...     ps.ols_summary("y", "x1", "x2").alias("coef")
     ... ).explode("coef").unnest("coef")
     """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     if isinstance(y, str):
         y = pl.col(y)
 
@@ -1128,7 +1253,7 @@ def ols_summary(
         function_name="pl_ols_summary",
         args=[
             y.cast(pl.Float64),
-            pl.lit(with_intercept, dtype=pl.Boolean),
+            pl.lit(add_intercept, dtype=pl.Boolean),
             *x_exprs,
         ],
         returns_scalar=True,
@@ -1139,9 +1264,12 @@ def ridge_summary(
     y: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
     lambda_: float = 1.0,
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Ridge regression coefficient summary in tidy format."""
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     if isinstance(y, str):
         y = pl.col(y)
 
@@ -1157,7 +1285,7 @@ def ridge_summary(
         args=[
             y.cast(pl.Float64),
             pl.lit(lambda_, dtype=pl.Float64),
-            pl.lit(with_intercept, dtype=pl.Boolean),
+            pl.lit(add_intercept, dtype=pl.Boolean),
             *x_exprs,
         ],
         returns_scalar=True,
@@ -1169,9 +1297,12 @@ def elastic_net_summary(
     *x: Union[pl.Expr, str],
     lambda_: float = 1.0,
     alpha: float = 0.5,
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Elastic Net regression coefficient summary in tidy format."""
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     if isinstance(y, str):
         y = pl.col(y)
 
@@ -1188,10 +1319,28 @@ def elastic_net_summary(
             y.cast(pl.Float64),
             pl.lit(lambda_, dtype=pl.Float64),
             pl.lit(alpha, dtype=pl.Float64),
-            pl.lit(with_intercept, dtype=pl.Boolean),
+            pl.lit(add_intercept, dtype=pl.Boolean),
             *x_exprs,
         ],
         returns_scalar=True,
+    )
+
+
+def lasso_summary(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    lambda_: float = 1.0,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
+) -> pl.Expr:
+    """Lasso regression coefficient summary in tidy format.
+
+    Shorthand for elastic_net_summary(..., alpha=1.0).
+    """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    return elastic_net_summary(
+        y, *x, lambda_=lambda_, alpha=1.0, add_intercept=add_intercept
     )
 
 
@@ -1199,9 +1348,12 @@ def wls_summary(
     y: Union[pl.Expr, str],
     weights: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Weighted Least Squares coefficient summary in tidy format."""
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     if isinstance(y, str):
         y = pl.col(y)
     if isinstance(weights, str):
@@ -1219,7 +1371,7 @@ def wls_summary(
         args=[
             y.cast(pl.Float64),
             weights.cast(pl.Float64),
-            pl.lit(with_intercept, dtype=pl.Boolean),
+            pl.lit(add_intercept, dtype=pl.Boolean),
             *x_exprs,
         ],
         returns_scalar=True,
@@ -1230,9 +1382,12 @@ def rls_summary(
     y: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
     forgetting_factor: float = 0.99,
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Recursive Least Squares coefficient summary in tidy format."""
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     if isinstance(y, str):
         y = pl.col(y)
 
@@ -1248,7 +1403,7 @@ def rls_summary(
         args=[
             y.cast(pl.Float64),
             pl.lit(forgetting_factor, dtype=pl.Float64),
-            pl.lit(with_intercept, dtype=pl.Boolean),
+            pl.lit(add_intercept, dtype=pl.Boolean),
             *x_exprs,
         ],
         returns_scalar=True,
@@ -1260,9 +1415,12 @@ def bls_summary(
     *x: Union[pl.Expr, str],
     lower_bound: float | None = None,
     upper_bound: float | None = None,
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Bounded Least Squares coefficient summary in tidy format."""
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     if isinstance(y, str):
         y = pl.col(y)
 
@@ -1282,7 +1440,7 @@ def bls_summary(
             y.cast(pl.Float64),
             lb,
             ub,
-            pl.lit(with_intercept, dtype=pl.Boolean),
+            pl.lit(add_intercept, dtype=pl.Boolean),
             *x_exprs,
         ],
         returns_scalar=True,
@@ -1298,9 +1456,12 @@ def logistic_summary(
     y: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
     lambda_: float = 0.0,
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Logistic regression coefficient summary in tidy format."""
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     if isinstance(y, str):
         y = pl.col(y)
 
@@ -1316,7 +1477,7 @@ def logistic_summary(
         args=[
             y.cast(pl.Float64),
             pl.lit(lambda_, dtype=pl.Float64),
-            pl.lit(with_intercept, dtype=pl.Boolean),
+            pl.lit(add_intercept, dtype=pl.Boolean),
             *x_exprs,
         ],
         returns_scalar=True,
@@ -1327,9 +1488,12 @@ def poisson_summary(
     y: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
     lambda_: float = 0.0,
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Poisson regression coefficient summary in tidy format."""
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     if isinstance(y, str):
         y = pl.col(y)
 
@@ -1345,7 +1509,7 @@ def poisson_summary(
         args=[
             y.cast(pl.Float64),
             pl.lit(lambda_, dtype=pl.Float64),
-            pl.lit(with_intercept, dtype=pl.Boolean),
+            pl.lit(add_intercept, dtype=pl.Boolean),
             *x_exprs,
         ],
         returns_scalar=True,
@@ -1357,9 +1521,12 @@ def negative_binomial_summary(
     *x: Union[pl.Expr, str],
     theta: float | None = None,
     lambda_: float = 0.0,
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Negative Binomial regression coefficient summary in tidy format."""
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     if isinstance(y, str):
         y = pl.col(y)
 
@@ -1378,7 +1545,7 @@ def negative_binomial_summary(
             y.cast(pl.Float64),
             theta_lit,
             pl.lit(lambda_, dtype=pl.Float64),
-            pl.lit(with_intercept, dtype=pl.Boolean),
+            pl.lit(add_intercept, dtype=pl.Boolean),
             *x_exprs,
         ],
         returns_scalar=True,
@@ -1390,9 +1557,12 @@ def tweedie_summary(
     *x: Union[pl.Expr, str],
     var_power: float = 1.5,
     lambda_: float = 0.0,
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Tweedie GLM coefficient summary in tidy format."""
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     if isinstance(y, str):
         y = pl.col(y)
 
@@ -1409,7 +1579,7 @@ def tweedie_summary(
             y.cast(pl.Float64),
             pl.lit(var_power, dtype=pl.Float64),
             pl.lit(lambda_, dtype=pl.Float64),
-            pl.lit(with_intercept, dtype=pl.Boolean),
+            pl.lit(add_intercept, dtype=pl.Boolean),
             *x_exprs,
         ],
         returns_scalar=True,
@@ -1420,9 +1590,12 @@ def probit_summary(
     y: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
     lambda_: float = 0.0,
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Probit regression coefficient summary in tidy format."""
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     if isinstance(y, str):
         y = pl.col(y)
 
@@ -1438,7 +1611,7 @@ def probit_summary(
         args=[
             y.cast(pl.Float64),
             pl.lit(lambda_, dtype=pl.Float64),
-            pl.lit(with_intercept, dtype=pl.Boolean),
+            pl.lit(add_intercept, dtype=pl.Boolean),
             *x_exprs,
         ],
         returns_scalar=True,
@@ -1449,9 +1622,12 @@ def cloglog_summary(
     y: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
     lambda_: float = 0.0,
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Complementary log-log regression coefficient summary in tidy format."""
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     if isinstance(y, str):
         y = pl.col(y)
 
@@ -1467,7 +1643,7 @@ def cloglog_summary(
         args=[
             y.cast(pl.Float64),
             pl.lit(lambda_, dtype=pl.Float64),
-            pl.lit(with_intercept, dtype=pl.Boolean),
+            pl.lit(add_intercept, dtype=pl.Boolean),
             *x_exprs,
         ],
         returns_scalar=True,
@@ -1478,9 +1654,12 @@ def alm_summary(
     y: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
     distribution: str = "normal",
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Augmented Linear Model coefficient summary in tidy format."""
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     if isinstance(y, str):
         y = pl.col(y)
 
@@ -1496,7 +1675,7 @@ def alm_summary(
         args=[
             y.cast(pl.Float64),
             pl.lit(distribution, dtype=pl.String),
-            pl.lit(with_intercept, dtype=pl.Boolean),
+            pl.lit(add_intercept, dtype=pl.Boolean),
             *x_exprs,
         ],
         returns_scalar=True,
@@ -1740,6 +1919,56 @@ def elastic_net_predict(
         ],
         kwargs={"prefix": prefix},
         returns_scalar=False,
+    )
+
+
+def lasso_predict(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    lambda_: float = 1.0,
+    add_intercept: bool = True,
+    interval: str | None = None,
+    level: float = 0.95,
+    null_policy: str = "drop",
+    name: str | None = None,
+) -> pl.Expr:
+    """Lasso regression predictions with optional intervals.
+
+    Shorthand for elastic_net_predict(..., alpha=1.0).
+
+    Parameters
+    ----------
+    y : pl.Expr or str
+        Target variable.
+    *x : pl.Expr or str
+        Feature variables.
+    lambda_ : float, default 1.0
+        Regularization strength.
+    add_intercept : bool, default True
+        Whether to include an intercept term.
+    interval : str or None, default None
+        "confidence" or "prediction" intervals.
+    level : float, default 0.95
+        Confidence level for intervals.
+    null_policy : str, default "drop"
+        "drop" or "drop_y_zero_x".
+    name : str or None, default None
+        Custom prefix for output column names. If None, uses "lasso".
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing {name}_prediction, {name}_lower, {name}_upper per row.
+    """
+    return elastic_net_predict(
+        y, *x,
+        lambda_=lambda_,
+        alpha=1.0,
+        add_intercept=add_intercept,
+        interval=interval,
+        level=level,
+        null_policy=null_policy,
+        name=name if name is not None else "lasso",
     )
 
 
@@ -2459,7 +2688,8 @@ def _parse_formula(formula: str):
 
 def ols_formula(
     formula: str,
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """OLS regression using R-style formula syntax.
 
@@ -2476,7 +2706,7 @@ def ols_formula(
         - Full crossing: "y ~ x1 * x2" (expands to x1 + x2 + x1:x2)
         - Polynomial: "y ~ poly(x, 2)" (centered) or "y ~ poly(x, 2, raw=True)"
         - Transform: "y ~ I(x^2)"
-    with_intercept : bool, default True
+    add_intercept : bool, default True
         Whether to include an intercept term.
 
     Returns
@@ -2506,14 +2736,16 @@ def ols_formula(
     ...     ps.ols_formula("y ~ poly(x1, 2)").alias("model")
     ... )
     """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     response, x_exprs, _ = _parse_formula(formula)
-    return ols(response, *x_exprs, with_intercept=with_intercept)
+    return ols(response, *x_exprs, add_intercept=add_intercept)
 
 
 def ridge_formula(
     formula: str,
     lambda_: float = 1.0,
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Ridge regression using R-style formula syntax.
 
@@ -2523,7 +2755,7 @@ def ridge_formula(
         R-style formula (see ols_formula for syntax).
     lambda_ : float, default 1.0
         Regularization strength.
-    with_intercept : bool, default True
+    add_intercept : bool, default True
         Whether to include an intercept term.
 
     Returns
@@ -2531,15 +2763,17 @@ def ridge_formula(
     pl.Expr
         Struct containing regression results.
     """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     response, x_exprs, _ = _parse_formula(formula)
-    return ridge(response, *x_exprs, lambda_=lambda_, with_intercept=with_intercept)
+    return ridge(response, *x_exprs, lambda_=lambda_, add_intercept=add_intercept)
 
 
 def elastic_net_formula(
     formula: str,
     lambda_: float = 1.0,
     alpha: float = 0.5,
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Elastic Net regression using R-style formula syntax.
 
@@ -2551,7 +2785,7 @@ def elastic_net_formula(
         Total regularization strength.
     alpha : float, default 0.5
         L1 ratio (0 = Ridge, 1 = Lasso).
-    with_intercept : bool, default True
+    add_intercept : bool, default True
         Whether to include an intercept term.
 
     Returns
@@ -2559,16 +2793,49 @@ def elastic_net_formula(
     pl.Expr
         Struct containing regression results.
     """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     response, x_exprs, _ = _parse_formula(formula)
     return elastic_net(
-        response, *x_exprs, lambda_=lambda_, alpha=alpha, with_intercept=with_intercept
+        response, *x_exprs, lambda_=lambda_, alpha=alpha, add_intercept=add_intercept
+    )
+
+
+def lasso_formula(
+    formula: str,
+    lambda_: float = 1.0,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
+) -> pl.Expr:
+    """Lasso regression (L1 regularization) using R-style formula syntax.
+
+    Shorthand for elastic_net_formula(..., alpha=1.0).
+
+    Parameters
+    ----------
+    formula : str
+        R-style formula (see ols_formula for syntax).
+    lambda_ : float, default 1.0
+        Regularization strength.
+    add_intercept : bool, default True
+        Whether to include an intercept term.
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing regression results.
+    """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    return elastic_net_formula(
+        formula, lambda_=lambda_, alpha=1.0, add_intercept=add_intercept
     )
 
 
 def wls_formula(
     formula: str,
     weights: Union[pl.Expr, str],
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Weighted Least Squares regression using R-style formula syntax.
 
@@ -2578,7 +2845,7 @@ def wls_formula(
         R-style formula (see ols_formula for syntax).
     weights : pl.Expr or str
         Observation weights column.
-    with_intercept : bool, default True
+    add_intercept : bool, default True
         Whether to include an intercept term.
 
     Returns
@@ -2586,14 +2853,16 @@ def wls_formula(
     pl.Expr
         Struct containing regression results.
     """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     response, x_exprs, _ = _parse_formula(formula)
-    return wls(response, weights, *x_exprs, with_intercept=with_intercept)
+    return wls(response, weights, *x_exprs, add_intercept=add_intercept)
 
 
 def rls_formula(
     formula: str,
     forgetting_factor: float = 0.99,
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Recursive Least Squares regression using R-style formula syntax.
 
@@ -2603,7 +2872,7 @@ def rls_formula(
         R-style formula (see ols_formula for syntax).
     forgetting_factor : float, default 0.99
         Forgetting factor (0 < lambda <= 1).
-    with_intercept : bool, default True
+    add_intercept : bool, default True
         Whether to include an intercept term.
 
     Returns
@@ -2611,9 +2880,10 @@ def rls_formula(
     pl.Expr
         Struct containing regression results.
     """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     response, x_exprs, _ = _parse_formula(formula)
     return rls(
-        response, *x_exprs, forgetting_factor=forgetting_factor, with_intercept=with_intercept
+        response, *x_exprs, forgetting_factor=forgetting_factor, add_intercept=add_intercept
     )
 
 
@@ -2621,7 +2891,8 @@ def bls_formula(
     formula: str,
     lower_bound: float | None = None,
     upper_bound: float | None = None,
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Bounded Least Squares regression using R-style formula syntax.
 
@@ -2633,7 +2904,7 @@ def bls_formula(
         Lower bound for coefficients.
     upper_bound : float or None
         Upper bound for coefficients.
-    with_intercept : bool, default True
+    add_intercept : bool, default True
         Whether to include an intercept term.
 
     Returns
@@ -2641,19 +2912,21 @@ def bls_formula(
     pl.Expr
         Struct containing regression results.
     """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     response, x_exprs, _ = _parse_formula(formula)
     return bls(
         response,
         *x_exprs,
         lower_bound=lower_bound,
         upper_bound=upper_bound,
-        with_intercept=with_intercept,
+        add_intercept=add_intercept,
     )
 
 
 def nnls_formula(
     formula: str,
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Non-negative Least Squares regression using R-style formula syntax.
 
@@ -2661,7 +2934,7 @@ def nnls_formula(
     ----------
     formula : str
         R-style formula (see ols_formula for syntax).
-    with_intercept : bool, default True
+    add_intercept : bool, default True
         Whether to include an intercept term.
 
     Returns
@@ -2669,12 +2942,14 @@ def nnls_formula(
     pl.Expr
         Struct containing regression results.
     """
-    return bls_formula(formula, lower_bound=0.0, with_intercept=with_intercept)
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    return bls_formula(formula, lower_bound=0.0, add_intercept=add_intercept)
 
 
 def logistic_formula(
     formula: str,
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Logistic regression using R-style formula syntax.
 
@@ -2682,7 +2957,7 @@ def logistic_formula(
     ----------
     formula : str
         R-style formula (see ols_formula for syntax).
-    with_intercept : bool, default True
+    add_intercept : bool, default True
         Whether to include an intercept term.
 
     Returns
@@ -2690,13 +2965,15 @@ def logistic_formula(
     pl.Expr
         Struct containing GLM results.
     """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     response, x_exprs, _ = _parse_formula(formula)
-    return logistic(response, *x_exprs, with_intercept=with_intercept)
+    return logistic(response, *x_exprs, add_intercept=add_intercept)
 
 
 def poisson_formula(
     formula: str,
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Poisson regression using R-style formula syntax.
 
@@ -2704,7 +2981,7 @@ def poisson_formula(
     ----------
     formula : str
         R-style formula (see ols_formula for syntax).
-    with_intercept : bool, default True
+    add_intercept : bool, default True
         Whether to include an intercept term.
 
     Returns
@@ -2712,14 +2989,16 @@ def poisson_formula(
     pl.Expr
         Struct containing GLM results.
     """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     response, x_exprs, _ = _parse_formula(formula)
-    return poisson(response, *x_exprs, with_intercept=with_intercept)
+    return poisson(response, *x_exprs, add_intercept=add_intercept)
 
 
 def negative_binomial_formula(
     formula: str,
     theta: float | None = None,
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Negative Binomial regression using R-style formula syntax.
 
@@ -2729,7 +3008,7 @@ def negative_binomial_formula(
         R-style formula (see ols_formula for syntax).
     theta : float or None
         Dispersion parameter. If None, estimated from data.
-    with_intercept : bool, default True
+    add_intercept : bool, default True
         Whether to include an intercept term.
 
     Returns
@@ -2737,14 +3016,16 @@ def negative_binomial_formula(
     pl.Expr
         Struct containing GLM results.
     """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     response, x_exprs, _ = _parse_formula(formula)
-    return negative_binomial(response, *x_exprs, theta=theta, with_intercept=with_intercept)
+    return negative_binomial(response, *x_exprs, theta=theta, add_intercept=add_intercept)
 
 
 def tweedie_formula(
     formula: str,
     var_power: float = 1.5,
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Tweedie GLM using R-style formula syntax.
 
@@ -2754,7 +3035,7 @@ def tweedie_formula(
         R-style formula (see ols_formula for syntax).
     var_power : float, default 1.5
         Variance power.
-    with_intercept : bool, default True
+    add_intercept : bool, default True
         Whether to include an intercept term.
 
     Returns
@@ -2762,13 +3043,15 @@ def tweedie_formula(
     pl.Expr
         Struct containing GLM results.
     """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     response, x_exprs, _ = _parse_formula(formula)
-    return tweedie(response, *x_exprs, var_power=var_power, with_intercept=with_intercept)
+    return tweedie(response, *x_exprs, var_power=var_power, add_intercept=add_intercept)
 
 
 def probit_formula(
     formula: str,
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Probit regression using R-style formula syntax.
 
@@ -2776,7 +3059,7 @@ def probit_formula(
     ----------
     formula : str
         R-style formula (see ols_formula for syntax).
-    with_intercept : bool, default True
+    add_intercept : bool, default True
         Whether to include an intercept term.
 
     Returns
@@ -2784,13 +3067,15 @@ def probit_formula(
     pl.Expr
         Struct containing GLM results.
     """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     response, x_exprs, _ = _parse_formula(formula)
-    return probit(response, *x_exprs, with_intercept=with_intercept)
+    return probit(response, *x_exprs, add_intercept=add_intercept)
 
 
 def cloglog_formula(
     formula: str,
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Complementary log-log regression using R-style formula syntax.
 
@@ -2798,7 +3083,7 @@ def cloglog_formula(
     ----------
     formula : str
         R-style formula (see ols_formula for syntax).
-    with_intercept : bool, default True
+    add_intercept : bool, default True
         Whether to include an intercept term.
 
     Returns
@@ -2806,14 +3091,16 @@ def cloglog_formula(
     pl.Expr
         Struct containing GLM results.
     """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     response, x_exprs, _ = _parse_formula(formula)
-    return cloglog(response, *x_exprs, with_intercept=with_intercept)
+    return cloglog(response, *x_exprs, add_intercept=add_intercept)
 
 
 def alm_formula(
     formula: str,
     distribution: str = "normal",
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Augmented Linear Model using R-style formula syntax.
 
@@ -2823,7 +3110,7 @@ def alm_formula(
         R-style formula (see ols_formula for syntax).
     distribution : str, default "normal"
         Distribution family.
-    with_intercept : bool, default True
+    add_intercept : bool, default True
         Whether to include an intercept term.
 
     Returns
@@ -2831,8 +3118,9 @@ def alm_formula(
     pl.Expr
         Struct containing ALM results.
     """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     response, x_exprs, _ = _parse_formula(formula)
-    return alm(response, *x_exprs, distribution=distribution, with_intercept=with_intercept)
+    return alm(response, *x_exprs, distribution=distribution, add_intercept=add_intercept)
 
 
 # ============================================================================
@@ -2842,7 +3130,8 @@ def alm_formula(
 
 def ols_formula_summary(
     formula: str,
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """OLS coefficient summary using R-style formula syntax.
 
@@ -2850,7 +3139,7 @@ def ols_formula_summary(
     ----------
     formula : str
         R-style formula (see ols_formula for syntax).
-    with_intercept : bool, default True
+    add_intercept : bool, default True
         Whether to include an intercept term.
 
     Returns
@@ -2858,59 +3147,91 @@ def ols_formula_summary(
     pl.Expr
         List of structs containing coefficient statistics.
     """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     response, x_exprs, _ = _parse_formula(formula)
-    return ols_summary(response, *x_exprs, with_intercept=with_intercept)
+    return ols_summary(response, *x_exprs, add_intercept=add_intercept)
 
 
 def ridge_formula_summary(
     formula: str,
     lambda_: float = 1.0,
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Ridge coefficient summary using R-style formula syntax."""
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     response, x_exprs, _ = _parse_formula(formula)
-    return ridge_summary(response, *x_exprs, lambda_=lambda_, with_intercept=with_intercept)
+    return ridge_summary(response, *x_exprs, lambda_=lambda_, add_intercept=add_intercept)
 
 
 def elastic_net_formula_summary(
     formula: str,
     lambda_: float = 1.0,
     alpha: float = 0.5,
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Elastic Net coefficient summary using R-style formula syntax."""
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     response, x_exprs, _ = _parse_formula(formula)
     return elastic_net_summary(
-        response, *x_exprs, lambda_=lambda_, alpha=alpha, with_intercept=with_intercept
+        response, *x_exprs, lambda_=lambda_, alpha=alpha, add_intercept=add_intercept
+    )
+
+
+def lasso_formula_summary(
+    formula: str,
+    lambda_: float = 1.0,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
+) -> pl.Expr:
+    """Lasso regression coefficient summary using R-style formula syntax.
+
+    Shorthand for elastic_net_formula_summary(..., alpha=1.0).
+    """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    return elastic_net_formula_summary(
+        formula, lambda_=lambda_, alpha=1.0, add_intercept=add_intercept
     )
 
 
 def logistic_formula_summary(
     formula: str,
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Logistic regression coefficient summary using R-style formula syntax."""
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     response, x_exprs, _ = _parse_formula(formula)
-    return logistic_summary(response, *x_exprs, with_intercept=with_intercept)
+    return logistic_summary(response, *x_exprs, add_intercept=add_intercept)
 
 
 def poisson_formula_summary(
     formula: str,
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Poisson regression coefficient summary using R-style formula syntax."""
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     response, x_exprs, _ = _parse_formula(formula)
-    return poisson_summary(response, *x_exprs, with_intercept=with_intercept)
+    return poisson_summary(response, *x_exprs, add_intercept=add_intercept)
 
 
 def alm_formula_summary(
     formula: str,
     distribution: str = "normal",
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """ALM coefficient summary using R-style formula syntax."""
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     response, x_exprs, _ = _parse_formula(formula)
-    return alm_summary(response, *x_exprs, distribution=distribution, with_intercept=with_intercept)
+    return alm_summary(response, *x_exprs, distribution=distribution, add_intercept=add_intercept)
 
 
 # ============================================================================
@@ -3013,6 +3334,31 @@ def elastic_net_formula_predict(
         level=level,
         null_policy=null_policy,
         name=name,
+    )
+
+
+def lasso_formula_predict(
+    formula: str,
+    lambda_: float = 1.0,
+    add_intercept: bool = True,
+    interval: str | None = None,
+    level: float = 0.95,
+    null_policy: str = "drop",
+    name: str | None = None,
+) -> pl.Expr:
+    """Lasso regression predictions using R-style formula syntax.
+
+    Shorthand for elastic_net_formula_predict(..., alpha=1.0).
+    """
+    return elastic_net_formula_predict(
+        formula,
+        lambda_=lambda_,
+        alpha=1.0,
+        add_intercept=add_intercept,
+        interval=interval,
+        level=level,
+        null_policy=null_policy,
+        name=name if name is not None else "lasso",
     )
 
 
@@ -3217,7 +3563,8 @@ def lm_dynamic(
     distribution: str = "normal",
     lowess_span: float = 0.3,
     max_models: int = 64,
-    with_intercept: bool = True,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Dynamic Linear Model regression.
 
@@ -3240,7 +3587,7 @@ def lm_dynamic(
         LOWESS smoothing span (0.05 to 1.0). Set to 0.0 to disable smoothing.
     max_models : int, default 64
         Maximum number of candidate models to consider.
-    with_intercept : bool, default True
+    add_intercept : bool, default True
         Whether to include an intercept term.
 
     Returns
@@ -3266,6 +3613,7 @@ def lm_dynamic(
     ...     ps.lm_dynamic("y", "x1", "x2", ic="aicc").alias("model")
     ... )
     """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     if isinstance(y, str):
         y = pl.col(y)
 
@@ -3284,7 +3632,7 @@ def lm_dynamic(
             pl.lit(distribution, dtype=pl.String),
             pl.lit(lowess_span, dtype=pl.Float64),
             pl.lit(max_models, dtype=pl.UInt32),
-            pl.lit(with_intercept, dtype=pl.Boolean),
+            pl.lit(add_intercept, dtype=pl.Boolean),
             *x_exprs,
         ],
         returns_scalar=True,
