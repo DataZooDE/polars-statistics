@@ -53,6 +53,7 @@ def ols(
     *x: Union[pl.Expr, str],
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
+    solve_method: str | None = None,
 ) -> pl.Expr:
     """Ordinary Least Squares regression as a Polars expression.
 
@@ -66,6 +67,8 @@ def ols(
         Feature variables (one or more).
     add_intercept : bool, default True
         Whether to include an intercept term.
+    solve_method : str or None, default None
+        Solver for the linear system: "qr" (default), "svd", or "cholesky".
 
     Returns
     -------
@@ -112,6 +115,7 @@ def ols(
         args=[
             y.cast(pl.Float64),
             pl.lit(add_intercept, dtype=pl.Boolean),
+            pl.lit(solve_method, dtype=pl.String),
             *x_exprs,
         ],
         returns_scalar=True,
@@ -124,6 +128,7 @@ def ridge(
     lambda_: float = 1.0,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
+    solve_method: str | None = None,
 ) -> pl.Expr:
     """Ridge regression (L2 regularization) as a Polars expression.
 
@@ -137,6 +142,8 @@ def ridge(
         Regularization strength.
     add_intercept : bool, default True
         Whether to include an intercept term.
+    solve_method : str or None, default None
+        Solver for the linear system: "qr" (default), "svd", or "cholesky".
 
     Returns
     -------
@@ -160,6 +167,7 @@ def ridge(
             y.cast(pl.Float64),
             pl.lit(lambda_, dtype=pl.Float64),
             pl.lit(add_intercept, dtype=pl.Boolean),
+            pl.lit(solve_method, dtype=pl.String),
             *x_exprs,
         ],
         returns_scalar=True,
@@ -224,6 +232,7 @@ def wls(
     *x: Union[pl.Expr, str],
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
+    solve_method: str | None = None,
 ) -> pl.Expr:
     """Weighted Least Squares regression as a Polars expression.
 
@@ -237,6 +246,8 @@ def wls(
         Feature variables (one or more).
     add_intercept : bool, default True
         Whether to include an intercept term.
+    solve_method : str or None, default None
+        Solver for the linear system: "qr" (default), "svd", or "cholesky".
 
     Returns
     -------
@@ -262,6 +273,7 @@ def wls(
             y.cast(pl.Float64),
             weights.cast(pl.Float64),
             pl.lit(add_intercept, dtype=pl.Boolean),
+            pl.lit(solve_method, dtype=pl.String),
             *x_exprs,
         ],
         returns_scalar=True,
@@ -1212,6 +1224,8 @@ def ols_summary(
     *x: Union[pl.Expr, str],
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
+    solve_method: str | None = None,
+    hc_type: str | None = None,
 ) -> pl.Expr:
     """OLS coefficient summary in tidy format (like R's broom::tidy).
 
@@ -1226,6 +1240,11 @@ def ols_summary(
         Feature variables (one or more).
     add_intercept : bool, default True
         Whether to include an intercept term.
+    solve_method : str or None, default None
+        Solver for the linear system: "qr" (default), "svd", or "cholesky".
+    hc_type : str or None, default None
+        Heteroskedasticity-consistent standard errors variant:
+        "hc0", "hc1", "hc2", or "hc3". If None, uses homoskedastic SEs.
 
     Returns
     -------
@@ -1236,6 +1255,11 @@ def ols_summary(
     --------
     >>> df.group_by("group").agg(
     ...     ps.ols_summary("y", "x1", "x2").alias("coef")
+    ... ).explode("coef").unnest("coef")
+    >>>
+    >>> # With robust standard errors
+    >>> df.group_by("group").agg(
+    ...     ps.ols_summary("y", "x1", "x2", hc_type="hc3").alias("coef")
     ... ).explode("coef").unnest("coef")
     """
     add_intercept = _resolve_intercept(add_intercept, with_intercept)
@@ -1254,6 +1278,8 @@ def ols_summary(
         args=[
             y.cast(pl.Float64),
             pl.lit(add_intercept, dtype=pl.Boolean),
+            pl.lit(solve_method, dtype=pl.String),
+            pl.lit(hc_type, dtype=pl.String),
             *x_exprs,
         ],
         returns_scalar=True,
@@ -1266,9 +1292,9 @@ def ridge_summary(
     lambda_: float = 1.0,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
+    solve_method: str | None = None,
 ) -> pl.Expr:
     """Ridge regression coefficient summary in tidy format."""
-    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     add_intercept = _resolve_intercept(add_intercept, with_intercept)
     if isinstance(y, str):
         y = pl.col(y)
@@ -1286,6 +1312,7 @@ def ridge_summary(
             y.cast(pl.Float64),
             pl.lit(lambda_, dtype=pl.Float64),
             pl.lit(add_intercept, dtype=pl.Boolean),
+            pl.lit(solve_method, dtype=pl.String),
             *x_exprs,
         ],
         returns_scalar=True,
@@ -1350,9 +1377,9 @@ def wls_summary(
     *x: Union[pl.Expr, str],
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
+    solve_method: str | None = None,
 ) -> pl.Expr:
     """Weighted Least Squares coefficient summary in tidy format."""
-    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     add_intercept = _resolve_intercept(add_intercept, with_intercept)
     if isinstance(y, str):
         y = pl.col(y)
@@ -1372,6 +1399,7 @@ def wls_summary(
             y.cast(pl.Float64),
             weights.cast(pl.Float64),
             pl.lit(add_intercept, dtype=pl.Boolean),
+            pl.lit(solve_method, dtype=pl.String),
             *x_exprs,
         ],
         returns_scalar=True,
@@ -1691,6 +1719,7 @@ def ols_predict(
     y: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
     add_intercept: bool = True,
+    solve_method: str | None = None,
     interval: str | None = None,
     level: float = 0.95,
     null_policy: str = "drop",
@@ -1708,6 +1737,8 @@ def ols_predict(
         Feature variables (one or more).
     add_intercept : bool, default True
         Whether to include an intercept term in the model.
+    solve_method : str or None, default None
+        Solver for the linear system: "qr" (default), "svd", or "cholesky".
     interval : str or None, default None
         Type of interval to compute:
         - None: No intervals (lower/upper will be NaN)
@@ -1778,6 +1809,7 @@ def ols_predict(
         args=[
             y.cast(pl.Float64),
             pl.lit(add_intercept, dtype=pl.Boolean),
+            pl.lit(solve_method, dtype=pl.String),
             interval_lit,
             pl.lit(level, dtype=pl.Float64),
             pl.lit(null_policy, dtype=pl.String),
@@ -1793,6 +1825,7 @@ def ridge_predict(
     *x: Union[pl.Expr, str],
     lambda_: float = 1.0,
     add_intercept: bool = True,
+    solve_method: str | None = None,
     interval: str | None = None,
     level: float = 0.95,
     null_policy: str = "drop",
@@ -1810,6 +1843,8 @@ def ridge_predict(
         Regularization strength.
     add_intercept : bool, default True
         Whether to include an intercept term.
+    solve_method : str or None, default None
+        Solver for the linear system: "qr" (default), "svd", or "cholesky".
     interval : str or None, default None
         "confidence" or "prediction" intervals.
     level : float, default 0.95
@@ -1842,6 +1877,7 @@ def ridge_predict(
         args=[
             y.cast(pl.Float64),
             pl.lit(add_intercept, dtype=pl.Boolean),
+            pl.lit(solve_method, dtype=pl.String),
             interval_lit,
             pl.lit(level, dtype=pl.Float64),
             pl.lit(null_policy, dtype=pl.String),
@@ -1977,6 +2013,7 @@ def wls_predict(
     weights: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
     add_intercept: bool = True,
+    solve_method: str | None = None,
     interval: str | None = None,
     level: float = 0.95,
     null_policy: str = "drop",
@@ -1994,6 +2031,8 @@ def wls_predict(
         Feature variables.
     add_intercept : bool, default True
         Whether to include an intercept term.
+    solve_method : str or None, default None
+        Solver for the linear system: "qr" (default), "svd", or "cholesky".
     interval : str or None, default None
         "confidence" or "prediction" intervals.
     level : float, default 0.95
@@ -2028,6 +2067,7 @@ def wls_predict(
         args=[
             y.cast(pl.Float64),
             pl.lit(add_intercept, dtype=pl.Boolean),
+            pl.lit(solve_method, dtype=pl.String),
             interval_lit,
             pl.lit(level, dtype=pl.Float64),
             pl.lit(null_policy, dtype=pl.String),
@@ -2690,6 +2730,7 @@ def ols_formula(
     formula: str,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
+    solve_method: str | None = None,
 ) -> pl.Expr:
     """OLS regression using R-style formula syntax.
 
@@ -2708,6 +2749,8 @@ def ols_formula(
         - Transform: "y ~ I(x^2)"
     add_intercept : bool, default True
         Whether to include an intercept term.
+    solve_method : str or None, default None
+        Solver for the linear system: "qr" (default), "svd", or "cholesky".
 
     Returns
     -------
@@ -2738,7 +2781,7 @@ def ols_formula(
     """
     add_intercept = _resolve_intercept(add_intercept, with_intercept)
     response, x_exprs, _ = _parse_formula(formula)
-    return ols(response, *x_exprs, add_intercept=add_intercept)
+    return ols(response, *x_exprs, add_intercept=add_intercept, solve_method=solve_method)
 
 
 def ridge_formula(
@@ -2746,6 +2789,7 @@ def ridge_formula(
     lambda_: float = 1.0,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
+    solve_method: str | None = None,
 ) -> pl.Expr:
     """Ridge regression using R-style formula syntax.
 
@@ -2757,6 +2801,8 @@ def ridge_formula(
         Regularization strength.
     add_intercept : bool, default True
         Whether to include an intercept term.
+    solve_method : str or None, default None
+        Solver for the linear system: "qr" (default), "svd", or "cholesky".
 
     Returns
     -------
@@ -2765,7 +2811,7 @@ def ridge_formula(
     """
     add_intercept = _resolve_intercept(add_intercept, with_intercept)
     response, x_exprs, _ = _parse_formula(formula)
-    return ridge(response, *x_exprs, lambda_=lambda_, add_intercept=add_intercept)
+    return ridge(response, *x_exprs, lambda_=lambda_, add_intercept=add_intercept, solve_method=solve_method)
 
 
 def elastic_net_formula(
@@ -2836,6 +2882,7 @@ def wls_formula(
     weights: Union[pl.Expr, str],
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
+    solve_method: str | None = None,
 ) -> pl.Expr:
     """Weighted Least Squares regression using R-style formula syntax.
 
@@ -2847,6 +2894,8 @@ def wls_formula(
         Observation weights column.
     add_intercept : bool, default True
         Whether to include an intercept term.
+    solve_method : str or None, default None
+        Solver for the linear system: "qr" (default), "svd", or "cholesky".
 
     Returns
     -------
@@ -2855,7 +2904,7 @@ def wls_formula(
     """
     add_intercept = _resolve_intercept(add_intercept, with_intercept)
     response, x_exprs, _ = _parse_formula(formula)
-    return wls(response, weights, *x_exprs, add_intercept=add_intercept)
+    return wls(response, weights, *x_exprs, add_intercept=add_intercept, solve_method=solve_method)
 
 
 def rls_formula(
@@ -3132,6 +3181,8 @@ def ols_formula_summary(
     formula: str,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
+    solve_method: str | None = None,
+    hc_type: str | None = None,
 ) -> pl.Expr:
     """OLS coefficient summary using R-style formula syntax.
 
@@ -3141,6 +3192,11 @@ def ols_formula_summary(
         R-style formula (see ols_formula for syntax).
     add_intercept : bool, default True
         Whether to include an intercept term.
+    solve_method : str or None, default None
+        Solver for the linear system: "qr" (default), "svd", or "cholesky".
+    hc_type : str or None, default None
+        Heteroskedasticity-consistent standard errors variant:
+        "hc0", "hc1", "hc2", or "hc3". If None, uses homoskedastic SEs.
 
     Returns
     -------
@@ -3149,7 +3205,7 @@ def ols_formula_summary(
     """
     add_intercept = _resolve_intercept(add_intercept, with_intercept)
     response, x_exprs, _ = _parse_formula(formula)
-    return ols_summary(response, *x_exprs, add_intercept=add_intercept)
+    return ols_summary(response, *x_exprs, add_intercept=add_intercept, solve_method=solve_method, hc_type=hc_type)
 
 
 def ridge_formula_summary(
@@ -3157,12 +3213,12 @@ def ridge_formula_summary(
     lambda_: float = 1.0,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
+    solve_method: str | None = None,
 ) -> pl.Expr:
     """Ridge coefficient summary using R-style formula syntax."""
     add_intercept = _resolve_intercept(add_intercept, with_intercept)
-    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     response, x_exprs, _ = _parse_formula(formula)
-    return ridge_summary(response, *x_exprs, lambda_=lambda_, add_intercept=add_intercept)
+    return ridge_summary(response, *x_exprs, lambda_=lambda_, add_intercept=add_intercept, solve_method=solve_method)
 
 
 def elastic_net_formula_summary(
@@ -3242,6 +3298,7 @@ def alm_formula_summary(
 def ols_formula_predict(
     formula: str,
     add_intercept: bool = True,
+    solve_method: str | None = None,
     interval: str | None = None,
     level: float = 0.95,
     null_policy: str = "drop",
@@ -3255,6 +3312,8 @@ def ols_formula_predict(
         R-style formula (see ols_formula for syntax).
     add_intercept : bool, default True
         Whether to include an intercept term.
+    solve_method : str or None, default None
+        Solver for the linear system: "qr" (default), "svd", or "cholesky".
     interval : str or None, default None
         "confidence" or "prediction" intervals.
     level : float, default 0.95
@@ -3282,6 +3341,7 @@ def ols_formula_predict(
         response,
         *x_exprs,
         add_intercept=add_intercept,
+        solve_method=solve_method,
         interval=interval,
         level=level,
         null_policy=null_policy,
@@ -3293,6 +3353,7 @@ def ridge_formula_predict(
     formula: str,
     lambda_: float = 1.0,
     add_intercept: bool = True,
+    solve_method: str | None = None,
     interval: str | None = None,
     level: float = 0.95,
     null_policy: str = "drop",
@@ -3305,6 +3366,7 @@ def ridge_formula_predict(
         *x_exprs,
         lambda_=lambda_,
         add_intercept=add_intercept,
+        solve_method=solve_method,
         interval=interval,
         level=level,
         null_policy=null_policy,
