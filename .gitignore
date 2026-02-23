@@ -57,6 +57,9 @@ Thumbs.db
 # Maturin
 *.whl
 
+# MkDocs
+site/
+
 # Local development
 .env
 .envrc

@@ -1,0 +1,76 @@
+site_name: polars-statistics
+site_url: https://datazoode.github.io/polars-statistics/
+site_description: High-performance statistical testing and regression for Polars DataFrames, powered by Rust.
+repo_url: https://github.com/DataZooDE/polars-statistics
+repo_name: DataZooDE/polars-statistics
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - content.code.copy
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.highlight
+    - search.suggest
+    - toc.follow
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - toc:
+      permalink: true
+  - attr_list
+  - md_in_html
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - API Conventions: api/conventions.md
+  - Statistical Tests:
+      - Parametric Tests: api/tests/parametric.md
+      - Non-Parametric Tests: api/tests/nonparametric.md
+      - Distributional Tests: api/tests/distributional.md
+      - Correlation Tests: api/tests/correlation.md
+      - Forecast Comparison: api/tests/forecast.md
+      - Categorical Tests: api/tests/categorical.md
+      - TOST Equivalence: api/tests/tost.md
+  - Regression:
+      - Linear Models: api/regression/linear.md
+      - GLM: api/regression/glm.md
+      - ALM: api/regression/alm.md
+      - Formula Syntax: api/regression/formula.md
+      - Summary & Prediction: api/regression/summary-predict.md
+      - Diagnostics: api/regression/diagnostics.md
+      - Dynamic Models: api/regression/dynamic.md
+      - Demand Classification (AID): api/regression/aid.md
+  - Model Classes:
+      - Linear: api/classes/linear.md
+      - GLM: api/classes/glm.md
+      - ALM: api/classes/alm.md
+      - AID: api/classes/aid.md
+      - Test Classes: api/classes/tests.md
+      - Dynamic: api/classes/dynamic.md
+      - Bootstrap: api/classes/bootstrap.md
+  - Reference:
+      - Output Structures: api/outputs.md
+      - API Overview: api/README.md
