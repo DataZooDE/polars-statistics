@@ -35,6 +35,34 @@ print(f"Placebo: W={placebo_sw['statistic']:.4f}, p={placebo_sw['p_value']:.4f}"
 # p > 0.05 → no evidence against normality → parametric test is appropriate
 ```
 
+Expected output:
+
+```
+Drug:    W=0.9536, p=0.4243
+Placebo: W=0.9609, p=0.5619
+```
+
+![Distribution of drug vs placebo groups](../assets/images/hyp_distributions.png)
+
+??? note "Plot code"
+
+    ```python
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    fig, ax = plt.subplots(figsize=(7, 4))
+    bins = np.linspace(5, 17, 13)
+    ax.hist(df["drug"].to_list(), bins=bins, alpha=0.6, label="Drug", color="#4C72B0")
+    ax.hist(df["placebo"].to_list(), bins=bins, alpha=0.6, label="Placebo", color="#DD8452")
+    ax.axvline(df["drug"].mean(), color="#4C72B0", ls="--", lw=1.5)
+    ax.axvline(df["placebo"].mean(), color="#DD8452", ls="--", lw=1.5)
+    ax.set_xlabel("Blood Pressure Reduction (mmHg)")
+    ax.set_ylabel("Frequency")
+    ax.legend()
+    plt.tight_layout()
+    plt.savefig("hyp_distributions.png", dpi=150)
+    ```
+
 ## Step 2: Check Variance Equality
 
 The Brown-Forsythe test checks whether the two groups have equal variances:
@@ -47,6 +75,12 @@ var_test = df.select(
 bf = var_test["bf"][0]
 print(f"Brown-Forsythe: F={bf['statistic']:.4f}, p={bf['p_value']:.4f}")
 # p > 0.05 → variances are roughly equal
+```
+
+Expected output:
+
+```
+Brown-Forsythe: F=5.0951, p=0.0298
 ```
 
 ## Step 3: Run the Right Test
@@ -74,6 +108,14 @@ print(f"Mann-Whitney: U={mwu['statistic']:.4f}, p={mwu['p_value']:.6f}")
 print(f"Yuen:         t={yuen['statistic']:.4f}, p={yuen['p_value']:.6f}")
 ```
 
+Expected output:
+
+```
+t-test:       t=9.1739, p=0.000000
+Mann-Whitney: U=396.5000, p=0.000000
+Yuen:         t=7.1158, p=0.000001
+```
+
 ## Step 4: One-Sided Tests
 
 If you have a directional hypothesis (e.g., "drug is better than placebo"):
@@ -85,6 +127,12 @@ one_sided = df.select(
 
 t = one_sided["ttest"][0]
 print(f"One-sided t-test: t={t['statistic']:.4f}, p={t['p_value']:.6f}")
+```
+
+Expected output:
+
+```
+One-sided t-test: t=9.1739, p=0.000000
 ```
 
 ## Step 5: Collect Everything into a Summary Table
@@ -119,10 +167,10 @@ print(summary)
 # ┌─────────────────┬───────────┬──────────┐
 # │ test            ┆ statistic ┆ p_value  │
 # ╞═════════════════╪═══════════╪══════════╡
-# │ t-test (Welch)  ┆ 6.12      ┆ 0.000001 │
-# │ Mann-Whitney U  ┆ 370.0     ┆ 0.000003 │
-# │ Yuen (trim=0.2) ┆ 5.89      ┆ 0.000005 │
-# │ Brunner-Munzel  ┆ 6.08      ┆ 0.000002 │
+# │ t-test (Welch)  ┆ 9.1739    ┆ 0.000000 │
+# │ Mann-Whitney U  ┆ 396.5     ┆ 0.000000 │
+# │ Yuen (trim=0.2) ┆ 7.1158    ┆ 0.000001 │
+# │ Brunner-Munzel  ┆ -54.6655  ┆ 0.000000 │
 # └─────────────────┴───────────┴──────────┘
 ```
 
@@ -151,6 +199,36 @@ s = correlations["spearman"][0]
 print(f"Spearman: ρ={s['estimate']:.4f}, p={s['p_value']:.6f}")
 ```
 
+Expected output:
+
+```
+Pearson:  r=0.9986, p=0.000000, 95% CI=[0.9940, 0.9997]
+Spearman: ρ=1.0000, p=0.000000
+```
+
+![Temperature vs ice cream sales scatter plot](../assets/images/hyp_correlation.png)
+
+??? note "Plot code"
+
+    ```python
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    temp = df_cor["temperature"].to_numpy()
+    sales = df_cor["ice_cream_sales"].to_numpy()
+    m, b = np.polyfit(temp, sales, 1)
+
+    fig, ax = plt.subplots(figsize=(6, 5))
+    ax.scatter(temp, sales, s=60, color="#4C72B0", edgecolor="white")
+    x = np.linspace(18, 44, 100)
+    ax.plot(x, m * x + b, color="#C44E52", lw=2, label=f"y = {m:.1f}x {b:+.0f}")
+    ax.set_xlabel("Temperature (°C)")
+    ax.set_ylabel("Ice Cream Sales")
+    ax.legend()
+    plt.tight_layout()
+    plt.savefig("hyp_correlation.png", dpi=150)
+    ```
+
 ### Partial Correlation
 
 Control for confounding variables:
@@ -163,6 +241,12 @@ partial = df_cor.select(
 
 pc = partial["partial"][0]
 print(f"Partial correlation: r={pc['estimate']:.4f}, p={pc['p_value']:.6f}")
+```
+
+Expected output:
+
+```
+Partial correlation: r=0.5453, p=0.128937
 ```
 
 ## Multi-Group Comparison
@@ -194,4 +278,14 @@ pairs = df_multi.select(
 for name in ["a_vs_b", "a_vs_c", "b_vs_c"]:
     r = pairs[name][0]
     print(f"  {name}: U={r['statistic']:.1f}, p={r['p_value']:.6f}")
+```
+
+Expected output:
+
+```
+Kruskal-Wallis: H=24.6015, p=0.000005
+
+  a_vs_b: U=99.5, p=0.000209
+  a_vs_c: U=100.0, p=0.000181
+  b_vs_c: U=95.5, p=0.000654
 ```

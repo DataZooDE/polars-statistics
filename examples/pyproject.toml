@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Examples for polars-statistics"
 requires-python = ">=3.9"
 dependencies = [
+    "matplotlib>=3.9.4",
     "polars>=1.0",
     "polars-statistics",
 ]

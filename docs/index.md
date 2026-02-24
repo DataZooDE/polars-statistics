@@ -62,6 +62,7 @@ result.with_columns(
 | [Statistical Tests](api/tests/parametric.md) | 30+ hypothesis tests |
 | [Regression](api/regression/linear.md) | Linear, GLM, ALM, dynamic models |
 | [Model Classes](api/classes/linear.md) | Direct Python class access |
+| [R Validation](validation/index.md) | R-vs-Rust numerical agreement with reference values |
 | [Output Structures](api/outputs.md) | Return type definitions |
 
 ## Links
