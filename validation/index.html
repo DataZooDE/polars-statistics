@@ -1,0 +1,4708 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="High-performance statistical testing and regression for Polars DataFrames, powered by Rust.">
+      
+      
+      
+        <link rel="canonical" href="https://datazoode.github.io/polars-statistics/validation/">
+      
+      
+        <link rel="prev" href="../api/classes/bootstrap/">
+      
+      
+        <link rel="next" href="../api/outputs/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.2">
+    
+    
+      
+        <title>R Validation - polars-statistics</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#r-validation" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="polars-statistics" class="md-header__button md-logo" aria-label="polars-statistics" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            polars-statistics
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              R Validation
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/DataZooDE/polars-statistics" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    DataZooDE/polars-statistics
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../getting-started/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Getting Started
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../examples/hypothesis-testing/" class="md-tabs__link">
+          
+  
+  
+  Examples
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../api/conventions/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  API Conventions
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../api/tests/parametric/" class="md-tabs__link">
+          
+  
+  
+  Statistical Tests
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../api/regression/linear/" class="md-tabs__link">
+          
+  
+  
+  Regression
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../api/classes/linear/" class="md-tabs__link">
+          
+  
+  
+  Model Classes
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+  
+    
+  
+  R Validation
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../api/outputs/" class="md-tabs__link">
+          
+  
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="polars-statistics" class="md-nav__button md-logo" aria-label="polars-statistics" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    polars-statistics
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/DataZooDE/polars-statistics" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    DataZooDE/polars-statistics
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Examples
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/hypothesis-testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hypothesis Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/regression-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Regression Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/regularized-regression/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Regularized & Specialized Models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/glm-models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Generalized Linear Models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/group-analysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Group-wise Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/ab-testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    A/B Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/equivalence-testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Equivalence Testing (TOST)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/categorical-analysis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Categorical Data Analysis
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/forecast-comparison/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecast Model Comparison
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/advanced-correlation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Correlation & Reliability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/special-models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Special Models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/conventions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Conventions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Statistical Tests
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Statistical Tests
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/tests/parametric/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Parametric Tests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/tests/nonparametric/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Non-Parametric Tests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/tests/distributional/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Distributional Tests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/tests/correlation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Correlation Tests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/tests/forecast/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecast Comparison
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/tests/categorical/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Categorical Tests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/tests/tost/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    TOST Equivalence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Regression
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Regression
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/regression/linear/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Linear Models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/regression/glm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GLM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/regression/alm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ALM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/regression/formula/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Formula Syntax
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/regression/summary-predict/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Summary & Prediction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/regression/diagnostics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Diagnostics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/regression/dynamic/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dynamic Models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/regression/aid/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Demand Classification (AID)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Model Classes
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Model Classes
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/classes/linear/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Linear
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/classes/glm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GLM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/classes/alm/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ALM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/classes/aid/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AID
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/classes/tests/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Test Classes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/classes/dynamic/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dynamic
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/classes/bootstrap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bootstrap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    R Validation
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    R Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#validation-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation Architecture
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#statistical-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Statistical Tests
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Statistical Tests">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#parametric-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parametric Tests
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Parametric Tests">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#t-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        T-Tests
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#yuens-trimmed-means-test" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Yuen's Trimmed Means Test
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#brown-forsythe-test" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Brown-Forsythe Test
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#anova" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ANOVA
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#non-parametric-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Non-Parametric Tests
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Non-Parametric Tests">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mann-whitney-u" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mann-Whitney U
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wilcoxon-signed-rank" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Wilcoxon Signed-Rank
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#kruskal-wallis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Kruskal-Wallis
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#brunner-munzel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Brunner-Munzel
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#correlation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Correlation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Correlation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pearson" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pearson
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#spearman" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Spearman
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#kendall" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Kendall
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#categorical-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Categorical Tests
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Categorical Tests">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#chi-square-test" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chi-Square Test
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fishers-exact-test" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fisher's Exact Test
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#effect-size-measures" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Effect Size Measures
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#distributional-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Distributional Tests
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Distributional Tests">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#shapiro-wilk" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shapiro-Wilk
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dagostino-k-squared" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D'Agostino K-Squared
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#regression" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Regression
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Regression">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ols-and-wls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OLS and WLS
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="OLS and WLS">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#weighted-least-squares" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Weighted Least Squares
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hc-standard-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HC Standard Errors
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridge-regression" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ridge Regression
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#elastic-net" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Elastic Net
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#quantile-regression" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quantile Regression
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#prediction-and-confidence-intervals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prediction and Confidence Intervals
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#generalized-linear-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Generalized Linear Models
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Generalized Linear Models">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#poisson-glm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Poisson GLM
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#binomial-glm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Binomial GLM
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#negative-binomial-glm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Negative Binomial GLM
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gamma-glm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gamma GLM
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inverse-gaussian-glm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inverse Gaussian GLM
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#poisson-with-offset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Poisson with Offset
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tweedie-glms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tweedie GLMs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tost-equivalence-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TOST Equivalence Tests
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#r-packages-used" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        R Packages Used
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/outputs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Output Structures
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#validation-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation Architecture
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#statistical-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Statistical Tests
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Statistical Tests">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#parametric-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parametric Tests
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Parametric Tests">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#t-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        T-Tests
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#yuens-trimmed-means-test" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Yuen's Trimmed Means Test
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#brown-forsythe-test" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Brown-Forsythe Test
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#anova" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ANOVA
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#non-parametric-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Non-Parametric Tests
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Non-Parametric Tests">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mann-whitney-u" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mann-Whitney U
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wilcoxon-signed-rank" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Wilcoxon Signed-Rank
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#kruskal-wallis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Kruskal-Wallis
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#brunner-munzel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Brunner-Munzel
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#correlation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Correlation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Correlation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pearson" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pearson
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#spearman" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Spearman
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#kendall" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Kendall
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#categorical-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Categorical Tests
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Categorical Tests">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#chi-square-test" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chi-Square Test
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fishers-exact-test" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fisher's Exact Test
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#effect-size-measures" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Effect Size Measures
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#distributional-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Distributional Tests
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Distributional Tests">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#shapiro-wilk" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shapiro-Wilk
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dagostino-k-squared" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        D'Agostino K-Squared
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#regression" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Regression
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Regression">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ols-and-wls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OLS and WLS
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="OLS and WLS">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#weighted-least-squares" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Weighted Least Squares
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hc-standard-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HC Standard Errors
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridge-regression" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ridge Regression
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#elastic-net" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Elastic Net
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#quantile-regression" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quantile Regression
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#prediction-and-confidence-intervals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prediction and Confidence Intervals
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#generalized-linear-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Generalized Linear Models
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Generalized Linear Models">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#poisson-glm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Poisson GLM
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#binomial-glm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Binomial GLM
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#negative-binomial-glm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Negative Binomial GLM
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gamma-glm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gamma GLM
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inverse-gaussian-glm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inverse Gaussian GLM
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#poisson-with-offset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Poisson with Offset
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tweedie-glms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tweedie GLMs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tost-equivalence-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TOST Equivalence Tests
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#r-packages-used" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        R Packages Used
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="r-validation">R Validation<a class="headerlink" href="#r-validation" title="Permanent link">&para;</a></h1>
+<p>polars-statistics is validated against R's reference implementations at the Rust engine level. Every statistical test, regression model, and GLM is tested against exact values produced by R scripts using <code>set.seed()</code> for reproducibility.</p>
+<hr />
+<h2 id="validation-architecture">Validation Architecture<a class="headerlink" href="#validation-architecture" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>polars-statistics (Python/Polars)
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    └── anofox-regression (Rust crate)  ← regression/GLM validation
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    └── anofox-statistics (Rust crate)  ← statistical tests validation
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>            └── R scripts with set.seed(42)
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>            └── CSV reference data generated by R
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>            └── Rust tests assert against R values
+</code></pre></div>
+<p>The R validation lives in two upstream Rust crates:</p>
+<ul>
+<li><strong>anofox-regression</strong> — OLS, WLS, Ridge, Elastic Net, Quantile, GLMs (Poisson, Binomial, Gamma, Inverse Gaussian, Negative Binomial, Tweedie)</li>
+<li><strong>anofox-statistics</strong> — t-tests, ANOVA, Mann-Whitney, Wilcoxon, Kruskal-Wallis, Brunner-Munzel, Pearson/Spearman/Kendall, chi-square, Fisher, Shapiro-Wilk, and more</li>
+</ul>
+<p>Reference values are generated by R scripts (<code>Rscript R/generate_refs.R</code>, <code>generate_regression_validation.R</code>, <code>generate_glm_validation.R</code>) and stored as CSV files or Rust constants. Rust tests then assert that computed values match R within strict tolerances.</p>
+<hr />
+<h2 id="statistical-tests">Statistical Tests<a class="headerlink" href="#statistical-tests" title="Permanent link">&para;</a></h2>
+<h3 id="parametric-tests">Parametric Tests<a class="headerlink" href="#parametric-tests" title="Permanent link">&para;</a></h3>
+<h4 id="t-tests">T-Tests<a class="headerlink" href="#t-tests" title="Permanent link">&para;</a></h4>
+<p>Validated against R's <code>t.test()</code> at tolerance <strong>1e-10</strong>.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">R</label><label for="__tabbed_1_2">polars-statistics</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># Welch t-test (default)</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nf">t.test</span><span class="p">(</span><span class="n">g1</span><span class="p">,</span><span class="w"> </span><span class="n">g2</span><span class="p">,</span><span class="w"> </span><span class="n">var.equal</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">FALSE</span><span class="p">)</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># Student t-test</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="nf">t.test</span><span class="p">(</span><span class="n">g1</span><span class="p">,</span><span class="w"> </span><span class="n">g2</span><span class="p">,</span><span class="w"> </span><span class="n">var.equal</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">TRUE</span><span class="p">)</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="c1"># Paired t-test</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="nf">t.test</span><span class="p">(</span><span class="n">g1</span><span class="p">,</span><span class="w"> </span><span class="n">g2</span><span class="p">,</span><span class="w"> </span><span class="n">paired</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">TRUE</span><span class="p">)</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="c1"># One-sided</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="nf">t.test</span><span class="p">(</span><span class="n">g1</span><span class="p">,</span><span class="w"> </span><span class="n">g2</span><span class="p">,</span><span class="w"> </span><span class="n">alternative</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;less&quot;</span><span class="p">)</span>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="nf">t.test</span><span class="p">(</span><span class="n">g1</span><span class="p">,</span><span class="w"> </span><span class="n">g2</span><span class="p">,</span><span class="w"> </span><span class="n">alternative</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;greater&quot;</span><span class="p">)</span>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="c1"># With location shift</span>
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="nf">t.test</span><span class="p">(</span><span class="n">g1</span><span class="p">,</span><span class="w"> </span><span class="n">g2</span><span class="p">,</span><span class="w"> </span><span class="n">mu</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0.5</span><span class="p">)</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">polars</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pl</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">polars_statistics</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">ps</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="n">df</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span><span class="s2">&quot;g1&quot;</span><span class="p">:</span> <span class="p">[</span><span class="o">...</span><span class="p">],</span> <span class="s2">&quot;g2&quot;</span><span class="p">:</span> <span class="p">[</span><span class="o">...</span><span class="p">]})</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="c1"># Welch t-test (default)</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">ttest_ind</span><span class="p">(</span><span class="s2">&quot;g1&quot;</span><span class="p">,</span> <span class="s2">&quot;g2&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;t&quot;</span><span class="p">))</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="c1"># Paired t-test</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">ttest_paired</span><span class="p">(</span><span class="s2">&quot;g1&quot;</span><span class="p">,</span> <span class="s2">&quot;g2&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;t&quot;</span><span class="p">))</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="c1"># One-sided</span>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">ttest_ind</span><span class="p">(</span><span class="s2">&quot;g1&quot;</span><span class="p">,</span> <span class="s2">&quot;g2&quot;</span><span class="p">,</span> <span class="n">alternative</span><span class="o">=</span><span class="s2">&quot;less&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;t&quot;</span><span class="p">))</span>
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="c1"># With location shift</span>
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">ttest_ind</span><span class="p">(</span><span class="s2">&quot;g1&quot;</span><span class="p">,</span> <span class="s2">&quot;g2&quot;</span><span class="p">,</span> <span class="n">mu</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;t&quot;</span><span class="p">))</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<p><strong>What is validated:</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Output field</th>
+<th style="text-align: left;">R field</th>
+<th style="text-align: right;">Tolerance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>statistic</code></td>
+<td style="text-align: left;">t statistic</td>
+<td style="text-align: right;">1e-10</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>df</code></td>
+<td style="text-align: left;">degrees of freedom</td>
+<td style="text-align: right;">1e-10</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>p_value</code></td>
+<td style="text-align: left;">p-value (two-sided, less, greater)</td>
+<td style="text-align: right;">1e-10</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>mean_x</code>, <code>mean_y</code></td>
+<td style="text-align: left;">sample means</td>
+<td style="text-align: right;">1e-10</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ci_lower</code>, <code>ci_upper</code></td>
+<td style="text-align: left;">confidence intervals (90%, 95%, 99%)</td>
+<td style="text-align: right;">1e-6</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h4 id="yuens-trimmed-means-test">Yuen's Trimmed Means Test<a class="headerlink" href="#yuens-trimmed-means-test" title="Permanent link">&para;</a></h4>
+<p>Validated against R's <code>WRS2::yuend()</code> at tolerance <strong>1e-10</strong>.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">R</label><label for="__tabbed_2_2">polars-statistics</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nf">library</span><span class="p">(</span><span class="n">WRS2</span><span class="p">)</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="nf">yuend</span><span class="p">(</span><span class="n">g1</span><span class="p">,</span><span class="w"> </span><span class="n">g2</span><span class="p">,</span><span class="w"> </span><span class="n">tr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0.2</span><span class="p">)</span><span class="w">  </span><span class="c1"># 20% trim</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="nf">yuend</span><span class="p">(</span><span class="n">g1</span><span class="p">,</span><span class="w"> </span><span class="n">g2</span><span class="p">,</span><span class="w"> </span><span class="n">tr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0.1</span><span class="p">)</span><span class="w">  </span><span class="c1"># 10% trim</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">yuen_test</span><span class="p">(</span><span class="s2">&quot;g1&quot;</span><span class="p">,</span> <span class="s2">&quot;g2&quot;</span><span class="p">,</span> <span class="n">trim</span><span class="o">=</span><span class="mf">0.2</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;yuen&quot;</span><span class="p">))</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">yuen_test</span><span class="p">(</span><span class="s2">&quot;g1&quot;</span><span class="p">,</span> <span class="s2">&quot;g2&quot;</span><span class="p">,</span> <span class="n">trim</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;yuen&quot;</span><span class="p">))</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Output field</th>
+<th style="text-align: right;">Tolerance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>statistic</code></td>
+<td style="text-align: right;">1e-10</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>df</code></td>
+<td style="text-align: right;">1e-10</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>p_value</code> (two-sided, less, greater)</td>
+<td style="text-align: right;">1e-10</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>estimate</code> (trimmed mean difference)</td>
+<td style="text-align: right;">1e-10</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ci_lower</code>, <code>ci_upper</code> (95% CI)</td>
+<td style="text-align: right;">1e-6</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h4 id="brown-forsythe-test">Brown-Forsythe Test<a class="headerlink" href="#brown-forsythe-test" title="Permanent link">&para;</a></h4>
+<p>Validated against R's <code>car::leveneTest(center="median")</code> at tolerance <strong>1e-10</strong>.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="3:2"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio" /><input id="__tabbed_3_2" name="__tabbed_3" type="radio" /><div class="tabbed-labels"><label for="__tabbed_3_1">R</label><label for="__tabbed_3_2">polars-statistics</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nf">library</span><span class="p">(</span><span class="n">car</span><span class="p">)</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="nf">leveneTest</span><span class="p">(</span><span class="n">y</span><span class="w"> </span><span class="o">~</span><span class="w"> </span><span class="n">group</span><span class="p">,</span><span class="w"> </span><span class="n">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">df</span><span class="p">,</span><span class="w"> </span><span class="n">center</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;median&quot;</span><span class="p">)</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">brown_forsythe</span><span class="p">(</span><span class="s2">&quot;g1&quot;</span><span class="p">,</span> <span class="s2">&quot;g2&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;bf&quot;</span><span class="p">))</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">brown_forsythe</span><span class="p">(</span><span class="s2">&quot;g1&quot;</span><span class="p">,</span> <span class="s2">&quot;g2&quot;</span><span class="p">,</span> <span class="s2">&quot;g3&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;bf&quot;</span><span class="p">))</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Output field</th>
+<th style="text-align: right;">Tolerance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>statistic</code> (F)</td>
+<td style="text-align: right;">1e-10</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>df1</code>, <code>df2</code></td>
+<td style="text-align: right;">1e-10</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>p_value</code></td>
+<td style="text-align: right;">1e-10</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h4 id="anova">ANOVA<a class="headerlink" href="#anova" title="Permanent link">&para;</a></h4>
+<p>Validated against R's <code>aov()</code>, <code>oneway.test()</code>, and <code>mauchly.test()</code>.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="4:2"><input checked="checked" id="__tabbed_4_1" name="__tabbed_4" type="radio" /><input id="__tabbed_4_2" name="__tabbed_4" type="radio" /><div class="tabbed-labels"><label for="__tabbed_4_1">R</label><label for="__tabbed_4_2">polars-statistics</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1"># One-way (Fisher, assumes equal variances)</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="nf">oneway.test</span><span class="p">(</span><span class="n">y</span><span class="w"> </span><span class="o">~</span><span class="w"> </span><span class="n">group</span><span class="p">,</span><span class="w"> </span><span class="n">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">df</span><span class="p">,</span><span class="w"> </span><span class="n">var.equal</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">TRUE</span><span class="p">)</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="c1"># One-way (Welch, no equal-variance assumption)</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="nf">oneway.test</span><span class="p">(</span><span class="n">y</span><span class="w"> </span><span class="o">~</span><span class="w"> </span><span class="n">group</span><span class="p">,</span><span class="w"> </span><span class="n">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">df</span><span class="p">,</span><span class="w"> </span><span class="n">var.equal</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">FALSE</span><span class="p">)</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="c1"># Two-way with interaction</span>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="nf">aov</span><span class="p">(</span><span class="n">y</span><span class="w"> </span><span class="o">~</span><span class="w"> </span><span class="n">A</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">B</span><span class="p">,</span><span class="w"> </span><span class="n">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">df</span><span class="p">)</span>
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="c1"># Repeated measures</span>
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="nf">aov</span><span class="p">(</span><span class="n">value</span><span class="w"> </span><span class="o">~</span><span class="w"> </span><span class="n">condition</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nf">Error</span><span class="p">(</span><span class="n">subject</span><span class="o">/</span><span class="n">condition</span><span class="p">),</span><span class="w"> </span><span class="n">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">df</span><span class="p">)</span>
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a><span class="nf">mauchly.test</span><span class="p">(</span><span class="n">fit</span><span class="p">)</span><span class="w">  </span><span class="c1"># sphericity</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1"># One-way ANOVA</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">one_way_anova</span><span class="p">(</span><span class="s2">&quot;g1&quot;</span><span class="p">,</span> <span class="s2">&quot;g2&quot;</span><span class="p">,</span> <span class="s2">&quot;g3&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;anova&quot;</span><span class="p">))</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="c1"># Two-way ANOVA</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">two_way_anova</span><span class="p">(</span><span class="s2">&quot;value&quot;</span><span class="p">,</span> <span class="s2">&quot;factor_a&quot;</span><span class="p">,</span> <span class="s2">&quot;factor_b&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;anova&quot;</span><span class="p">))</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="c1"># Repeated measures ANOVA</span>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">repeated_measures_anova</span><span class="p">(</span><span class="s2">&quot;value&quot;</span><span class="p">,</span> <span class="s2">&quot;condition&quot;</span><span class="p">,</span> <span class="s2">&quot;subject&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;rm&quot;</span><span class="p">))</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<p><strong>One-way ANOVA (Fisher) validated fields:</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Output field</th>
+<th style="text-align: left;">R field</th>
+<th style="text-align: right;">Tolerance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>statistic</code></td>
+<td style="text-align: left;">F</td>
+<td style="text-align: right;">1e-10</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>df_between</code>, <code>df_within</code></td>
+<td style="text-align: left;">numerator/denominator df</td>
+<td style="text-align: right;">1e-10</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>p_value</code></td>
+<td style="text-align: left;">p-value</td>
+<td style="text-align: right;">1e-10</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ss_between</code>, <code>ss_within</code></td>
+<td style="text-align: left;">sum of squares</td>
+<td style="text-align: right;">1e-10</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ms_between</code>, <code>ms_within</code></td>
+<td style="text-align: left;">mean squares</td>
+<td style="text-align: right;">1e-10</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>grand_mean</code></td>
+<td style="text-align: left;">overall mean</td>
+<td style="text-align: right;">1e-10</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Algebraic identity verified:</strong> With 2 groups, F = t² (ANOVA F-statistic equals squared t-statistic).</p>
+<p><strong>Two-way ANOVA</strong> validates SS, df, MS, F, and p-value for Factor A, Factor B, and Interaction (Type I for balanced, Type III for unbalanced designs).</p>
+<p><strong>Repeated measures ANOVA</strong> additionally validates Mauchly's W (sphericity), Greenhouse-Geisser epsilon, and Huynh-Feldt epsilon.</p>
+<hr />
+<h3 id="non-parametric-tests">Non-Parametric Tests<a class="headerlink" href="#non-parametric-tests" title="Permanent link">&para;</a></h3>
+<h4 id="mann-whitney-u">Mann-Whitney U<a class="headerlink" href="#mann-whitney-u" title="Permanent link">&para;</a></h4>
+<p>Validated against R's <code>wilcox.test()</code> at tolerance <strong>1e-10</strong> (statistic) and <strong>1e-6</strong> (p-value).</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="5:2"><input checked="checked" id="__tabbed_5_1" name="__tabbed_5" type="radio" /><input id="__tabbed_5_2" name="__tabbed_5" type="radio" /><div class="tabbed-labels"><label for="__tabbed_5_1">R</label><label for="__tabbed_5_2">polars-statistics</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1"># Asymptotic</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="nf">wilcox.test</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="n">y</span><span class="p">,</span><span class="w"> </span><span class="n">alternative</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;two.sided&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">correct</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">FALSE</span><span class="p">)</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="nf">wilcox.test</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="n">y</span><span class="p">,</span><span class="w"> </span><span class="n">alternative</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;two.sided&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">correct</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">TRUE</span><span class="p">)</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="c1"># Exact (small samples)</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="nf">wilcox.test</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="n">y</span><span class="p">,</span><span class="w"> </span><span class="n">exact</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">TRUE</span><span class="p">,</span><span class="w"> </span><span class="n">conf.int</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">TRUE</span><span class="p">)</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">mann_whitney_u</span><span class="p">(</span><span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;mwu&quot;</span><span class="p">))</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">mann_whitney_u</span><span class="p">(</span><span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">,</span> <span class="n">alternative</span><span class="o">=</span><span class="s2">&quot;less&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;mwu&quot;</span><span class="p">))</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Output field</th>
+<th style="text-align: right;">Tolerance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>statistic</code> (W)</td>
+<td style="text-align: right;">1e-10</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>p_value</code> (two-sided, less, greater)</td>
+<td style="text-align: right;">1e-6</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>p_value</code> with continuity correction</td>
+<td style="text-align: right;">1e-6</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>estimate</code> (Hodges-Lehmann, exact mode)</td>
+<td style="text-align: right;">1e-10</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ci_lower</code>, <code>ci_upper</code> (exact, 90%/95%)</td>
+<td style="text-align: right;">1e-10</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h4 id="wilcoxon-signed-rank">Wilcoxon Signed-Rank<a class="headerlink" href="#wilcoxon-signed-rank" title="Permanent link">&para;</a></h4>
+<p>Validated against R's <code>wilcox.test(paired=TRUE)</code> at tolerance <strong>1e-10</strong> / <strong>1e-6</strong>.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="6:2"><input checked="checked" id="__tabbed_6_1" name="__tabbed_6" type="radio" /><input id="__tabbed_6_2" name="__tabbed_6" type="radio" /><div class="tabbed-labels"><label for="__tabbed_6_1">R</label><label for="__tabbed_6_2">polars-statistics</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="nf">wilcox.test</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="n">y</span><span class="p">,</span><span class="w"> </span><span class="n">paired</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">TRUE</span><span class="p">,</span><span class="w"> </span><span class="n">alternative</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;two.sided&quot;</span><span class="p">)</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="nf">wilcox.test</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="n">y</span><span class="p">,</span><span class="w"> </span><span class="n">paired</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">TRUE</span><span class="p">,</span><span class="w"> </span><span class="n">exact</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">TRUE</span><span class="p">,</span><span class="w"> </span><span class="n">conf.int</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">TRUE</span><span class="p">)</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">wilcoxon_signed_rank</span><span class="p">(</span><span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;wsr&quot;</span><span class="p">))</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<hr />
+<h4 id="kruskal-wallis">Kruskal-Wallis<a class="headerlink" href="#kruskal-wallis" title="Permanent link">&para;</a></h4>
+<p>Validated against R's <code>kruskal.test()</code> at tolerance <strong>1e-10</strong> (statistic) / <strong>1e-6</strong> (p-value).</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="7:2"><input checked="checked" id="__tabbed_7_1" name="__tabbed_7" type="radio" /><input id="__tabbed_7_2" name="__tabbed_7" type="radio" /><div class="tabbed-labels"><label for="__tabbed_7_1">R</label><label for="__tabbed_7_2">polars-statistics</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="nf">kruskal.test</span><span class="p">(</span><span class="nf">list</span><span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="n">b</span><span class="p">,</span><span class="w"> </span><span class="n">c</span><span class="p">))</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">kruskal_wallis</span><span class="p">(</span><span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="s2">&quot;b&quot;</span><span class="p">,</span> <span class="s2">&quot;c&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;kw&quot;</span><span class="p">))</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<hr />
+<h4 id="brunner-munzel">Brunner-Munzel<a class="headerlink" href="#brunner-munzel" title="Permanent link">&para;</a></h4>
+<p>Validated against R's <code>brunnermunzel::brunnermunzel.test()</code> at tolerance <strong>1e-6</strong>.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="8:2"><input checked="checked" id="__tabbed_8_1" name="__tabbed_8" type="radio" /><input id="__tabbed_8_2" name="__tabbed_8" type="radio" /><div class="tabbed-labels"><label for="__tabbed_8_1">R</label><label for="__tabbed_8_2">polars-statistics</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="nf">library</span><span class="p">(</span><span class="n">brunnermunzel</span><span class="p">)</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="nf">brunnermunzel.test</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="n">y</span><span class="p">,</span><span class="w"> </span><span class="n">alpha</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0.05</span><span class="p">)</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">brunner_munzel</span><span class="p">(</span><span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;bm&quot;</span><span class="p">))</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Output field</th>
+<th style="text-align: right;">Tolerance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>statistic</code></td>
+<td style="text-align: right;">1e-6</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>df</code></td>
+<td style="text-align: right;">1e-6</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>p_value</code> (two-sided, less, greater)</td>
+<td style="text-align: right;">1e-6</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>estimate</code> (P(X &lt; Y) win probability)</td>
+<td style="text-align: right;">1e-6</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ci_lower</code>, <code>ci_upper</code> (90%, 95%, 99%)</td>
+<td style="text-align: right;">1e-6</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="correlation">Correlation<a class="headerlink" href="#correlation" title="Permanent link">&para;</a></h3>
+<h4 id="pearson">Pearson<a class="headerlink" href="#pearson" title="Permanent link">&para;</a></h4>
+<p>Validated against R's <code>cor.test(method="pearson")</code> at tolerance <strong>1e-10</strong>.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="9:2"><input checked="checked" id="__tabbed_9_1" name="__tabbed_9" type="radio" /><input id="__tabbed_9_2" name="__tabbed_9" type="radio" /><div class="tabbed-labels"><label for="__tabbed_9_1">R</label><label for="__tabbed_9_2">polars-statistics</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="nf">cor.test</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="n">y</span><span class="p">,</span><span class="w"> </span><span class="n">method</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;pearson&quot;</span><span class="p">)</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">pearson</span><span class="p">(</span><span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;r&quot;</span><span class="p">))</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Output field</th>
+<th style="text-align: right;">Tolerance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>estimate</code> (r)</td>
+<td style="text-align: right;">1e-10</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>statistic</code> (t)</td>
+<td style="text-align: right;">1e-10</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>df</code></td>
+<td style="text-align: right;">1e-10</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>p_value</code></td>
+<td style="text-align: right;">1e-6</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>ci_lower</code>, <code>ci_upper</code> (90%, 95%, 99%)</td>
+<td style="text-align: right;">1e-4</td>
+</tr>
+</tbody>
+</table>
+<p>Special cases validated: perfect positive (r=1), perfect negative (r=-1), zero correlation.</p>
+<hr />
+<h4 id="spearman">Spearman<a class="headerlink" href="#spearman" title="Permanent link">&para;</a></h4>
+<p>Validated against R's <code>cor.test(method="spearman")</code> at tolerance <strong>1e-10</strong> (rho).</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="10:2"><input checked="checked" id="__tabbed_10_1" name="__tabbed_10" type="radio" /><input id="__tabbed_10_2" name="__tabbed_10" type="radio" /><div class="tabbed-labels"><label for="__tabbed_10_1">R</label><label for="__tabbed_10_2">polars-statistics</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="nf">cor.test</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="n">y</span><span class="p">,</span><span class="w"> </span><span class="n">method</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;spearman&quot;</span><span class="p">)</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">spearman</span><span class="p">(</span><span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;rho&quot;</span><span class="p">))</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<p>Special cases validated: perfect, negative, zero correlation, tied ranks.</p>
+<hr />
+<h4 id="kendall">Kendall<a class="headerlink" href="#kendall" title="Permanent link">&para;</a></h4>
+<p>Validated against R's <code>cor.test(method="kendall")</code> at tolerance <strong>1e-4</strong> (tau).</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="11:2"><input checked="checked" id="__tabbed_11_1" name="__tabbed_11" type="radio" /><input id="__tabbed_11_2" name="__tabbed_11" type="radio" /><div class="tabbed-labels"><label for="__tabbed_11_1">R</label><label for="__tabbed_11_2">polars-statistics</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="nf">cor.test</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="n">y</span><span class="p">,</span><span class="w"> </span><span class="n">method</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;kendall&quot;</span><span class="p">)</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">kendall</span><span class="p">(</span><span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;tau&quot;</span><span class="p">))</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<hr />
+<h3 id="categorical-tests">Categorical Tests<a class="headerlink" href="#categorical-tests" title="Permanent link">&para;</a></h3>
+<h4 id="chi-square-test">Chi-Square Test<a class="headerlink" href="#chi-square-test" title="Permanent link">&para;</a></h4>
+<p>Validated against R's <code>chisq.test()</code> at tolerance <strong>1e-10</strong>.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="12:2"><input checked="checked" id="__tabbed_12_1" name="__tabbed_12" type="radio" /><input id="__tabbed_12_2" name="__tabbed_12" type="radio" /><div class="tabbed-labels"><label for="__tabbed_12_1">R</label><label for="__tabbed_12_2">polars-statistics</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="c1"># Test of independence (2x2)</span>
+<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a><span class="nf">chisq.test</span><span class="p">(</span><span class="nf">matrix</span><span class="p">(</span><span class="nf">c</span><span class="p">(</span><span class="m">10</span><span class="p">,</span><span class="w"> </span><span class="m">20</span><span class="p">,</span><span class="w"> </span><span class="m">30</span><span class="p">,</span><span class="w"> </span><span class="m">40</span><span class="p">),</span><span class="w"> </span><span class="n">nrow</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">2</span><span class="p">),</span><span class="w"> </span><span class="n">correct</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">FALSE</span><span class="p">)</span>
+<a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a>
+<a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a><span class="c1"># With Yates&#39; correction</span>
+<a id="__codelineno-23-5" name="__codelineno-23-5" href="#__codelineno-23-5"></a><span class="nf">chisq.test</span><span class="p">(</span><span class="nf">matrix</span><span class="p">(</span><span class="nf">c</span><span class="p">(</span><span class="m">10</span><span class="p">,</span><span class="w"> </span><span class="m">20</span><span class="p">,</span><span class="w"> </span><span class="m">30</span><span class="p">,</span><span class="w"> </span><span class="m">40</span><span class="p">),</span><span class="w"> </span><span class="n">nrow</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">2</span><span class="p">),</span><span class="w"> </span><span class="n">correct</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">TRUE</span><span class="p">)</span>
+<a id="__codelineno-23-6" name="__codelineno-23-6" href="#__codelineno-23-6"></a>
+<a id="__codelineno-23-7" name="__codelineno-23-7" href="#__codelineno-23-7"></a><span class="c1"># Goodness of fit (uniform)</span>
+<a id="__codelineno-23-8" name="__codelineno-23-8" href="#__codelineno-23-8"></a><span class="nf">chisq.test</span><span class="p">(</span><span class="nf">c</span><span class="p">(</span><span class="m">20</span><span class="p">,</span><span class="w"> </span><span class="m">25</span><span class="p">,</span><span class="w"> </span><span class="m">22</span><span class="p">,</span><span class="w"> </span><span class="m">18</span><span class="p">,</span><span class="w"> </span><span class="m">15</span><span class="p">))</span>
+<a id="__codelineno-23-9" name="__codelineno-23-9" href="#__codelineno-23-9"></a>
+<a id="__codelineno-23-10" name="__codelineno-23-10" href="#__codelineno-23-10"></a><span class="c1"># Goodness of fit (custom proportions)</span>
+<a id="__codelineno-23-11" name="__codelineno-23-11" href="#__codelineno-23-11"></a><span class="nf">chisq.test</span><span class="p">(</span><span class="nf">c</span><span class="p">(</span><span class="m">50</span><span class="p">,</span><span class="w"> </span><span class="m">30</span><span class="p">,</span><span class="w"> </span><span class="m">20</span><span class="p">),</span><span class="w"> </span><span class="n">p</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">c</span><span class="p">(</span><span class="m">0.5</span><span class="p">,</span><span class="w"> </span><span class="m">0.3</span><span class="p">,</span><span class="w"> </span><span class="m">0.2</span><span class="p">))</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a><span class="c1"># Test of independence</span>
+<a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">chisq_test</span><span class="p">(</span><span class="s2">&quot;counts&quot;</span><span class="p">,</span> <span class="n">n_rows</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">n_cols</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;chi&quot;</span><span class="p">))</span>
+<a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a>
+<a id="__codelineno-24-4" name="__codelineno-24-4" href="#__codelineno-24-4"></a><span class="c1"># Goodness of fit</span>
+<a id="__codelineno-24-5" name="__codelineno-24-5" href="#__codelineno-24-5"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">chisq_goodness_of_fit</span><span class="p">(</span><span class="s2">&quot;observed&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;gof&quot;</span><span class="p">))</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<hr />
+<h4 id="fishers-exact-test">Fisher's Exact Test<a class="headerlink" href="#fishers-exact-test" title="Permanent link">&para;</a></h4>
+<p>Validated against R's <code>fisher.test()</code> at tolerance <strong>0.01</strong> (p-value).</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="13:2"><input checked="checked" id="__tabbed_13_1" name="__tabbed_13" type="radio" /><input id="__tabbed_13_2" name="__tabbed_13" type="radio" /><div class="tabbed-labels"><label for="__tabbed_13_1">R</label><label for="__tabbed_13_2">polars-statistics</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a><span class="nf">fisher.test</span><span class="p">(</span><span class="nf">matrix</span><span class="p">(</span><span class="nf">c</span><span class="p">(</span><span class="m">3</span><span class="p">,</span><span class="w"> </span><span class="m">1</span><span class="p">,</span><span class="w"> </span><span class="m">1</span><span class="p">,</span><span class="w"> </span><span class="m">3</span><span class="p">),</span><span class="w"> </span><span class="n">nrow</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">2</span><span class="p">))</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a><span class="n">pl</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">fisher_exact</span><span class="p">(</span><span class="n">a</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">b</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">d</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;f&quot;</span><span class="p">))</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<hr />
+<h4 id="effect-size-measures">Effect Size Measures<a class="headerlink" href="#effect-size-measures" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Measure</th>
+<th style="text-align: left;">R Package</th>
+<th style="text-align: right;">Tolerance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Cramer's V</td>
+<td style="text-align: left;"><code>rcompanion::cramerV()</code></td>
+<td style="text-align: right;">1e-4</td>
+</tr>
+<tr>
+<td style="text-align: left;">Phi coefficient</td>
+<td style="text-align: left;"><code>psych::phi()</code></td>
+<td style="text-align: right;">1e-4</td>
+</tr>
+<tr>
+<td style="text-align: left;">Contingency coefficient</td>
+<td style="text-align: left;"><code>vcd::assocstats()</code></td>
+<td style="text-align: right;">1e-4</td>
+</tr>
+<tr>
+<td style="text-align: left;">Cohen's kappa</td>
+<td style="text-align: left;"><code>irr::kappa2()</code></td>
+<td style="text-align: right;">0.01</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Cohen's kappa example</strong> (manually verified):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a>Confusion matrix:  [[20, 5, 0], [10, 30, 5], [0, 5, 25]]
+<a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a>Po = (20+30+25)/100 = 0.75
+<a id="__codelineno-27-3" name="__codelineno-27-3" href="#__codelineno-27-3"></a>Pe = (35×30 + 45×40 + 20×30) / 10000 = 0.345
+<a id="__codelineno-27-4" name="__codelineno-27-4" href="#__codelineno-27-4"></a>kappa = (0.75 - 0.345) / (1 - 0.345) = 0.618
+</code></pre></div>
+<hr />
+<h3 id="distributional-tests">Distributional Tests<a class="headerlink" href="#distributional-tests" title="Permanent link">&para;</a></h3>
+<h4 id="shapiro-wilk">Shapiro-Wilk<a class="headerlink" href="#shapiro-wilk" title="Permanent link">&para;</a></h4>
+<p>Validated against R's <code>shapiro.test()</code>.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="14:2"><input checked="checked" id="__tabbed_14_1" name="__tabbed_14" type="radio" /><input id="__tabbed_14_2" name="__tabbed_14" type="radio" /><div class="tabbed-labels"><label for="__tabbed_14_1">R</label><label for="__tabbed_14_2">polars-statistics</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a><span class="nf">shapiro.test</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">shapiro_wilk</span><span class="p">(</span><span class="s2">&quot;x&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;sw&quot;</span><span class="p">))</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Scenario</th>
+<th style="text-align: left;">W tolerance</th>
+<th style="text-align: left;">p-value tolerance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Normal data (small/medium/large n)</td>
+<td style="text-align: left;">1e-3</td>
+<td style="text-align: left;">0.05</td>
+</tr>
+<tr>
+<td style="text-align: left;">Non-normal (uniform, exponential)</td>
+<td style="text-align: left;">1e-3</td>
+<td style="text-align: left;">0.05</td>
+</tr>
+<tr>
+<td style="text-align: left;">Edge cases (n=3)</td>
+<td style="text-align: left;">1e-3</td>
+<td style="text-align: left;">0.05</td>
+</tr>
+<tr>
+<td style="text-align: left;">Edge cases (n=4, n=5)</td>
+<td style="text-align: left;">0.02</td>
+<td style="text-align: left;">directional only</td>
+</tr>
+<tr>
+<td style="text-align: left;">Constant data</td>
+<td style="text-align: left;">1e-10 (W=1.0)</td>
+<td style="text-align: left;">1e-10 (p=1.0)</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="admonition-title">Tolerance rationale</p>
+<p>Shapiro-Wilk has known implementation variations across software packages. The W statistic typically matches to 3-4 decimal places between R and other implementations. polars-statistics uses the same algorithm but may differ slightly in coefficient tables.</p>
+</div>
+<hr />
+<h4 id="dagostino-k-squared">D'Agostino K-Squared<a class="headerlink" href="#dagostino-k-squared" title="Permanent link">&para;</a></h4>
+<p>Validated against R's <code>moments::agostino.test()</code>.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Scenario</th>
+<th style="text-align: left;">z-score tolerance</th>
+<th style="text-align: left;">p-value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Normal data</td>
+<td style="text-align: left;">0.15</td>
+<td style="text-align: left;">&gt; 0.05 (not significant)</td>
+</tr>
+<tr>
+<td style="text-align: left;">Skewed data</td>
+<td style="text-align: left;">0.15</td>
+<td style="text-align: left;">&lt; 0.05 (significant)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="regression">Regression<a class="headerlink" href="#regression" title="Permanent link">&para;</a></h2>
+<h3 id="ols-and-wls">OLS and WLS<a class="headerlink" href="#ols-and-wls" title="Permanent link">&para;</a></h3>
+<h4 id="weighted-least-squares">Weighted Least Squares<a class="headerlink" href="#weighted-least-squares" title="Permanent link">&para;</a></h4>
+<p>Validated against R's <code>lm()</code> with weights at tolerance <strong>0.01</strong> (relative).</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="15:2"><input checked="checked" id="__tabbed_15_1" name="__tabbed_15" type="radio" /><input id="__tabbed_15_2" name="__tabbed_15" type="radio" /><div class="tabbed-labels"><label for="__tabbed_15_1">R</label><label for="__tabbed_15_2">polars-statistics</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-30-1" name="__codelineno-30-1" href="#__codelineno-30-1"></a><span class="nf">set.seed</span><span class="p">(</span><span class="m">42</span><span class="p">)</span>
+<a id="__codelineno-30-2" name="__codelineno-30-2" href="#__codelineno-30-2"></a><span class="n">x</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="m">1</span><span class="o">:</span><span class="m">20</span>
+<a id="__codelineno-30-3" name="__codelineno-30-3" href="#__codelineno-30-3"></a><span class="n">y</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="m">3</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="m">1.8</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nf">rnorm</span><span class="p">(</span><span class="m">20</span><span class="p">,</span><span class="w"> </span><span class="n">sd</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">x</span><span class="p">)</span><span class="w">  </span><span class="c1"># heteroskedastic</span>
+<a id="__codelineno-30-4" name="__codelineno-30-4" href="#__codelineno-30-4"></a><span class="n">w</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">x</span><span class="o">^</span><span class="m">2</span><span class="w">                           </span><span class="c1"># inverse-variance weights</span>
+<a id="__codelineno-30-5" name="__codelineno-30-5" href="#__codelineno-30-5"></a><span class="n">fit</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">lm</span><span class="p">(</span><span class="n">y</span><span class="w"> </span><span class="o">~</span><span class="w"> </span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="n">weights</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">w</span><span class="p">)</span>
+<a id="__codelineno-30-6" name="__codelineno-30-6" href="#__codelineno-30-6"></a><span class="nf">summary</span><span class="p">(</span><span class="n">fit</span><span class="p">)</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-31-1" name="__codelineno-31-1" href="#__codelineno-31-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span>
+<a id="__codelineno-31-2" name="__codelineno-31-2" href="#__codelineno-31-2"></a>    <span class="n">ps</span><span class="o">.</span><span class="n">wls</span><span class="p">(</span><span class="s2">&quot;y&quot;</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="s2">&quot;w&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;model&quot;</span><span class="p">)</span>
+<a id="__codelineno-31-3" name="__codelineno-31-3" href="#__codelineno-31-3"></a><span class="p">)</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Output field</th>
+<th style="text-align: left;">R value</th>
+<th style="text-align: right;">Tolerance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>intercept</code></td>
+<td style="text-align: left;">3.1055</td>
+<td style="text-align: right;">0.01</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>coefficients[0]</code></td>
+<td style="text-align: left;">1.7870</td>
+<td style="text-align: right;">0.01</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>se_intercept</code></td>
+<td style="text-align: left;">0.6773</td>
+<td style="text-align: right;">0.01</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>se_coefficients[0]</code></td>
+<td style="text-align: left;">0.1913</td>
+<td style="text-align: right;">0.01</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>r_squared</code></td>
+<td style="text-align: left;">0.8289</td>
+<td style="text-align: right;">0.01</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="hc-standard-errors">HC Standard Errors<a class="headerlink" href="#hc-standard-errors" title="Permanent link">&para;</a></h3>
+<p>Validated against R's <code>sandwich::vcovHC()</code> and <code>lmtest::coeftest()</code> at tolerance <strong>0.01</strong> (relative).</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="16:2"><input checked="checked" id="__tabbed_16_1" name="__tabbed_16" type="radio" /><input id="__tabbed_16_2" name="__tabbed_16" type="radio" /><div class="tabbed-labels"><label for="__tabbed_16_1">R</label><label for="__tabbed_16_2">polars-statistics</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-32-1" name="__codelineno-32-1" href="#__codelineno-32-1"></a><span class="nf">library</span><span class="p">(</span><span class="n">sandwich</span><span class="p">)</span>
+<a id="__codelineno-32-2" name="__codelineno-32-2" href="#__codelineno-32-2"></a><span class="nf">library</span><span class="p">(</span><span class="n">lmtest</span><span class="p">)</span>
+<a id="__codelineno-32-3" name="__codelineno-32-3" href="#__codelineno-32-3"></a>
+<a id="__codelineno-32-4" name="__codelineno-32-4" href="#__codelineno-32-4"></a><span class="n">x</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">c</span><span class="p">(</span><span class="m">1</span><span class="p">,</span><span class="w"> </span><span class="m">2</span><span class="p">,</span><span class="w"> </span><span class="m">3</span><span class="p">,</span><span class="w"> </span><span class="m">4</span><span class="p">,</span><span class="w"> </span><span class="m">5</span><span class="p">)</span>
+<a id="__codelineno-32-5" name="__codelineno-32-5" href="#__codelineno-32-5"></a><span class="n">y</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">c</span><span class="p">(</span><span class="m">2.1</span><span class="p">,</span><span class="w"> </span><span class="m">4.3</span><span class="p">,</span><span class="w"> </span><span class="m">5.8</span><span class="p">,</span><span class="w"> </span><span class="m">8.2</span><span class="p">,</span><span class="w"> </span><span class="m">9.9</span><span class="p">)</span>
+<a id="__codelineno-32-6" name="__codelineno-32-6" href="#__codelineno-32-6"></a><span class="n">m</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">lm</span><span class="p">(</span><span class="n">y</span><span class="w"> </span><span class="o">~</span><span class="w"> </span><span class="n">x</span><span class="p">)</span>
+<a id="__codelineno-32-7" name="__codelineno-32-7" href="#__codelineno-32-7"></a>
+<a id="__codelineno-32-8" name="__codelineno-32-8" href="#__codelineno-32-8"></a><span class="c1"># HC0 through HC3</span>
+<a id="__codelineno-32-9" name="__codelineno-32-9" href="#__codelineno-32-9"></a><span class="nf">sqrt</span><span class="p">(</span><span class="nf">diag</span><span class="p">(</span><span class="nf">vcovHC</span><span class="p">(</span><span class="n">m</span><span class="p">,</span><span class="w"> </span><span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;HC0&quot;</span><span class="p">)))</span><span class="w">  </span><span class="c1"># [0.12237, 0.03178]</span>
+<a id="__codelineno-32-10" name="__codelineno-32-10" href="#__codelineno-32-10"></a><span class="nf">sqrt</span><span class="p">(</span><span class="nf">diag</span><span class="p">(</span><span class="nf">vcovHC</span><span class="p">(</span><span class="n">m</span><span class="p">,</span><span class="w"> </span><span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;HC1&quot;</span><span class="p">)))</span><span class="w">  </span><span class="c1"># [0.15796, 0.04103]</span>
+<a id="__codelineno-32-11" name="__codelineno-32-11" href="#__codelineno-32-11"></a><span class="nf">sqrt</span><span class="p">(</span><span class="nf">diag</span><span class="p">(</span><span class="nf">vcovHC</span><span class="p">(</span><span class="n">m</span><span class="p">,</span><span class="w"> </span><span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;HC2&quot;</span><span class="p">)))</span><span class="w">  </span><span class="c1"># [0.15489, 0.04185]</span>
+<a id="__codelineno-32-12" name="__codelineno-32-12" href="#__codelineno-32-12"></a><span class="nf">sqrt</span><span class="p">(</span><span class="nf">diag</span><span class="p">(</span><span class="nf">vcovHC</span><span class="p">(</span><span class="n">m</span><span class="p">,</span><span class="w"> </span><span class="n">type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;HC3&quot;</span><span class="p">)))</span><span class="w">  </span><span class="c1"># [0.20343, 0.05722]</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-33-1" name="__codelineno-33-1" href="#__codelineno-33-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span>
+<a id="__codelineno-33-2" name="__codelineno-33-2" href="#__codelineno-33-2"></a>    <span class="n">ps</span><span class="o">.</span><span class="n">ols_summary</span><span class="p">(</span><span class="s2">&quot;y&quot;</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="n">hc_type</span><span class="o">=</span><span class="s2">&quot;hc0&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;coef&quot;</span><span class="p">),</span>
+<a id="__codelineno-33-3" name="__codelineno-33-3" href="#__codelineno-33-3"></a>    <span class="c1"># Also: hc_type=&quot;hc1&quot;, &quot;hc2&quot;, &quot;hc3&quot;</span>
+<a id="__codelineno-33-4" name="__codelineno-33-4" href="#__codelineno-33-4"></a><span class="p">)</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<p><strong>Exact R reference values (with-intercept model):</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">HC Type</th>
+<th style="text-align: left;">Intercept SE</th>
+<th style="text-align: left;">Slope SE</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">HC0</td>
+<td style="text-align: left;">0.12237</td>
+<td style="text-align: left;">0.03178</td>
+</tr>
+<tr>
+<td style="text-align: left;">HC1</td>
+<td style="text-align: left;">0.15796</td>
+<td style="text-align: left;">0.04103</td>
+</tr>
+<tr>
+<td style="text-align: left;">HC2</td>
+<td style="text-align: left;">0.15489</td>
+<td style="text-align: left;">0.04185</td>
+</tr>
+<tr>
+<td style="text-align: left;">HC3</td>
+<td style="text-align: left;">0.20343</td>
+<td style="text-align: left;">0.05722</td>
+</tr>
+</tbody>
+</table>
+<p><strong>No-intercept model (validated separately):</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">HC Type</th>
+<th style="text-align: left;">Slope SE</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">HC0</td>
+<td style="text-align: left;">0.02377</td>
+</tr>
+<tr>
+<td style="text-align: left;">HC1</td>
+<td style="text-align: left;">0.02658</td>
+</tr>
+<tr>
+<td style="text-align: left;">HC2</td>
+<td style="text-align: left;">0.02817</td>
+</tr>
+<tr>
+<td style="text-align: left;">HC3</td>
+<td style="text-align: left;">0.03408</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Properties verified:</strong></p>
+<ul>
+<li>HC3 &gt;= HC2 &gt;= HC0 ordering for standard errors</li>
+<li>t-statistic = coefficient / SE identity (tolerance 0.001)</li>
+<li>p-values in [0, 1]</li>
+<li>Confidence intervals bracket the coefficient</li>
+</ul>
+<hr />
+<h3 id="ridge-regression">Ridge Regression<a class="headerlink" href="#ridge-regression" title="Permanent link">&para;</a></h3>
+<p>Validated against R's <code>glmnet</code> with <code>alpha=0</code> at tolerance <strong>0.01</strong> (relative).</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="17:2"><input checked="checked" id="__tabbed_17_1" name="__tabbed_17" type="radio" /><input id="__tabbed_17_2" name="__tabbed_17" type="radio" /><div class="tabbed-labels"><label for="__tabbed_17_1">R</label><label for="__tabbed_17_2">polars-statistics</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-34-1" name="__codelineno-34-1" href="#__codelineno-34-1"></a><span class="nf">library</span><span class="p">(</span><span class="n">glmnet</span><span class="p">)</span>
+<a id="__codelineno-34-2" name="__codelineno-34-2" href="#__codelineno-34-2"></a><span class="nf">set.seed</span><span class="p">(</span><span class="m">42</span><span class="p">)</span>
+<a id="__codelineno-34-3" name="__codelineno-34-3" href="#__codelineno-34-3"></a>
+<a id="__codelineno-34-4" name="__codelineno-34-4" href="#__codelineno-34-4"></a><span class="n">n</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="m">50</span><span class="p">;</span><span class="w"> </span><span class="n">p</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="m">3</span>
+<a id="__codelineno-34-5" name="__codelineno-34-5" href="#__codelineno-34-5"></a><span class="n">X</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">matrix</span><span class="p">(</span><span class="nf">rnorm</span><span class="p">(</span><span class="n">n</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">p</span><span class="p">),</span><span class="w"> </span><span class="n">n</span><span class="p">,</span><span class="w"> </span><span class="n">p</span><span class="p">)</span>
+<a id="__codelineno-34-6" name="__codelineno-34-6" href="#__codelineno-34-6"></a><span class="n">beta</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">c</span><span class="p">(</span><span class="m">1.5</span><span class="p">,</span><span class="w"> </span><span class="m">-2.0</span><span class="p">,</span><span class="w"> </span><span class="m">0.5</span><span class="p">)</span>
+<a id="__codelineno-34-7" name="__codelineno-34-7" href="#__codelineno-34-7"></a><span class="n">y</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">X</span><span class="w"> </span><span class="o">%*%</span><span class="w"> </span><span class="n">beta</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nf">rnorm</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+<a id="__codelineno-34-8" name="__codelineno-34-8" href="#__codelineno-34-8"></a>
+<a id="__codelineno-34-9" name="__codelineno-34-9" href="#__codelineno-34-9"></a><span class="n">fit</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">glmnet</span><span class="p">(</span><span class="n">X</span><span class="p">,</span><span class="w"> </span><span class="n">y</span><span class="p">,</span><span class="w"> </span><span class="n">alpha</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0</span><span class="p">,</span><span class="w"> </span><span class="n">lambda</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0.5</span><span class="p">,</span>
+<a id="__codelineno-34-10" name="__codelineno-34-10" href="#__codelineno-34-10"></a><span class="w">              </span><span class="n">standardize</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">FALSE</span><span class="p">,</span><span class="w"> </span><span class="n">intercept</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">TRUE</span><span class="p">)</span>
+<a id="__codelineno-34-11" name="__codelineno-34-11" href="#__codelineno-34-11"></a><span class="nf">coef</span><span class="p">(</span><span class="n">fit</span><span class="p">)</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-35-1" name="__codelineno-35-1" href="#__codelineno-35-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span>
+<a id="__codelineno-35-2" name="__codelineno-35-2" href="#__codelineno-35-2"></a>    <span class="n">ps</span><span class="o">.</span><span class="n">ridge</span><span class="p">(</span><span class="s2">&quot;y&quot;</span><span class="p">,</span> <span class="s2">&quot;x0&quot;</span><span class="p">,</span> <span class="s2">&quot;x1&quot;</span><span class="p">,</span> <span class="s2">&quot;x2&quot;</span><span class="p">,</span> <span class="n">lambda_</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;model&quot;</span><span class="p">)</span>
+<a id="__codelineno-35-3" name="__codelineno-35-3" href="#__codelineno-35-3"></a><span class="p">)</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Output field</th>
+<th style="text-align: left;">R value</th>
+<th style="text-align: left;">True value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>intercept</code></td>
+<td style="text-align: left;">-0.0145</td>
+<td style="text-align: left;">0.0</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>coefficients[0]</code></td>
+<td style="text-align: left;">1.5357</td>
+<td style="text-align: left;">1.5</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>coefficients[1]</code></td>
+<td style="text-align: left;">-2.0012</td>
+<td style="text-align: left;">-2.0</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>coefficients[2]</code></td>
+<td style="text-align: left;">0.4734</td>
+<td style="text-align: left;">0.5</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="elastic-net">Elastic Net<a class="headerlink" href="#elastic-net" title="Permanent link">&para;</a></h3>
+<p>Validated against R's <code>glmnet</code> with <code>alpha=0.5</code> at tolerance <strong>0.2</strong> (relative).</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="18:2"><input checked="checked" id="__tabbed_18_1" name="__tabbed_18" type="radio" /><input id="__tabbed_18_2" name="__tabbed_18" type="radio" /><div class="tabbed-labels"><label for="__tabbed_18_1">R</label><label for="__tabbed_18_2">polars-statistics</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-36-1" name="__codelineno-36-1" href="#__codelineno-36-1"></a><span class="n">fit</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">glmnet</span><span class="p">(</span><span class="n">X</span><span class="p">,</span><span class="w"> </span><span class="n">y</span><span class="p">,</span><span class="w"> </span><span class="n">alpha</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0.5</span><span class="p">,</span><span class="w"> </span><span class="n">lambda</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0.3</span><span class="p">,</span>
+<a id="__codelineno-36-2" name="__codelineno-36-2" href="#__codelineno-36-2"></a><span class="w">              </span><span class="n">standardize</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">FALSE</span><span class="p">,</span><span class="w"> </span><span class="n">intercept</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">TRUE</span><span class="p">)</span>
+<a id="__codelineno-36-3" name="__codelineno-36-3" href="#__codelineno-36-3"></a><span class="nf">coef</span><span class="p">(</span><span class="n">fit</span><span class="p">)</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-37-1" name="__codelineno-37-1" href="#__codelineno-37-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span>
+<a id="__codelineno-37-2" name="__codelineno-37-2" href="#__codelineno-37-2"></a>    <span class="n">ps</span><span class="o">.</span><span class="n">elastic_net</span><span class="p">(</span><span class="s2">&quot;y&quot;</span><span class="p">,</span> <span class="s2">&quot;x0&quot;</span><span class="p">,</span> <span class="s2">&quot;x1&quot;</span><span class="p">,</span> <span class="s2">&quot;x2&quot;</span><span class="p">,</span>
+<a id="__codelineno-37-3" name="__codelineno-37-3" href="#__codelineno-37-3"></a>                   <span class="n">lambda_</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;model&quot;</span><span class="p">)</span>
+<a id="__codelineno-37-4" name="__codelineno-37-4" href="#__codelineno-37-4"></a><span class="p">)</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Output field</th>
+<th style="text-align: left;">R value</th>
+<th style="text-align: left;">True value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>intercept</code></td>
+<td style="text-align: left;">-0.0339</td>
+<td style="text-align: left;">0.0</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>coefficients[0]</code></td>
+<td style="text-align: left;">1.4658</td>
+<td style="text-align: left;">1.5</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>coefficients[1]</code></td>
+<td style="text-align: left;">-1.9413</td>
+<td style="text-align: left;">-2.0</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>coefficients[2]</code></td>
+<td style="text-align: left;">0.4016</td>
+<td style="text-align: left;">0.5</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="admonition-title">Elastic Net tolerance</p>
+<p>Elastic Net uses coordinate descent, and implementations may vary slightly in convergence criteria. A relative tolerance of 0.2 accommodates these differences.</p>
+</div>
+<hr />
+<h3 id="quantile-regression">Quantile Regression<a class="headerlink" href="#quantile-regression" title="Permanent link">&para;</a></h3>
+<p>Validated against R's <code>quantreg::rq()</code> (version 6.1).</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="19:2"><input checked="checked" id="__tabbed_19_1" name="__tabbed_19" type="radio" /><input id="__tabbed_19_2" name="__tabbed_19" type="radio" /><div class="tabbed-labels"><label for="__tabbed_19_1">R</label><label for="__tabbed_19_2">polars-statistics</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-38-1" name="__codelineno-38-1" href="#__codelineno-38-1"></a><span class="nf">library</span><span class="p">(</span><span class="n">quantreg</span><span class="p">)</span>
+<a id="__codelineno-38-2" name="__codelineno-38-2" href="#__codelineno-38-2"></a><span class="nf">set.seed</span><span class="p">(</span><span class="m">42</span><span class="p">)</span>
+<a id="__codelineno-38-3" name="__codelineno-38-3" href="#__codelineno-38-3"></a>
+<a id="__codelineno-38-4" name="__codelineno-38-4" href="#__codelineno-38-4"></a><span class="n">x</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">seq</span><span class="p">(</span><span class="m">1</span><span class="p">,</span><span class="w"> </span><span class="m">10</span><span class="p">,</span><span class="w"> </span><span class="n">length.out</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">50</span><span class="p">)</span>
+<a id="__codelineno-38-5" name="__codelineno-38-5" href="#__codelineno-38-5"></a><span class="n">y</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="m">3</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="m">1.2</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nf">rnorm</span><span class="p">(</span><span class="m">50</span><span class="p">,</span><span class="w"> </span><span class="n">sd</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="m">0.5</span><span class="p">)</span>
+<a id="__codelineno-38-6" name="__codelineno-38-6" href="#__codelineno-38-6"></a>
+<a id="__codelineno-38-7" name="__codelineno-38-7" href="#__codelineno-38-7"></a><span class="nf">rq</span><span class="p">(</span><span class="n">y</span><span class="w"> </span><span class="o">~</span><span class="w"> </span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="n">tau</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0.5</span><span class="p">)</span><span class="w">   </span><span class="c1"># median</span>
+<a id="__codelineno-38-8" name="__codelineno-38-8" href="#__codelineno-38-8"></a><span class="nf">rq</span><span class="p">(</span><span class="n">y</span><span class="w"> </span><span class="o">~</span><span class="w"> </span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="n">tau</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0.25</span><span class="p">)</span><span class="w">  </span><span class="c1"># lower quartile</span>
+<a id="__codelineno-38-9" name="__codelineno-38-9" href="#__codelineno-38-9"></a><span class="nf">rq</span><span class="p">(</span><span class="n">y</span><span class="w"> </span><span class="o">~</span><span class="w"> </span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="n">tau</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0.75</span><span class="p">)</span><span class="w">  </span><span class="c1"># upper quartile</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-39-1" name="__codelineno-39-1" href="#__codelineno-39-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span>
+<a id="__codelineno-39-2" name="__codelineno-39-2" href="#__codelineno-39-2"></a>    <span class="n">ps</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="s2">&quot;y&quot;</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="n">tau</span><span class="o">=</span><span class="mf">0.50</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;q50&quot;</span><span class="p">),</span>
+<a id="__codelineno-39-3" name="__codelineno-39-3" href="#__codelineno-39-3"></a>    <span class="n">ps</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="s2">&quot;y&quot;</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="n">tau</span><span class="o">=</span><span class="mf">0.25</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;q25&quot;</span><span class="p">),</span>
+<a id="__codelineno-39-4" name="__codelineno-39-4" href="#__codelineno-39-4"></a>    <span class="n">ps</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="s2">&quot;y&quot;</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="n">tau</span><span class="o">=</span><span class="mf">0.75</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;q75&quot;</span><span class="p">),</span>
+<a id="__codelineno-39-5" name="__codelineno-39-5" href="#__codelineno-39-5"></a><span class="p">)</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<p><strong>Median regression (tau=0.5), n=50:</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Output field</th>
+<th style="text-align: left;">R value</th>
+<th style="text-align: right;">Tolerance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>intercept</code></td>
+<td style="text-align: left;">2.6995</td>
+<td style="text-align: right;">1.0</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>coefficients[0]</code></td>
+<td style="text-align: left;">1.2375</td>
+<td style="text-align: right;">0.2</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Multiple quantiles, n=100:</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Tau</th>
+<th style="text-align: left;">R intercept</th>
+<th style="text-align: left;">R slope</th>
+<th style="text-align: right;">Slope tolerance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">0.25</td>
+<td style="text-align: left;">-0.3861</td>
+<td style="text-align: left;">1.9995</td>
+<td style="text-align: right;">0.2</td>
+</tr>
+<tr>
+<td style="text-align: left;">0.50</td>
+<td style="text-align: left;">0.8117</td>
+<td style="text-align: left;">2.0102</td>
+<td style="text-align: right;">0.2</td>
+</tr>
+<tr>
+<td style="text-align: left;">0.75</td>
+<td style="text-align: left;">1.5250</td>
+<td style="text-align: left;">2.2169</td>
+<td style="text-align: right;">0.3</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="admonition-title">Quantile regression tolerance</p>
+<p>Quantile regression solutions are not unique when the number of observations on the solution hyperplane exceeds the number of parameters. Different simplex implementations may find different valid solutions, so intercept tolerance is wider (1.0) while slope tolerance is tighter (0.2).</p>
+</div>
+<hr />
+<h3 id="prediction-and-confidence-intervals">Prediction and Confidence Intervals<a class="headerlink" href="#prediction-and-confidence-intervals" title="Permanent link">&para;</a></h3>
+<p>Validated against R's <code>predict.lm()</code> with <code>interval="prediction"</code> and <code>interval="confidence"</code>.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="20:2"><input checked="checked" id="__tabbed_20_1" name="__tabbed_20" type="radio" /><input id="__tabbed_20_2" name="__tabbed_20" type="radio" /><div class="tabbed-labels"><label for="__tabbed_20_1">R</label><label for="__tabbed_20_2">polars-statistics</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-40-1" name="__codelineno-40-1" href="#__codelineno-40-1"></a><span class="n">m</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">lm</span><span class="p">(</span><span class="n">y</span><span class="w"> </span><span class="o">~</span><span class="w"> </span><span class="n">x</span><span class="p">)</span>
+<a id="__codelineno-40-2" name="__codelineno-40-2" href="#__codelineno-40-2"></a><span class="nf">predict</span><span class="p">(</span><span class="n">m</span><span class="p">,</span><span class="w"> </span><span class="n">newdata</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">data.frame</span><span class="p">(</span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">100</span><span class="p">),</span>
+<a id="__codelineno-40-3" name="__codelineno-40-3" href="#__codelineno-40-3"></a><span class="w">        </span><span class="n">interval</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;prediction&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">level</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0.95</span><span class="p">)</span>
+<a id="__codelineno-40-4" name="__codelineno-40-4" href="#__codelineno-40-4"></a><span class="nf">predict</span><span class="p">(</span><span class="n">m</span><span class="p">,</span><span class="w"> </span><span class="n">newdata</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">data.frame</span><span class="p">(</span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">100</span><span class="p">),</span>
+<a id="__codelineno-40-5" name="__codelineno-40-5" href="#__codelineno-40-5"></a><span class="w">        </span><span class="n">interval</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;confidence&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">level</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0.95</span><span class="p">)</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-41-1" name="__codelineno-41-1" href="#__codelineno-41-1"></a><span class="n">df</span><span class="o">.</span><span class="n">with_columns</span><span class="p">(</span>
+<a id="__codelineno-41-2" name="__codelineno-41-2" href="#__codelineno-41-2"></a>    <span class="n">ps</span><span class="o">.</span><span class="n">ols_predict</span><span class="p">(</span><span class="s2">&quot;y&quot;</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="n">interval</span><span class="o">=</span><span class="s2">&quot;prediction&quot;</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="mf">0.95</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;pred&quot;</span><span class="p">)</span>
+<a id="__codelineno-41-3" name="__codelineno-41-3" href="#__codelineno-41-3"></a><span class="p">)</span><span class="o">.</span><span class="n">unnest</span><span class="p">(</span><span class="s2">&quot;pred&quot;</span><span class="p">)</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<p><strong>Large extrapolation test (n=20, predicting at x=100, 500, 1000):</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">x</th>
+<th style="text-align: left;">Fitted</th>
+<th style="text-align: left;">PI lower</th>
+<th style="text-align: left;">PI upper</th>
+<th style="text-align: left;">Tolerance (fit)</th>
+<th style="text-align: left;">Tolerance (bounds)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">100</td>
+<td style="text-align: left;">205.578</td>
+<td style="text-align: left;">200.856</td>
+<td style="text-align: left;">210.301</td>
+<td style="text-align: left;">0.1</td>
+<td style="text-align: left;">0.2</td>
+</tr>
+<tr>
+<td style="text-align: left;">500</td>
+<td style="text-align: left;">1007.984</td>
+<td style="text-align: left;">983.179</td>
+<td style="text-align: left;">1032.790</td>
+<td style="text-align: left;">0.1</td>
+<td style="text-align: left;">0.5</td>
+</tr>
+<tr>
+<td style="text-align: left;">1000</td>
+<td style="text-align: left;">2010.992</td>
+<td style="text-align: left;">1960.904</td>
+<td style="text-align: left;">2061.080</td>
+<td style="text-align: left;">0.1</td>
+<td style="text-align: left;">1.0</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Multiple confidence levels validated at x=35 (fit=80.159):</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Level</th>
+<th style="text-align: left;">PI lower</th>
+<th style="text-align: left;">PI upper</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">80%</td>
+<td style="text-align: left;">78.916</td>
+<td style="text-align: left;">81.401</td>
+</tr>
+<tr>
+<td style="text-align: left;">90%</td>
+<td style="text-align: left;">78.548</td>
+<td style="text-align: left;">81.769</td>
+</tr>
+<tr>
+<td style="text-align: left;">95%</td>
+<td style="text-align: left;">78.219</td>
+<td style="text-align: left;">82.098</td>
+</tr>
+<tr>
+<td style="text-align: left;">99%</td>
+<td style="text-align: left;">77.542</td>
+<td style="text-align: left;">82.775</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="generalized-linear-models">Generalized Linear Models<a class="headerlink" href="#generalized-linear-models" title="Permanent link">&para;</a></h2>
+<h3 id="poisson-glm">Poisson GLM<a class="headerlink" href="#poisson-glm" title="Permanent link">&para;</a></h3>
+<p>Validated against R's <code>glm(family=poisson())</code>.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="21:3"><input checked="checked" id="__tabbed_21_1" name="__tabbed_21" type="radio" /><input id="__tabbed_21_2" name="__tabbed_21" type="radio" /><input id="__tabbed_21_3" name="__tabbed_21" type="radio" /><div class="tabbed-labels"><label for="__tabbed_21_1">R (log link)</label><label for="__tabbed_21_2">R (identity link)</label><label for="__tabbed_21_3">polars-statistics</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-42-1" name="__codelineno-42-1" href="#__codelineno-42-1"></a><span class="nf">set.seed</span><span class="p">(</span><span class="m">42</span><span class="p">)</span>
+<a id="__codelineno-42-2" name="__codelineno-42-2" href="#__codelineno-42-2"></a><span class="n">x</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">seq</span><span class="p">(</span><span class="m">0.1</span><span class="p">,</span><span class="w"> </span><span class="m">3.0</span><span class="p">,</span><span class="w"> </span><span class="n">length.out</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">30</span><span class="p">)</span>
+<a id="__codelineno-42-3" name="__codelineno-42-3" href="#__codelineno-42-3"></a><span class="n">y</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">rpois</span><span class="p">(</span><span class="m">30</span><span class="p">,</span><span class="w"> </span><span class="n">lambda</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">exp</span><span class="p">(</span><span class="m">0.8</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="m">0.7</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">x</span><span class="p">))</span>
+<a id="__codelineno-42-4" name="__codelineno-42-4" href="#__codelineno-42-4"></a><span class="n">fit</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">glm</span><span class="p">(</span><span class="n">y</span><span class="w"> </span><span class="o">~</span><span class="w"> </span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="n">family</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">poisson</span><span class="p">(</span><span class="n">link</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;log&quot;</span><span class="p">))</span>
+<a id="__codelineno-42-5" name="__codelineno-42-5" href="#__codelineno-42-5"></a><span class="nf">summary</span><span class="p">(</span><span class="n">fit</span><span class="p">)</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-43-1" name="__codelineno-43-1" href="#__codelineno-43-1"></a><span class="n">x</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="m">1</span><span class="o">:</span><span class="m">20</span>
+<a id="__codelineno-43-2" name="__codelineno-43-2" href="#__codelineno-43-2"></a><span class="n">y</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">rpois</span><span class="p">(</span><span class="m">20</span><span class="p">,</span><span class="w"> </span><span class="n">lambda</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">4</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="m">3</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">x</span><span class="p">)</span>
+<a id="__codelineno-43-3" name="__codelineno-43-3" href="#__codelineno-43-3"></a><span class="n">fit</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">glm</span><span class="p">(</span><span class="n">y</span><span class="w"> </span><span class="o">~</span><span class="w"> </span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="n">family</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">poisson</span><span class="p">(</span><span class="n">link</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;identity&quot;</span><span class="p">))</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-44-1" name="__codelineno-44-1" href="#__codelineno-44-1"></a><span class="c1"># Log link (default)</span>
+<a id="__codelineno-44-2" name="__codelineno-44-2" href="#__codelineno-44-2"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">poisson</span><span class="p">(</span><span class="s2">&quot;y&quot;</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;model&quot;</span><span class="p">))</span>
+<a id="__codelineno-44-3" name="__codelineno-44-3" href="#__codelineno-44-3"></a>
+<a id="__codelineno-44-4" name="__codelineno-44-4" href="#__codelineno-44-4"></a><span class="c1"># Identity link</span>
+<a id="__codelineno-44-5" name="__codelineno-44-5" href="#__codelineno-44-5"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">poisson</span><span class="p">(</span><span class="s2">&quot;y&quot;</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="n">link</span><span class="o">=</span><span class="s2">&quot;identity&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;model&quot;</span><span class="p">))</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<p><strong>Poisson log link (n=30):</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Output field</th>
+<th style="text-align: left;">R value</th>
+<th style="text-align: right;">Tolerance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>intercept</code></td>
+<td style="text-align: left;">0.7992</td>
+<td style="text-align: right;">0.01</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>coefficients[0]</code></td>
+<td style="text-align: left;">0.7108</td>
+<td style="text-align: right;">0.01</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>deviance</code></td>
+<td style="text-align: left;">28.755</td>
+<td style="text-align: right;">0.1</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>se_intercept</code></td>
+<td style="text-align: left;">0.1813</td>
+<td style="text-align: right;">0.01</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>se_coefficients[0]</code></td>
+<td style="text-align: left;">0.0828</td>
+<td style="text-align: right;">0.01</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Poisson identity link (n=20):</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Output field</th>
+<th style="text-align: left;">R value</th>
+<th style="text-align: right;">Tolerance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>intercept</code></td>
+<td style="text-align: left;">4.0250</td>
+<td style="text-align: right;">0.01</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>coefficients[0]</code></td>
+<td style="text-align: left;">3.0167</td>
+<td style="text-align: right;">0.01</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>deviance</code></td>
+<td style="text-align: left;">2.063</td>
+<td style="text-align: right;">0.1</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="binomial-glm">Binomial GLM<a class="headerlink" href="#binomial-glm" title="Permanent link">&para;</a></h3>
+<p>Validated against R's <code>glm(family=binomial())</code> across three link functions.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="22:3"><input checked="checked" id="__tabbed_22_1" name="__tabbed_22" type="radio" /><input id="__tabbed_22_2" name="__tabbed_22" type="radio" /><input id="__tabbed_22_3" name="__tabbed_22" type="radio" /><div class="tabbed-labels"><label for="__tabbed_22_1">R (logit)</label><label for="__tabbed_22_2">R (probit)</label><label for="__tabbed_22_3">R (cloglog)</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-45-1" name="__codelineno-45-1" href="#__codelineno-45-1"></a><span class="nf">set.seed</span><span class="p">(</span><span class="m">42</span><span class="p">)</span>
+<a id="__codelineno-45-2" name="__codelineno-45-2" href="#__codelineno-45-2"></a><span class="n">x</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">seq</span><span class="p">(</span><span class="m">-3</span><span class="p">,</span><span class="w"> </span><span class="m">3</span><span class="p">,</span><span class="w"> </span><span class="n">length.out</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">30</span><span class="p">)</span>
+<a id="__codelineno-45-3" name="__codelineno-45-3" href="#__codelineno-45-3"></a><span class="n">p</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">plogis</span><span class="p">(</span><span class="m">0</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="m">0.8</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">x</span><span class="p">)</span>
+<a id="__codelineno-45-4" name="__codelineno-45-4" href="#__codelineno-45-4"></a><span class="n">y</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">rbinom</span><span class="p">(</span><span class="m">30</span><span class="p">,</span><span class="w"> </span><span class="m">1</span><span class="p">,</span><span class="w"> </span><span class="n">p</span><span class="p">)</span>
+<a id="__codelineno-45-5" name="__codelineno-45-5" href="#__codelineno-45-5"></a><span class="n">fit</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">glm</span><span class="p">(</span><span class="n">y</span><span class="w"> </span><span class="o">~</span><span class="w"> </span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="n">family</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">binomial</span><span class="p">(</span><span class="n">link</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;logit&quot;</span><span class="p">))</span>
+<a id="__codelineno-45-6" name="__codelineno-45-6" href="#__codelineno-45-6"></a><span class="nf">summary</span><span class="p">(</span><span class="n">fit</span><span class="p">)</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-46-1" name="__codelineno-46-1" href="#__codelineno-46-1"></a><span class="n">fit</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">glm</span><span class="p">(</span><span class="n">y</span><span class="w"> </span><span class="o">~</span><span class="w"> </span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="n">family</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">binomial</span><span class="p">(</span><span class="n">link</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;probit&quot;</span><span class="p">))</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-47-1" name="__codelineno-47-1" href="#__codelineno-47-1"></a><span class="n">fit</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">glm</span><span class="p">(</span><span class="n">y</span><span class="w"> </span><span class="o">~</span><span class="w"> </span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="n">family</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">binomial</span><span class="p">(</span><span class="n">link</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;cloglog&quot;</span><span class="p">))</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<p><strong>Logit link (n=30):</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Output field</th>
+<th style="text-align: left;">R value</th>
+<th style="text-align: right;">Tolerance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>intercept</code></td>
+<td style="text-align: left;">0.0000</td>
+<td style="text-align: right;">0.1</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>coefficients[0]</code></td>
+<td style="text-align: left;">0.8483</td>
+<td style="text-align: right;">0.1</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>deviance</code></td>
+<td style="text-align: left;">30.110</td>
+<td style="text-align: right;">0.5</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>se_intercept</code></td>
+<td style="text-align: left;">0.4502</td>
+<td style="text-align: right;">0.05</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>se_coefficients[0]</code></td>
+<td style="text-align: left;">0.3062</td>
+<td style="text-align: right;">0.05</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Probit link (n=30):</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Output field</th>
+<th style="text-align: left;">R value</th>
+<th style="text-align: right;">Tolerance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>intercept</code></td>
+<td style="text-align: left;">0.3428</td>
+<td style="text-align: right;">0.1</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>coefficients[0]</code></td>
+<td style="text-align: left;">0.9199</td>
+<td style="text-align: right;">0.1</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>deviance</code></td>
+<td style="text-align: left;">18.956</td>
+<td style="text-align: right;">0.5</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="negative-binomial-glm">Negative Binomial GLM<a class="headerlink" href="#negative-binomial-glm" title="Permanent link">&para;</a></h3>
+<p>Validated against R's <code>MASS::glm.nb()</code>.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="23:2"><input checked="checked" id="__tabbed_23_1" name="__tabbed_23" type="radio" /><input id="__tabbed_23_2" name="__tabbed_23" type="radio" /><div class="tabbed-labels"><label for="__tabbed_23_1">R</label><label for="__tabbed_23_2">polars-statistics</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-48-1" name="__codelineno-48-1" href="#__codelineno-48-1"></a><span class="nf">library</span><span class="p">(</span><span class="n">MASS</span><span class="p">)</span>
+<a id="__codelineno-48-2" name="__codelineno-48-2" href="#__codelineno-48-2"></a><span class="nf">set.seed</span><span class="p">(</span><span class="m">42</span><span class="p">)</span>
+<a id="__codelineno-48-3" name="__codelineno-48-3" href="#__codelineno-48-3"></a><span class="n">x</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">seq</span><span class="p">(</span><span class="m">0.5</span><span class="p">,</span><span class="w"> </span><span class="m">3.0</span><span class="p">,</span><span class="w"> </span><span class="n">length.out</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">30</span><span class="p">)</span>
+<a id="__codelineno-48-4" name="__codelineno-48-4" href="#__codelineno-48-4"></a><span class="n">y</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">rnbinom</span><span class="p">(</span><span class="m">30</span><span class="p">,</span><span class="w"> </span><span class="n">size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">5</span><span class="p">,</span><span class="w"> </span><span class="n">mu</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">exp</span><span class="p">(</span><span class="m">1.0</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="m">0.05</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">x</span><span class="p">))</span>
+<a id="__codelineno-48-5" name="__codelineno-48-5" href="#__codelineno-48-5"></a><span class="n">fit</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">glm.nb</span><span class="p">(</span><span class="n">y</span><span class="w"> </span><span class="o">~</span><span class="w"> </span><span class="n">x</span><span class="p">)</span>
+<a id="__codelineno-48-6" name="__codelineno-48-6" href="#__codelineno-48-6"></a><span class="nf">summary</span><span class="p">(</span><span class="n">fit</span><span class="p">)</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-49-1" name="__codelineno-49-1" href="#__codelineno-49-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">negative_binomial</span><span class="p">(</span><span class="s2">&quot;y&quot;</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;model&quot;</span><span class="p">))</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Output field</th>
+<th style="text-align: left;">R value</th>
+<th style="text-align: right;">Tolerance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>intercept</code></td>
+<td style="text-align: left;">1.0157</td>
+<td style="text-align: right;">0.05</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>coefficients[0]</code></td>
+<td style="text-align: left;">0.0532</td>
+<td style="text-align: right;">0.05</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>theta</code></td>
+<td style="text-align: left;">5.5678</td>
+<td style="text-align: right;">sign/positivity check</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="gamma-glm">Gamma GLM<a class="headerlink" href="#gamma-glm" title="Permanent link">&para;</a></h3>
+<p>Validated against R's <code>glm(family=Gamma(link="log"))</code>.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="24:2"><input checked="checked" id="__tabbed_24_1" name="__tabbed_24" type="radio" /><input id="__tabbed_24_2" name="__tabbed_24" type="radio" /><div class="tabbed-labels"><label for="__tabbed_24_1">R</label><label for="__tabbed_24_2">polars-statistics</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-50-1" name="__codelineno-50-1" href="#__codelineno-50-1"></a><span class="nf">set.seed</span><span class="p">(</span><span class="m">42</span><span class="p">)</span>
+<a id="__codelineno-50-2" name="__codelineno-50-2" href="#__codelineno-50-2"></a><span class="n">x</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">seq</span><span class="p">(</span><span class="m">0.5</span><span class="p">,</span><span class="w"> </span><span class="m">3.0</span><span class="p">,</span><span class="w"> </span><span class="n">length.out</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">30</span><span class="p">)</span>
+<a id="__codelineno-50-3" name="__codelineno-50-3" href="#__codelineno-50-3"></a><span class="n">y</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">rgamma</span><span class="p">(</span><span class="m">30</span><span class="p">,</span><span class="w"> </span><span class="n">shape</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">2</span><span class="p">,</span><span class="w"> </span><span class="n">rate</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">2</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="nf">exp</span><span class="p">(</span><span class="m">0.6</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="m">0.3</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">x</span><span class="p">))</span>
+<a id="__codelineno-50-4" name="__codelineno-50-4" href="#__codelineno-50-4"></a><span class="n">fit</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">glm</span><span class="p">(</span><span class="n">y</span><span class="w"> </span><span class="o">~</span><span class="w"> </span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="n">family</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">Gamma</span><span class="p">(</span><span class="n">link</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;log&quot;</span><span class="p">))</span>
+<a id="__codelineno-50-5" name="__codelineno-50-5" href="#__codelineno-50-5"></a><span class="nf">summary</span><span class="p">(</span><span class="n">fit</span><span class="p">)</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-51-1" name="__codelineno-51-1" href="#__codelineno-51-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">ps</span><span class="o">.</span><span class="n">gamma_glm</span><span class="p">(</span><span class="s2">&quot;y&quot;</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;model&quot;</span><span class="p">))</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Output field</th>
+<th style="text-align: left;">R value</th>
+<th style="text-align: right;">Tolerance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>intercept</code></td>
+<td style="text-align: left;">0.6335</td>
+<td style="text-align: right;">0.1</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>coefficients[0]</code></td>
+<td style="text-align: left;">0.2899</td>
+<td style="text-align: right;">0.1</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>deviance</code></td>
+<td style="text-align: left;">19.153</td>
+<td style="text-align: right;">1.0</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>se_intercept</code></td>
+<td style="text-align: left;">0.3433</td>
+<td style="text-align: right;">0.05</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>se_coefficients[0]</code></td>
+<td style="text-align: left;">0.1805</td>
+<td style="text-align: right;">0.05</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="inverse-gaussian-glm">Inverse Gaussian GLM<a class="headerlink" href="#inverse-gaussian-glm" title="Permanent link">&para;</a></h3>
+<p>Validated against R's <code>glm(family=inverse.gaussian(link="log"))</code>.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Output field</th>
+<th style="text-align: left;">R value</th>
+<th style="text-align: right;">Tolerance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>intercept</code></td>
+<td style="text-align: left;">0.5425</td>
+<td style="text-align: right;">0.2</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>coefficients[0]</code></td>
+<td style="text-align: left;">0.0365</td>
+<td style="text-align: right;">0.2</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>deviance</code></td>
+<td style="text-align: left;">19.642</td>
+<td style="text-align: right;">2.0</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="poisson-with-offset">Poisson with Offset<a class="headerlink" href="#poisson-with-offset" title="Permanent link">&para;</a></h3>
+<p>Validated against R's <code>glm()</code> with offset term for exposure adjustment.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="25:2"><input checked="checked" id="__tabbed_25_1" name="__tabbed_25" type="radio" /><input id="__tabbed_25_2" name="__tabbed_25" type="radio" /><div class="tabbed-labels"><label for="__tabbed_25_1">R</label><label for="__tabbed_25_2">polars-statistics</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-52-1" name="__codelineno-52-1" href="#__codelineno-52-1"></a><span class="n">fit</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">glm</span><span class="p">(</span><span class="n">y</span><span class="w"> </span><span class="o">~</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nf">offset</span><span class="p">(</span><span class="nf">log</span><span class="p">(</span><span class="n">exposure</span><span class="p">)),</span>
+<a id="__codelineno-52-2" name="__codelineno-52-2" href="#__codelineno-52-2"></a><span class="w">           </span><span class="n">family</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">poisson</span><span class="p">(</span><span class="n">link</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;log&quot;</span><span class="p">))</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-53-1" name="__codelineno-53-1" href="#__codelineno-53-1"></a><span class="n">df</span><span class="o">.</span><span class="n">select</span><span class="p">(</span>
+<a id="__codelineno-53-2" name="__codelineno-53-2" href="#__codelineno-53-2"></a>    <span class="n">ps</span><span class="o">.</span><span class="n">poisson</span><span class="p">(</span><span class="s2">&quot;y&quot;</span><span class="p">,</span> <span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="s2">&quot;log_exposure&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">alias</span><span class="p">(</span><span class="s2">&quot;model&quot;</span><span class="p">)</span>
+<a id="__codelineno-53-3" name="__codelineno-53-3" href="#__codelineno-53-3"></a><span class="p">)</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Output field</th>
+<th style="text-align: left;">R value</th>
+<th style="text-align: right;">Tolerance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>intercept</code></td>
+<td style="text-align: left;">0.2382</td>
+<td style="text-align: right;">0.05</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>coefficients[0]</code></td>
+<td style="text-align: left;">0.1003</td>
+<td style="text-align: right;">0.01</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>deviance</code></td>
+<td style="text-align: left;">21.571</td>
+<td style="text-align: right;">0.5</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="tweedie-glms">Tweedie GLMs<a class="headerlink" href="#tweedie-glms" title="Permanent link">&para;</a></h3>
+<p>Validated against R's <code>statmod::tweedie()</code> family across four variance powers.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="26:1"><input checked="checked" id="__tabbed_26_1" name="__tabbed_26" type="radio" /><div class="tabbed-labels"><label for="__tabbed_26_1">R</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-54-1" name="__codelineno-54-1" href="#__codelineno-54-1"></a><span class="nf">library</span><span class="p">(</span><span class="n">statmod</span><span class="p">)</span>
+<a id="__codelineno-54-2" name="__codelineno-54-2" href="#__codelineno-54-2"></a><span class="n">fit</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">glm</span><span class="p">(</span><span class="n">y</span><span class="w"> </span><span class="o">~</span><span class="w"> </span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="n">family</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nf">tweedie</span><span class="p">(</span><span class="n">var.power</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">P</span><span class="p">,</span><span class="w"> </span><span class="n">link.power</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">0</span><span class="p">))</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Variance Power</th>
+<th style="text-align: left;">Distribution</th>
+<th style="text-align: left;">Intercept</th>
+<th style="text-align: left;">Slope</th>
+<th style="text-align: left;">Deviance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">1.0</td>
+<td style="text-align: left;">Poisson</td>
+<td style="text-align: left;">0.7992</td>
+<td style="text-align: left;">0.7108</td>
+<td style="text-align: left;">28.755</td>
+</tr>
+<tr>
+<td style="text-align: left;">1.5</td>
+<td style="text-align: left;">Compound Poisson-Gamma</td>
+<td style="text-align: left;">0.1820</td>
+<td style="text-align: left;">0.2193</td>
+<td style="text-align: left;">47.805</td>
+</tr>
+<tr>
+<td style="text-align: left;">2.0</td>
+<td style="text-align: left;">Gamma</td>
+<td style="text-align: left;">0.6335</td>
+<td style="text-align: left;">0.2899</td>
+<td style="text-align: left;">19.153</td>
+</tr>
+<tr>
+<td style="text-align: left;">3.0</td>
+<td style="text-align: left;">Inverse Gaussian</td>
+<td style="text-align: left;">0.5425</td>
+<td style="text-align: left;">0.0365</td>
+<td style="text-align: left;">19.642</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="tost-equivalence-tests">TOST Equivalence Tests<a class="headerlink" href="#tost-equivalence-tests" title="Permanent link">&para;</a></h2>
+<p>Validated against R's <code>TOSTER</code> package (<code>TOSTone()</code>, <code>TOSTtwo()</code>, <code>TOSTpaired()</code>, <code>TOSTr()</code>, <code>TOSTtwo.prop()</code>, <code>wilcox_TOST()</code>, <code>boot_t_TOST()</code>).</p>
+<p>Tests verify both equivalence detection and non-equivalence detection:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Scenario</th>
+<th style="text-align: left;">Bound</th>
+<th style="text-align: left;">Expected result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">One-sample, mean near 0</td>
+<td style="text-align: left;">±0.5</td>
+<td style="text-align: left;"><code>equivalent = true</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">One-sample, mean near 2</td>
+<td style="text-align: left;">±0.5</td>
+<td style="text-align: left;"><code>equivalent = false</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Two-sample, similar means</td>
+<td style="text-align: left;">±0.5</td>
+<td style="text-align: left;"><code>equivalent = true</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Two-sample, different means</td>
+<td style="text-align: left;">±0.5</td>
+<td style="text-align: left;"><code>equivalent = false</code></td>
+</tr>
+<tr>
+<td style="text-align: left;">Proportion, 52/100 vs 0.5</td>
+<td style="text-align: left;">±0.1</td>
+<td style="text-align: left;"><code>estimate = 0.02</code> (exact)</td>
+</tr>
+<tr>
+<td style="text-align: left;">Cohen's d bounds</td>
+<td style="text-align: left;">d = 0.5</td>
+<td style="text-align: left;">bounds computed correctly</td>
+</tr>
+<tr>
+<td style="text-align: left;">Bootstrap TOST</td>
+<td style="text-align: left;">±0.5</td>
+<td style="text-align: left;">reproducible with same seed</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="r-packages-used">R Packages Used<a class="headerlink" href="#r-packages-used" title="Permanent link">&para;</a></h2>
+<p>The full list of R packages referenced in validation:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">R Package</th>
+<th style="text-align: left;">What it validates</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>stats</code> (base R)</td>
+<td style="text-align: left;"><code>t.test()</code>, <code>aov()</code>, <code>oneway.test()</code>, <code>lm()</code>, <code>glm()</code>, <code>predict()</code>, <code>shapiro.test()</code>, <code>chisq.test()</code>, <code>fisher.test()</code>, <code>cor.test()</code>, <code>wilcox.test()</code>, <code>kruskal.test()</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>sandwich</code></td>
+<td style="text-align: left;">HC0-HC3 heteroskedasticity-consistent standard errors</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>lmtest</code></td>
+<td style="text-align: left;"><code>coeftest()</code> for robust inference</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>glmnet</code></td>
+<td style="text-align: left;">Ridge (<code>alpha=0</code>) and Elastic Net regression</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>quantreg</code></td>
+<td style="text-align: left;">Quantile regression (<code>rq()</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>MASS</code></td>
+<td style="text-align: left;">Negative Binomial GLM (<code>glm.nb()</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>statmod</code></td>
+<td style="text-align: left;">Tweedie GLM family</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>car</code></td>
+<td style="text-align: left;">Brown-Forsythe / Levene's test</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>WRS2</code></td>
+<td style="text-align: left;">Yuen's trimmed means test</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>brunnermunzel</code></td>
+<td style="text-align: left;">Brunner-Munzel test</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>TOSTER</code></td>
+<td style="text-align: left;">TOST equivalence tests</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>rcompanion</code></td>
+<td style="text-align: left;">Cramer's V</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>vcd</code></td>
+<td style="text-align: left;">Contingency coefficient</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>psych</code></td>
+<td style="text-align: left;">Phi coefficient, Cohen's kappa</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>irr</code></td>
+<td style="text-align: left;">Cohen's kappa</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>moments</code></td>
+<td style="text-align: left;">D'Agostino K-squared test</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>coin</code></td>
+<td style="text-align: left;">Permutation tests</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="summary">Summary<a class="headerlink" href="#summary" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Category</th>
+<th style="text-align: left;">Tests validated</th>
+<th style="text-align: left;">Typical tolerance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Parametric tests</td>
+<td style="text-align: left;">t-tests (Welch, Student, paired), Yuen, Brown-Forsythe, ANOVA (one-way, two-way, repeated measures, Welch)</td>
+<td style="text-align: left;">1e-10</td>
+</tr>
+<tr>
+<td style="text-align: left;">Non-parametric tests</td>
+<td style="text-align: left;">Mann-Whitney U, Wilcoxon signed-rank, Kruskal-Wallis, Brunner-Munzel</td>
+<td style="text-align: left;">1e-6 to 1e-10</td>
+</tr>
+<tr>
+<td style="text-align: left;">Correlation</td>
+<td style="text-align: left;">Pearson, Spearman, Kendall</td>
+<td style="text-align: left;">1e-4 to 1e-10</td>
+</tr>
+<tr>
+<td style="text-align: left;">Categorical tests</td>
+<td style="text-align: left;">Chi-square, Fisher exact, Cramer's V, Phi, Contingency coefficient, Cohen's kappa, G-test</td>
+<td style="text-align: left;">1e-4 to 1e-10</td>
+</tr>
+<tr>
+<td style="text-align: left;">Distributional tests</td>
+<td style="text-align: left;">Shapiro-Wilk, D'Agostino K-squared</td>
+<td style="text-align: left;">1e-3</td>
+</tr>
+<tr>
+<td style="text-align: left;">Linear regression</td>
+<td style="text-align: left;">OLS, WLS, Ridge, Elastic Net, Quantile</td>
+<td style="text-align: left;">0.01 to 0.2</td>
+</tr>
+<tr>
+<td style="text-align: left;">HC standard errors</td>
+<td style="text-align: left;">HC0, HC1, HC2, HC3</td>
+<td style="text-align: left;">0.01</td>
+</tr>
+<tr>
+<td style="text-align: left;">Prediction intervals</td>
+<td style="text-align: left;">Prediction and confidence intervals at multiple levels</td>
+<td style="text-align: left;">0.01 to 1.0</td>
+</tr>
+<tr>
+<td style="text-align: left;">GLMs</td>
+<td style="text-align: left;">Poisson (log/identity/sqrt), Binomial (logit/probit/cloglog), Gamma, Inverse Gaussian, Negative Binomial, Tweedie (4 powers)</td>
+<td style="text-align: left;">0.01 to 0.5</td>
+</tr>
+<tr>
+<td style="text-align: left;">Equivalence tests</td>
+<td style="text-align: left;">TOST one-sample, two-sample, paired, proportion, correlation, Wilcoxon, bootstrap</td>
+<td style="text-align: left;">1e-6</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["content.code.copy", "navigation.tabs", "navigation.sections", "navigation.expand", "navigation.top", "search.highlight", "search.suggest", "toc.follow"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
