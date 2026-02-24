@@ -71,6 +71,17 @@ result = pl.select(
         correction=True,
     ).alias("prop_test")
 )
+
+pt = result["prop_test"][0]
+print(f"Corrected Chi²: {pt['statistic']:.4f}")
+print(f"p-value:         {pt['p_value']:.6f}")
+```
+
+Expected output:
+
+```
+Corrected Chi²: 2.0327
+p-value:         0.153942
 ```
 
 ## Continuous Metric Comparison
@@ -117,6 +128,29 @@ ttest   : statistic=0.9932, p=0.324853
 mwu     : statistic=517.0000, p=0.305012
 yuen    : statistic=0.7505, p=0.458257
 ```
+
+![Revenue distributions for control vs treatment](../assets/images/abt_revenue_distributions.png)
+
+??? note "Plot code"
+
+    ```python
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    fig, ax = plt.subplots(figsize=(7, 4))
+    bins = np.linspace(0, 32, 17)
+    ax.hist(df["control"].to_list(), bins=bins, alpha=0.6,
+            label="Control", color="#4C72B0")
+    ax.hist(df["treatment"].to_list(), bins=bins, alpha=0.6,
+            label="Treatment", color="#55A868")
+    ax.axvline(df["control"].mean(), color="#4C72B0", ls="--", lw=1.5)
+    ax.axvline(df["treatment"].mean(), color="#55A868", ls="--", lw=1.5)
+    ax.set_xlabel("Revenue per User ($)")
+    ax.set_ylabel("Frequency")
+    ax.legend()
+    plt.tight_layout()
+    plt.savefig("abt_revenue_distributions.png", dpi=150)
+    ```
 
 ## Equivalence Testing (TOST)
 
@@ -222,6 +256,12 @@ tost = tost_cohen["tost"][0]
 print(f"Equivalent (d < 0.3): {tost['equivalent']}")
 ```
 
+Expected output:
+
+```
+Equivalent (d < 0.3): False
+```
+
 ### Comparing Traditional Test vs TOST
 
 Run both side-by-side to illustrate the difference:
@@ -297,6 +337,37 @@ print(segment_results)
 # └─────────┴──────────┴──────────┴────────────┘
 ```
 
+![Per-segment treatment effect forest plot](../assets/images/abt_segment_forest.png)
+
+??? note "Plot code"
+
+    ```python
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    # Compute per-segment mean differences and CIs from TOST results
+    segments = segment_results["segment"].to_list()
+    tost_data = segment_results.with_columns(
+        pl.col("tost").struct.field("estimate").alias("est"),
+        pl.col("tost").struct.field("ci_lower").alias("ci_lo"),
+        pl.col("tost").struct.field("ci_upper").alias("ci_hi"),
+    )
+
+    fig, ax = plt.subplots(figsize=(7, 3.5))
+    for i, row in enumerate(tost_data.iter_rows(named=True)):
+        ax.errorbar(row["est"], i,
+                    xerr=[[row["est"] - row["ci_lo"]], [row["ci_hi"] - row["est"]]],
+                    fmt="o", ms=8, capsize=6, lw=2,
+                    color="#4C72B0" if row["ci_lo"] > 0 else "#999")
+    ax.axvline(0, color="#C44E52", ls="--", lw=1.5, alpha=0.7)
+    ax.set_yticks(range(len(segments)))
+    ax.set_yticklabels(segments)
+    ax.set_xlabel("Mean Difference (Treatment − Control)")
+    ax.invert_yaxis()
+    plt.tight_layout()
+    plt.savefig("abt_segment_forest.png", dpi=150)
+    ```
+
 ## Categorical Outcomes
 
 ### Chi-Square Test of Independence
@@ -330,6 +401,15 @@ print(f"Cramér's V: {v['estimate']:.4f}")
 # V < 0.1 = negligible, 0.1-0.3 = small, 0.3-0.5 = medium, > 0.5 = large
 ```
 
+Expected output:
+
+```
+Chi²:    2.7187
+p-value: 0.099177
+df:      1.0
+Cramér's V: 0.0369
+```
+
 ### Fisher's Exact Test
 
 For small samples where chi-square approximation is unreliable:
@@ -346,4 +426,11 @@ result = pl.select(
 f = result["fisher"][0]
 print(f"Odds ratio: {f['statistic']:.4f}")
 print(f"p-value:    {f['p_value']:.6f}")
+```
+
+Expected output:
+
+```
+Odds ratio: 9.3333
+p-value:    0.069779
 ```
