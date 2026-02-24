@@ -44,6 +44,15 @@ result.with_columns(
 )
 ```
 
+## Examples
+
+| Example | Description |
+|---------|-------------|
+| [Hypothesis Testing](examples/hypothesis-testing.md) | Check assumptions, choose tests, interpret results |
+| [Regression Workflow](examples/regression-workflow.md) | Fit, summarize, predict, diagnose |
+| [Group-wise Analysis](examples/group-analysis.md) | `group_by` and `over` patterns |
+| [A/B Testing](examples/ab-testing.md) | Proportions, equivalence, per-segment analysis |
+
 ## What's in the Docs
 
 | Section | Description |

@@ -45,6 +45,11 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Getting Started: getting-started.md
+  - Examples:
+      - Hypothesis Testing: examples/hypothesis-testing.md
+      - Regression Workflow: examples/regression-workflow.md
+      - Group-wise Analysis: examples/group-analysis.md
+      - A/B Testing: examples/ab-testing.md
   - API Conventions: api/conventions.md
   - Statistical Tests:
       - Parametric Tests: api/tests/parametric.md
