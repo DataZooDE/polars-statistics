@@ -76,6 +76,7 @@ nav:
       - Test Classes: api/classes/tests.md
       - Dynamic: api/classes/dynamic.md
       - Bootstrap: api/classes/bootstrap.md
+  - R Validation: validation/index.md
   - Reference:
       - Output Structures: api/outputs.md
       - API Overview: api/README.md
