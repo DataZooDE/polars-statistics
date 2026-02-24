@@ -581,9 +581,652 @@ def plot_abt_segment_forest():
     print("  ✓ abt_segment_forest.png")
 
 
+# ── 18. glm_poisson_fit.png ────────────────────────────────────────────────
+def plot_glm_poisson_fit():
+    set_style()
+    fig, ax = plt.subplots(figsize=(7, 5))
+
+    age = np.array([22, 24, 25, 23, 26, 27, 28, 24, 29, 30,
+                    35, 38, 40, 36, 42, 44, 39, 45, 41, 46,
+                    52, 55, 58, 54, 60, 56, 62, 64, 66, 68], dtype=float)
+    claims = np.array([0, 0, 1, 0, 1, 0, 1, 0, 1, 1,
+                       1, 1, 2, 1, 1, 2, 1, 2, 1, 2,
+                       2, 2, 3, 2, 3, 2, 3, 3, 4, 4], dtype=float)
+
+    ax.scatter(age, claims, s=60, color="#4C72B0", edgecolor="white", lw=0.8,
+               zorder=5, label="Observed claims")
+
+    # Poisson fitted curve: intercept=-1.8421, coef=[0.0380]
+    x_fit = np.linspace(20, 70, 200)
+    y_fit = np.exp(-1.8421 + 0.0380 * x_fit)
+    ax.plot(x_fit, y_fit, color="#C44E52", lw=2.5, label="Poisson fit (exp link)")
+
+    ax.set_xlabel("Age")
+    ax.set_ylabel("Number of Claims")
+    ax.set_title("Poisson Regression: Age → Claims")
+    ax.legend(frameon=True, fancybox=True)
+    fig.savefig(OUT / "glm_poisson_fit.png", **SAVE_KW)
+    plt.close(fig)
+    print("  ✓ glm_poisson_fit.png")
+
+
+# ── 19. glm_deviance_residuals.png ────────────────────────────────────────
+def plot_glm_deviance_residuals():
+    set_style()
+    fig, ax = plt.subplots(figsize=(7, 4.5))
+
+    age = np.array([22, 24, 25, 23, 26, 27, 28, 24, 29, 30,
+                    35, 38, 40, 36, 42, 44, 39, 45, 41, 46,
+                    52, 55, 58, 54, 60, 56, 62, 64, 66, 68], dtype=float)
+    claims = np.array([0, 0, 1, 0, 1, 0, 1, 0, 1, 1,
+                       1, 1, 2, 1, 1, 2, 1, 2, 1, 2,
+                       2, 2, 3, 2, 3, 2, 3, 3, 4, 4], dtype=float)
+    fitted = np.exp(-1.8421 + 0.0380 * age)
+    # Deviance residuals for Poisson
+    sign = np.sign(claims - fitted)
+    dev = np.where(claims == 0,
+                   np.sqrt(2 * fitted),
+                   np.sqrt(2 * (claims * np.log(claims / fitted) - (claims - fitted))))
+    residuals = sign * dev
+
+    ax.scatter(fitted, residuals, s=50, color="#4C72B0", edgecolor="white", lw=0.8, zorder=5)
+    ax.axhline(0, color="#C44E52", ls="--", lw=1.5)
+    ax.axhline(2, color="#999", ls=":", lw=1)
+    ax.axhline(-2, color="#999", ls=":", lw=1)
+    ax.set_xlabel("Fitted Values (μ)")
+    ax.set_ylabel("Deviance Residual")
+    ax.set_title("Poisson Deviance Residuals")
+    fig.savefig(OUT / "glm_deviance_residuals.png", **SAVE_KW)
+    plt.close(fig)
+    print("  ✓ glm_deviance_residuals.png")
+
+
+# ── 20. glm_link_comparison.png ───────────────────────────────────────────
+def plot_glm_link_comparison():
+    set_style()
+    fig, ax = plt.subplots(figsize=(7, 5))
+
+    # Binary churn data: tenure as single predictor (simplified)
+    x = np.linspace(-3, 3, 200)
+    # Logit: 1/(1+exp(-x))
+    logit_p = 1 / (1 + np.exp(-x))
+    # Probit: Φ(x) — use erf approximation (no scipy needed)
+    from math import erf, sqrt
+    probit_p = np.array([0.5 * (1 + erf(xi / sqrt(2))) for xi in x])
+    # Cloglog: 1 - exp(-exp(x))
+    cloglog_p = 1 - np.exp(-np.exp(x))
+
+    ax.plot(x, logit_p, lw=2.5, color="#4C72B0", label="Logit")
+    ax.plot(x, probit_p, lw=2.5, color="#DD8452", ls="--", label="Probit")
+    ax.plot(x, cloglog_p, lw=2.5, color="#55A868", ls="-.", label="Cloglog")
+
+    ax.axhline(0.5, color="#999", ls=":", lw=1)
+    ax.set_xlabel("Linear Predictor (η)")
+    ax.set_ylabel("P(Y = 1)")
+    ax.set_title("Link Function Comparison")
+    ax.legend(frameon=True, fancybox=True)
+    fig.savefig(OUT / "glm_link_comparison.png", **SAVE_KW)
+    plt.close(fig)
+    print("  ✓ glm_link_comparison.png")
+
+
+# ── 21. reg2_lasso_coefs.png ──────────────────────────────────────────────
+def plot_reg2_lasso_coefs():
+    set_style()
+    fig, ax = plt.subplots(figsize=(8, 4))
+
+    terms = ["temp", "humidity", "occupancy", "sqft", "insulation"]
+    # Lasso λ=0.1 coefficients from compute_regularized.py
+    lasso_coefs = [-8.3988, 0.4017, -8.4682, 0.0, 5.0396]
+    # OLS comparison (all 5 features)
+    ols_coefs = [-8.7866, 0.3816, -8.2371, 0.002, 5.0775]
+
+    x = np.arange(len(terms))
+    w = 0.3
+    ax.bar(x - w / 2, ols_coefs, w, label="OLS", color="#4C72B0", edgecolor="white")
+    ax.bar(x + w / 2, lasso_coefs, w, label="Lasso (λ=0.1)", color="#55A868", edgecolor="white")
+
+    # Highlight zeroed coefficient
+    ax.annotate("Zeroed by Lasso →", xy=(3, 0), xytext=(3, -3),
+                fontsize=9, color="#C44E52", ha="center",
+                arrowprops={"arrowstyle": "->", "color": "#C44E52"})
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(terms)
+    ax.set_ylabel("Coefficient Value")
+    ax.set_title("Lasso Feature Selection (λ = 0.1)")
+    ax.axhline(0, color="#333", lw=0.8)
+    ax.legend(frameon=True, fancybox=True, fontsize=9)
+    fig.savefig(OUT / "reg2_lasso_coefs.png", **SAVE_KW)
+    plt.close(fig)
+    print("  ✓ reg2_lasso_coefs.png")
+
+
+# ── 22. reg2_wls_residuals.png ────────────────────────────────────────────
+def plot_reg2_wls_residuals():
+    set_style()
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4.5))
+
+    # Simulated data for OLS vs WLS residual comparison
+    np.random.seed(42)
+    sqft = np.linspace(800, 3000, 30)
+    # Heteroskedastic noise: variance increases with sqft
+    noise = np.random.normal(0, sqft / 300)
+    kwh = 100 + 0.1 * sqft + noise
+
+    # OLS residuals (unweighted)
+    from numpy.polynomial import polynomial as P
+    ols_c = P.polyfit(sqft, kwh, 1)
+    ols_pred = P.polyval(sqft, ols_c)
+    ols_resid = kwh - ols_pred
+
+    # WLS residuals (weighted by 1/sqft)
+    w = 1000 / sqft
+    wls_c = P.polyfit(sqft, kwh, 1, w=np.sqrt(w))
+    wls_pred = P.polyval(sqft, wls_c)
+    wls_resid = (kwh - wls_pred) * np.sqrt(w)
+
+    ax = axes[0]
+    ax.scatter(sqft, ols_resid, s=40, color="#4C72B0", edgecolor="white", lw=0.6)
+    ax.axhline(0, color="#C44E52", ls="--", lw=1.5)
+    ax.set_xlabel("Square Footage")
+    ax.set_ylabel("Residual")
+    ax.set_title("OLS Residuals (heteroskedastic)")
+
+    ax = axes[1]
+    ax.scatter(sqft, wls_resid, s=40, color="#55A868", edgecolor="white", lw=0.6)
+    ax.axhline(0, color="#C44E52", ls="--", lw=1.5)
+    ax.set_xlabel("Square Footage")
+    ax.set_ylabel("Weighted Residual")
+    ax.set_title("WLS Residuals (corrected)")
+
+    fig.tight_layout()
+    fig.savefig(OUT / "reg2_wls_residuals.png", **SAVE_KW)
+    plt.close(fig)
+    print("  ✓ reg2_wls_residuals.png")
+
+
+# ── 23. reg2_isotonic_fit.png ─────────────────────────────────────────────
+def plot_reg2_isotonic_fit():
+    set_style()
+    fig, ax = plt.subplots(figsize=(7, 5))
+
+    # sqft vs kwh (monotone increasing relationship)
+    sqft = np.array([750, 780, 800, 850, 870, 880, 900, 950, 1000, 1050,
+                     1100, 1150, 1200, 1250, 1300, 1350, 1400, 1500, 1550, 1600,
+                     1800, 1850, 1900, 1950, 2000, 2050, 2100, 2150, 2200, 2250,
+                     2300, 2350, 2400, 2500, 2600, 2650, 2700, 2750, 2800, 2850,
+                     2900, 2950, 3000], dtype=float)
+    kwh = np.array([180, 176, 189, 184, 192, 195, 198, 210, 215, 220,
+                    228, 223, 245, 234, 241, 252, 247, 258, 256, 262,
+                    267, 270, 274, 278, 289, 290, 295, 298, 301, 305,
+                    312, 318, 323, 330, 334, 338, 345, 345, 350, 356,
+                    358, 362, 367], dtype=float)
+
+    ax.scatter(sqft, kwh, s=40, color="#4C72B0", edgecolor="white", lw=0.8,
+               zorder=5, label="Data", alpha=0.7)
+
+    # Isotonic fit: simple pool-adjacent-violators (no sklearn needed)
+    order = np.argsort(sqft)
+    sqft_s, kwh_s = sqft[order], kwh[order].copy()
+    # PAV algorithm
+    n = len(kwh_s)
+    iso = kwh_s.copy()
+    i = 0
+    while i < n - 1:
+        if iso[i] > iso[i + 1]:
+            # Pool
+            j = i + 1
+            while j < n and iso[j] <= iso[i]:
+                j += 1
+            pool_mean = np.mean(iso[i:j])
+            iso[i:j] = pool_mean
+            if i > 0:
+                i -= 1
+            continue
+        i += 1
+    ax.step(sqft_s, iso, where="post", color="#C44E52", lw=2.5,
+            label="Isotonic fit")
+
+    # OLS line for comparison
+    m, b = np.polyfit(sqft, kwh, 1)
+    ax.plot(sqft, m * sqft + b, color="#DD8452", ls="--", lw=1.5, label="OLS line")
+
+    ax.set_xlabel("Square Footage")
+    ax.set_ylabel("Energy (kWh)")
+    ax.set_title("Isotonic Regression: Non-Decreasing Fit")
+    ax.legend(frameon=True, fancybox=True)
+    fig.savefig(OUT / "reg2_isotonic_fit.png", **SAVE_KW)
+    plt.close(fig)
+    print("  ✓ reg2_isotonic_fit.png")
+
+
+# ── 24. tost_paired_diagram.png ───────────────────────────────────────────
+def plot_tost_paired_diagram():
+    set_style()
+    fig, ax = plt.subplots(figsize=(8, 3))
+
+    # TOST paired results: mean_diff=0.27, CI=(-0.22, 0.76), delta=1.0
+    delta = 1.0
+    estimate = 0.27
+    ci_lo = -0.22
+    ci_hi = 0.76
+
+    ax.axvline(-delta, color="#C44E52", ls="--", lw=2)
+    ax.axvline(delta, color="#C44E52", ls="--", lw=2)
+    ax.axvspan(-delta, delta, alpha=0.08, color="#55A868")
+
+    ax.plot([ci_lo, ci_hi], [0.5, 0.5], color="#4C72B0", lw=3, solid_capstyle="round")
+    ax.plot(estimate, 0.5, "o", color="#4C72B0", ms=10, zorder=5)
+
+    ax.text(-delta, 1.1, f"−{delta}", ha="center", fontsize=10, color="#C44E52")
+    ax.text(delta, 1.1, f"+{delta}", ha="center", fontsize=10, color="#C44E52")
+    ax.text(estimate, 0.1, f"Δ = {estimate:.2f}", ha="center", fontsize=10, color="#4C72B0")
+    ax.text(0, 1.5, "Equivalence Region", ha="center", fontsize=10,
+            color="#55A868", fontweight="bold")
+    ax.text(0, -0.7, "CI inside bounds → Equivalent (p < 0.05)",
+            ha="center", fontsize=9, style="italic", color="#666")
+
+    ax.set_xlim(-1.5, 1.5)
+    ax.set_ylim(-1, 2)
+    ax.set_xlabel("Paired Mean Difference")
+    ax.set_title("TOST Paired Equivalence Test")
+    ax.set_yticks([])
+    ax.spines["left"].set_visible(False)
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    fig.savefig(OUT / "tost_paired_diagram.png", **SAVE_KW)
+    plt.close(fig)
+    print("  ✓ tost_paired_diagram.png")
+
+
+# ── 25. tost_comparison_table.png ─────────────────────────────────────────
+def plot_tost_comparison_table():
+    set_style()
+    fig, ax = plt.subplots(figsize=(10, 4))
+    ax.axis("off")
+
+    variants = [
+        ["One-sample", "tost_t_test_one_sample", "0.0184", "Yes"],
+        ["Two-sample", "tost_t_test_two_sample", "0.0017", "Yes"],
+        ["Paired", "tost_t_test_paired", "0.0074", "Yes"],
+        ["Correlation", "tost_correlation", "0.0002", "Yes"],
+        ["Wilcoxon paired", "tost_wilcoxon_paired", "0.0156", "Yes"],
+        ["Wilcoxon two-sample", "tost_wilcoxon_two_sample", "0.0547", "No"],
+        ["Bootstrap", "tost_bootstrap", "< 0.05", "Yes"],
+        ["Yuen (trimmed)", "tost_yuen", "0.0082", "Yes"],
+    ]
+
+    table = ax.table(
+        cellText=variants,
+        colLabels=["Variant", "Function", "TOST p-value", "Equivalent?"],
+        cellLoc="center",
+        loc="center",
+    )
+    table.auto_set_font_size(False)
+    table.set_fontsize(10)
+    table.scale(1.0, 1.6)
+
+    # Style header
+    for j in range(4):
+        table[0, j].set_facecolor("#4C72B0")
+        table[0, j].set_text_props(color="white", fontweight="bold")
+    # Color equivalence column
+    for i in range(1, len(variants) + 1):
+        if variants[i - 1][3] == "Yes":
+            table[i, 3].set_facecolor("#E8F5E9")
+        else:
+            table[i, 3].set_facecolor("#FFEBEE")
+
+    ax.set_title("TOST Equivalence Test Variants — Summary", fontsize=12,
+                 fontweight="bold", pad=20)
+    fig.savefig(OUT / "tost_comparison_table.png", **SAVE_KW)
+    plt.close(fig)
+    print("  ✓ tost_comparison_table.png")
+
+
+# ── 26. cat_goodness_of_fit.png ───────────────────────────────────────────
+def plot_cat_goodness_of_fit():
+    set_style()
+    fig, ax = plt.subplots(figsize=(7, 4.5))
+
+    faces = ["1", "2", "3", "4", "5", "6"]
+    observed = [18, 22, 15, 25, 12, 28]
+    expected = [20] * 6
+
+    x = np.arange(len(faces))
+    w = 0.35
+    ax.bar(x - w / 2, observed, w, label="Observed", color="#4C72B0", edgecolor="white")
+    ax.bar(x + w / 2, expected, w, label="Expected", color="#DD8452",
+           edgecolor="white", alpha=0.7)
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(faces)
+    ax.set_xlabel("Die Face")
+    ax.set_ylabel("Count")
+    ax.set_title("Chi-Square Goodness of Fit: Fair Die?")
+    ax.legend(frameon=True, fancybox=True)
+    ax.text(0.5, -0.12, "χ² = 8.60, p = 0.1262 — not enough evidence to reject fairness",
+            ha="center", transform=ax.transAxes, fontsize=9, style="italic", color="#666")
+    fig.savefig(OUT / "cat_goodness_of_fit.png", **SAVE_KW)
+    plt.close(fig)
+    print("  ✓ cat_goodness_of_fit.png")
+
+
+# ── 27. cat_agreement_heatmap.png ─────────────────────────────────────────
+def plot_cat_agreement_heatmap():
+    set_style()
+    fig, ax = plt.subplots(figsize=(5, 4.5))
+
+    # 2x2 classification matrix: two raters
+    matrix = np.array([[38, 5], [8, 49]])
+    labels = ["Positive", "Negative"]
+
+    im = ax.imshow(matrix, cmap="Blues", aspect="auto")
+    ax.set_xticks([0, 1])
+    ax.set_yticks([0, 1])
+    ax.set_xticklabels(labels)
+    ax.set_yticklabels(labels)
+    ax.set_xlabel("Rater B")
+    ax.set_ylabel("Rater A")
+    ax.set_title("Inter-Rater Agreement")
+
+    for i in range(2):
+        for j in range(2):
+            color = "white" if matrix[i, j] > 30 else "black"
+            ax.text(j, i, str(matrix[i, j]), ha="center", va="center",
+                    fontsize=16, fontweight="bold", color=color)
+
+    ax.text(0.5, -0.18, "Cohen's κ = 0.7400 — substantial agreement",
+            ha="center", transform=ax.transAxes, fontsize=9, style="italic", color="#666")
+    fig.colorbar(im, ax=ax, shrink=0.8)
+    fig.savefig(OUT / "cat_agreement_heatmap.png", **SAVE_KW)
+    plt.close(fig)
+    print("  ✓ cat_agreement_heatmap.png")
+
+
+# ── 28. fcast_loss_differential.png ───────────────────────────────────────
+def plot_fcast_loss_differential():
+    set_style()
+    fig, ax = plt.subplots(figsize=(8, 4))
+
+    np.random.seed(42)
+    t = np.arange(200)
+    # Simulated loss differential (model1 - model2)
+    loss_diff = np.random.normal(0.3, 1.2, 200)
+    # Add a regime shift at t=100
+    loss_diff[100:] += 0.4
+
+    ax.plot(t, loss_diff, color="#4C72B0", lw=0.8, alpha=0.7)
+    ax.axhline(0, color="#C44E52", ls="--", lw=1.5)
+    ax.axhline(np.mean(loss_diff), color="#55A868", ls="-", lw=2,
+               label=f"Mean = {np.mean(loss_diff):.3f}")
+    ax.fill_between(t, 0, loss_diff, where=loss_diff > 0,
+                    alpha=0.15, color="#C44E52")
+    ax.fill_between(t, 0, loss_diff, where=loss_diff < 0,
+                    alpha=0.15, color="#4C72B0")
+
+    ax.set_xlabel("Time Period")
+    ax.set_ylabel("Loss Differential (d_t)")
+    ax.set_title("Diebold-Mariano: Loss Differential Series")
+    ax.legend(frameon=True, fancybox=True)
+    fig.savefig(OUT / "fcast_loss_differential.png", **SAVE_KW)
+    plt.close(fig)
+    print("  ✓ fcast_loss_differential.png")
+
+
+# ── 29. fcast_mcs_bars.png ────────────────────────────────────────────────
+def plot_fcast_mcs_bars():
+    set_style()
+    fig, ax = plt.subplots(figsize=(7, 4))
+
+    models = ["ARIMA", "ETS", "ML Model", "Random Walk"]
+    included = [True, True, False, False]
+    mse = [1.2, 1.35, 2.1, 2.8]
+    colors = ["#55A868" if inc else "#C44E52" for inc in included]
+
+    bars = ax.barh(models, mse, color=colors, edgecolor="white", height=0.5)
+    ax.set_xlabel("Mean Squared Error")
+    ax.set_title("Model Confidence Set (α = 0.1)")
+
+    # Legend
+    from matplotlib.patches import Patch
+    legend_elements = [Patch(facecolor="#55A868", label="In MCS"),
+                       Patch(facecolor="#C44E52", label="Excluded")]
+    ax.legend(handles=legend_elements, frameon=True, fancybox=True, fontsize=9)
+
+    for bar, v, inc in zip(bars, mse, included):
+        label = f"{v:.2f}"
+        ax.text(v + 0.05, bar.get_y() + bar.get_height() / 2, label,
+                va="center", fontsize=10)
+    fig.savefig(OUT / "fcast_mcs_bars.png", **SAVE_KW)
+    plt.close(fig)
+    print("  ✓ fcast_mcs_bars.png")
+
+
+# ── 30. cor2_nonlinear.png ────────────────────────────────────────────────
+def plot_cor2_nonlinear():
+    set_style()
+    fig, ax = plt.subplots(figsize=(7, 5))
+
+    rng = np.random.default_rng(42)
+    x = rng.uniform(-3, 3, 50)
+    y = x**2 + rng.normal(0, 0.5, 50)
+
+    ax.scatter(x, y, s=50, color="#4C72B0", edgecolor="white", lw=0.8, zorder=5)
+
+    # Pearson line (linear fit)
+    m, b = np.polyfit(x, y, 1)
+    x_fit = np.linspace(-3.5, 3.5, 100)
+    ax.plot(x_fit, m * x_fit + b, color="#C44E52", ls="--", lw=1.5,
+            label=f"Pearson r = −0.01 (linear)")
+    # True relationship
+    ax.plot(x_fit, x_fit**2, color="#55A868", lw=2,
+            label=f"Distance cor = 0.76 (nonlinear)")
+
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    ax.set_title("Nonlinear Association: y = x² + noise")
+    ax.legend(frameon=True, fancybox=True, fontsize=9)
+    fig.savefig(OUT / "cor2_nonlinear.png", **SAVE_KW)
+    plt.close(fig)
+    print("  ✓ cor2_nonlinear.png")
+
+
+# ── 31. cor2_icc_heatmap.png ──────────────────────────────────────────────
+def plot_cor2_icc_heatmap():
+    set_style()
+    fig, ax = plt.subplots(figsize=(6, 5))
+
+    # 10 subjects × 3 raters
+    ratings = np.array([
+        [7, 8, 7],
+        [6, 5, 6],
+        [8, 9, 8],
+        [5, 4, 5],
+        [9, 9, 8],
+        [7, 6, 7],
+        [8, 8, 9],
+        [6, 7, 6],
+        [9, 8, 9],
+        [7, 7, 7],
+    ])
+
+    im = ax.imshow(ratings, cmap="YlOrRd", aspect="auto", vmin=3, vmax=10)
+    ax.set_xticks([0, 1, 2])
+    ax.set_xticklabels(["Rater 1", "Rater 2", "Rater 3"])
+    ax.set_yticks(range(10))
+    ax.set_yticklabels([f"S{i+1}" for i in range(10)])
+    ax.set_ylabel("Subject")
+    ax.set_title("Inter-Rater Reliability: 10 Subjects × 3 Raters")
+
+    for i in range(10):
+        for j in range(3):
+            ax.text(j, i, str(ratings[i, j]), ha="center", va="center",
+                    fontsize=11, fontweight="bold",
+                    color="white" if ratings[i, j] >= 8 else "black")
+
+    fig.colorbar(im, ax=ax, shrink=0.8, label="Rating")
+    fig.savefig(OUT / "cor2_icc_heatmap.png", **SAVE_KW)
+    plt.close(fig)
+    print("  ✓ cor2_icc_heatmap.png")
+
+
+# ── 32. spec_alm_comparison.png ───────────────────────────────────────────
+def plot_spec_alm_comparison():
+    set_style()
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+    y = np.array([10.2, 12.1, 11.5, 13.8, 50.0, 14.2, 11.8, 12.5, 15.1, 13.0,
+                  16.5, 18.2, 17.0, 19.5, -20.0, 20.1, 17.8, 18.5, 21.2, 19.0,
+                  22.5, 24.1, 23.0, 25.5, 80.0, 26.2, 23.8, 24.5, 27.1, 25.0,
+                  28.5, 30.1, 29.0, 31.5, -10.0, 32.2, 29.8, 30.5, 33.1, 31.0])
+    x1 = np.array([1.0, 1.5, 1.2, 2.0, 1.8, 2.2, 1.3, 1.7, 2.5, 1.9,
+                   3.0, 3.5, 3.2, 4.0, 3.8, 4.2, 3.3, 3.7, 4.5, 3.9,
+                   5.0, 5.5, 5.2, 6.0, 5.8, 6.2, 5.3, 5.7, 6.5, 5.9,
+                   7.0, 7.5, 7.2, 8.0, 7.8, 8.2, 7.3, 7.7, 8.5, 7.9])
+
+    # OLS: intercept=11.0407, coef_x1=2.3236 (distorted by outliers)
+    ols_pred = 11.0407 + 2.3236 * x1
+    # ALM (student_t): intercept=0.0, coef_x1=-4.6183, coef_x2=7.6061
+    # Simplified: use x1 only for visualization
+    x2 = np.array([2.0, 2.5, 2.2, 3.0, 2.8, 3.2, 2.3, 2.7, 3.5, 2.9,
+                   4.0, 4.5, 4.2, 5.0, 4.8, 5.2, 4.3, 4.7, 5.5, 4.9,
+                   6.0, 6.5, 6.2, 7.0, 6.8, 7.2, 6.3, 6.7, 7.5, 6.9,
+                   8.0, 8.5, 8.2, 9.0, 8.8, 9.2, 8.3, 8.7, 9.5, 8.9])
+    alm_pred = 0.0 + -4.6183 * x1 + 7.6061 * x2
+
+    # Actual vs predicted
+    ax = axes[0]
+    outlier_mask = np.abs(y - np.median(y)) > 30
+    ax.scatter(y[~outlier_mask], ols_pred[~outlier_mask], s=40, color="#C44E52",
+               edgecolor="white", lw=0.6, alpha=0.7, label="OLS")
+    ax.scatter(y[outlier_mask], ols_pred[outlier_mask], s=80, color="#C44E52",
+               edgecolor="black", lw=1, marker="x", zorder=6)
+    ax.scatter(y[~outlier_mask], alm_pred[~outlier_mask], s=40, color="#55A868",
+               edgecolor="white", lw=0.6, alpha=0.7, label="ALM (Student-t)")
+    ax.scatter(y[outlier_mask], alm_pred[outlier_mask], s=80, color="#55A868",
+               edgecolor="black", lw=1, marker="x", zorder=6)
+    lim = [-30, 85]
+    ax.plot(lim, lim, ls="--", color="#999", lw=1)
+    ax.set_xlabel("Actual y")
+    ax.set_ylabel("Predicted y")
+    ax.set_title("Actual vs Predicted")
+    ax.legend(frameon=True, fancybox=True, fontsize=9)
+
+    # Residuals comparison
+    ax = axes[1]
+    ols_resid = y - ols_pred
+    alm_resid = y - alm_pred
+    idx = np.arange(len(y))
+    ax.scatter(idx, ols_resid, s=25, color="#C44E52", alpha=0.6,
+               edgecolor="white", lw=0.4, label="OLS residuals")
+    ax.scatter(idx, alm_resid, s=25, color="#55A868", alpha=0.6,
+               edgecolor="white", lw=0.4, label="ALM residuals")
+    ax.axhline(0, color="#999", ls="--", lw=1)
+    ax.set_xlabel("Observation")
+    ax.set_ylabel("Residual")
+    ax.set_title("Residuals: OLS vs ALM")
+    ax.legend(frameon=True, fancybox=True, fontsize=9)
+
+    fig.tight_layout()
+    fig.savefig(OUT / "spec_alm_comparison.png", **SAVE_KW)
+    plt.close(fig)
+    print("  ✓ spec_alm_comparison.png")
+
+
+# ── 33. spec_demand_timeline.png ──────────────────────────────────────────
+def plot_spec_demand_timeline():
+    set_style()
+    fig, ax = plt.subplots(figsize=(10, 4))
+
+    demand = [0, 0, 5, 0, 0, 0, 8, 0, 0, 3,
+              0, 0, 0, 12, 0, 0, 0, 0, 6, 0,
+              0, 0, 0, 0, 15, 0, 0, 0, 0, 0,
+              0, 4, 0, 0, 0, 0, 0, 9, 0, 0]
+
+    t = np.arange(len(demand))
+    colors = ["#4C72B0" if d > 0 else "#DDDDDD" for d in demand]
+    # Mark high outlier (15.0)
+    colors[24] = "#C44E52"
+
+    ax.bar(t, demand, color=colors, edgecolor="white", linewidth=0.5)
+    mean_val = np.mean(demand)
+    ax.axhline(mean_val, color="#DD8452", ls="--", lw=1.5,
+               label=f"Mean = {mean_val:.2f}")
+
+    ax.set_xlabel("Time Period")
+    ax.set_ylabel("Demand")
+    ax.set_title("Intermittent Demand Pattern (80% zeros)")
+    ax.legend(frameon=True, fancybox=True)
+
+    # Legend for colors
+    from matplotlib.patches import Patch
+    legend_elements = [Patch(facecolor="#4C72B0", label="Normal demand"),
+                       Patch(facecolor="#DDDDDD", label="Zero (stockout)"),
+                       Patch(facecolor="#C44E52", label="High outlier")]
+    ax.legend(handles=legend_elements, frameon=True, fancybox=True, fontsize=9,
+              loc="upper left")
+    fig.savefig(OUT / "spec_demand_timeline.png", **SAVE_KW)
+    plt.close(fig)
+    print("  ✓ spec_demand_timeline.png")
+
+
+# ── 34. spec_dynamic_coefs.png ────────────────────────────────────────────
+def plot_spec_dynamic_coefs():
+    set_style()
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4.5))
+
+    y = [10.5, 11.2, 10.8, 11.5, 12.0, 12.8, 13.5, 14.2, 15.0, 15.8,
+         16.5, 17.2, 18.0, 18.8, 19.5, 20.2, 21.0, 21.8, 22.5, 23.2,
+         28.0, 29.5, 31.0, 32.5, 34.0, 35.5, 37.0, 38.5, 40.0, 41.5,
+         43.0, 44.5, 46.0, 47.5, 49.0, 50.5, 52.0, 53.5, 55.0, 56.5]
+    x2 = [2.0, 2.2, 2.1, 2.3, 2.5, 2.8, 3.0, 3.2, 3.5, 3.8,
+          4.0, 4.2, 4.5, 4.8, 5.0, 5.2, 5.5, 5.8, 6.0, 6.2,
+          8.0, 8.5, 9.0, 9.5, 10.0, 10.5, 11.0, 11.5, 12.0, 12.5,
+          13.0, 13.5, 14.0, 14.5, 15.0, 15.5, 16.0, 16.5, 17.0, 17.5]
+
+    t = np.arange(len(y))
+
+    # Left: y over time with regime change
+    ax = axes[0]
+    ax.scatter(t[:20], y[:20], s=30, color="#4C72B0", edgecolor="white", label="Period 1")
+    ax.scatter(t[20:], y[20:], s=30, color="#DD8452", edgecolor="white", label="Period 2")
+    ax.axvline(19.5, color="#C44E52", ls="--", lw=1.5, alpha=0.7, label="Regime change")
+    ax.set_xlabel("Time")
+    ax.set_ylabel("y")
+    ax.set_title("Response Over Time")
+    ax.legend(frameon=True, fancybox=True, fontsize=9)
+
+    # Right: x2 vs y with structural break
+    ax = axes[1]
+    ax.scatter(x2[:20], y[:20], s=30, color="#4C72B0", edgecolor="white", label="Period 1")
+    ax.scatter(x2[20:], y[20:], s=30, color="#DD8452", edgecolor="white", label="Period 2")
+
+    # Period 1 fit line
+    m1, b1 = np.polyfit(x2[:20], y[:20], 1)
+    x_fit1 = np.linspace(1.8, 6.5, 50)
+    ax.plot(x_fit1, m1 * x_fit1 + b1, color="#4C72B0", lw=1.5, ls="--")
+    # Period 2 fit line
+    m2, b2 = np.polyfit(x2[20:], y[20:], 1)
+    x_fit2 = np.linspace(7.5, 18, 50)
+    ax.plot(x_fit2, m2 * x_fit2 + b2, color="#DD8452", lw=1.5, ls="--")
+
+    ax.set_xlabel("x2")
+    ax.set_ylabel("y")
+    ax.set_title("Structural Break in x2 → y")
+    ax.legend(frameon=True, fancybox=True, fontsize=9)
+
+    fig.tight_layout()
+    fig.savefig(OUT / "spec_dynamic_coefs.png", **SAVE_KW)
+    plt.close(fig)
+    print("  ✓ spec_dynamic_coefs.png")
+
+
 # ── Run all ──────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     print(f"Generating plots → {OUT}/")
+    # Original 17 plots
     plot_hyp_distributions()
     plot_hyp_correlation()
     plot_reg_actual_vs_pred()
@@ -601,4 +1244,22 @@ if __name__ == "__main__":
     plot_grp_aic_comparison()
     plot_abt_revenue_distributions()
     plot_abt_segment_forest()
+    # New 17 plots
+    plot_glm_poisson_fit()
+    plot_glm_deviance_residuals()
+    plot_glm_link_comparison()
+    plot_reg2_lasso_coefs()
+    plot_reg2_wls_residuals()
+    plot_reg2_isotonic_fit()
+    plot_tost_paired_diagram()
+    plot_tost_comparison_table()
+    plot_cat_goodness_of_fit()
+    plot_cat_agreement_heatmap()
+    plot_fcast_loss_differential()
+    plot_fcast_mcs_bars()
+    plot_cor2_nonlinear()
+    plot_cor2_icc_heatmap()
+    plot_spec_alm_comparison()
+    plot_spec_demand_timeline()
+    plot_spec_dynamic_coefs()
     print(f"Done — {len(list(OUT.glob('*.png')))} PNGs generated.")

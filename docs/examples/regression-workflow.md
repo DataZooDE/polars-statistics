@@ -432,3 +432,9 @@ Coefficients: [4890926935.688748, -4818191647.238056, 14385833.81900725]
 │ x3        ┆ 1.4386e7  ┆ 10567.909939  ┆ 1361.27521    ┆ 0.0     │
 └───────────┴───────────┴───────────────┴───────────────┴─────────┘
 ```
+
+## Next Steps
+
+- **Regularized models** — lasso, ridge, elastic net, WLS, RLS, bounded, isotonic: [Regularized & Specialized Models](regularized-regression.md)
+- **Generalized linear models** — Poisson, negative binomial, Tweedie, probit, cloglog: [Generalized Linear Models](glm-models.md)
+- **Robust & specialized** — ALM with heavy-tailed errors, demand classification, dynamic regression: [Special Models](special-models.md)
