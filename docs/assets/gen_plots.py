@@ -299,6 +299,288 @@ def plot_abt_tost_diagram():
     print("  ✓ abt_tost_diagram.png")
 
 
+# ── 10. hyp_boxplot_multigroup.png ─────────────────────────────────────────
+def plot_hyp_boxplot_multigroup():
+    set_style()
+    fig, ax = plt.subplots(figsize=(6, 4.5))
+
+    method_a = [85, 90, 88, 92, 87, 91, 86, 89, 93, 88]
+    method_b = [78, 82, 80, 84, 79, 83, 77, 81, 85, 80]
+    method_c = [72, 76, 74, 78, 73, 77, 71, 75, 79, 74]
+
+    bp = ax.boxplot(
+        [method_a, method_b, method_c],
+        tick_labels=["Method A", "Method B", "Method C"],
+        patch_artist=True,
+        widths=0.5,
+        medianprops={"color": "#333333", "lw": 2},
+    )
+    colors = ["#4C72B0", "#DD8452", "#55A868"]
+    for patch, color in zip(bp["boxes"], colors):
+        patch.set_facecolor(color)
+        patch.set_alpha(0.7)
+
+    # Overlay individual points
+    for i, (data, color) in enumerate(zip([method_a, method_b, method_c], colors)):
+        jitter = np.random.default_rng(42).normal(0, 0.04, len(data))
+        ax.scatter(np.full(len(data), i + 1) + jitter, data,
+                   s=25, color=color, edgecolor="white", lw=0.6, zorder=5, alpha=0.8)
+
+    ax.set_ylabel("Score")
+    ax.set_title("Multi-Group Comparison (Kruskal-Wallis)")
+    ax.text(0.5, -0.12, "H = 24.60, p < 0.001 — at least one group differs",
+            ha="center", transform=ax.transAxes, fontsize=9, style="italic", color="#666666")
+    fig.savefig(OUT / "hyp_boxplot_multigroup.png", **SAVE_KW)
+    plt.close(fig)
+    print("  ✓ hyp_boxplot_multigroup.png")
+
+
+# ── 11. reg_coef_forest.png ──────────────────────────────────────────────
+def plot_reg_coef_forest():
+    set_style()
+    fig, ax = plt.subplots(figsize=(7, 3.5))
+
+    terms = ["sqft (x1)", "bedrooms (x2)", "age (x3)"]
+    estimates = [0.3607, 1.7018, 1.6806]
+    std_errors = [0.0332, 11.4411, 1.3684]
+    ci_lower = [e - 1.96 * se for e, se in zip(estimates, std_errors)]
+    ci_upper = [e + 1.96 * se for e, se in zip(estimates, std_errors)]
+
+    y_pos = np.arange(len(terms))
+    ax.errorbar(estimates, y_pos, xerr=[[e - lo for e, lo in zip(estimates, ci_lower)],
+                                         [hi - e for e, hi in zip(estimates, ci_upper)]],
+                fmt="o", color="#4C72B0", ms=8, capsize=6, lw=2, capthick=1.5,
+                ecolor="#4C72B0", markeredgecolor="white", markeredgewidth=1)
+    ax.axvline(0, color="#C44E52", ls="--", lw=1.5, alpha=0.7)
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(terms)
+    ax.set_xlabel("Coefficient Estimate (± 95% CI)")
+    ax.set_title("OLS Coefficient Forest Plot")
+    ax.invert_yaxis()
+    fig.savefig(OUT / "reg_coef_forest.png", **SAVE_KW)
+    plt.close(fig)
+    print("  ✓ reg_coef_forest.png")
+
+
+# ── 12. reg_ci_vs_pi.png ────────────────────────────────────────────────
+def plot_reg_ci_vs_pi():
+    set_style()
+    fig, ax = plt.subplots(figsize=(7, 5))
+
+    actual = np.array([250, 270, 280, 290, 300, 310, 320, 340, 350, 370,
+                       380, 400, 410, 430, 450, 480, 520, 550, 600, 620], dtype=float)
+    predicted = np.array([253.70, 254.16, 280.13, 264.81, 304.49, 261.69,
+                          319.13, 328.71, 359.95, 368.91,
+                          387.90, 396.87, 424.14, 434.49, 456.69, 465.65,
+                          527.26, 518.30, 587.85, 601.91])
+    # CI (confidence interval for mean)
+    ci_lo = np.array([242.63, 222.37, 264.90, 235.10, 274.64, 231.40,
+                      306.29, 298.36, 330.13, 339.02,
+                      378.48, 367.65, 394.89, 405.16, 447.03, 436.23,
+                      495.36, 487.66, 554.66, 569.17])
+    ci_hi = np.array([264.76, 285.94, 295.36, 294.52, 334.34, 291.98,
+                      331.97, 359.06, 389.77, 398.80,
+                      397.31, 426.08, 453.39, 463.82, 466.35, 495.08,
+                      559.16, 548.95, 621.03, 634.66])
+    # PI (prediction interval for individual)
+    pi_lo = np.array([224.10, 222.37, 248.74, 235.10, 274.64, 231.40,
+                      288.82, 298.36, 330.13, 339.02,
+                      358.88, 367.65, 394.89, 405.16, 427.59, 436.23,
+                      495.36, 487.66, 554.66, 569.17])
+    pi_hi = np.array([283.29, 285.94, 311.52, 294.52, 334.34, 291.98,
+                      349.43, 359.06, 389.77, 398.80,
+                      416.92, 426.08, 453.39, 463.82, 485.79, 495.08,
+                      559.16, 548.95, 621.03, 634.66])
+
+    # Use sorted actual for band plotting
+    order = np.argsort(actual)
+    a_s = actual[order]
+    p_s, ci_lo_s, ci_hi_s = predicted[order], ci_lo[order], ci_hi[order]
+    pi_lo_s, pi_hi_s = pi_lo[order], pi_hi[order]
+
+    ax.fill_between(a_s, pi_lo_s, pi_hi_s, alpha=0.15, color="#DD8452",
+                    label="95% Prediction Interval")
+    ax.fill_between(a_s, ci_lo_s, ci_hi_s, alpha=0.3, color="#4C72B0",
+                    label="95% Confidence Interval")
+    ax.scatter(actual, predicted, s=50, color="#4C72B0", edgecolor="white",
+               lw=0.8, zorder=5)
+    lim = [220, 650]
+    ax.plot(lim, lim, ls="--", color="#999999", lw=1, label="Perfect fit")
+    ax.set_xlabel("Actual Price ($k)")
+    ax.set_ylabel("Predicted Price ($k)")
+    ax.set_title("Confidence Interval vs Prediction Interval")
+    ax.legend(frameon=True, fancybox=True, loc="upper left")
+    ax.set_xlim(lim)
+    ax.set_ylim(lim)
+    fig.savefig(OUT / "reg_ci_vs_pi.png", **SAVE_KW)
+    plt.close(fig)
+    print("  ✓ reg_ci_vs_pi.png")
+
+
+# ── 13. reg_regularization_coefs.png ─────────────────────────────────────
+def plot_reg_regularization_coefs():
+    set_style()
+    fig, ax = plt.subplots(figsize=(7, 4))
+
+    terms = ["sqft", "bedrooms", "age"]
+    ols_coefs = [0.3607, 1.7018, 1.6806]
+    ridge_coefs = [0.3620, 0.9253, 1.6313]
+    enet_coefs = [0.0, 0.7043, 1.1512]
+
+    x = np.arange(len(terms))
+    w = 0.22
+    ax.bar(x - w, ols_coefs, w, label="OLS", color="#4C72B0", edgecolor="white")
+    ax.bar(x, ridge_coefs, w, label="Ridge (λ=1)", color="#DD8452", edgecolor="white")
+    ax.bar(x + w, enet_coefs, w, label="ElasticNet (λ=1, α=0.5)", color="#55A868",
+           edgecolor="white")
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(terms)
+    ax.set_ylabel("Coefficient Value")
+    ax.set_title("Regularization Effect on Coefficients")
+    ax.legend(frameon=True, fancybox=True, fontsize=9)
+    ax.axhline(0, color="#333333", lw=0.8)
+    fig.savefig(OUT / "reg_regularization_coefs.png", **SAVE_KW)
+    plt.close(fig)
+    print("  ✓ reg_regularization_coefs.png")
+
+
+# ── 14. grp_paired_before_after.png ──────────────────────────────────────
+def plot_grp_paired_before_after():
+    set_style()
+    fig, axes = plt.subplots(1, 2, figsize=(10, 4.5), sharey=True)
+
+    groups = {
+        "Group A": {
+            "before": [85, 90, 78, 92, 88, 76, 95, 83, 89, 91,
+                       80, 87, 93, 84, 86, 79, 94, 82, 88, 90],
+            "after":  [89, 94, 83, 96, 92, 81, 99, 88, 93, 95,
+                       85, 91, 97, 89, 90, 84, 98, 87, 92, 94],
+        },
+        "Group B": {
+            "before": [70, 75, 68, 77, 73, 66, 80, 72, 74, 76,
+                       65, 72, 78, 69, 71, 64, 79, 67, 73, 75],
+            "after":  [72, 78, 70, 80, 76, 69, 83, 75, 77, 79,
+                       68, 75, 81, 72, 74, 67, 82, 70, 76, 78],
+        },
+    }
+
+    colors = ["#4C72B0", "#DD8452"]
+    for ax, (name, data), color in zip(axes, groups.items(), colors):
+        before = np.array(data["before"])
+        after = np.array(data["after"])
+        for b, a in zip(before, after):
+            ax.plot([0, 1], [b, a], color=color, alpha=0.35, lw=1)
+        ax.scatter(np.zeros(len(before)), before, s=30, color=color, edgecolor="white",
+                   lw=0.6, zorder=5, label="Before")
+        ax.scatter(np.ones(len(after)), after, s=30, color=color, edgecolor="white",
+                   lw=0.6, zorder=5, label="After")
+        ax.set_xticks([0, 1])
+        ax.set_xticklabels(["Before", "After"])
+        ax.set_title(name, fontweight="bold")
+        ax.legend(frameon=True, fancybox=True, fontsize=9, loc="lower right")
+        if name == "Group A":
+            ax.set_ylabel("Score")
+
+    fig.suptitle("Paired Before → After Scores", fontsize=13, y=1.02)
+    fig.tight_layout()
+    fig.savefig(OUT / "grp_paired_before_after.png", **SAVE_KW)
+    plt.close(fig)
+    print("  ✓ grp_paired_before_after.png")
+
+
+# ── 15. grp_aic_comparison.png ───────────────────────────────────────────
+def plot_grp_aic_comparison():
+    set_style()
+    fig, ax = plt.subplots(figsize=(7, 4))
+
+    regions = ["North", "South", "West"]
+    aic_additive = [130.18, 136.16, 121.92]
+    aic_interaction = [409.99, 422.10, 399.32]
+
+    x = np.arange(len(regions))
+    w = 0.3
+    ax.bar(x - w / 2, aic_additive, w, label="Additive (price + ad)",
+           color="#4C72B0", edgecolor="white")
+    ax.bar(x + w / 2, aic_interaction, w, label="Interaction (price × ad)",
+           color="#DD8452", edgecolor="white")
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(regions)
+    ax.set_ylabel("AIC (lower = better)")
+    ax.set_title("Model Comparison: AIC by Region")
+    ax.legend(frameon=True, fancybox=True, fontsize=9)
+    fig.savefig(OUT / "grp_aic_comparison.png", **SAVE_KW)
+    plt.close(fig)
+    print("  ✓ grp_aic_comparison.png")
+
+
+# ── 16. abt_revenue_distributions.png ────────────────────────────────────
+def plot_abt_revenue_distributions():
+    set_style()
+    fig, ax = plt.subplots(figsize=(7, 4))
+
+    control = [12.5, 0, 8.3, 0, 15.2, 0, 22.1, 0, 9.8, 0,
+               18.4, 0, 7.6, 0, 25.3, 0, 11.0, 0, 14.7, 0,
+               0, 16.8, 0, 19.5, 0, 6.2, 0, 21.9, 0, 13.1]
+    treatment = [15.8, 0, 11.2, 0, 18.5, 3.2, 28.4, 0, 13.1, 0,
+                 22.7, 0, 10.9, 5.1, 30.2, 0, 14.3, 0, 17.6, 0,
+                 2.8, 20.1, 0, 24.8, 0, 9.5, 0, 26.3, 3.7, 16.4]
+
+    bins = np.linspace(0, 32, 17)
+    ax.hist(control, bins=bins, alpha=0.6, label=f"Control (mean={np.mean(control):.1f})",
+            color="#4C72B0", edgecolor="white")
+    ax.hist(treatment, bins=bins, alpha=0.6, label=f"Treatment (mean={np.mean(treatment):.1f})",
+            color="#55A868", edgecolor="white")
+    ax.axvline(np.mean(control), color="#4C72B0", ls="--", lw=1.5)
+    ax.axvline(np.mean(treatment), color="#55A868", ls="--", lw=1.5)
+    ax.set_xlabel("Revenue per User ($)")
+    ax.set_ylabel("Frequency")
+    ax.set_title("Revenue Distribution: Control vs Treatment")
+    ax.legend(frameon=True, fancybox=True)
+    ax.text(0.5, -0.12, "Both groups non-normal (p < 0.001) — use non-parametric tests",
+            ha="center", transform=ax.transAxes, fontsize=9, style="italic", color="#666666")
+    fig.savefig(OUT / "abt_revenue_distributions.png", **SAVE_KW)
+    plt.close(fig)
+    print("  ✓ abt_revenue_distributions.png")
+
+
+# ── 17. abt_segment_forest.png ───────────────────────────────────────────
+def plot_abt_segment_forest():
+    set_style()
+    fig, ax = plt.subplots(figsize=(7, 3.5))
+
+    segments = ["desktop", "mobile", "tablet"]
+    estimates = [0.2000, 0.5100, 0.2000]
+    ci_lower = [-0.0400, 0.2188, 0.0136]
+    ci_upper = [0.4400, 0.8012, 0.3864]
+
+    y_pos = np.arange(len(segments))
+    colors = ["#4C72B0" if lo > 0 else "#999999" for lo in ci_lower]
+
+    for i, (est, lo, hi, color) in enumerate(zip(estimates, ci_lower, ci_upper, colors)):
+        ax.errorbar(est, i, xerr=[[est - lo], [hi - est]],
+                    fmt="o", color=color, ms=8, capsize=6, lw=2, capthick=1.5,
+                    ecolor=color, markeredgecolor="white", markeredgewidth=1)
+
+    ax.axvline(0, color="#C44E52", ls="--", lw=1.5, alpha=0.7)
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(segments)
+    ax.set_xlabel("Mean Difference (Treatment − Control)")
+    ax.set_title("Per-Segment Treatment Effect")
+    ax.invert_yaxis()
+
+    # Significance markers
+    for i, (lo, p) in enumerate(zip(ci_lower, [0.168, 0.005, 0.078])):
+        sig = "**" if p < 0.01 else "*" if p < 0.05 else "ns"
+        ax.text(ci_upper[i] + 0.03, i, sig, va="center", fontsize=10,
+                color="#333333" if sig != "ns" else "#999999")
+
+    fig.savefig(OUT / "abt_segment_forest.png", **SAVE_KW)
+    plt.close(fig)
+    print("  ✓ abt_segment_forest.png")
+
+
 # ── Run all ──────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     print(f"Generating plots → {OUT}/")
@@ -311,4 +593,12 @@ if __name__ == "__main__":
     plot_grp_regression_lines()
     plot_abt_conversion_rates()
     plot_abt_tost_diagram()
+    plot_hyp_boxplot_multigroup()
+    plot_reg_coef_forest()
+    plot_reg_ci_vs_pi()
+    plot_reg_regularization_coefs()
+    plot_grp_paired_before_after()
+    plot_grp_aic_comparison()
+    plot_abt_revenue_distributions()
+    plot_abt_segment_forest()
     print(f"Done — {len(list(OUT.glob('*.png')))} PNGs generated.")

@@ -176,6 +176,34 @@ Group B:
   Normality:     W=0.9743, p=0.8423
 ```
 
+![Paired before/after scores](../assets/images/grp_paired_before_after.png)
+
+??? note "Plot code"
+
+    ```python
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    fig, axes = plt.subplots(1, 2, figsize=(10, 4.5), sharey=True)
+    for ax, group, color in zip(axes, ["A", "B"], ["#4C72B0", "#DD8452"]):
+        subset = df_paired.filter(pl.col("group") == group)
+        before = subset["before"].to_numpy()
+        after = subset["after"].to_numpy()
+        for b, a in zip(before, after):
+            ax.plot([0, 1], [b, a], color=color, alpha=0.35, lw=1)
+        ax.scatter(np.zeros(len(before)), before, s=30, color=color,
+                   edgecolor="white", label="Before")
+        ax.scatter(np.ones(len(after)), after, s=30, color=color,
+                   edgecolor="white", label="After")
+        ax.set_xticks([0, 1])
+        ax.set_xticklabels(["Before", "After"])
+        ax.set_title(f"Group {group}")
+        ax.legend(fontsize=9)
+    axes[0].set_ylabel("Score")
+    plt.tight_layout()
+    plt.savefig("grp_paired_before_after.png", dpi=150)
+    ```
+
 ### Correlation per Group
 
 ```python
@@ -194,6 +222,18 @@ corr_by_region = (
 )
 
 print(corr_by_region)
+```
+
+Expected output:
+
+```
+┌────────┬───────────────┬────────────┐
+│ region ┆ r_sales_price ┆ r_sales_ad │
+╞════════╪═══════════════╪════════════╡
+│ North  ┆ 0.9756        ┆ 0.9798     │
+│ South  ┆ 0.9776        ┆ 0.9804     │
+│ West   ┆ 0.9859        ┆ 0.9865     │
+└────────┴───────────────┴────────────┘
 ```
 
 ## over: Per-Row Results
@@ -215,6 +255,20 @@ predictions = (
 
 print(predictions.select("region", "sales", "ols_prediction", "ols_lower", "ols_upper").head(5))
 # Each row has a prediction from its region-specific model
+```
+
+Expected output:
+
+```
+┌────────┬───────┬────────────────┬───────────┬───────────┐
+│ region ┆ sales ┆ ols_prediction ┆ ols_lower ┆ ols_upper │
+╞════════╪═══════╪════════════════╪═══════════╪═══════════╡
+│ North  ┆ 120.0 ┆ 125.5527       ┆ 121.3610  ┆ 129.7443  │
+│ North  ┆ 135.0 ┆ 135.5852       ┆ 131.5486  ┆ 139.6218  │
+│ North  ┆ 142.0 ┆ 141.2314       ┆ 137.1224  ┆ 145.3404  │
+│ North  ┆ 128.0 ┆ 129.9391       ┆ 125.8613  ┆ 134.0169  │
+│ North  ┆ 155.0 ┆ 150.0042       ┆ 145.9213  ┆ 154.0871  │
+└────────┴───────┴────────────────┴───────────┴───────────┘
 ```
 
 ![Per-region regression lines](../assets/images/grp_regression_lines.png)
@@ -305,6 +359,20 @@ annotated = (
 print(annotated.select("region", "sales", "normality_p", "distribution").head(5))
 ```
 
+Expected output:
+
+```
+┌────────┬───────┬─────────────┬──────────────┐
+│ region ┆ sales ┆ normality_p ┆ distribution │
+╞════════╪═══════╪═════════════╪══════════════╡
+│ North  ┆ 120.0 ┆ 0.8831      ┆ normal       │
+│ North  ┆ 135.0 ┆ 0.8831      ┆ normal       │
+│ North  ┆ 142.0 ┆ 0.8831      ┆ normal       │
+│ North  ┆ 128.0 ┆ 0.8831      ┆ normal       │
+│ North  ┆ 155.0 ┆ 0.8831      ┆ normal       │
+└────────┴───────┴─────────────┴──────────────┘
+```
+
 ## Combining group_by and over
 
 A common pattern: fit models with `group_by`, then use `.over()` for predictions:
@@ -325,7 +393,21 @@ model_quality = (
     .sort("region")
 )
 print(model_quality)
+```
 
+Expected output:
+
+```
+┌────────┬──────────┬──────────┐
+│ region ┆ ols_r2   ┆ ridge_r2 │
+╞════════╪══════════╪══════════╡
+│ North  ┆ 0.9656   ┆ 0.9654   │
+│ South  ┆ 0.9641   ┆ 0.9640   │
+│ West   ┆ 0.9757   ┆ 0.9757   │
+└────────┴──────────┴──────────┘
+```
+
+```python
 # Step 2: Generate per-row predictions from the better model
 final = (
     df.with_columns(
@@ -360,3 +442,39 @@ specs = (
 print(specs)
 # Lower AIC = better fit. Compare additive vs interaction model per region.
 ```
+
+Expected output:
+
+```
+┌────────┬─────────────┬──────────────┬────────────────┬─────────────────┐
+│ region ┆ r2_additive ┆ aic_additive ┆ r2_interaction ┆ aic_interaction │
+╞════════╪═════════════╪══════════════╪════════════════╪═════════════════╡
+│ North  ┆ 0.9656      ┆ 130.18       ┆ 0.0            ┆ 409.99          │
+│ South  ┆ 0.9641      ┆ 136.16       ┆ 0.0            ┆ 422.10          │
+│ West   ┆ 0.9757      ┆ 121.92       ┆ 0.0            ┆ 399.32          │
+└────────┴─────────────┴──────────────┴────────────────┴─────────────────┘
+```
+
+![AIC comparison by region](../assets/images/grp_aic_comparison.png)
+
+??? note "Plot code"
+
+    ```python
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    regions = specs["region"].to_list()
+    aic_add = specs["aic_additive"].to_list()
+    aic_int = specs["aic_interaction"].to_list()
+
+    x = np.arange(len(regions))
+    fig, ax = plt.subplots(figsize=(7, 4))
+    ax.bar(x - 0.15, aic_add, 0.3, label="Additive", color="#4C72B0")
+    ax.bar(x + 0.15, aic_int, 0.3, label="Interaction", color="#DD8452")
+    ax.set_xticks(x)
+    ax.set_xticklabels(regions)
+    ax.set_ylabel("AIC (lower = better)")
+    ax.legend()
+    plt.tight_layout()
+    plt.savefig("grp_aic_comparison.png", dpi=150)
+    ```

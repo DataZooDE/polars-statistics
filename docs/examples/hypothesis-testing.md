@@ -289,3 +289,27 @@ Kruskal-Wallis: H=24.6015, p=0.000005
   a_vs_c: U=100.0, p=0.000181
   b_vs_c: U=95.5, p=0.000654
 ```
+
+![Multi-group box plot comparison](../assets/images/hyp_boxplot_multigroup.png)
+
+??? note "Plot code"
+
+    ```python
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    fig, ax = plt.subplots(figsize=(6, 4.5))
+    bp = ax.boxplot(
+        [df_multi["method_a"].to_list(), df_multi["method_b"].to_list(),
+         df_multi["method_c"].to_list()],
+        tick_labels=["Method A", "Method B", "Method C"],
+        patch_artist=True, widths=0.5,
+    )
+    for patch, color in zip(bp["boxes"], ["#4C72B0", "#DD8452", "#55A868"]):
+        patch.set_facecolor(color)
+        patch.set_alpha(0.7)
+    ax.set_ylabel("Score")
+    ax.set_title("Multi-Group Comparison")
+    plt.tight_layout()
+    plt.savefig("hyp_boxplot_multigroup.png", dpi=150)
+    ```

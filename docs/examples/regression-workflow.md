@@ -74,6 +74,34 @@ print(coef_table)
 # └───────────┴───────────┴───────────┴───────────┴───────────┘
 ```
 
+![OLS coefficient forest plot](../assets/images/reg_coef_forest.png)
+
+??? note "Plot code"
+
+    ```python
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    terms = coef_table["term"].to_list()[1:]  # skip intercept
+    est = coef_table["estimate"].to_list()[1:]
+    se = coef_table["std_error"].to_list()[1:]
+    ci_lo = [e - 1.96 * s for e, s in zip(est, se)]
+    ci_hi = [e + 1.96 * s for e, s in zip(est, se)]
+
+    fig, ax = plt.subplots(figsize=(7, 3.5))
+    y = np.arange(len(terms))
+    ax.errorbar(est, y, xerr=[[e - lo for e, lo in zip(est, ci_lo)],
+                                [hi - e for e, hi in zip(est, ci_hi)]],
+                fmt="o", color="#4C72B0", ms=8, capsize=6, lw=2)
+    ax.axvline(0, color="#C44E52", ls="--", lw=1.5, alpha=0.7)
+    ax.set_yticks(y)
+    ax.set_yticklabels(terms)
+    ax.set_xlabel("Coefficient Estimate (± 95% CI)")
+    ax.invert_yaxis()
+    plt.tight_layout()
+    plt.savefig("reg_coef_forest.png", dpi=150)
+    ```
+
 ### Robust Standard Errors
 
 Use heteroskedasticity-consistent (HC) standard errors when variance isn't constant:
@@ -150,6 +178,33 @@ ci = (
 )
 ```
 
+![Confidence interval vs prediction interval](../assets/images/reg_ci_vs_pi.png)
+
+??? note "Plot code"
+
+    ```python
+    import matplotlib.pyplot as plt
+
+    fig, ax = plt.subplots(figsize=(7, 5))
+    sorted_df = predictions.sort("price")
+    ci_sorted = ci.sort("price")
+
+    ax.fill_between(sorted_df["price"], sorted_df["ols_lower"], sorted_df["ols_upper"],
+                    alpha=0.15, color="#DD8452", label="95% Prediction Interval")
+    ax.fill_between(ci_sorted["price"], ci_sorted["ols_lower"], ci_sorted["ols_upper"],
+                    alpha=0.3, color="#4C72B0", label="95% Confidence Interval")
+    ax.scatter(predictions["price"], predictions["ols_prediction"],
+               s=50, color="#4C72B0", edgecolor="white")
+    lim = [220, 650]
+    ax.plot(lim, lim, ls="--", color="#999", lw=1, label="Perfect fit")
+    ax.set_xlabel("Actual Price ($k)")
+    ax.set_ylabel("Predicted Price ($k)")
+    ax.set_title("CI (narrow) vs PI (wide)")
+    ax.legend()
+    plt.tight_layout()
+    plt.savefig("reg_ci_vs_pi.png", dpi=150)
+    ```
+
 ## Step 4: Diagnostics
 
 ### Multicollinearity Check
@@ -217,6 +272,33 @@ ridge        R²=0.9885  RMSE=12.95   coefficients=[0.3620, 0.9253, 1.6313]
 enet         R²=0.0000  RMSE=122.92  coefficients=[0.0, 0.7043, 1.1512]
 ```
 
+![Regularization effect on coefficients](../assets/images/reg_regularization_coefs.png)
+
+??? note "Plot code"
+
+    ```python
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    terms = ["sqft", "bedrooms", "age"]
+    ols_c = [comparison["ols"][0]["coefficients"][i] for i in range(3)]
+    ridge_c = [comparison["ridge"][0]["coefficients"][i] for i in range(3)]
+    enet_c = [comparison["enet"][0]["coefficients"][i] for i in range(3)]
+
+    x = np.arange(len(terms))
+    w = 0.22
+    fig, ax = plt.subplots(figsize=(7, 4))
+    ax.bar(x - w, ols_c, w, label="OLS", color="#4C72B0")
+    ax.bar(x, ridge_c, w, label="Ridge", color="#DD8452")
+    ax.bar(x + w, enet_c, w, label="ElasticNet", color="#55A868")
+    ax.set_xticks(x)
+    ax.set_xticklabels(terms)
+    ax.set_ylabel("Coefficient Value")
+    ax.legend()
+    plt.tight_layout()
+    plt.savefig("reg_regularization_coefs.png", dpi=150)
+    ```
+
 ## Formula Syntax
 
 Use R-style formulas for interactions and polynomials:
@@ -233,6 +315,12 @@ result = df.select(ps.ols_formula("price ~ sqft * bedrooms + age").alias("model"
 result = df.select(ps.ols_formula("price ~ sqft + bedrooms + poly(age, 2)").alias("model"))
 model = result["model"][0]
 print(f"R² with quadratic age: {model['r_squared']:.4f}")
+```
+
+Expected output:
+
+```
+R² with quadratic age: 0.9902
 ```
 
 ## Quantile Regression
@@ -317,4 +405,30 @@ logit_coefs = (
     .unnest("coef")
 )
 print(logit_coefs)
+```
+
+Expected output:
+
+```
+Has separation: True
+Intercept:    -720227972.3328
+Coefficients: [4890926935.688748, -4818191647.238056, 14385833.81900725]
+```
+
+!!! warning "Separation detected"
+
+    `has_separation = True` means the predictors perfectly separate the outcome.
+    The huge coefficients are a sign of quasi-complete separation — logistic
+    regression cannot converge to finite estimates. Consider regularization or
+    Firth's penalized likelihood.
+
+```
+┌───────────┬───────────┬───────────────┬───────────────┬─────────┐
+│ term      ┆ estimate  ┆ std_error     ┆ statistic     ┆ p_value │
+╞═══════════╪═══════════╪═══════════════╪═══════════════╪═════════╡
+│ intercept ┆ -7.2023e8 ┆ 308015.430546 ┆ -2338.285361  ┆ 0.0     │
+│ x1        ┆ 4.8909e9  ┆ 256.734863    ┆ 1.9050e7      ┆ 0.0     │
+│ x2        ┆ -4.8182e9 ┆ 88354.414096  ┆ -54532.551616 ┆ 0.0     │
+│ x3        ┆ 1.4386e7  ┆ 10567.909939  ┆ 1361.27521    ┆ 0.0     │
+└───────────┴───────────┴───────────────┴───────────────┴─────────┘
 ```
