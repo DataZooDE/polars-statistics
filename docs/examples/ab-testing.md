@@ -434,3 +434,8 @@ Expected output:
 Odds ratio: 9.3333
 p-value:    0.069779
 ```
+
+## Next Steps
+
+- **More equivalence tests** — paired, correlation, proportion, non-parametric, and bootstrap variants: [Equivalence Testing (TOST)](equivalence-testing.md)
+- **Categorical analysis** — goodness-of-fit, McNemar, Cohen's kappa, and more: [Categorical Data Analysis](categorical-analysis.md)

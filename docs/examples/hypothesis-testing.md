@@ -63,6 +63,36 @@ Placebo: W=0.9609, p=0.5619
     plt.savefig("hyp_distributions.png", dpi=150)
     ```
 
+### Alternative: D'Agostino-Pearson Test
+
+For larger samples (n ≥ 20), the D'Agostino-Pearson test combines skewness and kurtosis
+into a single omnibus statistic:
+
+```python
+dag = df.select(
+    ps.dagostino("drug").alias("drug_dag"),
+    ps.dagostino("placebo").alias("placebo_dag"),
+)
+
+d = dag["drug_dag"][0]
+p = dag["placebo_dag"][0]
+print(f"Drug:    K²={d['statistic']:.4f}, p={d['p_value']:.4f}")
+print(f"Placebo: K²={p['statistic']:.4f}, p={p['p_value']:.4f}")
+```
+
+Expected output:
+
+```
+Drug:    K²=1.0525, p=0.5908
+Placebo: K²=1.0783, p=0.5833
+```
+
+!!! tip
+
+    Shapiro-Wilk is more powerful for small samples (n < 50).
+    D'Agostino-Pearson works better for larger samples and tells you
+    *why* normality fails (skewness vs kurtosis).
+
 ## Step 2: Check Variance Equality
 
 The Brown-Forsythe test checks whether the two groups have equal variances:

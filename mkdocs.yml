@@ -48,8 +48,15 @@ nav:
   - Examples:
       - Hypothesis Testing: examples/hypothesis-testing.md
       - Regression Workflow: examples/regression-workflow.md
+      - Regularized & Specialized Models: examples/regularized-regression.md
+      - Generalized Linear Models: examples/glm-models.md
       - Group-wise Analysis: examples/group-analysis.md
       - A/B Testing: examples/ab-testing.md
+      - Equivalence Testing (TOST): examples/equivalence-testing.md
+      - Categorical Data Analysis: examples/categorical-analysis.md
+      - Forecast Model Comparison: examples/forecast-comparison.md
+      - Correlation & Reliability: examples/advanced-correlation.md
+      - Special Models: examples/special-models.md
   - API Conventions: api/conventions.md
   - Statistical Tests:
       - Parametric Tests: api/tests/parametric.md
