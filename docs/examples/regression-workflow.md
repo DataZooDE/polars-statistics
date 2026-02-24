@@ -38,6 +38,18 @@ print(f"Intercept:    {model['intercept']:.4f}")
 print(f"Coefficients: {model['coefficients']}")
 ```
 
+Expected output:
+
+```
+R²:     0.9885
+Adj R²: 0.9863
+RMSE:   12.95
+AIC:    167.20
+F-stat: 457.22 (p=0.000000)
+Intercept:    -61.7424
+Coefficients: [0.3607, 1.7018, 1.6806]
+```
+
 ## Step 2: Tidy Coefficient Table
 
 Get a publication-ready coefficient summary with standard errors and p-values:
@@ -52,14 +64,14 @@ coef_table = (
 )
 
 print(coef_table)
-# ┌───────────┬──────────┬───────────┬───────────┬─────────┐
-# │ term      ┆ estimate ┆ std_error ┆ statistic ┆ p_value │
-# ╞═══════════╪══════════╪═══════════╪═══════════╪═════════╡
-# │ intercept ┆ ...      ┆ ...       ┆ ...       ┆ ...     │
-# │ x0        ┆ ...      ┆ ...       ┆ ...       ┆ ...     │
-# │ x1        ┆ ...      ┆ ...       ┆ ...       ┆ ...     │
-# │ x2        ┆ ...      ┆ ...       ┆ ...       ┆ ...     │
-# └───────────┴──────────┴───────────┴───────────┴─────────┘
+# ┌───────────┬───────────┬───────────┬───────────┬───────────┐
+# │ term      ┆ estimate  ┆ std_error ┆ statistic ┆ p_value   │
+# ╞═══════════╪═══════════╪═══════════╪═══════════╪═══════════╡
+# │ intercept ┆ -61.7424  ┆ 39.8851   ┆ -1.5480   ┆ 0.141171  │
+# │ x1        ┆ 0.3607    ┆ 0.0332    ┆ 10.8486   ┆ 0.000000  │
+# │ x2        ┆ 1.7018    ┆ 11.4411   ┆ 0.1487    ┆ 0.883615  │
+# │ x3        ┆ 1.6806    ┆ 1.3684    ┆ 1.2281    ┆ 0.237166  │
+# └───────────┴───────────┴───────────┴───────────┴───────────┘
 ```
 
 ### Robust Standard Errors
@@ -94,11 +106,37 @@ print(predictions.select("price", "ols_prediction", "ols_lower", "ols_upper").he
 # ┌───────┬────────────────┬───────────┬───────────┐
 # │ price ┆ ols_prediction ┆ ols_lower ┆ ols_upper │
 # ╞═══════╪════════════════╪═══════════╪═══════════╡
-# │ 250   ┆ 255.3          ┆ 210.1     ┆ 300.5     │
-# │ 320   ┆ 318.7          ┆ 273.5     ┆ 363.9     │
-# │ ...   ┆ ...            ┆ ...       ┆ ...       │
+# │ 250.0 ┆ 253.70         ┆ 224.10    ┆ 283.29    │
+# │ 320.0 ┆ 319.13         ┆ 288.82    ┆ 349.43    │
+# │ 280.0 ┆ 280.13         ┆ 248.74    ┆ 311.52    │
+# │ 450.0 ┆ 456.69         ┆ 427.59    ┆ 485.79    │
+# │ 380.0 ┆ 387.90         ┆ 358.88    ┆ 416.92    │
 # └───────┴────────────────┴───────────┴───────────┘
 ```
+
+![Actual vs predicted with prediction intervals](../assets/images/reg_actual_vs_pred.png)
+
+??? note "Plot code"
+
+    ```python
+    import matplotlib.pyplot as plt
+
+    fig, ax = plt.subplots(figsize=(6, 5))
+    ax.scatter(predictions["price"], predictions["ols_prediction"],
+               s=50, color="#4C72B0", edgecolor="white")
+    lim = [220, 650]
+    ax.plot(lim, lim, ls="--", color="#999", lw=1, label="Perfect fit")
+    ax.fill_between(
+        predictions.sort("price")["price"],
+        predictions.sort("price")["ols_lower"],
+        predictions.sort("price")["ols_upper"],
+        alpha=0.2, color="#4C72B0", label="95% PI")
+    ax.set_xlabel("Actual Price ($k)")
+    ax.set_ylabel("Predicted Price ($k)")
+    ax.legend()
+    plt.tight_layout()
+    plt.savefig("reg_actual_vs_pred.png", dpi=150)
+    ```
 
 Confidence intervals (for the mean response) are narrower than prediction intervals:
 
@@ -128,6 +166,31 @@ print(f"Severity: {c['severity']}")
 # "Serious" (100-1000), "Severe" (> 1000)
 ```
 
+Expected output:
+
+```
+Condition number: 17309.4
+Severity: Severe
+```
+
+![Residuals vs fitted values](../assets/images/reg_residuals.png)
+
+??? note "Plot code"
+
+    ```python
+    import matplotlib.pyplot as plt
+
+    residuals = predictions["price"] - predictions["ols_prediction"]
+    fig, ax = plt.subplots(figsize=(6, 4.5))
+    ax.scatter(predictions["ols_prediction"], residuals,
+               s=50, color="#4C72B0", edgecolor="white")
+    ax.axhline(0, color="#C44E52", ls="--", lw=1.5)
+    ax.set_xlabel("Fitted Values")
+    ax.set_ylabel("Residuals")
+    plt.tight_layout()
+    plt.savefig("reg_residuals.png", dpi=150)
+    ```
+
 ### Regularization When Needed
 
 If multicollinearity is a concern, compare OLS with regularized models:
@@ -144,6 +207,14 @@ for name in ["ols", "ridge", "enet"]:
     m = comparison[name][0]
     print(f"{name:12s} R²={m['r_squared']:.4f}  RMSE={m['rmse']:.2f}  "
           f"coefficients={m['coefficients']}")
+```
+
+Expected output:
+
+```
+ols          R²=0.9885  RMSE=12.95   coefficients=[0.3607, 1.7018, 1.6806]
+ridge        R²=0.9885  RMSE=12.95   coefficients=[0.3620, 0.9253, 1.6313]
+enet         R²=0.0000  RMSE=122.92  coefficients=[0.0, 0.7043, 1.1512]
 ```
 
 ## Formula Syntax
@@ -179,6 +250,38 @@ for name, tau in [("q25", 0.25), ("q50", 0.50), ("q75", 0.75)]:
     m = quantiles[name][0]
     print(f"τ={tau}: intercept={m['intercept']:.2f}, coefficients={m['coefficients']}")
 ```
+
+Expected output:
+
+```
+τ=0.25: intercept=-60.00, coefficients=[0.34, 8.00, 2.00]
+τ=0.50: intercept=-58.38, coefficients=[0.34, 7.03, 1.92]
+τ=0.75: intercept=-57.58, coefficients=[0.38, -5.91, 1.53]
+```
+
+![Quantile regression lines](../assets/images/reg_quantile_lines.png)
+
+??? note "Plot code"
+
+    ```python
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    fig, ax = plt.subplots(figsize=(7, 5))
+    ax.scatter(df["sqft"], df["price"], s=50, color="#666", edgecolor="white")
+    x = np.linspace(750, 1950, 100)
+    for name, tau, c, ls in [("q25", 0.25, "#4C72B0", "--"),
+                              ("q50", 0.50, "#C44E52", "-"),
+                              ("q75", 0.75, "#55A868", "-.")]:
+        m = quantiles[name][0]
+        ax.plot(x, m["intercept"] + m["coefficients"][0] * x,
+                color=c, lw=2, ls=ls, label=f"τ = {tau}")
+    ax.set_xlabel("Square Footage")
+    ax.set_ylabel("Price ($k)")
+    ax.legend()
+    plt.tight_layout()
+    plt.savefig("reg_quantile_lines.png", dpi=150)
+    ```
 
 ## GLM: Logistic Regression
 

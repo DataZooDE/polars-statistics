@@ -31,6 +31,34 @@ print(f"Chi²:           {pt['statistic']:.4f}")
 print(f"p-value:        {pt['p_value']:.6f}")
 ```
 
+Expected output:
+
+```
+Treatment rate: 14.5%
+Control rate:   12.0%
+Difference:     0.0250
+Chi²:           2.7187
+p-value:        0.099177
+```
+
+![Conversion rates with confidence intervals](../assets/images/abt_conversion_rates.png)
+
+??? note "Plot code"
+
+    ```python
+    import matplotlib.pyplot as plt
+
+    fig, ax = plt.subplots(figsize=(5, 4))
+    groups = ["Control", "Treatment"]
+    rates = [12.0, 14.5]
+    ax.bar(groups, rates, color=["#4C72B0", "#55A868"], width=0.5,
+           yerr=[[2.0, 2.2], [2.0, 2.2]], capsize=8)
+    ax.set_ylabel("Conversion Rate (%)")
+    ax.set_title("A/B Test: Conversion Rates")
+    plt.tight_layout()
+    plt.savefig("abt_conversion_rates.png", dpi=150)
+    ```
+
 ### With Continuity Correction
 
 For small sample sizes, apply Yates' correction:
@@ -81,6 +109,15 @@ for name in ["ttest", "mwu", "yuen"]:
     print(f"{name:8s}: statistic={r['statistic']:.4f}, p={r['p_value']:.6f}")
 ```
 
+Expected output:
+
+```
+Control normality p=0.0001, Treatment normality p=0.0009
+ttest   : statistic=0.9932, p=0.324853
+mwu     : statistic=517.0000, p=0.305012
+yuen    : statistic=0.7505, p=0.458257
+```
+
 ## Equivalence Testing (TOST)
 
 Standard tests ask "is there a difference?" — TOST asks "are these practically equivalent?"
@@ -107,6 +144,14 @@ print(f"Equivalent: {tost['equivalent']}")
 # equivalent=True → new design conversion rate is within ±2% of old
 ```
 
+Expected output:
+
+```
+Difference: 0.0070
+TOST p:     0.280307
+Equivalent: False
+```
+
 ### Mean Equivalence
 
 Test whether two variants produce equivalent average session duration:
@@ -130,6 +175,36 @@ print(f"CI: [{tost['ci_lower']:.4f}, {tost['ci_upper']:.4f}]")
 print(f"TOST p-value:    {tost['tost_p_value']:.6f}")
 print(f"Equivalent:      {tost['equivalent']}")
 ```
+
+Expected output:
+
+```
+Mean difference: 0.0950
+CI: [-0.1213, 0.3113]
+TOST p-value:    0.001671
+Equivalent:      True
+```
+
+![TOST equivalence interval diagram](../assets/images/abt_tost_diagram.png)
+
+??? note "Plot code"
+
+    ```python
+    import matplotlib.pyplot as plt
+
+    fig, ax = plt.subplots(figsize=(8, 2.5))
+    delta = 0.5
+    ax.axvline(-delta, color="#C44E52", ls="--", lw=2)
+    ax.axvline(delta, color="#C44E52", ls="--", lw=2)
+    ax.axvspan(-delta, delta, alpha=0.08, color="#55A868")
+    ax.plot([-0.1213, 0.3113], [0.5, 0.5], color="#4C72B0", lw=3)
+    ax.plot(0.095, 0.5, "o", color="#4C72B0", ms=10)
+    ax.set_xlabel("Mean Difference")
+    ax.set_title("TOST Equivalence Test")
+    ax.set_yticks([])
+    plt.tight_layout()
+    plt.savefig("abt_tost_diagram.png", dpi=150)
+    ```
 
 ### Using Cohen's d Bounds
 
@@ -165,6 +240,15 @@ print(f"  → {'Significant' if trad['p_value'] < 0.05 else 'Not significant'} d
 print(f"TOST equivalence:    p={equiv['tost_p_value']:.4f}")
 print(f"  → {'Equivalent' if equiv['equivalent'] else 'Not equivalent'} within ±0.5")
 # A non-significant t-test does NOT prove equivalence — that's what TOST is for.
+```
+
+Expected output:
+
+```
+Traditional t-test:  p=0.4624
+  → Not significant difference
+TOST equivalence:    p=0.0017
+  → Equivalent within ±0.5
 ```
 
 ## Per-Segment A/B Analysis
@@ -204,13 +288,13 @@ segment_results = (
 )
 
 print(segment_results)
-# ┌─────────┬────────┬─────────┬────────────┐
-# │ segment ┆ t_stat ┆ p_value ┆ equivalent │
-# ╞═════════╪════════╪═════════╪════════════╡
-# │ desktop ┆ ...    ┆ ...     ┆ ...        │
-# │ mobile  ┆ ...    ┆ ...     ┆ ...        │
-# │ tablet  ┆ ...    ┆ ...     ┆ ...        │
-# └─────────┴────────┴─────────┴────────────┘
+# ┌─────────┬──────────┬──────────┬────────────┐
+# │ segment ┆ t_stat   ┆ p_value  ┆ equivalent │
+# ╞═════════╪══════════╪══════════╪════════════╡
+# │ desktop ┆ 1.4051   ┆ 0.168117 ┆ true       │
+# │ mobile  ┆ 2.9529   ┆ 0.005388 ┆ false      │
+# │ tablet  ┆ 1.8092   ┆ 0.078344 ┆ true       │
+# └─────────┴──────────┴──────────┴────────────┘
 ```
 
 ## Categorical Outcomes
