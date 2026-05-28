@@ -482,6 +482,64 @@ def lasso(
 # ============================================================================
 
 
+def huber(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    epsilon: float = 1.35,
+    alpha: float = 0.0001,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
+    max_iter: int = 100,
+    tol: float = 1e-5,
+) -> pl.Expr:
+    """Huber M-estimator regression (robust to outliers).
+
+    Parameters
+    ----------
+    y : pl.Expr or str
+        Response variable.
+    *x : pl.Expr or str
+        Feature variables (one or more).
+    epsilon : float, default 1.35
+        Huber threshold; must be > 1.0. Smaller values down-weight more rows.
+    alpha : float, default 0.0001
+        L2 ridge penalty applied during the weighted least-squares update.
+    add_intercept : bool, default True
+    max_iter : int, default 100
+    tol : float, default 1e-5
+
+    Returns
+    -------
+    pl.Expr
+        Struct matching the linear-regression output schema (intercept,
+        coefficients, r_squared, ..., n_observations).
+    """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    if isinstance(y, str):
+        y = pl.col(y)
+
+    x_exprs = []
+    for xi in x:
+        if isinstance(xi, str):
+            xi = pl.col(xi)
+        x_exprs.append(xi.cast(pl.Float64))
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_huber",
+        args=[
+            y.cast(pl.Float64),
+            pl.lit(epsilon, dtype=pl.Float64),
+            pl.lit(alpha, dtype=pl.Float64),
+            pl.lit(add_intercept, dtype=pl.Boolean),
+            pl.lit(max_iter, dtype=pl.UInt32),
+            pl.lit(tol, dtype=pl.Float64),
+            *x_exprs,
+        ],
+        returns_scalar=True,
+    )
+
+
 def quantile(
     y: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
@@ -884,6 +942,71 @@ def logistic(
             y.cast(pl.Float64),
             pl.lit(lambda_, dtype=pl.Float64),
             pl.lit(add_intercept, dtype=pl.Boolean),
+            *x_exprs,
+        ],
+        returns_scalar=True,
+    )
+
+
+def logistic_regression(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    penalty: str = "l2",
+    C: float = 1.0,
+    threshold: float = 0.5,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
+    max_iter: int = 100,
+    tol: float = 1e-8,
+) -> pl.Expr:
+    """Sklearn-style logistic regression as a Polars expression.
+
+    Distinct from :func:`logistic`, which wraps the lower-level
+    ``BinomialRegressor``. This expression uses the sklearn convention:
+    inverse-strength regularization parameter ``C`` and an explicit
+    ``penalty`` choice.
+
+    Parameters
+    ----------
+    y : pl.Expr or str
+        Binary target variable (0/1).
+    *x : pl.Expr or str
+        Feature variables.
+    penalty : {"l2", "none"}, default "l2"
+    C : float, default 1.0
+        Inverse of regularization strength (lambda = 1/C). Ignored when
+        ``penalty="none"``.
+    threshold : float, default 0.5
+    add_intercept : bool, default True
+    max_iter : int, default 100
+    tol : float, default 1e-8
+
+    Returns
+    -------
+    pl.Expr
+        Struct matching the GLM output schema.
+    """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    if isinstance(y, str):
+        y = pl.col(y)
+
+    x_exprs = []
+    for xi in x:
+        if isinstance(xi, str):
+            xi = pl.col(xi)
+        x_exprs.append(xi.cast(pl.Float64))
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_logistic_regression",
+        args=[
+            y.cast(pl.Float64),
+            pl.lit(C, dtype=pl.Float64),
+            pl.lit(penalty, dtype=pl.String),
+            pl.lit(threshold, dtype=pl.Float64),
+            pl.lit(add_intercept, dtype=pl.Boolean),
+            pl.lit(max_iter, dtype=pl.UInt32),
+            pl.lit(tol, dtype=pl.Float64),
             *x_exprs,
         ],
         returns_scalar=True,

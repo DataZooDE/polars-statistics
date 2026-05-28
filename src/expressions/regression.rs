@@ -13,10 +13,10 @@ use anofox_regression::diagnostics::{
 };
 use anofox_regression::solvers::{
     AidClassifier, AlmDistribution, AlmRegressor, AnomalyType, BinomialRegressor, BlsRegressor,
-    DemandDistribution, DemandType, ElasticNetRegressor, FittedRegressor, InformationCriterion,
-    IsotonicRegressor, LmDynamicRegressor, NegativeBinomialRegressor, OlsRegressor,
-    PoissonRegressor, QuantileRegressor, Regressor, RidgeRegressor, RlsRegressor, TweedieRegressor,
-    WlsRegressor,
+    DemandDistribution, DemandType, ElasticNetRegressor, FittedRegressor, HuberRegressor,
+    InformationCriterion, IsotonicRegressor, LmDynamicRegressor, LogisticRegression,
+    NegativeBinomialRegressor, OlsRegressor, Penalty, PoissonRegressor, QuantileRegressor,
+    Regressor, RidgeRegressor, RlsRegressor, TweedieRegressor, WlsRegressor,
 };
 use anofox_regression::{HcType, IntervalType, SolverType};
 
@@ -682,6 +682,113 @@ pub fn bls_fit(inputs: &[Series]) -> PolarsResult<Series> {
 #[polars_expr(output_type_func=linear_regression_output_dtype)]
 fn pl_bls(inputs: &[Series]) -> PolarsResult<Series> {
     bls_fit(inputs)
+}
+
+/// Huber fit callable from Rust callers.
+///
+/// Input contract: `[y, epsilon (f64), alpha (f64), with_intercept (bool), max_iter (u32), tol (f64), x_0, ...]`.
+pub fn huber_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    let epsilon = inputs[1].f64()?.get(0).unwrap_or(1.35);
+    let alpha = inputs[2].f64()?.get(0).unwrap_or(0.0001);
+    let with_intercept = inputs[3].bool()?.get(0).unwrap_or(true);
+    let max_iter = inputs[4].u32()?.get(0).unwrap_or(100) as usize;
+    let tol = inputs[5].f64()?.get(0).unwrap_or(1e-5);
+
+    let (x, y) = match build_xy_data(inputs, 0, 6) {
+        Ok(data) => data,
+        Err(_) => return linear_nan_output(),
+    };
+
+    let model = HuberRegressor::builder()
+        .epsilon(epsilon)
+        .alpha(alpha)
+        .with_intercept(with_intercept)
+        .max_iterations(max_iter)
+        .tolerance(tol)
+        .build();
+
+    match model.fit(&x, &y) {
+        Ok(fitted) => {
+            let result = fitted.result();
+            linear_output(
+                fitted.intercept(),
+                &col_to_vec(fitted.coefficients()),
+                result.r_squared,
+                result.adj_r_squared,
+                result.mse,
+                result.rmse,
+                result.f_statistic,
+                result.f_pvalue,
+                result.aic,
+                result.bic,
+                result.n_observations,
+            )
+        }
+        Err(_) => linear_nan_output(),
+    }
+}
+
+/// Huber M-estimator robust regression expression.
+/// inputs[0] = y, inputs[1] = epsilon, inputs[2] = alpha, inputs[3] = with_intercept,
+/// inputs[4] = max_iter (u32), inputs[5] = tol, inputs[6..] = x columns
+#[polars_expr(output_type_func=linear_regression_output_dtype)]
+fn pl_huber(inputs: &[Series]) -> PolarsResult<Series> {
+    huber_fit(inputs)
+}
+
+/// Sklearn-style LogisticRegression fit callable from Rust callers.
+///
+/// Input contract: `[y, c (f64), penalty (str: "none" | "l2"), threshold (f64),
+///                   with_intercept (bool), max_iter (u32), tol (f64), x_0, ...]`.
+pub fn logistic_regression_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    let c = inputs[1].f64()?.get(0).unwrap_or(1.0);
+    let penalty = inputs[2].str()?.get(0).unwrap_or("l2");
+    let threshold = inputs[3].f64()?.get(0).unwrap_or(0.5);
+    let with_intercept = inputs[4].bool()?.get(0).unwrap_or(true);
+    let max_iter = inputs[5].u32()?.get(0).unwrap_or(100) as usize;
+    let tol = inputs[6].f64()?.get(0).unwrap_or(1e-6);
+
+    let (x, y) = match build_xy_data(inputs, 0, 7) {
+        Ok(data) => data,
+        Err(_) => return glm_nan_output(),
+    };
+
+    let penalty_enum = match penalty {
+        "none" | "None" => Penalty::None,
+        _ => Penalty::L2(1.0 / c),
+    };
+
+    let model = LogisticRegression::builder()
+        .penalty(penalty_enum)
+        .threshold(threshold)
+        .with_intercept(with_intercept)
+        .max_iterations(max_iter)
+        .tolerance(tol)
+        .build();
+
+    match model.fit(&x, &y) {
+        Ok(fitted) => {
+            let inner = fitted.inner();
+            let result = inner.result();
+            glm_output(
+                fitted.intercept(),
+                &col_to_vec(fitted.coefficients()),
+                result.aic,
+                result.bic,
+                result.n_observations,
+            )
+        }
+        Err(_) => glm_nan_output(),
+    }
+}
+
+/// Sklearn-style logistic regression expression.
+/// inputs[0] = y, inputs[1] = C, inputs[2] = penalty ("none"|"l2"),
+/// inputs[3] = threshold, inputs[4] = with_intercept, inputs[5] = max_iter (u32),
+/// inputs[6] = tol, inputs[7..] = x columns
+#[polars_expr(output_type_func=glm_output_dtype)]
+fn pl_logistic_regression(inputs: &[Series]) -> PolarsResult<Series> {
+    logistic_regression_fit(inputs)
 }
 
 // ============================================================================

@@ -76,12 +76,14 @@ from polars_statistics.exprs.regression import (
     nnls,
     quantile,
     isotonic,
+    huber,
     # Diagnostics
     condition_number,
     check_binary_separation,
     check_count_sparsity,
     # GLM
     logistic,
+    logistic_regression,
     poisson,
     negative_binomial,
     tweedie,
@@ -226,12 +228,14 @@ __all__ = [
     "nnls",
     "quantile",
     "isotonic",
+    "huber",
     # Diagnostics expressions
     "condition_number",
     "check_binary_separation",
     "check_count_sparsity",
     # GLM expressions
     "logistic",
+    "logistic_regression",
     "poisson",
     "negative_binomial",
     "tweedie",

@@ -478,6 +478,55 @@ fn linear_regression_fits() {
         let out = bls_predict_fit(&inputs, kwargs()).expect("bls_predict_fit failed");
         assert_eq!(out.len(), y.len());
     }
+
+    // huber_fit (added in issue #14): y, epsilon, alpha, with_intercept, max_iter, tol, x...
+    // Same y = 1 + 2x ground truth as ols_fit, but with planted outliers — Huber
+    // should still recover slope ~2.0 and intercept ~1.0.
+    {
+        let mut y_with_outliers = y.clone();
+        // Spike 3 of the 20 points (indices well below the assertion margin).
+        for &idx in &[3, 9, 15] {
+            y_with_outliers[idx] += 50.0;
+        }
+        let inputs = vec![
+            series_f64("y", &y_with_outliers),
+            scalar_f64("epsilon", 1.35),
+            scalar_f64("alpha", 1e-4),
+            scalar_bool("with_intercept", true),
+            scalar_u32("max_iter", 100),
+            scalar_f64("tol", 1e-5),
+            series_f64("x1", &x),
+        ];
+        let out = huber_fit(&inputs).expect("huber_fit failed");
+        let st = out.struct_().unwrap();
+        let intercept = st
+            .field_by_name("intercept")
+            .unwrap()
+            .f64()
+            .unwrap()
+            .get(0)
+            .unwrap();
+        let coefs_inner = st
+            .field_by_name("coefficients")
+            .unwrap()
+            .list()
+            .unwrap()
+            .get_as_series(0)
+            .unwrap();
+        let slope = coefs_inner.f64().unwrap().get(0).unwrap();
+        // Tolerances looser than OLS — Huber down-weights but doesn't ignore outliers,
+        // and alpha > 0 introduces a tiny ridge bias.
+        assert!(
+            (intercept - 1.0).abs() < 2.0,
+            "huber intercept {} far from 1.0",
+            intercept
+        );
+        assert!(
+            (slope - 2.0).abs() < 0.5,
+            "huber slope {} far from 2.0",
+            slope
+        );
+    }
 }
 
 // =============================================================================
@@ -518,6 +567,23 @@ fn glm_fits() {
         assert_n_obs_nonzero(&out, "n_observations");
         // summary
         let _ = logistic_summary_fit(&inputs).expect("logistic_summary_fit failed");
+    }
+
+    // logistic_regression_fit (issue #14, sklearn-style):
+    //   y, C, penalty (str), threshold, with_intercept, max_iter (u32), tol, x...
+    {
+        let inputs = vec![
+            series_f64("y", &y_bin),
+            scalar_f64("C", 1.0),
+            scalar_str("penalty", "l2"),
+            scalar_f64("threshold", 0.5),
+            scalar_bool("with_intercept", true),
+            scalar_u32("max_iter", 100),
+            scalar_f64("tol", 1e-8),
+            series_f64("x1", &x_bin),
+        ];
+        let out = logistic_regression_fit(&inputs).expect("logistic_regression_fit failed");
+        assert_n_obs_nonzero(&out, "n_observations");
     }
 
     // poisson_fit: y, lambda, with_intercept, x...
