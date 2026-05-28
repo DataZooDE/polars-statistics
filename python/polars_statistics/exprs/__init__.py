@@ -158,6 +158,11 @@ from polars_statistics.exprs.regression import (
     aid,
     aid_anomalies,
     lm_dynamic,
+    # Summary / predict completeness (issue #18)
+    quantile_summary,
+    quantile_predict,
+    isotonic_predict,
+    lm_dynamic_predict,
 )
 
 __all__ = [
@@ -311,4 +316,9 @@ __all__ = [
     "aid",
     "aid_anomalies",
     "lm_dynamic",
+    # Summary / predict completeness (issue #18)
+    "quantile_summary",
+    "quantile_predict",
+    "isotonic_predict",
+    "lm_dynamic_predict",
 ]

@@ -202,6 +202,11 @@ from polars_statistics.exprs import (
     aid,
     aid_anomalies,
     lm_dynamic,
+    # Summary / predict completeness (issue #18)
+    quantile_summary,
+    quantile_predict,
+    isotonic_predict,
+    lm_dynamic_predict,
 )
 
 __version__ = "0.3.0"
@@ -405,6 +410,11 @@ __all__ = [
     "aid",
     "aid_anomalies",
     "lm_dynamic",
+    # Summary / predict completeness (issue #18)
+    "quantile_summary",
+    "quantile_predict",
+    "isotonic_predict",
+    "lm_dynamic_predict",
     # Library path
     "LIB",
 ]

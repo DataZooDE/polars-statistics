@@ -3903,3 +3903,138 @@ def lm_dynamic(
         ],
         returns_scalar=True,
     )
+
+
+# ============================================================================
+# Summary / Predict completeness (issue #18)
+# ============================================================================
+
+
+def quantile_summary(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    tau: float = 0.5,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
+) -> pl.Expr:
+    """Quantile regression coefficient summary in tidy format.
+
+    Quantile regression has no analytic standard errors, so the std_error,
+    statistic, and p_value columns are NaN.
+    """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    if isinstance(y, str):
+        y = pl.col(y)
+    x_exprs = [(pl.col(xi) if isinstance(xi, str) else xi).cast(pl.Float64) for xi in x]
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_quantile_summary",
+        args=[
+            y.cast(pl.Float64),
+            pl.lit(tau, dtype=pl.Float64),
+            pl.lit(add_intercept, dtype=pl.Boolean),
+            *x_exprs,
+        ],
+        returns_scalar=True,
+    )
+
+
+def quantile_predict(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    tau: float = 0.5,
+    add_intercept: bool = True,
+    null_policy: str = "drop",
+    name: str | None = None,
+) -> pl.Expr:
+    """Quantile-regression per-row predictions.
+
+    Lower/upper interval columns are NaN — quantile regression intervals
+    require bootstrap, which is not yet wired through.
+    """
+    if isinstance(y, str):
+        y = pl.col(y)
+    x_exprs = [(pl.col(xi) if isinstance(xi, str) else xi).cast(pl.Float64) for xi in x]
+    prefix = name if name is not None else "quantile"
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_quantile_predict",
+        args=[
+            y.cast(pl.Float64),
+            pl.lit(tau, dtype=pl.Float64),
+            pl.lit(add_intercept, dtype=pl.Boolean),
+            pl.lit(null_policy, dtype=pl.String),
+            *x_exprs,
+        ],
+        kwargs={"prefix": prefix},
+        returns_scalar=False,
+    )
+
+
+def isotonic_predict(
+    y: Union[pl.Expr, str],
+    x: Union[pl.Expr, str],
+    increasing: bool = True,
+    null_policy: str = "drop",
+    name: str | None = None,
+) -> pl.Expr:
+    """Isotonic-regression per-row predictions on a single feature.
+
+    Lower/upper interval columns are NaN — isotonic regression produces a
+    step function with no parametric uncertainty estimate.
+    """
+    if isinstance(y, str):
+        y = pl.col(y)
+    if isinstance(x, str):
+        x = pl.col(x)
+    prefix = name if name is not None else "isotonic"
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_isotonic_predict",
+        args=[
+            y.cast(pl.Float64),
+            x.cast(pl.Float64),
+            pl.lit(increasing, dtype=pl.Boolean),
+            pl.lit(null_policy, dtype=pl.String),
+        ],
+        kwargs={"prefix": prefix},
+        returns_scalar=False,
+    )
+
+
+def lm_dynamic_predict(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    ic: str = "aicc",
+    distribution: str = "normal",
+    lowess_span: float = 0.3,
+    max_models: int = 64,
+    add_intercept: bool = True,
+    null_policy: str = "drop",
+    name: str | None = None,
+) -> pl.Expr:
+    """Dynamic Linear Model per-row predictions using time-averaged coefs.
+
+    Lower/upper interval columns are NaN — no analytic intervals for the
+    time-varying coefficient mixture.
+    """
+    if isinstance(y, str):
+        y = pl.col(y)
+    x_exprs = [(pl.col(xi) if isinstance(xi, str) else xi).cast(pl.Float64) for xi in x]
+    prefix = name if name is not None else "lm_dynamic"
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_lm_dynamic_predict",
+        args=[
+            y.cast(pl.Float64),
+            pl.lit(ic, dtype=pl.String),
+            pl.lit(distribution, dtype=pl.String),
+            pl.lit(lowess_span, dtype=pl.Float64),
+            pl.lit(max_models, dtype=pl.UInt32),
+            pl.lit(add_intercept, dtype=pl.Boolean),
+            pl.lit(null_policy, dtype=pl.String),
+            *x_exprs,
+        ],
+        kwargs={"prefix": prefix},
+        returns_scalar=False,
+    )
