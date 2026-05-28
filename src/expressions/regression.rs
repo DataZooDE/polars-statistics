@@ -3081,7 +3081,10 @@ fn pl_poisson_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<
 }
 
 /// Public Rust-callable variant. Same input contract as the `pl_negative_binomial_predict` expression shim.
-pub fn negative_binomial_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
+pub fn negative_binomial_predict_fit(
+    inputs: &[Series],
+    kwargs: PredictKwargs,
+) -> PolarsResult<Series> {
     let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let interval = inputs[3].str()?.get(0);

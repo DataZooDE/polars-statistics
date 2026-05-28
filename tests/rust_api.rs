@@ -122,13 +122,15 @@ fn linear_regression_fits() {
             .get(0)
             .unwrap();
         let coefs_field = st.field_by_name("coefficients").unwrap();
-        let coefs_inner = coefs_field
-            .list()
-            .unwrap()
-            .get_as_series(0)
-            .unwrap();
+        let coefs_inner = coefs_field.list().unwrap().get_as_series(0).unwrap();
         let slope = coefs_inner.f64().unwrap().get(0).unwrap();
-        let r2 = st.field_by_name("r_squared").unwrap().f64().unwrap().get(0).unwrap();
+        let r2 = st
+            .field_by_name("r_squared")
+            .unwrap()
+            .f64()
+            .unwrap()
+            .get(0)
+            .unwrap();
         assert!(
             (intercept - 1.0).abs() < 1e-6,
             "OLS intercept ~ 1.0, got {intercept}"
@@ -152,7 +154,13 @@ fn linear_regression_fits() {
         ];
         let out = wls_fit(&inputs).expect("wls_fit failed");
         let st = out.struct_().unwrap();
-        let intercept = st.field_by_name("intercept").unwrap().f64().unwrap().get(0).unwrap();
+        let intercept = st
+            .field_by_name("intercept")
+            .unwrap()
+            .f64()
+            .unwrap()
+            .get(0)
+            .unwrap();
         let coefs_inner = st
             .field_by_name("coefficients")
             .unwrap()
@@ -161,7 +169,10 @@ fn linear_regression_fits() {
             .get_as_series(0)
             .unwrap();
         let slope = coefs_inner.f64().unwrap().get(0).unwrap();
-        assert!((intercept - 1.0).abs() < 1e-6, "WLS intercept ~ 1.0, got {intercept}");
+        assert!(
+            (intercept - 1.0).abs() < 1e-6,
+            "WLS intercept ~ 1.0, got {intercept}"
+        );
         assert!((slope - 2.0).abs() < 1e-6, "WLS slope ~ 2.0, got {slope}");
         assert_n_obs_nonzero(&out, "n_observations");
     }
@@ -179,7 +190,13 @@ fn linear_regression_fits() {
         ];
         let out = ridge_fit(&inputs).expect("ridge_fit failed");
         let st = out.struct_().unwrap();
-        let intercept = st.field_by_name("intercept").unwrap().f64().unwrap().get(0).unwrap();
+        let intercept = st
+            .field_by_name("intercept")
+            .unwrap()
+            .f64()
+            .unwrap()
+            .get(0)
+            .unwrap();
         let coefs_inner = st
             .field_by_name("coefficients")
             .unwrap()
@@ -211,7 +228,13 @@ fn linear_regression_fits() {
         ];
         let out = quantile_fit(&inputs).expect("quantile_fit failed");
         let st = out.struct_().unwrap();
-        let intercept = st.field_by_name("intercept").unwrap().f64().unwrap().get(0).unwrap();
+        let intercept = st
+            .field_by_name("intercept")
+            .unwrap()
+            .f64()
+            .unwrap()
+            .get(0)
+            .unwrap();
         let coefs_inner = st
             .field_by_name("coefficients")
             .unwrap()
@@ -521,8 +544,8 @@ fn glm_fits() {
         ];
         let out = negative_binomial_fit(&inputs).expect("negative_binomial_fit failed");
         assert_n_obs_nonzero(&out, "n_observations");
-        let _ = negative_binomial_summary_fit(&inputs)
-            .expect("negative_binomial_summary_fit failed");
+        let _ =
+            negative_binomial_summary_fit(&inputs).expect("negative_binomial_summary_fit failed");
     }
 
     // tweedie_fit: y, var_power, lambda, with_intercept, x...
@@ -713,16 +736,13 @@ fn diagnostic_fits() {
 
     // check_binary_separation_fit: y (binary), x columns.
     {
-        let y: Vec<f64> = (0..20)
-            .map(|i| if i >= 10 { 1.0 } else { 0.0 })
-            .collect();
+        let y: Vec<f64> = (0..20).map(|i| if i >= 10 { 1.0 } else { 0.0 }).collect();
         let inputs = vec![
             series_f64("y", &y),
             series_f64("x1", &x1),
             series_f64("x2", &x2),
         ];
-        let out =
-            check_binary_separation_fit(&inputs).expect("check_binary_separation_fit failed");
+        let out = check_binary_separation_fit(&inputs).expect("check_binary_separation_fit failed");
         let st = out.struct_().unwrap();
         let _has = st.field_by_name("has_separation").unwrap();
     }
@@ -1110,12 +1130,8 @@ fn categorical_fits() {
 #[test]
 fn forecast_fits() {
     // Two error series of length 50.
-    let e1: Vec<f64> = (0..50)
-        .map(|i| (i as f64).sin() * 0.5 + 0.1)
-        .collect();
-    let e2: Vec<f64> = (0..50)
-        .map(|i| (i as f64).cos() * 0.5 + 0.15)
-        .collect();
+    let e1: Vec<f64> = (0..50).map(|i| (i as f64).sin() * 0.5 + 0.1).collect();
+    let e2: Vec<f64> = (0..50).map(|i| (i as f64).cos() * 0.5 + 0.15).collect();
     let e3: Vec<f64> = (0..50)
         .map(|i| ((i as f64) * 0.7).sin() * 0.4 + 0.2)
         .collect();
@@ -1350,8 +1366,7 @@ fn tost_fits() {
             scalar_f64("upper", 5.0),
             scalar_f64("alpha", 0.05),
         ];
-        let _ =
-            tost_wilcoxon_two_sample_fit(&inputs).expect("tost_wilcoxon_two_sample_fit failed");
+        let _ = tost_wilcoxon_two_sample_fit(&inputs).expect("tost_wilcoxon_two_sample_fit failed");
     }
 
     // tost_bootstrap_fit: x, y, bounds_type, delta, lower, upper, alpha, n_bootstrap, seed
@@ -1396,7 +1411,13 @@ fn dynamic_model_fits() {
     {
         // Intermittent count series with occasional zeros.
         let y: Vec<f64> = (0..30)
-            .map(|i| if i % 3 == 0 { 0.0 } else { (i as f64) % 5.0 + 1.0 })
+            .map(|i| {
+                if i % 3 == 0 {
+                    0.0
+                } else {
+                    (i as f64) % 5.0 + 1.0
+                }
+            })
             .collect();
         let inputs = vec![
             series_f64("y", &y),
@@ -1410,7 +1431,13 @@ fn dynamic_model_fits() {
     // aid_anomalies_fit: y, intermittent_threshold
     {
         let y: Vec<f64> = (0..30)
-            .map(|i| if i % 3 == 0 { 0.0 } else { (i as f64) % 5.0 + 1.0 })
+            .map(|i| {
+                if i % 3 == 0 {
+                    0.0
+                } else {
+                    (i as f64) % 5.0 + 1.0
+                }
+            })
             .collect();
         let inputs = vec![
             series_f64("y", &y),

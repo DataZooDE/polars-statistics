@@ -34,9 +34,17 @@ fn main() -> PolarsResult<()> {
         let result = wls_fit(&[y, w, with_intercept, solver, x1])?;
         let fitted = result.struct_()?;
 
-        let intercept = fitted.field_by_name("intercept")?.f64()?.get(0).unwrap_or(f64::NAN);
+        let intercept = fitted
+            .field_by_name("intercept")?
+            .f64()?
+            .get(0)
+            .unwrap_or(f64::NAN);
         let coefs = fitted.field_by_name("coefficients")?;
-        let r2 = fitted.field_by_name("r_squared")?.f64()?.get(0).unwrap_or(f64::NAN);
+        let r2 = fitted
+            .field_by_name("r_squared")?
+            .f64()?
+            .get(0)
+            .unwrap_or(f64::NAN);
 
         println!("site={site} intercept={intercept:.4} coefs={coefs:?} r2={r2:.4}");
     }
