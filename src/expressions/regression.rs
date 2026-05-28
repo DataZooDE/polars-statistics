@@ -26,6 +26,10 @@ use anofox_regression::{HcType, IntervalType, SolverType};
 /// Result type for build_xy_with_null_policy: (X_fit, y, valid_mask, X_pred)
 type XyNullPolicyResult = (Mat<f64>, Col<f64>, Vec<bool>, Mat<f64>);
 
+/// (residuals, leverage, mse, n_params, n_rows) from a fitted OLS used as
+/// the foundation for per-row residual diagnostics.
+type OlsResidualContext = (Col<f64>, Col<f64>, f64, usize, usize);
+
 /// Parse a solver type string into a SolverType enum.
 fn parse_solver_type(s: Option<&str>) -> Option<SolverType> {
     s.map(|v| match v {
@@ -1492,7 +1496,7 @@ fn residual_diag_nan_output() -> PolarsResult<Series> {
 
 /// Internal helper: fit OLS and return (residuals, leverage, mse, n_params, n_rows).
 /// Returns None on any failure.
-fn fit_ols_for_residual_diag(inputs: &[Series]) -> Option<(Col<f64>, Col<f64>, f64, usize, usize)> {
+fn fit_ols_for_residual_diag(inputs: &[Series]) -> Option<OlsResidualContext> {
     if inputs.len() < 3 {
         return None;
     }
