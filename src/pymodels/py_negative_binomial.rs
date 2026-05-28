@@ -33,19 +33,21 @@ pub struct PyNegativeBinomial {
     with_intercept: bool,
     max_iter: usize,
     tol: f64,
+    lambda_: f64,
     fitted: Option<FittedNegativeBinomial>,
 }
 
 #[pymethods]
 impl PyNegativeBinomial {
     #[new]
-    #[pyo3(signature = (theta=None, estimate_theta=true, with_intercept=true, max_iter=100, tol=1e-6))]
+    #[pyo3(signature = (theta=None, estimate_theta=true, with_intercept=true, max_iter=100, tol=1e-6, lambda_=0.0))]
     fn new(
         theta: Option<f64>,
         estimate_theta: bool,
         with_intercept: bool,
         max_iter: usize,
         tol: f64,
+        lambda_: f64,
     ) -> Self {
         Self {
             theta,
@@ -53,6 +55,7 @@ impl PyNegativeBinomial {
             with_intercept,
             max_iter,
             tol,
+            lambda_,
             fitted: None,
         }
     }
@@ -69,7 +72,8 @@ impl PyNegativeBinomial {
             .with_intercept(slf.with_intercept)
             .estimate_theta(slf.estimate_theta)
             .max_iterations(slf.max_iter)
-            .tolerance(slf.tol);
+            .tolerance(slf.tol)
+            .lambda(slf.lambda_);
 
         if let Some(theta) = slf.theta {
             builder = builder.theta(theta);

@@ -30,19 +30,21 @@ pub struct PyPoisson {
     confidence_level: f64,
     max_iter: usize,
     tol: f64,
+    lambda_: f64,
     fitted: Option<FittedPoisson>,
 }
 
 #[pymethods]
 impl PyPoisson {
     #[new]
-    #[pyo3(signature = (with_intercept=true, compute_inference=true, confidence_level=0.95, max_iter=25, tol=1e-8))]
+    #[pyo3(signature = (with_intercept=true, compute_inference=true, confidence_level=0.95, max_iter=25, tol=1e-8, lambda_=0.0))]
     fn new(
         with_intercept: bool,
         compute_inference: bool,
         confidence_level: f64,
         max_iter: usize,
         tol: f64,
+        lambda_: f64,
     ) -> Self {
         Self {
             with_intercept,
@@ -50,6 +52,7 @@ impl PyPoisson {
             confidence_level,
             max_iter,
             tol,
+            lambda_,
             fitted: None,
         }
     }
@@ -76,6 +79,7 @@ impl PyPoisson {
             .confidence_level(slf.confidence_level)
             .max_iterations(slf.max_iter)
             .tolerance(slf.tol)
+            .lambda(slf.lambda_)
             .build();
 
         let fitted = model

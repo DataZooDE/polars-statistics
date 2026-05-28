@@ -40,19 +40,21 @@ pub struct PyTweedie {
     with_intercept: bool,
     max_iter: usize,
     tol: f64,
+    lambda_: f64,
     fitted: Option<FittedTweedie>,
 }
 
 #[pymethods]
 impl PyTweedie {
     #[new]
-    #[pyo3(signature = (var_power=1.5, link_power=None, with_intercept=true, max_iter=100, tol=1e-6))]
+    #[pyo3(signature = (var_power=1.5, link_power=None, with_intercept=true, max_iter=100, tol=1e-6, lambda_=0.0))]
     fn new(
         var_power: f64,
         link_power: Option<f64>,
         with_intercept: bool,
         max_iter: usize,
         tol: f64,
+        lambda_: f64,
     ) -> Self {
         Self {
             var_power,
@@ -60,48 +62,52 @@ impl PyTweedie {
             with_intercept,
             max_iter,
             tol,
+            lambda_,
             fitted: None,
         }
     }
 
     /// Create a Gaussian (Normal) Tweedie model (var_power=0).
     #[staticmethod]
-    #[pyo3(signature = (with_intercept=true, max_iter=100, tol=1e-6))]
-    fn gaussian(with_intercept: bool, max_iter: usize, tol: f64) -> Self {
+    #[pyo3(signature = (with_intercept=true, max_iter=100, tol=1e-6, lambda_=0.0))]
+    fn gaussian(with_intercept: bool, max_iter: usize, tol: f64, lambda_: f64) -> Self {
         Self {
             var_power: 0.0,
             link_power: Some(1.0),
             with_intercept,
             max_iter,
             tol,
+            lambda_,
             fitted: None,
         }
     }
 
     /// Create a Gamma Tweedie model (var_power=2).
     #[staticmethod]
-    #[pyo3(signature = (with_intercept=true, max_iter=100, tol=1e-6))]
-    fn gamma(with_intercept: bool, max_iter: usize, tol: f64) -> Self {
+    #[pyo3(signature = (with_intercept=true, max_iter=100, tol=1e-6, lambda_=0.0))]
+    fn gamma(with_intercept: bool, max_iter: usize, tol: f64, lambda_: f64) -> Self {
         Self {
             var_power: 2.0,
             link_power: Some(0.0),
             with_intercept,
             max_iter,
             tol,
+            lambda_,
             fitted: None,
         }
     }
 
     /// Create an Inverse Gaussian Tweedie model (var_power=3).
     #[staticmethod]
-    #[pyo3(signature = (with_intercept=true, max_iter=100, tol=1e-6))]
-    fn inverse_gaussian(with_intercept: bool, max_iter: usize, tol: f64) -> Self {
+    #[pyo3(signature = (with_intercept=true, max_iter=100, tol=1e-6, lambda_=0.0))]
+    fn inverse_gaussian(with_intercept: bool, max_iter: usize, tol: f64, lambda_: f64) -> Self {
         Self {
             var_power: 3.0,
             link_power: Some(0.0),
             with_intercept,
             max_iter,
             tol,
+            lambda_,
             fitted: None,
         }
     }
@@ -118,7 +124,8 @@ impl PyTweedie {
             .var_power(slf.var_power)
             .with_intercept(slf.with_intercept)
             .max_iterations(slf.max_iter)
-            .tolerance(slf.tol);
+            .tolerance(slf.tol)
+            .lambda(slf.lambda_);
 
         if let Some(lp) = slf.link_power {
             builder = builder.link_power(lp);
