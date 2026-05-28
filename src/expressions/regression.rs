@@ -9,10 +9,10 @@ use serde::Deserialize;
 
 use anofox_regression::diagnostics::{
     check_binary_separation, check_count_sparsity, compute_leverage, condition_diagnostic,
-    cooks_distance, dffits, externally_studentized_residuals, high_leverage_points,
-    influential_cooks, influential_dffits, residual_outliers, standardized_residuals,
-    studentized_residuals, variance_inflation_factor, ConditionSeverity, SeparationCheck,
-    SeparationType,
+    cooks_distance, dffits, externally_studentized_residuals, generalized_vif,
+    high_leverage_points, high_vif_predictors, influential_cooks, influential_dffits,
+    residual_outliers, standardized_residuals, studentized_residuals, variance_inflation_factor,
+    ConditionSeverity, SeparationCheck, SeparationType,
 };
 use anofox_regression::solvers::{
     AidClassifier, AlmDistribution, AlmLoss, AlmRegressor, AnomalyType, BinomialRegressor,
@@ -242,6 +242,38 @@ fn influence_mask_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
         Field::new("n_observations".into(), DataType::UInt32),
     ];
     Ok(Field::new("influence".into(), DataType::Struct(fields)))
+}
+
+/// Output type for VIF mask diagnostics: per-feature boolean mask + counts.
+fn vif_mask_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
+    let fields = vec![
+        Field::new(
+            "is_high".into(),
+            DataType::List(Box::new(DataType::Boolean)),
+        ),
+        Field::new("n_high".into(), DataType::UInt32),
+        Field::new("n_features".into(), DataType::UInt32),
+    ];
+    Ok(Field::new("vif_mask".into(), DataType::Struct(fields)))
+}
+
+/// Output type for generalized VIF (GVIF) diagnostics: one value per group.
+fn gvif_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
+    let fields = vec![
+        Field::new("gvif".into(), DataType::List(Box::new(DataType::Float64))),
+        Field::new("n_groups".into(), DataType::UInt32),
+    ];
+    Ok(Field::new("gvif".into(), DataType::Struct(fields)))
+}
+
+/// Output type for Pearson chi-squared goodness-of-fit statistic.
+fn chi_squared_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
+    let fields = vec![
+        Field::new("chi_squared".into(), DataType::Float64),
+        Field::new("df_resid".into(), DataType::UInt32),
+        Field::new("n_observations".into(), DataType::UInt32),
+    ];
+    Ok(Field::new("chi_squared".into(), DataType::Struct(fields)))
 }
 
 // ============================================================================
@@ -1816,6 +1848,232 @@ pub fn high_leverage_points_fit(inputs: &[Series]) -> PolarsResult<Series> {
 #[polars_expr(output_type_func=influence_mask_output_dtype)]
 fn pl_high_leverage_points(inputs: &[Series]) -> PolarsResult<Series> {
     high_leverage_points_fit(inputs)
+}
+
+// ============================================================================
+// Multicollinearity + dispersion (issue #27 batch 4)
+//
+// high_vif_predictors, generalized_vif, pearson_chi_squared_logistic,
+// pearson_chi_squared_poisson.
+// ============================================================================
+
+fn vif_mask_output(mask: Vec<bool>, n_high: usize, n_features: usize) -> PolarsResult<Series> {
+    let inner = Series::new("item".into(), mask);
+    let m_s = Series::new("is_high".into(), &[inner]);
+    let nh_s = Series::new("n_high".into(), &[n_high as u32]);
+    let nf_s = Series::new("n_features".into(), &[n_features as u32]);
+    StructChunked::from_series("vif_mask".into(), 1, [&m_s, &nh_s, &nf_s].into_iter())
+        .map(|ca| ca.into_series())
+}
+
+fn vif_mask_nan_output() -> PolarsResult<Series> {
+    vif_mask_output(vec![], 0, 0)
+}
+
+fn gvif_output(values: Vec<f64>, n_groups: usize) -> PolarsResult<Series> {
+    let inner = Series::new("item".into(), values);
+    let g_s = Series::new("gvif".into(), &[inner]);
+    let ng_s = Series::new("n_groups".into(), &[n_groups as u32]);
+    StructChunked::from_series("gvif".into(), 1, [&g_s, &ng_s].into_iter())
+        .map(|ca| ca.into_series())
+}
+
+fn gvif_nan_output() -> PolarsResult<Series> {
+    gvif_output(vec![], 0)
+}
+
+fn chi_squared_output(chi_squared: f64, df_resid: usize, n_obs: usize) -> PolarsResult<Series> {
+    let c_s = Series::new("chi_squared".into(), &[chi_squared]);
+    let df_s = Series::new("df_resid".into(), &[df_resid as u32]);
+    let n_s = Series::new("n_observations".into(), &[n_obs as u32]);
+    StructChunked::from_series("chi_squared".into(), 1, [&c_s, &df_s, &n_s].into_iter())
+        .map(|ca| ca.into_series())
+}
+
+fn chi_squared_nan_output() -> PolarsResult<Series> {
+    chi_squared_output(f64::NAN, 0, 0)
+}
+
+/// High-VIF predictors boolean mask.
+///
+/// Input contract: `[threshold (f64), x_0, x_1, ...]`.
+/// Returns a struct{is_high: List<Boolean>, n_high: UInt32, n_features: UInt32}
+/// where `n_features` is the number of input predictors and `is_high[j]` is
+/// true when VIF_j exceeds the threshold.
+pub fn high_vif_predictors_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    if inputs.len() < 2 {
+        return vif_mask_nan_output();
+    }
+    let threshold = match inputs[0].f64()?.get(0) {
+        Some(t) => t,
+        None => return vif_mask_nan_output(),
+    };
+    let n_features = inputs.len() - 1;
+    let n_rows = inputs[1].len();
+    if n_rows < 3 || n_features == 0 {
+        return vif_mask_nan_output();
+    }
+
+    let x = Mat::from_fn(n_rows, n_features, |row, col| {
+        inputs[1 + col]
+            .f64()
+            .ok()
+            .and_then(|ca| ca.get(row))
+            .unwrap_or(f64::NAN)
+    });
+
+    for i in 0..n_rows {
+        for j in 0..n_features {
+            if x[(i, j)].is_nan() {
+                return vif_mask_nan_output();
+            }
+        }
+    }
+
+    let vif_col = variance_inflation_factor(&x);
+    let idx = high_vif_predictors(&vif_col, threshold);
+    let mut mask = vec![false; n_features];
+    for i in idx.iter() {
+        if *i < n_features {
+            mask[*i] = true;
+        }
+    }
+    let n_high = mask.iter().filter(|&&b| b).count();
+    vif_mask_output(mask, n_high, n_features)
+}
+
+#[polars_expr(output_type_func=vif_mask_output_dtype)]
+fn pl_high_vif_predictors(inputs: &[Series]) -> PolarsResult<Series> {
+    high_vif_predictors_fit(inputs)
+}
+
+/// Generalized VIF (GVIF) for grouped predictors (categorical expansions).
+///
+/// Input contract: `[group_sizes (Utf8 — comma-separated, e.g. "1,1,2"), x_0, ...]`.
+/// Returns a struct{gvif: List<Float64>, n_groups: UInt32}. If the parsed
+/// group sizes do not sum to the number of input feature columns, returns NaN.
+pub fn generalized_vif_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    if inputs.len() < 2 {
+        return gvif_nan_output();
+    }
+    let group_sizes_str = match inputs[0].str()?.get(0) {
+        Some(s) => s,
+        None => return gvif_nan_output(),
+    };
+    let group_sizes: Vec<usize> = match group_sizes_str
+        .split(',')
+        .map(|s| s.trim().parse::<usize>())
+        .collect::<Result<Vec<_>, _>>()
+    {
+        Ok(v) => v,
+        Err(_) => return gvif_nan_output(),
+    };
+
+    let n_features = inputs.len() - 1;
+    let n_rows = inputs[1].len();
+    if n_rows < 3 || n_features == 0 || group_sizes.is_empty() {
+        return gvif_nan_output();
+    }
+    if group_sizes.iter().sum::<usize>() != n_features {
+        return gvif_nan_output();
+    }
+
+    let x = Mat::from_fn(n_rows, n_features, |row, col| {
+        inputs[1 + col]
+            .f64()
+            .ok()
+            .and_then(|ca| ca.get(row))
+            .unwrap_or(f64::NAN)
+    });
+
+    for i in 0..n_rows {
+        for j in 0..n_features {
+            if x[(i, j)].is_nan() {
+                return gvif_nan_output();
+            }
+        }
+    }
+
+    let gvif = generalized_vif(&x, &group_sizes);
+    let n_groups = gvif.len();
+    gvif_output(gvif, n_groups)
+}
+
+#[polars_expr(output_type_func=gvif_output_dtype)]
+fn pl_generalized_vif(inputs: &[Series]) -> PolarsResult<Series> {
+    generalized_vif_fit(inputs)
+}
+
+/// Pearson chi-squared goodness-of-fit statistic from a logistic regression fit.
+///
+/// Computes Σ pearson_residual² along with the residual degrees of freedom
+/// (n - p where p includes the intercept when present).
+///
+/// Input contract: `[y, lambda (f64), with_intercept (bool), x_0, ...]`.
+pub fn pearson_chi_squared_logistic_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    if inputs.len() < 4 {
+        return chi_squared_nan_output();
+    }
+    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
+    let n_features = inputs.len() - 3;
+    let (x, y) = match build_xy_data(inputs, 0, 3) {
+        Ok(d) => d,
+        Err(_) => return chi_squared_nan_output(),
+    };
+    let n = y.nrows();
+    let n_params = n_features + if with_intercept { 1 } else { 0 };
+    let df_resid = n.saturating_sub(n_params);
+    let model = build_binomial_logit(lambda, with_intercept);
+    match model.fit(&x, &y) {
+        Ok(f) => {
+            let pr = f.pearson_residuals();
+            let chi2: f64 = (0..pr.nrows()).map(|i| pr[i] * pr[i]).sum();
+            chi_squared_output(chi2, df_resid, n)
+        }
+        Err(_) => chi_squared_nan_output(),
+    }
+}
+
+#[polars_expr(output_type_func=chi_squared_output_dtype)]
+fn pl_pearson_chi_squared_logistic(inputs: &[Series]) -> PolarsResult<Series> {
+    pearson_chi_squared_logistic_fit(inputs)
+}
+
+/// Pearson chi-squared goodness-of-fit statistic from a Poisson regression fit.
+///
+/// Computes Σ pearson_residual² along with the residual degrees of freedom
+/// (n - p where p includes the intercept when present).
+///
+/// Input contract: `[y, lambda (f64), with_intercept (bool), x_0, ...]`.
+pub fn pearson_chi_squared_poisson_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    if inputs.len() < 4 {
+        return chi_squared_nan_output();
+    }
+    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
+    let n_features = inputs.len() - 3;
+    let (x, y) = match build_xy_data(inputs, 0, 3) {
+        Ok(d) => d,
+        Err(_) => return chi_squared_nan_output(),
+    };
+    let n = y.nrows();
+    let n_params = n_features + if with_intercept { 1 } else { 0 };
+    let df_resid = n.saturating_sub(n_params);
+    let model = build_poisson_log(lambda, with_intercept);
+    match model.fit(&x, &y) {
+        Ok(f) => {
+            let pr = f.pearson_residuals();
+            let chi2: f64 = (0..pr.nrows()).map(|i| pr[i] * pr[i]).sum();
+            chi_squared_output(chi2, df_resid, n)
+        }
+        Err(_) => chi_squared_nan_output(),
+    }
+}
+
+#[polars_expr(output_type_func=chi_squared_output_dtype)]
+fn pl_pearson_chi_squared_poisson(inputs: &[Series]) -> PolarsResult<Series> {
+    pearson_chi_squared_poisson_fit(inputs)
 }
 
 // ============================================================================

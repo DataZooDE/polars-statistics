@@ -1030,6 +1030,86 @@ fn diagnostic_fits() {
         ];
         let _ = high_leverage_points_fit(&hlp_inputs).expect("high_leverage_points_fit failed");
     }
+
+    // Multicollinearity + dispersion (issue #27 batch 4).
+    {
+        // high_vif_predictors_fit: threshold, x... (no y, no intercept flag).
+        let x_a: Vec<f64> = (0..30).map(|i| (i as f64 * 0.3).sin()).collect();
+        let x_b: Vec<f64> = (0..30).map(|i| (i as f64 * 0.3).cos()).collect();
+        let inputs = vec![
+            scalar_f64("threshold", 5.0),
+            series_f64("x1", &x_a),
+            series_f64("x2", &x_b),
+        ];
+        let out = high_vif_predictors_fit(&inputs).expect("high_vif_predictors_fit failed");
+        let st = out.struct_().unwrap();
+        let _ = st.field_by_name("is_high").unwrap();
+        let nf = st
+            .field_by_name("n_features")
+            .unwrap()
+            .u32()
+            .unwrap()
+            .get(0)
+            .unwrap_or(0);
+        assert_eq!(nf, 2);
+
+        // generalized_vif_fit: group_sizes (str), x... (4 columns, groups [1, 3]).
+        let x_c: Vec<f64> = (0..30).map(|i| (i as f64).cos()).collect();
+        let x_d: Vec<f64> = (0..30).map(|i| (i as f64).sin()).collect();
+        let gvif_inputs = vec![
+            scalar_str("group_sizes", "1,3"),
+            series_f64("x1", &x_a),
+            series_f64("x2", &x_b),
+            series_f64("x3", &x_c),
+            series_f64("x4", &x_d),
+        ];
+        let out = generalized_vif_fit(&gvif_inputs).expect("generalized_vif_fit failed");
+        let st = out.struct_().unwrap();
+        let ng = st
+            .field_by_name("n_groups")
+            .unwrap()
+            .u32()
+            .unwrap()
+            .get(0)
+            .unwrap_or(0);
+        assert_eq!(ng, 2);
+
+        // pearson_chi_squared_logistic_fit: y (binary), lambda, with_intercept, x...
+        let n_glm = 50;
+        let y_bin: Vec<f64> = (0..n_glm)
+            .map(|i| if i % 2 == 0 { 1.0 } else { 0.0 })
+            .collect();
+        let xg1: Vec<f64> = (0..n_glm).map(|i| (i as f64 * 0.3).sin()).collect();
+        let xg2: Vec<f64> = (0..n_glm).map(|i| (i as f64 * 0.2).cos()).collect();
+        let chi_inputs = vec![
+            series_f64("y", &y_bin),
+            scalar_f64("lambda", 0.0),
+            scalar_bool("with_intercept", true),
+            series_f64("x1", &xg1),
+            series_f64("x2", &xg2),
+        ];
+        let out = pearson_chi_squared_logistic_fit(&chi_inputs)
+            .expect("pearson_chi_squared_logistic_fit failed");
+        let st = out.struct_().unwrap();
+        let _ = st.field_by_name("chi_squared").unwrap();
+        let _ = st.field_by_name("df_resid").unwrap();
+        assert_n_obs_nonzero(&out, "n_observations");
+
+        // pearson_chi_squared_poisson_fit: y (counts), lambda, with_intercept, x...
+        let y_cnt: Vec<f64> = (0..n_glm).map(|i| ((i % 5) as f64) + 1.0).collect();
+        let chi_inputs_p = vec![
+            series_f64("y", &y_cnt),
+            scalar_f64("lambda", 0.0),
+            scalar_bool("with_intercept", true),
+            series_f64("x1", &xg1),
+            series_f64("x2", &xg2),
+        ];
+        let out = pearson_chi_squared_poisson_fit(&chi_inputs_p)
+            .expect("pearson_chi_squared_poisson_fit failed");
+        let st = out.struct_().unwrap();
+        let _ = st.field_by_name("chi_squared").unwrap();
+        assert_n_obs_nonzero(&out, "n_observations");
+    }
 }
 
 // =============================================================================

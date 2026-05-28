@@ -1231,6 +1231,145 @@ def high_leverage_points(
     )
 
 
+# ============================================================================
+# Multicollinearity + dispersion (issue #27 batch 4)
+# ============================================================================
+
+
+def high_vif_predictors(
+    *x: Union[pl.Expr, str],
+    threshold: float = 10.0,
+) -> pl.Expr:
+    """Boolean mask of features whose VIF exceeds ``threshold``.
+
+    Internally computes the variance inflation factor for each feature and
+    flags those above the threshold. The intercept is *not* included.
+
+    Parameters
+    ----------
+    *x : pl.Expr or str
+        Feature variables (two or more for a meaningful VIF).
+    threshold : float, default 10.0
+        VIF cutoff above which a predictor is flagged. Common values: 5
+        (moderate collinearity) or 10 (severe).
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing:
+
+        - ``is_high``: List[bool] — one boolean per input column
+        - ``n_high``: number of flagged columns
+        - ``n_features``: total number of input feature columns
+    """
+    x_exprs = [(pl.col(xi) if isinstance(xi, str) else xi).cast(pl.Float64) for xi in x]
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_high_vif_predictors",
+        args=[
+            pl.lit(threshold, dtype=pl.Float64),
+            *x_exprs,
+        ],
+        returns_scalar=True,
+    )
+
+
+def generalized_vif(
+    *x: Union[pl.Expr, str],
+    group_sizes: list[int],
+) -> pl.Expr:
+    """Generalized VIF (GVIF) for grouped predictors (e.g., categorical dummies).
+
+    For a predictor that spans multiple columns (such as one-hot encoded
+    categorical levels), GVIF measures multicollinearity for the *group*
+    rather than the individual columns.
+
+    Parameters
+    ----------
+    *x : pl.Expr or str
+        All feature columns concatenated. The order must match ``group_sizes``.
+    group_sizes : list of int
+        Number of columns belonging to each predictor group. Must sum to the
+        total number of feature columns. Example: ``[1, 1, 3]`` for two
+        single-column numeric predictors followed by a 3-level categorical.
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing:
+
+        - ``gvif``: List[float] — one GVIF value per group
+        - ``n_groups``: number of groups
+
+    Notes
+    -----
+    For single-column groups GVIF coincides with the regular VIF.
+    """
+    if not group_sizes:
+        raise ValueError("group_sizes must be non-empty")
+    sizes_str = ",".join(str(int(s)) for s in group_sizes)
+    x_exprs = [(pl.col(xi) if isinstance(xi, str) else xi).cast(pl.Float64) for xi in x]
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_generalized_vif",
+        args=[
+            pl.lit(sizes_str, dtype=pl.String),
+            *x_exprs,
+        ],
+        returns_scalar=True,
+    )
+
+
+def pearson_chi_squared_logistic(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    lambda_: float = 0.0,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
+) -> pl.Expr:
+    """Pearson chi-squared goodness-of-fit statistic from a logistic regression fit.
+
+    Computes ``Σ pearson_residual²`` together with the residual degrees of
+    freedom (``n - p``). For a well-specified model X²/df_resid should be
+    close to 1.
+
+    Returns a struct with ``chi_squared`` (Float64), ``df_resid`` (UInt32)
+    and ``n_observations`` (UInt32).
+    """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_pearson_chi_squared_logistic",
+        args=_glm_residual_args(y, x, lambda_, add_intercept),
+        returns_scalar=True,
+    )
+
+
+def pearson_chi_squared_poisson(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    lambda_: float = 0.0,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
+) -> pl.Expr:
+    """Pearson chi-squared goodness-of-fit statistic from a Poisson regression fit.
+
+    Computes ``Σ pearson_residual²`` together with the residual degrees of
+    freedom (``n - p``). For a well-specified model X²/df_resid should be
+    close to 1.
+
+    Returns a struct with ``chi_squared`` (Float64), ``df_resid`` (UInt32)
+    and ``n_observations`` (UInt32).
+    """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_pearson_chi_squared_poisson",
+        args=_glm_residual_args(y, x, lambda_, add_intercept),
+        returns_scalar=True,
+    )
+
+
 def standardized_residuals(
     y: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
