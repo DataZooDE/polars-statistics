@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "polars-statistics"
-version = "0.4.0"
+version = "0.5.0"
 description = "Statistical tests, regression, and machine learning for Polars - t-tests, ANOVA, chi-square, correlation, OLS, GLM, quantile regression, and more"
 readme = "README.md"
 license = { text = "MIT" }
