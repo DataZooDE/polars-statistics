@@ -1219,6 +1219,128 @@ def residual_outliers(
 
 
 # ============================================================================
+# GLM residual diagnostics (issue #27 batch 2)
+# ============================================================================
+
+
+def _glm_residual_args(y, x, lambda_, add_intercept):
+    if isinstance(y, str):
+        y = pl.col(y)
+    x_exprs = [(pl.col(xi) if isinstance(xi, str) else xi).cast(pl.Float64) for xi in x]
+    return [
+        y.cast(pl.Float64),
+        pl.lit(lambda_, dtype=pl.Float64),
+        pl.lit(add_intercept, dtype=pl.Boolean),
+        *x_exprs,
+    ]
+
+
+def logistic_pearson_residuals(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    lambda_: float = 0.0,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
+) -> pl.Expr:
+    """Pearson residuals from an internal logistic regression fit.
+
+    Returns a struct with ``residuals`` (List[float]) and ``n_observations``.
+    """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_logistic_pearson_residuals",
+        args=_glm_residual_args(y, x, lambda_, add_intercept),
+        returns_scalar=True,
+    )
+
+
+def logistic_deviance_residuals(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    lambda_: float = 0.0,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
+) -> pl.Expr:
+    """Deviance residuals from an internal logistic regression fit."""
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_logistic_deviance_residuals",
+        args=_glm_residual_args(y, x, lambda_, add_intercept),
+        returns_scalar=True,
+    )
+
+
+def logistic_working_residuals(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    lambda_: float = 0.0,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
+) -> pl.Expr:
+    """Working (IRLS adjusted-dependent-variable) residuals from a logistic fit."""
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_logistic_working_residuals",
+        args=_glm_residual_args(y, x, lambda_, add_intercept),
+        returns_scalar=True,
+    )
+
+
+def poisson_pearson_residuals(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    lambda_: float = 0.0,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
+) -> pl.Expr:
+    """Pearson residuals from an internal Poisson regression fit."""
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_poisson_pearson_residuals",
+        args=_glm_residual_args(y, x, lambda_, add_intercept),
+        returns_scalar=True,
+    )
+
+
+def poisson_deviance_residuals(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    lambda_: float = 0.0,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
+) -> pl.Expr:
+    """Deviance residuals from an internal Poisson regression fit."""
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_poisson_deviance_residuals",
+        args=_glm_residual_args(y, x, lambda_, add_intercept),
+        returns_scalar=True,
+    )
+
+
+def poisson_working_residuals(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    lambda_: float = 0.0,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
+) -> pl.Expr:
+    """Working residuals from an internal Poisson regression fit."""
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_poisson_working_residuals",
+        args=_glm_residual_args(y, x, lambda_, add_intercept),
+        returns_scalar=True,
+    )
+
+
+# ============================================================================
 # GLM Expressions
 # ============================================================================
 

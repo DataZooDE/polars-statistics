@@ -1710,6 +1710,161 @@ fn pl_poisson(inputs: &[Series]) -> PolarsResult<Series> {
     poisson_fit(inputs)
 }
 
+// ============================================================================
+// GLM residual diagnostics (issue #27 batch 2)
+//
+// Each expression fits the requested GLM family internally and returns the
+// per-observation residual vector. Input contract matches the base fit:
+//   [y, lambda (f64), with_intercept (bool), x_0, ...]
+// Output shape: struct{residuals: List<Float64>, n_observations: UInt32}.
+// ============================================================================
+
+fn build_binomial_logit(lambda: f64, with_intercept: bool) -> BinomialRegressor {
+    let mut b = BinomialRegressor::logistic().with_intercept(with_intercept);
+    if lambda > 0.0 {
+        b = b.lambda(lambda);
+    }
+    b.build()
+}
+
+fn build_poisson_log(lambda: f64, with_intercept: bool) -> PoissonRegressor {
+    let mut b = PoissonRegressor::builder().with_intercept(with_intercept);
+    if lambda > 0.0 {
+        b = b.lambda(lambda);
+    }
+    b.build()
+}
+
+fn col_into_vec(c: &Col<f64>) -> Vec<f64> {
+    (0..c.nrows()).map(|i| c[i]).collect()
+}
+
+/// Logistic Pearson residuals.
+pub fn logistic_pearson_residuals_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
+    let (x, y) = match build_xy_data(inputs, 0, 3) {
+        Ok(d) => d,
+        Err(_) => return residual_diag_nan_output(),
+    };
+    let n = y.nrows();
+    let model = build_binomial_logit(lambda, with_intercept);
+    match model.fit(&x, &y) {
+        Ok(f) => residual_diag_output(col_into_vec(&f.pearson_residuals()), n),
+        Err(_) => residual_diag_nan_output(),
+    }
+}
+
+#[polars_expr(output_type_func=residual_diag_output_dtype)]
+fn pl_logistic_pearson_residuals(inputs: &[Series]) -> PolarsResult<Series> {
+    logistic_pearson_residuals_fit(inputs)
+}
+
+/// Logistic deviance residuals.
+pub fn logistic_deviance_residuals_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
+    let (x, y) = match build_xy_data(inputs, 0, 3) {
+        Ok(d) => d,
+        Err(_) => return residual_diag_nan_output(),
+    };
+    let n = y.nrows();
+    let model = build_binomial_logit(lambda, with_intercept);
+    match model.fit(&x, &y) {
+        Ok(f) => residual_diag_output(col_into_vec(&f.deviance_residuals()), n),
+        Err(_) => residual_diag_nan_output(),
+    }
+}
+
+#[polars_expr(output_type_func=residual_diag_output_dtype)]
+fn pl_logistic_deviance_residuals(inputs: &[Series]) -> PolarsResult<Series> {
+    logistic_deviance_residuals_fit(inputs)
+}
+
+/// Logistic working residuals (IRLS adjusted-dependent-variable residuals).
+pub fn logistic_working_residuals_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
+    let (x, y) = match build_xy_data(inputs, 0, 3) {
+        Ok(d) => d,
+        Err(_) => return residual_diag_nan_output(),
+    };
+    let n = y.nrows();
+    let model = build_binomial_logit(lambda, with_intercept);
+    match model.fit(&x, &y) {
+        Ok(f) => residual_diag_output(col_into_vec(&f.working_residuals()), n),
+        Err(_) => residual_diag_nan_output(),
+    }
+}
+
+#[polars_expr(output_type_func=residual_diag_output_dtype)]
+fn pl_logistic_working_residuals(inputs: &[Series]) -> PolarsResult<Series> {
+    logistic_working_residuals_fit(inputs)
+}
+
+/// Poisson Pearson residuals.
+pub fn poisson_pearson_residuals_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
+    let (x, y) = match build_xy_data(inputs, 0, 3) {
+        Ok(d) => d,
+        Err(_) => return residual_diag_nan_output(),
+    };
+    let n = y.nrows();
+    let model = build_poisson_log(lambda, with_intercept);
+    match model.fit(&x, &y) {
+        Ok(f) => residual_diag_output(col_into_vec(&f.pearson_residuals()), n),
+        Err(_) => residual_diag_nan_output(),
+    }
+}
+
+#[polars_expr(output_type_func=residual_diag_output_dtype)]
+fn pl_poisson_pearson_residuals(inputs: &[Series]) -> PolarsResult<Series> {
+    poisson_pearson_residuals_fit(inputs)
+}
+
+/// Poisson deviance residuals.
+pub fn poisson_deviance_residuals_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
+    let (x, y) = match build_xy_data(inputs, 0, 3) {
+        Ok(d) => d,
+        Err(_) => return residual_diag_nan_output(),
+    };
+    let n = y.nrows();
+    let model = build_poisson_log(lambda, with_intercept);
+    match model.fit(&x, &y) {
+        Ok(f) => residual_diag_output(col_into_vec(&f.deviance_residuals()), n),
+        Err(_) => residual_diag_nan_output(),
+    }
+}
+
+#[polars_expr(output_type_func=residual_diag_output_dtype)]
+fn pl_poisson_deviance_residuals(inputs: &[Series]) -> PolarsResult<Series> {
+    poisson_deviance_residuals_fit(inputs)
+}
+
+/// Poisson working residuals.
+pub fn poisson_working_residuals_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
+    let (x, y) = match build_xy_data(inputs, 0, 3) {
+        Ok(d) => d,
+        Err(_) => return residual_diag_nan_output(),
+    };
+    let n = y.nrows();
+    let model = build_poisson_log(lambda, with_intercept);
+    match model.fit(&x, &y) {
+        Ok(f) => residual_diag_output(col_into_vec(&f.working_residuals()), n),
+        Err(_) => residual_diag_nan_output(),
+    }
+}
+
+#[polars_expr(output_type_func=residual_diag_output_dtype)]
+fn pl_poisson_working_residuals(inputs: &[Series]) -> PolarsResult<Series> {
+    poisson_working_residuals_fit(inputs)
+}
+
 /// Public Rust-callable variant. Same input contract as the `pl_negative_binomial` expression shim.
 pub fn negative_binomial_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let theta = inputs[1].f64()?.get(0);
