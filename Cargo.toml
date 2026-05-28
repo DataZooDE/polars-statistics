@@ -1,6 +1,6 @@
 [package]
 name = "polars-statistics"
-version = "0.4.0"
+version = "0.5.0"
 edition = "2021"
 authors = ["Simon Müller <sm@data-zoo.de>"]
 description = "Statistical testing and regression for Polars DataFrames"
