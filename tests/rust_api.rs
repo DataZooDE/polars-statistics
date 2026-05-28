@@ -993,6 +993,43 @@ fn diagnostic_fits() {
             .unwrap_or(0);
         assert!(n_obs > 0);
     }
+
+    // influence diagnostics (issue #27 batch 3).
+    {
+        let y_vals: Vec<f64> = x1
+            .iter()
+            .enumerate()
+            .map(|(i, xi)| 0.5 + 1.5 * xi + 0.1 * (i as f64).sin())
+            .collect();
+        // dffits_fit: same contract as cooks_distance.
+        let dffits_inputs = vec![
+            series_f64("y", &y_vals),
+            scalar_bool("with_intercept", true),
+            series_f64("x1", &x1),
+            series_f64("x2", &x2),
+        ];
+        let _ = dffits_fit(&dffits_inputs).expect("dffits_fit failed");
+
+        // influential_cooks / influential_dffits: y, with_intercept, threshold, x...
+        let mask_inputs = vec![
+            series_f64("y", &y_vals),
+            scalar_bool("with_intercept", true),
+            scalar_f64_null("threshold"),
+            series_f64("x1", &x1),
+            series_f64("x2", &x2),
+        ];
+        let _ = influential_cooks_fit(&mask_inputs).expect("influential_cooks_fit failed");
+        let _ = influential_dffits_fit(&mask_inputs).expect("influential_dffits_fit failed");
+
+        // high_leverage_points_fit: with_intercept, threshold, x... (no y)
+        let hlp_inputs = vec![
+            scalar_bool("with_intercept", true),
+            scalar_f64_null("threshold"),
+            series_f64("x1", &x1),
+            series_f64("x2", &x2),
+        ];
+        let _ = high_leverage_points_fit(&hlp_inputs).expect("high_leverage_points_fit failed");
+    }
 }
 
 // =============================================================================

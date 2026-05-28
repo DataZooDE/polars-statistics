@@ -9,7 +9,8 @@ use serde::Deserialize;
 
 use anofox_regression::diagnostics::{
     check_binary_separation, check_count_sparsity, compute_leverage, condition_diagnostic,
-    cooks_distance, externally_studentized_residuals, residual_outliers, standardized_residuals,
+    cooks_distance, dffits, externally_studentized_residuals, high_leverage_points,
+    influential_cooks, influential_dffits, residual_outliers, standardized_residuals,
     studentized_residuals, variance_inflation_factor, ConditionSeverity, SeparationCheck,
     SeparationType,
 };
@@ -219,6 +220,28 @@ fn outlier_mask_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
         Field::new("n_observations".into(), DataType::UInt32),
     ];
     Ok(Field::new("outliers".into(), DataType::Struct(fields)))
+}
+
+/// Output type for DFFITS diagnostics (one value per row).
+fn dffits_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
+    let fields = vec![
+        Field::new("dffits".into(), DataType::List(Box::new(DataType::Float64))),
+        Field::new("n_observations".into(), DataType::UInt32),
+    ];
+    Ok(Field::new("dffits_diag".into(), DataType::Struct(fields)))
+}
+
+/// Output type for influence mask diagnostics: is_influential per row + counts.
+fn influence_mask_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
+    let fields = vec![
+        Field::new(
+            "is_influential".into(),
+            DataType::List(Box::new(DataType::Boolean)),
+        ),
+        Field::new("n_influential".into(), DataType::UInt32),
+        Field::new("n_observations".into(), DataType::UInt32),
+    ];
+    Ok(Field::new("influence".into(), DataType::Struct(fields)))
 }
 
 // ============================================================================
@@ -1628,6 +1651,171 @@ fn residual_outliers_nan_output() -> PolarsResult<Series> {
 #[polars_expr(output_type_func=outlier_mask_output_dtype)]
 fn pl_residual_outliers(inputs: &[Series]) -> PolarsResult<Series> {
     residual_outliers_fit(inputs)
+}
+
+// ============================================================================
+// Influence diagnostics (issue #27 batch 3)
+//
+// dffits, influential_cooks, influential_dffits, high_leverage_points.
+// Each fits OLS internally (except high_leverage which only needs X).
+// ============================================================================
+
+fn dffits_output(values: Vec<f64>, n_obs: usize) -> PolarsResult<Series> {
+    let inner = Series::new("item".into(), values);
+    let d_s = Series::new("dffits".into(), &[inner]);
+    let n_s = Series::new("n_observations".into(), &[n_obs as u32]);
+    StructChunked::from_series("dffits_diag".into(), 1, [&d_s, &n_s].into_iter())
+        .map(|ca| ca.into_series())
+}
+
+fn dffits_nan_output() -> PolarsResult<Series> {
+    dffits_output(vec![], 0)
+}
+
+fn influence_mask_output(
+    mask: Vec<bool>,
+    n_influential: usize,
+    n_obs: usize,
+) -> PolarsResult<Series> {
+    let inner = Series::new("item".into(), mask);
+    let m_s = Series::new("is_influential".into(), &[inner]);
+    let ni_s = Series::new("n_influential".into(), &[n_influential as u32]);
+    let nobs_s = Series::new("n_observations".into(), &[n_obs as u32]);
+    StructChunked::from_series("influence".into(), 1, [&m_s, &ni_s, &nobs_s].into_iter())
+        .map(|ca| ca.into_series())
+}
+
+fn influence_mask_nan_output() -> PolarsResult<Series> {
+    influence_mask_output(vec![], 0, 0)
+}
+
+/// DFFITS per row: scaled change in fitted value if observation i were dropped.
+///
+/// Input contract: `[y, with_intercept (bool), x_0, ...]`.
+pub fn dffits_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    let (residuals, leverage, mse, n_params, n_rows) = match fit_ols_for_residual_diag(inputs) {
+        Some(v) => v,
+        None => return dffits_nan_output(),
+    };
+    let d = dffits(&residuals, &leverage, mse, n_params);
+    let values: Vec<f64> = (0..d.nrows()).map(|i| d[i]).collect();
+    dffits_output(values, n_rows)
+}
+
+#[polars_expr(output_type_func=dffits_output_dtype)]
+fn pl_dffits(inputs: &[Series]) -> PolarsResult<Series> {
+    dffits_fit(inputs)
+}
+
+/// Influential observations by Cook's distance threshold (default 4/n).
+///
+/// Input contract: `[y, with_intercept (bool), threshold (f64|null), x_0, ...]`.
+pub fn influential_cooks_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    if inputs.len() < 4 {
+        return influence_mask_nan_output();
+    }
+    let threshold = inputs[2].f64()?.get(0);
+    // Build the cooks_distance contract from our own inputs.
+    let mut cd_inputs: Vec<Series> = Vec::with_capacity(2 + inputs.len() - 3);
+    cd_inputs.push(inputs[0].clone());
+    cd_inputs.push(inputs[1].clone());
+    cd_inputs.extend(inputs[3..].iter().cloned());
+
+    let (residuals, leverage, mse, n_params, n_rows) = match fit_ols_for_residual_diag(&cd_inputs) {
+        Some(v) => v,
+        None => return influence_mask_nan_output(),
+    };
+    let cooks = cooks_distance(&residuals, &leverage, mse, n_params);
+    let idx = influential_cooks(&cooks, threshold);
+    let mut mask = vec![false; n_rows];
+    for i in idx.iter() {
+        if *i < n_rows {
+            mask[*i] = true;
+        }
+    }
+    let n_inf = mask.iter().filter(|&&b| b).count();
+    influence_mask_output(mask, n_inf, n_rows)
+}
+
+#[polars_expr(output_type_func=influence_mask_output_dtype)]
+fn pl_influential_cooks(inputs: &[Series]) -> PolarsResult<Series> {
+    influential_cooks_fit(inputs)
+}
+
+/// Influential observations by DFFITS threshold (default 2 * sqrt(p/n)).
+///
+/// Input contract: `[y, with_intercept (bool), threshold (f64|null), x_0, ...]`.
+pub fn influential_dffits_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    if inputs.len() < 4 {
+        return influence_mask_nan_output();
+    }
+    let threshold = inputs[2].f64()?.get(0);
+    let mut cd_inputs: Vec<Series> = Vec::with_capacity(2 + inputs.len() - 3);
+    cd_inputs.push(inputs[0].clone());
+    cd_inputs.push(inputs[1].clone());
+    cd_inputs.extend(inputs[3..].iter().cloned());
+
+    let (residuals, leverage, mse, n_params, n_rows) = match fit_ols_for_residual_diag(&cd_inputs) {
+        Some(v) => v,
+        None => return influence_mask_nan_output(),
+    };
+    let d = dffits(&residuals, &leverage, mse, n_params);
+    let idx = influential_dffits(&d, n_params, threshold);
+    let mut mask = vec![false; n_rows];
+    for i in idx.iter() {
+        if *i < n_rows {
+            mask[*i] = true;
+        }
+    }
+    let n_inf = mask.iter().filter(|&&b| b).count();
+    influence_mask_output(mask, n_inf, n_rows)
+}
+
+#[polars_expr(output_type_func=influence_mask_output_dtype)]
+fn pl_influential_dffits(inputs: &[Series]) -> PolarsResult<Series> {
+    influential_dffits_fit(inputs)
+}
+
+/// High-leverage points (default threshold 2 * p / n).
+///
+/// Input contract: `[with_intercept (bool), threshold (f64|null), x_0, ...]`.
+/// No y is needed.
+pub fn high_leverage_points_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    if inputs.len() < 3 {
+        return influence_mask_nan_output();
+    }
+    let with_intercept = inputs[0].bool()?.get(0).unwrap_or(true);
+    let threshold = inputs[1].f64()?.get(0);
+    let n_features = inputs.len() - 2;
+    let n_rows = inputs[2].len();
+    if n_rows < 2 || n_features == 0 {
+        return influence_mask_nan_output();
+    }
+
+    // Build X matrix
+    let x = Mat::from_fn(n_rows, n_features, |row, col| {
+        inputs[2 + col]
+            .f64()
+            .ok()
+            .and_then(|ca| ca.get(row))
+            .unwrap_or(0.0)
+    });
+    let leverage = compute_leverage(&x, with_intercept);
+    let n_params = n_features + if with_intercept { 1 } else { 0 };
+    let idx = high_leverage_points(&leverage, n_params, threshold);
+    let mut mask = vec![false; n_rows];
+    for i in idx.iter() {
+        if *i < n_rows {
+            mask[*i] = true;
+        }
+    }
+    let n_inf = mask.iter().filter(|&&b| b).count();
+    influence_mask_output(mask, n_inf, n_rows)
+}
+
+#[polars_expr(output_type_func=influence_mask_output_dtype)]
+fn pl_high_leverage_points(inputs: &[Series]) -> PolarsResult<Series> {
+    high_leverage_points_fit(inputs)
 }
 
 // ============================================================================
