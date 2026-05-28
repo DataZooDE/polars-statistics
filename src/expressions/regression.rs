@@ -1492,9 +1492,7 @@ fn residual_diag_nan_output() -> PolarsResult<Series> {
 
 /// Internal helper: fit OLS and return (residuals, leverage, mse, n_params, n_rows).
 /// Returns None on any failure.
-fn fit_ols_for_residual_diag(
-    inputs: &[Series],
-) -> Option<(Col<f64>, Col<f64>, f64, usize, usize)> {
+fn fit_ols_for_residual_diag(inputs: &[Series]) -> Option<(Col<f64>, Col<f64>, f64, usize, usize)> {
     if inputs.len() < 3 {
         return None;
     }
@@ -1520,8 +1518,7 @@ fn fit_ols_for_residual_diag(
 ///
 /// Input contract: `[y, with_intercept (bool), x_0, ...]`.
 pub fn standardized_residuals_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let (residuals, _leverage, mse, _n_params, n_rows) = match fit_ols_for_residual_diag(inputs)
-    {
+    let (residuals, _leverage, mse, _n_params, n_rows) = match fit_ols_for_residual_diag(inputs) {
         Some(v) => v,
         None => return residual_diag_nan_output(),
     };
@@ -1539,8 +1536,7 @@ fn pl_standardized_residuals(inputs: &[Series]) -> PolarsResult<Series> {
 ///
 /// Input contract: `[y, with_intercept (bool), x_0, ...]`.
 pub fn studentized_residuals_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let (residuals, leverage, mse, _n_params, n_rows) = match fit_ols_for_residual_diag(inputs)
-    {
+    let (residuals, leverage, mse, _n_params, n_rows) = match fit_ols_for_residual_diag(inputs) {
         Some(v) => v,
         None => return residual_diag_nan_output(),
     };
@@ -1590,11 +1586,11 @@ pub fn residual_outliers_fit(inputs: &[Series]) -> PolarsResult<Series> {
     fit_inputs.push(inputs[1].clone());
     fit_inputs.extend(inputs[3..].iter().cloned());
 
-    let (residuals, leverage, mse, _n_params, n_rows) =
-        match fit_ols_for_residual_diag(&fit_inputs) {
-            Some(v) => v,
-            None => return residual_outliers_nan_output(),
-        };
+    let (residuals, leverage, mse, _n_params, n_rows) = match fit_ols_for_residual_diag(&fit_inputs)
+    {
+        Some(v) => v,
+        None => return residual_outliers_nan_output(),
+    };
     let _ = with_intercept; // already consumed by the helper
     let stud = studentized_residuals(&residuals, &leverage, mse);
     let outlier_idx = residual_outliers(&stud, threshold);
