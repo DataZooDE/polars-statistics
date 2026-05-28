@@ -398,10 +398,11 @@ fn summary_nan_output() -> PolarsResult<Series> {
 // Linear Regression Expressions
 // ============================================================================
 
-/// OLS regression expression.
-/// inputs[0] = y, inputs[1] = with_intercept (bool), inputs[2] = solve_method (string or null), inputs[3..] = x columns
-#[polars_expr(output_type_func=linear_regression_output_dtype)]
-fn pl_ols(inputs: &[Series]) -> PolarsResult<Series> {
+/// OLS fit callable from Rust callers.
+///
+/// Input contract: `[y, with_intercept (bool), solve_method (str|null), x_0, x_1, ...]`.
+/// Returns a one-row struct Series matching [`linear_regression_output_dtype`].
+pub fn ols_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
     let solve_method = parse_solver_type(inputs[2].str()?.get(0));
 
@@ -437,10 +438,17 @@ fn pl_ols(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// Ridge regression expression.
-/// inputs[0] = y, inputs[1] = lambda, inputs[2] = with_intercept, inputs[3] = solve_method (string or null), inputs[4..] = x columns
+/// OLS regression expression.
+/// inputs[0] = y, inputs[1] = with_intercept (bool), inputs[2] = solve_method (string or null), inputs[3..] = x columns
 #[polars_expr(output_type_func=linear_regression_output_dtype)]
-fn pl_ridge(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_ols(inputs: &[Series]) -> PolarsResult<Series> {
+    ols_fit(inputs)
+}
+
+/// Ridge fit callable from Rust callers.
+///
+/// Input contract: `[y, lambda (f64), with_intercept (bool), solve_method (str|null), x_0, ...]`.
+pub fn ridge_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let lambda = inputs[1].f64()?.get(0).unwrap_or(1.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let solve_method = parse_solver_type(inputs[3].str()?.get(0));
@@ -479,10 +487,15 @@ fn pl_ridge(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// Elastic Net regression expression.
-/// inputs[0] = y, inputs[1] = lambda, inputs[2] = alpha (L1 ratio), inputs[3] = with_intercept, inputs[4..] = x columns
+/// Ridge regression expression.
+/// inputs[0] = y, inputs[1] = lambda, inputs[2] = with_intercept, inputs[3] = solve_method (string or null), inputs[4..] = x columns
 #[polars_expr(output_type_func=linear_regression_output_dtype)]
-fn pl_elastic_net(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_ridge(inputs: &[Series]) -> PolarsResult<Series> {
+    ridge_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_elastic_net` expression shim.
+pub fn elastic_net_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let lambda = inputs[1].f64()?.get(0).unwrap_or(1.0);
     let alpha = inputs[2].f64()?.get(0).unwrap_or(0.5);
     let with_intercept = inputs[3].bool()?.get(0).unwrap_or(true);
@@ -519,10 +532,17 @@ fn pl_elastic_net(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// WLS regression expression.
-/// inputs[0] = y, inputs[1] = weights, inputs[2] = with_intercept, inputs[3] = solve_method (string or null), inputs[4..] = x columns
+/// Elastic Net regression expression.
+/// inputs[0] = y, inputs[1] = lambda, inputs[2] = alpha (L1 ratio), inputs[3] = with_intercept, inputs[4..] = x columns
 #[polars_expr(output_type_func=linear_regression_output_dtype)]
-fn pl_wls(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_elastic_net(inputs: &[Series]) -> PolarsResult<Series> {
+    elastic_net_fit(inputs)
+}
+
+/// WLS fit callable from Rust callers.
+///
+/// Input contract: `[y, weights (f64), with_intercept (bool), solve_method (str|null), x_0, ...]`.
+pub fn wls_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let weights_series = inputs[1].f64()?;
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let solve_method = parse_solver_type(inputs[3].str()?.get(0));
@@ -564,10 +584,15 @@ fn pl_wls(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// RLS regression expression.
-/// inputs[0] = y, inputs[1] = forgetting_factor, inputs[2] = with_intercept, inputs[3..] = x columns
+/// WLS regression expression.
+/// inputs[0] = y, inputs[1] = weights, inputs[2] = with_intercept, inputs[3] = solve_method (string or null), inputs[4..] = x columns
 #[polars_expr(output_type_func=linear_regression_output_dtype)]
-fn pl_rls(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_wls(inputs: &[Series]) -> PolarsResult<Series> {
+    wls_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_rls` expression shim.
+pub fn rls_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let forgetting_factor = inputs[1].f64()?.get(0).unwrap_or(0.99);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
 
@@ -602,10 +627,15 @@ fn pl_rls(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// BLS (Bounded Least Squares) regression expression.
-/// inputs[0] = y, inputs[1] = lower_bound, inputs[2] = upper_bound, inputs[3] = with_intercept, inputs[4..] = x columns
+/// RLS regression expression.
+/// inputs[0] = y, inputs[1] = forgetting_factor, inputs[2] = with_intercept, inputs[3..] = x columns
 #[polars_expr(output_type_func=linear_regression_output_dtype)]
-fn pl_bls(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_rls(inputs: &[Series]) -> PolarsResult<Series> {
+    rls_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_bls` expression shim.
+pub fn bls_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let lower_bound = inputs[1].f64()?.get(0);
     let upper_bound = inputs[2].f64()?.get(0);
     let with_intercept = inputs[3].bool()?.get(0).unwrap_or(true);
@@ -647,14 +677,21 @@ fn pl_bls(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
+/// BLS (Bounded Least Squares) regression expression.
+/// inputs[0] = y, inputs[1] = lower_bound, inputs[2] = upper_bound, inputs[3] = with_intercept, inputs[4..] = x columns
+#[polars_expr(output_type_func=linear_regression_output_dtype)]
+fn pl_bls(inputs: &[Series]) -> PolarsResult<Series> {
+    bls_fit(inputs)
+}
+
 // ============================================================================
 // Robust Regression Expressions
 // ============================================================================
 
-/// Quantile regression expression.
-/// inputs[0] = y, inputs[1] = tau, inputs[2] = with_intercept, inputs[3..] = x columns
-#[polars_expr(output_type_func=quantile_output_dtype)]
-fn pl_quantile(inputs: &[Series]) -> PolarsResult<Series> {
+/// Quantile fit callable from Rust callers.
+///
+/// Input contract: `[y, tau (f64), with_intercept (bool), x_0, ...]`.
+pub fn quantile_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let tau = inputs[1].f64()?.get(0).unwrap_or(0.5);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
 
@@ -684,10 +721,15 @@ fn pl_quantile(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// Isotonic regression expression.
-/// inputs[0] = y, inputs[1] = x (single feature), inputs[2] = increasing
-#[polars_expr(output_type_func=isotonic_output_dtype)]
-fn pl_isotonic(inputs: &[Series]) -> PolarsResult<Series> {
+/// Quantile regression expression.
+/// inputs[0] = y, inputs[1] = tau, inputs[2] = with_intercept, inputs[3..] = x columns
+#[polars_expr(output_type_func=quantile_output_dtype)]
+fn pl_quantile(inputs: &[Series]) -> PolarsResult<Series> {
+    quantile_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_isotonic` expression shim.
+pub fn isotonic_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let increasing = inputs[2].bool()?.get(0).unwrap_or(true);
 
     // Extract y values
@@ -718,6 +760,13 @@ fn pl_isotonic(inputs: &[Series]) -> PolarsResult<Series> {
         }
         Err(_) => isotonic_nan_output(increasing),
     }
+}
+
+/// Isotonic regression expression.
+/// inputs[0] = y, inputs[1] = x (single feature), inputs[2] = increasing
+#[polars_expr(output_type_func=isotonic_output_dtype)]
+fn pl_isotonic(inputs: &[Series]) -> PolarsResult<Series> {
+    isotonic_fit(inputs)
 }
 
 // ============================================================================
@@ -755,10 +804,8 @@ fn condition_nan_output() -> PolarsResult<Series> {
     condition_output(f64::NAN, f64::NAN, &[], &[], "Unknown", None)
 }
 
-/// Condition number diagnostics expression.
-/// inputs[0] = with_intercept, inputs[1..] = x columns
-#[polars_expr(output_type_func=condition_number_output_dtype)]
-fn pl_condition_number(inputs: &[Series]) -> PolarsResult<Series> {
+/// Public Rust-callable variant. Same input contract as the `pl_condition_number` expression shim.
+pub fn condition_number_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let with_intercept = inputs[0].bool()?.get(0).unwrap_or(true);
 
     let n_cols = inputs.len() - 1;
@@ -808,6 +855,13 @@ fn pl_condition_number(inputs: &[Series]) -> PolarsResult<Series> {
     )
 }
 
+/// Condition number diagnostics expression.
+/// inputs[0] = with_intercept, inputs[1..] = x columns
+#[polars_expr(output_type_func=condition_number_output_dtype)]
+fn pl_condition_number(inputs: &[Series]) -> PolarsResult<Series> {
+    condition_number_fit(inputs)
+}
+
 /// Convert SeparationType to string.
 fn separation_type_to_string(sep_type: &SeparationType) -> &'static str {
     match sep_type {
@@ -853,10 +907,8 @@ fn separation_default_output() -> PolarsResult<Series> {
     separation_output(&SeparationCheck::default())
 }
 
-/// Check binary response (logistic/probit) data for quasi-separation.
-/// inputs[0] = y (binary), inputs[1..] = x columns
-#[polars_expr(output_type_func=separation_check_output_dtype)]
-fn pl_check_binary_separation(inputs: &[Series]) -> PolarsResult<Series> {
+/// Public Rust-callable variant. Same input contract as the `pl_check_binary_separation` expression shim.
+pub fn check_binary_separation_fit(inputs: &[Series]) -> PolarsResult<Series> {
     if inputs.is_empty() {
         return separation_default_output();
     }
@@ -900,10 +952,15 @@ fn pl_check_binary_separation(inputs: &[Series]) -> PolarsResult<Series> {
     separation_output(&check)
 }
 
-/// Check count data (Poisson/NegBin) for sparsity-induced separation.
-/// inputs[0] = y (counts), inputs[1..] = x columns
+/// Check binary response (logistic/probit) data for quasi-separation.
+/// inputs[0] = y (binary), inputs[1..] = x columns
 #[polars_expr(output_type_func=separation_check_output_dtype)]
-fn pl_check_count_sparsity(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_check_binary_separation(inputs: &[Series]) -> PolarsResult<Series> {
+    check_binary_separation_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_check_count_sparsity` expression shim.
+pub fn check_count_sparsity_fit(inputs: &[Series]) -> PolarsResult<Series> {
     if inputs.is_empty() {
         return separation_default_output();
     }
@@ -947,14 +1004,19 @@ fn pl_check_count_sparsity(inputs: &[Series]) -> PolarsResult<Series> {
     separation_output(&check)
 }
 
+/// Check count data (Poisson/NegBin) for sparsity-induced separation.
+/// inputs[0] = y (counts), inputs[1..] = x columns
+#[polars_expr(output_type_func=separation_check_output_dtype)]
+fn pl_check_count_sparsity(inputs: &[Series]) -> PolarsResult<Series> {
+    check_count_sparsity_fit(inputs)
+}
+
 // ============================================================================
 // GLM Expressions
 // ============================================================================
 
-/// Logistic regression expression.
-/// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3..] = x columns
-#[polars_expr(output_type_func=glm_output_dtype)]
-fn pl_logistic(inputs: &[Series]) -> PolarsResult<Series> {
+/// Public Rust-callable variant. Same input contract as the `pl_logistic` expression shim.
+pub fn logistic_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
 
@@ -984,10 +1046,15 @@ fn pl_logistic(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// Poisson regression expression.
+/// Logistic regression expression.
 /// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3..] = x columns
 #[polars_expr(output_type_func=glm_output_dtype)]
-fn pl_poisson(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_logistic(inputs: &[Series]) -> PolarsResult<Series> {
+    logistic_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_poisson` expression shim.
+pub fn poisson_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
 
@@ -1017,10 +1084,15 @@ fn pl_poisson(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// Negative Binomial regression expression.
-/// inputs[0] = y, inputs[1] = theta (optional), inputs[2] = lambda (L2 regularization), inputs[3] = with_intercept, inputs[4..] = x columns
+/// Poisson regression expression.
+/// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3..] = x columns
 #[polars_expr(output_type_func=glm_output_dtype)]
-fn pl_negative_binomial(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_poisson(inputs: &[Series]) -> PolarsResult<Series> {
+    poisson_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_negative_binomial` expression shim.
+pub fn negative_binomial_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let theta = inputs[1].f64()?.get(0);
     let lambda = inputs[2].f64()?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[3].bool()?.get(0).unwrap_or(true);
@@ -1059,10 +1131,15 @@ fn pl_negative_binomial(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// Tweedie regression expression.
-/// inputs[0] = y, inputs[1] = var_power, inputs[2] = lambda (L2 regularization), inputs[3] = with_intercept, inputs[4..] = x columns
+/// Negative Binomial regression expression.
+/// inputs[0] = y, inputs[1] = theta (optional), inputs[2] = lambda (L2 regularization), inputs[3] = with_intercept, inputs[4..] = x columns
 #[polars_expr(output_type_func=glm_output_dtype)]
-fn pl_tweedie(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_negative_binomial(inputs: &[Series]) -> PolarsResult<Series> {
+    negative_binomial_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_tweedie` expression shim.
+pub fn tweedie_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let var_power = inputs[1].f64()?.get(0).unwrap_or(1.5);
     let lambda = inputs[2].f64()?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[3].bool()?.get(0).unwrap_or(true);
@@ -1097,10 +1174,15 @@ fn pl_tweedie(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// Probit regression expression.
-/// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3..] = x columns
+/// Tweedie regression expression.
+/// inputs[0] = y, inputs[1] = var_power, inputs[2] = lambda (L2 regularization), inputs[3] = with_intercept, inputs[4..] = x columns
 #[polars_expr(output_type_func=glm_output_dtype)]
-fn pl_probit(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_tweedie(inputs: &[Series]) -> PolarsResult<Series> {
+    tweedie_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_probit` expression shim.
+pub fn probit_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
 
@@ -1130,10 +1212,15 @@ fn pl_probit(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// Complementary log-log regression expression.
+/// Probit regression expression.
 /// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3..] = x columns
 #[polars_expr(output_type_func=glm_output_dtype)]
-fn pl_cloglog(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_probit(inputs: &[Series]) -> PolarsResult<Series> {
+    probit_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_cloglog` expression shim.
+pub fn cloglog_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
 
@@ -1163,6 +1250,13 @@ fn pl_cloglog(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
+/// Complementary log-log regression expression.
+/// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3..] = x columns
+#[polars_expr(output_type_func=glm_output_dtype)]
+fn pl_cloglog(inputs: &[Series]) -> PolarsResult<Series> {
+    cloglog_fit(inputs)
+}
+
 // ============================================================================
 // ALM Expression
 // ============================================================================
@@ -1190,10 +1284,8 @@ fn parse_alm_distribution(s: &str) -> Option<AlmDistribution> {
     }
 }
 
-/// ALM (Augmented Linear Model) expression.
-/// inputs[0] = y, inputs[1] = distribution (string), inputs[2] = with_intercept, inputs[3..] = x columns
-#[polars_expr(output_type_func=glm_output_dtype)]
-fn pl_alm(inputs: &[Series]) -> PolarsResult<Series> {
+/// Public Rust-callable variant. Same input contract as the `pl_alm` expression shim.
+pub fn alm_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let dist_str = inputs[1].str()?.get(0).unwrap_or("normal");
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
 
@@ -1227,6 +1319,13 @@ fn pl_alm(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
+/// ALM (Augmented Linear Model) expression.
+/// inputs[0] = y, inputs[1] = distribution (string), inputs[2] = with_intercept, inputs[3..] = x columns
+#[polars_expr(output_type_func=glm_output_dtype)]
+fn pl_alm(inputs: &[Series]) -> PolarsResult<Series> {
+    alm_fit(inputs)
+}
+
 // ============================================================================
 // Summary Expressions (Tidy Coefficient Output)
 // ============================================================================
@@ -1243,11 +1342,8 @@ fn build_term_names(n_features: usize, with_intercept: bool) -> Vec<String> {
     terms
 }
 
-/// OLS summary expression - returns tidy coefficient table
-/// inputs[0] = y, inputs[1] = with_intercept (bool), inputs[2] = solve_method (string or null),
-/// inputs[3] = hc_type (string or null), inputs[4..] = x columns
-#[polars_expr(output_type_func=summary_output_dtype)]
-fn pl_ols_summary(inputs: &[Series]) -> PolarsResult<Series> {
+/// Public Rust-callable variant. Same input contract as the `pl_ols_summary` expression shim.
+pub fn ols_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
     let solve_method = parse_solver_type(inputs[2].str()?.get(0));
     let hc_type = parse_hc_type(inputs[3].str()?.get(0));
@@ -1341,10 +1437,16 @@ fn pl_ols_summary(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// Ridge summary expression
-/// inputs[0] = y, inputs[1] = lambda, inputs[2] = with_intercept, inputs[3] = solve_method (string or null), inputs[4..] = x columns
+/// OLS summary expression - returns tidy coefficient table
+/// inputs[0] = y, inputs[1] = with_intercept (bool), inputs[2] = solve_method (string or null),
+/// inputs[3] = hc_type (string or null), inputs[4..] = x columns
 #[polars_expr(output_type_func=summary_output_dtype)]
-fn pl_ridge_summary(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_ols_summary(inputs: &[Series]) -> PolarsResult<Series> {
+    ols_summary_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_ridge_summary` expression shim.
+pub fn ridge_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let lambda = inputs[1].f64()?.get(0).unwrap_or(1.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let solve_method = parse_solver_type(inputs[3].str()?.get(0));
@@ -1407,10 +1509,15 @@ fn pl_ridge_summary(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// Elastic Net summary expression
-/// inputs[0] = y, inputs[1] = lambda, inputs[2] = alpha, inputs[3] = with_intercept, inputs[4..] = x columns
+/// Ridge summary expression
+/// inputs[0] = y, inputs[1] = lambda, inputs[2] = with_intercept, inputs[3] = solve_method (string or null), inputs[4..] = x columns
 #[polars_expr(output_type_func=summary_output_dtype)]
-fn pl_elastic_net_summary(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_ridge_summary(inputs: &[Series]) -> PolarsResult<Series> {
+    ridge_summary_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_elastic_net_summary` expression shim.
+pub fn elastic_net_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let lambda = inputs[1].f64()?.get(0).unwrap_or(1.0);
     let alpha = inputs[2].f64()?.get(0).unwrap_or(0.5);
     let with_intercept = inputs[3].bool()?.get(0).unwrap_or(true);
@@ -1471,10 +1578,15 @@ fn pl_elastic_net_summary(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// WLS summary expression
-/// inputs[0] = y, inputs[1] = weights, inputs[2] = with_intercept, inputs[3] = solve_method (string or null), inputs[4..] = x columns
+/// Elastic Net summary expression
+/// inputs[0] = y, inputs[1] = lambda, inputs[2] = alpha, inputs[3] = with_intercept, inputs[4..] = x columns
 #[polars_expr(output_type_func=summary_output_dtype)]
-fn pl_wls_summary(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_elastic_net_summary(inputs: &[Series]) -> PolarsResult<Series> {
+    elastic_net_summary_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_wls_summary` expression shim.
+pub fn wls_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let weights_series = inputs[1].f64()?;
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let solve_method = parse_solver_type(inputs[3].str()?.get(0));
@@ -1540,10 +1652,15 @@ fn pl_wls_summary(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// RLS summary expression
-/// inputs[0] = y, inputs[1] = forgetting_factor, inputs[2] = with_intercept, inputs[3..] = x columns
+/// WLS summary expression
+/// inputs[0] = y, inputs[1] = weights, inputs[2] = with_intercept, inputs[3] = solve_method (string or null), inputs[4..] = x columns
 #[polars_expr(output_type_func=summary_output_dtype)]
-fn pl_rls_summary(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_wls_summary(inputs: &[Series]) -> PolarsResult<Series> {
+    wls_summary_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_rls_summary` expression shim.
+pub fn rls_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let forgetting_factor = inputs[1].f64()?.get(0).unwrap_or(0.99);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let n_features = inputs.len() - 3;
@@ -1602,10 +1719,15 @@ fn pl_rls_summary(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// BLS summary expression
-/// inputs[0] = y, inputs[1] = lower_bound, inputs[2] = upper_bound, inputs[3] = with_intercept, inputs[4..] = x columns
+/// RLS summary expression
+/// inputs[0] = y, inputs[1] = forgetting_factor, inputs[2] = with_intercept, inputs[3..] = x columns
 #[polars_expr(output_type_func=summary_output_dtype)]
-fn pl_bls_summary(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_rls_summary(inputs: &[Series]) -> PolarsResult<Series> {
+    rls_summary_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_bls_summary` expression shim.
+pub fn bls_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let lower_bound = inputs[1].f64()?.get(0);
     let upper_bound = inputs[2].f64()?.get(0);
     let with_intercept = inputs[3].bool()?.get(0).unwrap_or(true);
@@ -1671,14 +1793,19 @@ fn pl_bls_summary(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
+/// BLS summary expression
+/// inputs[0] = y, inputs[1] = lower_bound, inputs[2] = upper_bound, inputs[3] = with_intercept, inputs[4..] = x columns
+#[polars_expr(output_type_func=summary_output_dtype)]
+fn pl_bls_summary(inputs: &[Series]) -> PolarsResult<Series> {
+    bls_summary_fit(inputs)
+}
+
 // ============================================================================
 // GLM Summary Expressions
 // ============================================================================
 
-/// Logistic summary expression
-/// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3..] = x columns
-#[polars_expr(output_type_func=summary_output_dtype)]
-fn pl_logistic_summary(inputs: &[Series]) -> PolarsResult<Series> {
+/// Public Rust-callable variant. Same input contract as the `pl_logistic_summary` expression shim.
+pub fn logistic_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let n_features = inputs.len() - 3;
@@ -1738,10 +1865,15 @@ fn pl_logistic_summary(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// Poisson summary expression
+/// Logistic summary expression
 /// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3..] = x columns
 #[polars_expr(output_type_func=summary_output_dtype)]
-fn pl_poisson_summary(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_logistic_summary(inputs: &[Series]) -> PolarsResult<Series> {
+    logistic_summary_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_poisson_summary` expression shim.
+pub fn poisson_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let n_features = inputs.len() - 3;
@@ -1801,10 +1933,15 @@ fn pl_poisson_summary(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// Negative Binomial summary expression
-/// inputs[0] = y, inputs[1] = theta, inputs[2] = lambda (L2 regularization), inputs[3] = with_intercept, inputs[4..] = x columns
+/// Poisson summary expression
+/// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3..] = x columns
 #[polars_expr(output_type_func=summary_output_dtype)]
-fn pl_negative_binomial_summary(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_poisson_summary(inputs: &[Series]) -> PolarsResult<Series> {
+    poisson_summary_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_negative_binomial_summary` expression shim.
+pub fn negative_binomial_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let theta = inputs[1].f64()?.get(0);
     let lambda = inputs[2].f64()?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[3].bool()?.get(0).unwrap_or(true);
@@ -1873,10 +2010,15 @@ fn pl_negative_binomial_summary(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// Tweedie summary expression
-/// inputs[0] = y, inputs[1] = var_power, inputs[2] = lambda (L2 regularization), inputs[3] = with_intercept, inputs[4..] = x columns
+/// Negative Binomial summary expression
+/// inputs[0] = y, inputs[1] = theta, inputs[2] = lambda (L2 regularization), inputs[3] = with_intercept, inputs[4..] = x columns
 #[polars_expr(output_type_func=summary_output_dtype)]
-fn pl_tweedie_summary(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_negative_binomial_summary(inputs: &[Series]) -> PolarsResult<Series> {
+    negative_binomial_summary_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_tweedie_summary` expression shim.
+pub fn tweedie_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let var_power = inputs[1].f64()?.get(0).unwrap_or(1.5);
     let lambda = inputs[2].f64()?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[3].bool()?.get(0).unwrap_or(true);
@@ -1941,10 +2083,15 @@ fn pl_tweedie_summary(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// Probit summary expression
-/// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3..] = x columns
+/// Tweedie summary expression
+/// inputs[0] = y, inputs[1] = var_power, inputs[2] = lambda (L2 regularization), inputs[3] = with_intercept, inputs[4..] = x columns
 #[polars_expr(output_type_func=summary_output_dtype)]
-fn pl_probit_summary(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_tweedie_summary(inputs: &[Series]) -> PolarsResult<Series> {
+    tweedie_summary_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_probit_summary` expression shim.
+pub fn probit_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let n_features = inputs.len() - 3;
@@ -2004,10 +2151,15 @@ fn pl_probit_summary(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// Cloglog summary expression
+/// Probit summary expression
 /// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3..] = x columns
 #[polars_expr(output_type_func=summary_output_dtype)]
-fn pl_cloglog_summary(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_probit_summary(inputs: &[Series]) -> PolarsResult<Series> {
+    probit_summary_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_cloglog_summary` expression shim.
+pub fn cloglog_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let n_features = inputs.len() - 3;
@@ -2065,6 +2217,13 @@ fn pl_cloglog_summary(inputs: &[Series]) -> PolarsResult<Series> {
         }
         Err(_) => summary_nan_output(),
     }
+}
+
+/// Cloglog summary expression
+/// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3..] = x columns
+#[polars_expr(output_type_func=summary_output_dtype)]
+fn pl_cloglog_summary(inputs: &[Series]) -> PolarsResult<Series> {
+    cloglog_summary_fit(inputs)
 }
 
 // ============================================================================
@@ -2246,11 +2405,8 @@ fn build_xy_with_null_policy(
     }
 }
 
-/// OLS prediction expression - returns predictions with optional intervals.
-/// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = solve_method (string or null),
-/// inputs[3] = interval (string or null), inputs[4] = level, inputs[5] = null_policy, inputs[6..] = x columns
-#[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
-fn pl_ols_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
+/// Public Rust-callable variant. Same input contract as the `pl_ols_predict` expression shim.
+pub fn ols_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
     let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
     let solve_method = parse_solver_type(inputs[2].str()?.get(0));
     let interval = inputs[3].str()?.get(0); // None, "confidence", or "prediction"
@@ -2327,11 +2483,16 @@ fn pl_ols_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Seri
     }
 }
 
-/// Ridge prediction expression
+/// OLS prediction expression - returns predictions with optional intervals.
 /// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = solve_method (string or null),
-/// inputs[3] = interval, inputs[4] = level, inputs[5] = null_policy, inputs[6] = lambda, inputs[7..] = x columns
+/// inputs[3] = interval (string or null), inputs[4] = level, inputs[5] = null_policy, inputs[6..] = x columns
 #[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
-fn pl_ridge_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
+fn pl_ols_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
+    ols_predict_fit(inputs, kwargs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_ridge_predict` expression shim.
+pub fn ridge_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
     let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
     let solve_method = parse_solver_type(inputs[2].str()?.get(0));
     let interval = inputs[3].str()?.get(0);
@@ -2406,11 +2567,16 @@ fn pl_ridge_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Se
     }
 }
 
-/// Elastic Net prediction expression
-/// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval, inputs[3] = level,
-/// inputs[4] = null_policy, inputs[5] = lambda, inputs[6] = alpha, inputs[7..] = x columns
+/// Ridge prediction expression
+/// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = solve_method (string or null),
+/// inputs[3] = interval, inputs[4] = level, inputs[5] = null_policy, inputs[6] = lambda, inputs[7..] = x columns
 #[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
-fn pl_elastic_net_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
+fn pl_ridge_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
+    ridge_predict_fit(inputs, kwargs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_elastic_net_predict` expression shim.
+pub fn elastic_net_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
     let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
     let interval = inputs[2].str()?.get(0);
     let level = inputs[3].f64()?.get(0).unwrap_or(0.95);
@@ -2483,11 +2649,16 @@ fn pl_elastic_net_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsRes
     }
 }
 
-/// WLS prediction expression (weights column is inputs[7])
-/// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = solve_method (string or null),
-/// inputs[3] = interval, inputs[4] = level, inputs[5] = null_policy, inputs[6] = weights, inputs[7..] = x columns
+/// Elastic Net prediction expression
+/// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval, inputs[3] = level,
+/// inputs[4] = null_policy, inputs[5] = lambda, inputs[6] = alpha, inputs[7..] = x columns
 #[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
-fn pl_wls_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
+fn pl_elastic_net_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
+    elastic_net_predict_fit(inputs, kwargs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_wls_predict` expression shim.
+pub fn wls_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
     let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
     let solve_method = parse_solver_type(inputs[2].str()?.get(0));
     let interval = inputs[3].str()?.get(0);
@@ -2573,11 +2744,16 @@ fn pl_wls_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Seri
     }
 }
 
-/// RLS prediction expression
-/// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval, inputs[3] = level,
-/// inputs[4] = null_policy, inputs[5] = forgetting_factor, inputs[6..] = x columns
+/// WLS prediction expression (weights column is inputs[7])
+/// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = solve_method (string or null),
+/// inputs[3] = interval, inputs[4] = level, inputs[5] = null_policy, inputs[6] = weights, inputs[7..] = x columns
 #[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
-fn pl_rls_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
+fn pl_wls_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
+    wls_predict_fit(inputs, kwargs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_rls_predict` expression shim.
+pub fn rls_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
     let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
     let interval = inputs[2].str()?.get(0);
     let level = inputs[3].f64()?.get(0).unwrap_or(0.95);
@@ -2648,12 +2824,16 @@ fn pl_rls_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Seri
     }
 }
 
-/// BLS prediction expression
+/// RLS prediction expression
 /// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval, inputs[3] = level,
-/// inputs[4] = null_policy, inputs[5] = lower_bound (or null), inputs[6] = upper_bound (or null),
-/// inputs[7..] = x columns
+/// inputs[4] = null_policy, inputs[5] = forgetting_factor, inputs[6..] = x columns
 #[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
-fn pl_bls_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
+fn pl_rls_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
+    rls_predict_fit(inputs, kwargs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_bls_predict` expression shim.
+pub fn bls_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
     let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
     let interval = inputs[2].str()?.get(0);
     let level = inputs[3].f64()?.get(0).unwrap_or(0.95);
@@ -2729,11 +2909,17 @@ fn pl_bls_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Seri
     }
 }
 
-/// Logistic prediction expression
-/// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3] = interval, inputs[4] = level,
-/// inputs[5] = null_policy, inputs[6..] = x columns
+/// BLS prediction expression
+/// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval, inputs[3] = level,
+/// inputs[4] = null_policy, inputs[5] = lower_bound (or null), inputs[6] = upper_bound (or null),
+/// inputs[7..] = x columns
 #[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
-fn pl_logistic_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
+fn pl_bls_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
+    bls_predict_fit(inputs, kwargs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_logistic_predict` expression shim.
+pub fn logistic_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
     let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let interval = inputs[3].str()?.get(0);
@@ -2805,11 +2991,16 @@ fn pl_logistic_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult
     }
 }
 
-/// Poisson prediction expression
+/// Logistic prediction expression
 /// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3] = interval, inputs[4] = level,
 /// inputs[5] = null_policy, inputs[6..] = x columns
 #[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
-fn pl_poisson_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
+fn pl_logistic_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
+    logistic_predict_fit(inputs, kwargs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_poisson_predict` expression shim.
+pub fn poisson_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
     let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let interval = inputs[3].str()?.get(0);
@@ -2881,11 +3072,16 @@ fn pl_poisson_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<
     }
 }
 
-/// Negative Binomial prediction expression
+/// Poisson prediction expression
 /// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3] = interval, inputs[4] = level,
 /// inputs[5] = null_policy, inputs[6..] = x columns
 #[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
-fn pl_negative_binomial_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
+fn pl_poisson_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
+    poisson_predict_fit(inputs, kwargs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_negative_binomial_predict` expression shim.
+pub fn negative_binomial_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
     let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let interval = inputs[3].str()?.get(0);
@@ -2957,11 +3153,16 @@ fn pl_negative_binomial_predict(inputs: &[Series], kwargs: PredictKwargs) -> Pol
     }
 }
 
-/// Tweedie prediction expression
+/// Negative Binomial prediction expression
 /// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3] = interval, inputs[4] = level,
-/// inputs[5] = null_policy, inputs[6] = var_power, inputs[7..] = x columns
+/// inputs[5] = null_policy, inputs[6..] = x columns
 #[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
-fn pl_tweedie_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
+fn pl_negative_binomial_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
+    negative_binomial_predict_fit(inputs, kwargs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_tweedie_predict` expression shim.
+pub fn tweedie_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
     let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let interval = inputs[3].str()?.get(0);
@@ -3038,11 +3239,16 @@ fn pl_tweedie_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<
     }
 }
 
-/// Probit prediction expression
+/// Tweedie prediction expression
 /// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3] = interval, inputs[4] = level,
-/// inputs[5] = null_policy, inputs[6..] = x columns
+/// inputs[5] = null_policy, inputs[6] = var_power, inputs[7..] = x columns
 #[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
-fn pl_probit_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
+fn pl_tweedie_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
+    tweedie_predict_fit(inputs, kwargs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_probit_predict` expression shim.
+pub fn probit_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
     let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let interval = inputs[3].str()?.get(0);
@@ -3114,11 +3320,16 @@ fn pl_probit_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<S
     }
 }
 
-/// Cloglog prediction expression
+/// Probit prediction expression
 /// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3] = interval, inputs[4] = level,
 /// inputs[5] = null_policy, inputs[6..] = x columns
 #[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
-fn pl_cloglog_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
+fn pl_probit_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
+    probit_predict_fit(inputs, kwargs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_cloglog_predict` expression shim.
+pub fn cloglog_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
     let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let interval = inputs[3].str()?.get(0);
@@ -3190,11 +3401,16 @@ fn pl_cloglog_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<
     }
 }
 
-/// ALM prediction expression
-/// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval, inputs[3] = level,
-/// inputs[4] = null_policy, inputs[5] = distribution, inputs[6..] = x columns
+/// Cloglog prediction expression
+/// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3] = interval, inputs[4] = level,
+/// inputs[5] = null_policy, inputs[6..] = x columns
 #[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
-fn pl_alm_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
+fn pl_cloglog_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
+    cloglog_predict_fit(inputs, kwargs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_alm_predict` expression shim.
+pub fn alm_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
     let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
     let interval = inputs[2].str()?.get(0);
     let level = inputs[3].f64()?.get(0).unwrap_or(0.95);
@@ -3270,14 +3486,20 @@ fn pl_alm_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Seri
     }
 }
 
+/// ALM prediction expression
+/// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval, inputs[3] = level,
+/// inputs[4] = null_policy, inputs[5] = distribution, inputs[6..] = x columns
+#[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
+fn pl_alm_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
+    alm_predict_fit(inputs, kwargs)
+}
+
 // ============================================================================
 // GLM Summary Expressions
 // ============================================================================
 
-/// ALM summary expression
-/// inputs[0] = y, inputs[1] = distribution, inputs[2] = with_intercept, inputs[3..] = x columns
-#[polars_expr(output_type_func=summary_output_dtype)]
-fn pl_alm_summary(inputs: &[Series]) -> PolarsResult<Series> {
+/// Public Rust-callable variant. Same input contract as the `pl_alm_summary` expression shim.
+pub fn alm_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let dist_str = inputs[1].str()?.get(0).unwrap_or("normal");
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let n_features = inputs.len() - 3;
@@ -3339,6 +3561,13 @@ fn pl_alm_summary(inputs: &[Series]) -> PolarsResult<Series> {
         }
         Err(_) => summary_nan_output(),
     }
+}
+
+/// ALM summary expression
+/// inputs[0] = y, inputs[1] = distribution, inputs[2] = with_intercept, inputs[3..] = x columns
+#[polars_expr(output_type_func=summary_output_dtype)]
+fn pl_alm_summary(inputs: &[Series]) -> PolarsResult<Series> {
+    alm_summary_fit(inputs)
 }
 
 // ============================================================================
@@ -3504,17 +3733,8 @@ fn aid_nan_output() -> PolarsResult<Series> {
     )
 }
 
-/// Automatic Identification of Demand (AID) classifier.
-///
-/// Classifies demand patterns as regular or intermittent and selects the
-/// best-fitting distribution.
-///
-/// # Arguments
-/// * inputs[0] - y: demand time series
-/// * inputs[1] - intermittent_threshold: threshold for classifying as intermittent (0.0 to 1.0)
-/// * inputs[2] - detect_anomalies: whether to detect anomalies (boolean)
-#[polars_expr(output_type_func=aid_output_dtype)]
-fn pl_aid(inputs: &[Series]) -> PolarsResult<Series> {
+/// Public Rust-callable variant. Same input contract as the `pl_aid` expression shim.
+pub fn aid_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let intermittent_threshold = inputs[1].f64()?.get(0).unwrap_or(0.3);
     let detect_anomalies = inputs[2].bool()?.get(0).unwrap_or(true);
 
@@ -3548,6 +3768,20 @@ fn pl_aid(inputs: &[Series]) -> PolarsResult<Series> {
         result.n_observations as u32,
         &anomaly_counts,
     )
+}
+
+/// Automatic Identification of Demand (AID) classifier.
+///
+/// Classifies demand patterns as regular or intermittent and selects the
+/// best-fitting distribution.
+///
+/// # Arguments
+/// * inputs[0] - y: demand time series
+/// * inputs[1] - intermittent_threshold: threshold for classifying as intermittent (0.0 to 1.0)
+/// * inputs[2] - detect_anomalies: whether to detect anomalies (boolean)
+#[polars_expr(output_type_func=aid_output_dtype)]
+fn pl_aid(inputs: &[Series]) -> PolarsResult<Series> {
+    aid_fit(inputs)
 }
 
 // ============================================================================
@@ -3609,13 +3843,8 @@ fn aid_anomalies_nan_output(n_rows: usize) -> PolarsResult<Series> {
     )
 }
 
-/// AID Anomalies expression - returns per-observation anomaly flags.
-///
-/// # Arguments
-/// * inputs[0] - y: demand time series
-/// * inputs[1] - intermittent_threshold: threshold for classifying as intermittent (0.0 to 1.0)
-#[polars_expr(output_type_func=aid_anomalies_output_dtype)]
-fn pl_aid_anomalies(inputs: &[Series]) -> PolarsResult<Series> {
+/// Public Rust-callable variant. Same input contract as the `pl_aid_anomalies` expression shim.
+pub fn aid_anomalies_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let intermittent_threshold = inputs[1].f64()?.get(0).unwrap_or(0.3);
 
     let y_series = inputs[0].f64()?;
@@ -3661,6 +3890,16 @@ fn pl_aid_anomalies(inputs: &[Series]) -> PolarsResult<Series> {
         high_outlier,
         low_outlier,
     )
+}
+
+/// AID Anomalies expression - returns per-observation anomaly flags.
+///
+/// # Arguments
+/// * inputs[0] - y: demand time series
+/// * inputs[1] - intermittent_threshold: threshold for classifying as intermittent (0.0 to 1.0)
+#[polars_expr(output_type_func=aid_anomalies_output_dtype)]
+fn pl_aid_anomalies(inputs: &[Series]) -> PolarsResult<Series> {
+    aid_anomalies_fit(inputs)
 }
 
 // ============================================================================
@@ -3724,21 +3963,8 @@ fn lm_dynamic_nan_output() -> PolarsResult<Series> {
     lm_dynamic_output(None, &[], f64::NAN, f64::NAN, f64::NAN, f64::NAN, 0)
 }
 
-/// Dynamic Linear Model regression.
-///
-/// A time-varying parameter model that combines multiple candidate regression
-/// models using pointwise information criteria weighting.
-///
-/// # Arguments
-/// * inputs[0] - y: target variable
-/// * inputs[1] - ic: information criterion ("aic", "aicc", "bic")
-/// * inputs[2] - distribution: error distribution
-/// * inputs[3] - lowess_span: LOWESS smoothing span (0.0 to disable, 0.05-1.0 to enable)
-/// * inputs[4] - max_models: maximum number of candidate models
-/// * inputs[5] - with_intercept: whether to include intercept
-/// * inputs[6..] - x: feature variables
-#[polars_expr(output_type_func=lm_dynamic_output_dtype)]
-fn pl_lm_dynamic(inputs: &[Series]) -> PolarsResult<Series> {
+/// Public Rust-callable variant. Same input contract as the `pl_lm_dynamic` expression shim.
+pub fn lm_dynamic_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let ic_str = inputs[1].str()?.get(0).unwrap_or("aicc");
     let dist_str = inputs[2].str()?.get(0).unwrap_or("normal");
     let lowess_span = inputs[3].f64()?.get(0).unwrap_or(0.3);
@@ -3791,4 +4017,22 @@ fn pl_lm_dynamic(inputs: &[Series]) -> PolarsResult<Series> {
         }
         Err(_) => lm_dynamic_nan_output(),
     }
+}
+
+/// Dynamic Linear Model regression.
+///
+/// A time-varying parameter model that combines multiple candidate regression
+/// models using pointwise information criteria weighting.
+///
+/// # Arguments
+/// * inputs[0] - y: target variable
+/// * inputs[1] - ic: information criterion ("aic", "aicc", "bic")
+/// * inputs[2] - distribution: error distribution
+/// * inputs[3] - lowess_span: LOWESS smoothing span (0.0 to disable, 0.05-1.0 to enable)
+/// * inputs[4] - max_models: maximum number of candidate models
+/// * inputs[5] - with_intercept: whether to include intercept
+/// * inputs[6..] - x: feature variables
+#[polars_expr(output_type_func=lm_dynamic_output_dtype)]
+fn pl_lm_dynamic(inputs: &[Series]) -> PolarsResult<Series> {
+    lm_dynamic_fit(inputs)
 }

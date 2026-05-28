@@ -35,9 +35,8 @@ fn parse_var_estimator(s: &str) -> VarEstimator {
     }
 }
 
-/// Diebold-Mariano test for comparing forecast accuracy.
-#[polars_expr(output_type_func=stats_output_dtype)]
-fn pl_diebold_mariano(inputs: &[Series]) -> PolarsResult<Series> {
+/// Public Rust-callable variant. Same input contract as the `pl_diebold_mariano` expression shim.
+pub fn diebold_mariano_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let e1 = inputs[0].f64()?;
     let e2 = inputs[1].f64()?;
     let loss_str = inputs[2].str()?.get(0).unwrap_or("squared");
@@ -58,9 +57,14 @@ fn pl_diebold_mariano(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// Permutation t-test for comparing two samples.
+/// Diebold-Mariano test for comparing forecast accuracy.
 #[polars_expr(output_type_func=stats_output_dtype)]
-fn pl_permutation_t_test(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_diebold_mariano(inputs: &[Series]) -> PolarsResult<Series> {
+    diebold_mariano_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_permutation_t_test` expression shim.
+pub fn permutation_t_test_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let x = inputs[0].f64()?;
     let y = inputs[1].f64()?;
     let alt_str = inputs[2].str()?.get(0).unwrap_or("two-sided");
@@ -78,9 +82,14 @@ fn pl_permutation_t_test(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// Clark-West test for nested model comparison.
+/// Permutation t-test for comparing two samples.
 #[polars_expr(output_type_func=stats_output_dtype)]
-fn pl_clark_west(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_permutation_t_test(inputs: &[Series]) -> PolarsResult<Series> {
+    permutation_t_test_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_clark_west` expression shim.
+pub fn clark_west_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let e1 = inputs[0].f64()?;
     let e2 = inputs[1].f64()?;
     let h = inputs[2].u32()?.get(0).unwrap_or(1) as usize;
@@ -94,6 +103,12 @@ fn pl_clark_west(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
+/// Clark-West test for nested model comparison.
+#[polars_expr(output_type_func=stats_output_dtype)]
+fn pl_clark_west(inputs: &[Series]) -> PolarsResult<Series> {
+    clark_west_fit(inputs)
+}
+
 /// SPA output type with additional fields
 fn spa_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
     let fields = vec![
@@ -105,9 +120,8 @@ fn spa_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
     Ok(Field::new("spa_result".into(), DataType::Struct(fields)))
 }
 
-/// Superior Predictive Ability (SPA) test.
-#[polars_expr(output_type_func=spa_output_dtype)]
-fn pl_spa_test(inputs: &[Series]) -> PolarsResult<Series> {
+/// Public Rust-callable variant. Same input contract as the `pl_spa_test` expression shim.
+pub fn spa_test_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let benchmark = inputs[0].f64()?;
     let n_bootstrap = inputs[1].u32()?.get(0).unwrap_or(999) as usize;
     let block_length = inputs[2].f64()?.get(0).unwrap_or(5.0);
@@ -161,6 +175,12 @@ fn pl_spa_test(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
+/// Superior Predictive Ability (SPA) test.
+#[polars_expr(output_type_func=spa_output_dtype)]
+fn pl_spa_test(inputs: &[Series]) -> PolarsResult<Series> {
+    spa_test_fit(inputs)
+}
+
 /// MCS output type
 fn mcs_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
     let fields = vec![
@@ -173,9 +193,8 @@ fn mcs_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
     Ok(Field::new("mcs_result".into(), DataType::Struct(fields)))
 }
 
-/// Model Confidence Set (MCS) test.
-#[polars_expr(output_type_func=mcs_output_dtype)]
-fn pl_model_confidence_set(inputs: &[Series]) -> PolarsResult<Series> {
+/// Public Rust-callable variant. Same input contract as the `pl_model_confidence_set` expression shim.
+pub fn model_confidence_set_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let alpha = inputs[0].f64()?.get(0).unwrap_or(0.1);
     let stat_str = inputs[1].str()?.get(0).unwrap_or("range");
     let n_bootstrap = inputs[2].u32()?.get(0).unwrap_or(999) as usize;
@@ -230,9 +249,14 @@ fn pl_model_confidence_set(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// MSPE-Adjusted SPA test for nested models.
-#[polars_expr(output_type_func=spa_output_dtype)]
-fn pl_mspe_adjusted(inputs: &[Series]) -> PolarsResult<Series> {
+/// Model Confidence Set (MCS) test.
+#[polars_expr(output_type_func=mcs_output_dtype)]
+fn pl_model_confidence_set(inputs: &[Series]) -> PolarsResult<Series> {
+    model_confidence_set_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_mspe_adjusted` expression shim.
+pub fn mspe_adjusted_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let benchmark = inputs[0].f64()?;
     let n_bootstrap = inputs[1].u32()?.get(0).unwrap_or(999) as usize;
     let block_length = inputs[2].f64()?.get(0).unwrap_or(5.0);
@@ -284,4 +308,10 @@ fn pl_mspe_adjusted(inputs: &[Series]) -> PolarsResult<Series> {
             .map(|ca| ca.into_series())
         }
     }
+}
+
+/// MSPE-Adjusted SPA test for nested models.
+#[polars_expr(output_type_func=spa_output_dtype)]
+fn pl_mspe_adjusted(inputs: &[Series]) -> PolarsResult<Series> {
+    mspe_adjusted_fit(inputs)
 }

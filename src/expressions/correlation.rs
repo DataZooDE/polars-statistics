@@ -58,9 +58,8 @@ fn correlation_error_output(name: &str) -> PolarsResult<Series> {
     Ok(df.into_series())
 }
 
-/// Pearson correlation coefficient
-#[polars_expr(output_type_func=correlation_output_dtype)]
-fn pl_pearson(inputs: &[Series]) -> PolarsResult<Series> {
+/// Public Rust-callable variant. Same input contract as the `pl_pearson` expression shim.
+pub fn pearson_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let x = inputs[0].f64()?;
     let y = inputs[1].f64()?;
     let conf_level = inputs[2].f64()?.get(0);
@@ -74,9 +73,14 @@ fn pl_pearson(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// Spearman rank correlation coefficient
+/// Pearson correlation coefficient
 #[polars_expr(output_type_func=correlation_output_dtype)]
-fn pl_spearman(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_pearson(inputs: &[Series]) -> PolarsResult<Series> {
+    pearson_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_spearman` expression shim.
+pub fn spearman_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let x = inputs[0].f64()?;
     let y = inputs[1].f64()?;
     let conf_level = inputs[2].f64()?.get(0);
@@ -90,9 +94,14 @@ fn pl_spearman(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// Kendall's tau correlation coefficient
+/// Spearman rank correlation coefficient
 #[polars_expr(output_type_func=correlation_output_dtype)]
-fn pl_kendall(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_spearman(inputs: &[Series]) -> PolarsResult<Series> {
+    spearman_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_kendall` expression shim.
+pub fn kendall_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let x = inputs[0].f64()?;
     let y = inputs[1].f64()?;
     let variant_str = inputs[2].str()?.get(0).unwrap_or("b");
@@ -112,9 +121,14 @@ fn pl_kendall(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// Distance correlation test
+/// Kendall's tau correlation coefficient
 #[polars_expr(output_type_func=correlation_output_dtype)]
-fn pl_distance_cor(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_kendall(inputs: &[Series]) -> PolarsResult<Series> {
+    kendall_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_distance_cor` expression shim.
+pub fn distance_cor_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let x = inputs[0].f64()?;
     let y = inputs[1].f64()?;
     let n_permutations = inputs[2].u32()?.get(0).unwrap_or(999) as usize;
@@ -143,9 +157,14 @@ fn pl_distance_cor(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// Partial correlation
+/// Distance correlation test
 #[polars_expr(output_type_func=correlation_output_dtype)]
-fn pl_partial_cor(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_distance_cor(inputs: &[Series]) -> PolarsResult<Series> {
+    distance_cor_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_partial_cor` expression shim.
+pub fn partial_cor_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let x = inputs[0].f64()?;
     let y = inputs[1].f64()?;
     // Covariates are passed as separate series after x and y
@@ -191,9 +210,14 @@ fn pl_partial_cor(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// Semi-partial correlation
+/// Partial correlation
 #[polars_expr(output_type_func=correlation_output_dtype)]
-fn pl_semi_partial_cor(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_partial_cor(inputs: &[Series]) -> PolarsResult<Series> {
+    partial_cor_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_semi_partial_cor` expression shim.
+pub fn semi_partial_cor_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let x = inputs[0].f64()?;
     let y = inputs[1].f64()?;
     let n_covariates = inputs[2].u32()?.get(0).unwrap_or(1) as usize;
@@ -236,11 +260,14 @@ fn pl_semi_partial_cor(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// Intraclass correlation coefficient (ICC)
-/// Note: ICC requires a 2D matrix structure (subjects x raters).
-/// This is a placeholder that requires proper matrix input handling.
+/// Semi-partial correlation
 #[polars_expr(output_type_func=correlation_output_dtype)]
-fn pl_icc(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_semi_partial_cor(inputs: &[Series]) -> PolarsResult<Series> {
+    semi_partial_cor_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_icc` expression shim.
+pub fn icc_fit(inputs: &[Series]) -> PolarsResult<Series> {
     // Data is passed as a matrix where each column is a rater
     // For simplicity, we expect groups and values columns
     let values = inputs[0].f64()?;
@@ -265,4 +292,12 @@ fn pl_icc(inputs: &[Series]) -> PolarsResult<Series> {
         [&estimate, &statistic, &p_value, &ci_lower, &ci_upper, &n].into_iter(),
     )?;
     Ok(df.into_series())
+}
+
+/// Intraclass correlation coefficient (ICC)
+/// Note: ICC requires a 2D matrix structure (subjects x raters).
+/// This is a placeholder that requires proper matrix input handling.
+#[polars_expr(output_type_func=correlation_output_dtype)]
+fn pl_icc(inputs: &[Series]) -> PolarsResult<Series> {
+    icc_fit(inputs)
 }

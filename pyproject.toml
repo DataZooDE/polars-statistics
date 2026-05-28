@@ -97,7 +97,7 @@ Changelog = "https://github.com/DataZooDE/polars-statistics/releases"
 python-source = "python"
 module-name = "polars_statistics._polars_statistics"
 bindings = "pyo3"
-features = ["pyo3/extension-module"]
+features = ["pyo3/extension-module", "python"]
 strip = true
 
 [tool.pytest.ini_options]
