@@ -4359,10 +4359,7 @@ fn pl_lm_dynamic(inputs: &[Series]) -> PolarsResult<Series> {
 /// Input contract: `[y, ic (str), distribution (str), lowess_span (f64),
 ///                   max_models (u32), with_intercept (bool), null_policy (str), x_0, ...]`.
 /// Interval columns are NaN (no analytic intervals for the time-varying mixture).
-pub fn lm_dynamic_predict_fit(
-    inputs: &[Series],
-    kwargs: PredictKwargs,
-) -> PolarsResult<Series> {
+pub fn lm_dynamic_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
     let ic_str = inputs[1].str()?.get(0).unwrap_or("aicc");
     let dist_str = inputs[2].str()?.get(0).unwrap_or("normal");
     let lowess_span = inputs[3].f64()?.get(0).unwrap_or(0.3);

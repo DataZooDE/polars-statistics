@@ -1611,8 +1611,7 @@ fn dynamic_model_fits() {
             scalar_str("null_policy", "drop"),
             series_f64("x1", &x),
         ];
-        let out =
-            lm_dynamic_predict_fit(&inputs, kwargs).expect("lm_dynamic_predict_fit failed");
+        let out = lm_dynamic_predict_fit(&inputs, kwargs).expect("lm_dynamic_predict_fit failed");
         assert_eq!(out.len(), y.len());
     }
 }
