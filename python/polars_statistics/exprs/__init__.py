@@ -82,6 +82,9 @@ from polars_statistics.exprs.regression import (
     condition_number,
     check_binary_separation,
     check_count_sparsity,
+    vif,
+    leverage,
+    cooks_distance,
     # GLM
     logistic,
     logistic_regression,
@@ -235,6 +238,9 @@ __all__ = [
     "condition_number",
     "check_binary_separation",
     "check_count_sparsity",
+    "vif",
+    "leverage",
+    "cooks_distance",
     # GLM expressions
     "logistic",
     "logistic_regression",
