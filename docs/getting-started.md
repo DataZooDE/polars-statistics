@@ -94,6 +94,28 @@ df.group_by("group").agg(
 # Columns: term, estimate, std_error, statistic, p_value
 ```
 
+## Diagnostics Quick Tour
+
+Detect multicollinearity, outliers, and influential points before (or after) fitting:
+
+```python
+import polars as pl
+import polars_statistics as ps
+
+# 1. Multicollinearity — Variance Inflation Factor per predictor
+df.select(ps.vif("x1", "x2", "x3").alias("vif"))
+
+# 2. Outliers — boolean mask from studentized residuals
+df.select(
+    ps.residual_outliers("y", "x1", "x2", threshold=2.5).alias("outliers")
+)
+
+# 3. Influence — Cook's distance per observation
+df.select(ps.cooks_distance("y", "x1", "x2").alias("d"))
+```
+
+The full battery — leverage, DFFITS, GLM residuals (Pearson/deviance/working), Pearson χ² goodness of fit, GVIF for grouped predictors — is documented on the [Diagnostics page](api/regression/diagnostics.md).
+
 ## Model Classes
 
 For direct model access outside Polars expressions:

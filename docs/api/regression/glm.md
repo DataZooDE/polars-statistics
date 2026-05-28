@@ -1,6 +1,14 @@
 # Generalized Linear Models (GLM)
 
-GLM models for binary classification, count data, and other non-normal response distributions. All GLM models support optional Ridge regularization via the `lambda_` parameter.
+GLM models for binary classification, count data, and other non-normal response distributions.
+
+## Penalized IRLS
+
+All GLM expressions (`logistic`, `poisson`, `negative_binomial`, `tweedie`, `probit`, `cloglog`) accept a `lambda_` kwarg (default `0.0`) that adds an L2 (ridge) penalty on the coefficients inside the IRLS update. Set `lambda_ > 0` to stabilize estimation under collinearity or quasi-separation.
+
+The sklearn-style `logistic_regression` exposes the same penalty via `C = 1 / lambda_` and an explicit `penalty` choice.
+
+---
 
 ## `logistic`
 
@@ -20,6 +28,34 @@ ps.logistic(
 **Example:**
 ```python
 df.group_by("group").agg(ps.logistic("success", "x1", "x2").alias("model"))
+```
+
+---
+
+## `logistic_regression`
+
+Sklearn-style logistic regression. Distinct from [`logistic`](#logistic): uses inverse-strength regularization `C = 1 / lambda_` and an explicit `penalty` choice. Returns the same [GLM Output](../outputs.md#glm-output) schema.
+
+```python
+ps.logistic_regression(
+    y: Union[pl.Expr, str],      # Binary (0/1)
+    *x: Union[pl.Expr, str],
+    penalty: str = "l2",          # "l2" or "none"
+    C: float = 1.0,               # Inverse of regularization strength
+    threshold: float = 0.5,
+    max_iter: int = 100,
+    tol: float = 1e-8,
+    with_intercept: bool = True,
+) -> pl.Expr
+```
+
+**Returns:** See [GLM Output](../outputs.md#glm-output)
+
+**Example:**
+```python
+df.group_by("group").agg(
+    ps.logistic_regression("success", "x1", "x2", penalty="l2", C=0.5).alias("model")
+)
 ```
 
 ---
