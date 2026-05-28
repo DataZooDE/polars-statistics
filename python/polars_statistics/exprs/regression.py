@@ -1124,6 +1124,113 @@ def _residual_diag_args(y, x, add_intercept):
     return [y.cast(pl.Float64), pl.lit(add_intercept, dtype=pl.Boolean), *x_exprs]
 
 
+# ============================================================================
+# Influence diagnostics (issue #27 batch 3)
+# ============================================================================
+
+
+def dffits(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
+) -> pl.Expr:
+    """DFFITS per observation from an internal OLS fit.
+
+    Measures the scaled change in fitted value if observation ``i`` were
+    dropped. |DFFITS_i| > 2 * sqrt(p / n) is the common influence cutoff.
+
+    Returns a struct with ``dffits`` (List[float]) and ``n_observations``.
+    """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_dffits",
+        args=_residual_diag_args(y, x, add_intercept),
+        returns_scalar=True,
+    )
+
+
+def _influence_args(y, x, threshold, add_intercept):
+    if isinstance(y, str):
+        y = pl.col(y)
+    x_exprs = [(pl.col(xi) if isinstance(xi, str) else xi).cast(pl.Float64) for xi in x]
+    return [
+        y.cast(pl.Float64),
+        pl.lit(add_intercept, dtype=pl.Boolean),
+        pl.lit(threshold, dtype=pl.Float64),
+        *x_exprs,
+    ]
+
+
+def influential_cooks(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    threshold: float | None = None,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
+) -> pl.Expr:
+    """Boolean mask of observations with Cook's distance above threshold.
+
+    Default threshold is ``4 / n`` (Belsley-Kuh-Welsch). Returns a struct
+    with ``is_influential`` (List[bool]), ``n_influential`` and
+    ``n_observations``.
+    """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_influential_cooks",
+        args=_influence_args(y, x, threshold, add_intercept),
+        returns_scalar=True,
+    )
+
+
+def influential_dffits(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    threshold: float | None = None,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
+) -> pl.Expr:
+    """Boolean mask of observations with |DFFITS| above threshold.
+
+    Default threshold is ``2 * sqrt(p / n)``. Returns a struct with
+    ``is_influential`` (List[bool]), ``n_influential`` and ``n_observations``.
+    """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_influential_dffits",
+        args=_influence_args(y, x, threshold, add_intercept),
+        returns_scalar=True,
+    )
+
+
+def high_leverage_points(
+    *x: Union[pl.Expr, str],
+    threshold: float | None = None,
+    add_intercept: bool = True,
+) -> pl.Expr:
+    """Boolean mask of high-leverage observations.
+
+    Default threshold is ``2 * p / n``. Returns a struct with
+    ``is_influential`` (List[bool]), ``n_influential`` and ``n_observations``.
+
+    Note: takes only feature columns (no y).
+    """
+    x_exprs = [(pl.col(xi) if isinstance(xi, str) else xi).cast(pl.Float64) for xi in x]
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_high_leverage_points",
+        args=[
+            pl.lit(add_intercept, dtype=pl.Boolean),
+            pl.lit(threshold, dtype=pl.Float64),
+            *x_exprs,
+        ],
+        returns_scalar=True,
+    )
+
+
 def standardized_residuals(
     y: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
