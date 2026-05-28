@@ -16,8 +16,8 @@ Usable from **Python** (as a Polars plugin) and from **Rust** (as an rlib that o
 
 - **Native Polars Expressions**: Full support for `group_by`, `over`, and lazy evaluation
 - **Statistical Tests**: Parametric, non-parametric, distributional, and forecast comparison tests
-- **Regression Models**: OLS, Ridge, Elastic Net, WLS, Quantile, Isotonic, GLMs, ALM (24+ distributions)
-- **Diagnostics**: Condition number, quasi-separation detection for GLMs
+- **Regression Models**: OLS, Ridge, Elastic Net, WLS, Quantile, Isotonic, Huber (M-estimator), PLS, GLMs, ALM (25 distributions)
+- **Diagnostics**: VIF, leverage, Cook's distance, DFFITS, influence masks, standardized / studentized / externally-studentized residuals, GLM Pearson / deviance / working residuals, Pearson χ², condition number, quasi-separation detection
 - **Formula Syntax**: R-style formulas with polynomial and interaction effects
 - **Hybrid crate**: `cdylib` (Python wheel) and `rlib` (Rust dependency) from the same source
 - **High Performance**: Rust-powered with zero-copy data transfer
@@ -131,19 +131,53 @@ ps.elastic_net("y", "x1", "x2", lambda_=1.0, alpha=0.5)
 ps.quantile("y", "x1", "x2", tau=0.5)  # Median regression
 ps.isotonic("y", "x")                   # Monotonic regression
 ps.huber("y", "x1", epsilon=1.35)       # Huber M-estimator (outlier-robust)
+ps.pls("y", "x1", "x2", n_components=2) # Partial Least Squares
 
 # GLM models (with optional Ridge regularization)
 ps.logistic("y", "x1", "x2", lambda_=0.1)             # Binary classification (BinomialRegressor)
 ps.logistic_regression("y", "x1", "x2", penalty="l2", C=1.0)  # sklearn-style logistic
 ps.poisson("y", "x1", "x2")                            # Count data
 
-# ALM - 24+ distributions
-ps.alm("y", "x1", "x2", distribution="laplace")  # Robust to outliers
+# ALM - 25 distributions, loss/link/extra_parameter exposed
+ps.alm("y", "x1", "x2", distribution="laplace", loss="mle")
+```
 
-# Diagnostics
-ps.condition_number("x1", "x2")            # Multicollinearity check
-ps.check_binary_separation("y", "x1")      # Quasi-separation detection
-ps.check_count_sparsity("y", "x1")         # Sparse count data check
+### Diagnostics
+
+```python
+# Pre-fit checks
+ps.condition_number("x1", "x2")              # Multicollinearity (κ + indices)
+ps.vif("x1", "x2", "x3")                     # Variance inflation factor per feature
+ps.generalized_vif("x1", "x2", "x3", group_sizes=[1, 2])  # GVIF for grouped predictors
+ps.high_vif_predictors("x1", "x2", threshold=10.0)        # Boolean mask
+ps.check_binary_separation("y", "x1")        # Quasi-separation detection
+ps.check_count_sparsity("y", "x1")           # Sparse-count check
+
+# Per-row OLS residual battery
+ps.standardized_residuals("y", "x1", "x2")
+ps.studentized_residuals("y", "x1", "x2")
+ps.externally_studentized_residuals("y", "x1", "x2")
+ps.residual_outliers("y", "x1", "x2", threshold=2.0)       # Boolean mask
+
+# Influence / leverage
+ps.leverage("x1", "x2")
+ps.cooks_distance("y", "x1", "x2")
+ps.dffits("y", "x1", "x2")
+ps.influential_cooks("y", "x1", "x2")        # mask, default threshold 4/n
+ps.influential_dffits("y", "x1", "x2")       # mask, default 2·√(p/n)
+ps.high_leverage_points("x1", "x2")          # mask, default 2·p/n
+
+# GLM residual diagnostics (logistic + Poisson)
+ps.logistic_pearson_residuals("y", "x1")
+ps.logistic_deviance_residuals("y", "x1")
+ps.logistic_working_residuals("y", "x1")
+ps.poisson_pearson_residuals("y", "x1")
+ps.poisson_deviance_residuals("y", "x1")
+ps.poisson_working_residuals("y", "x1")
+
+# GLM goodness-of-fit
+ps.pearson_chi_squared_logistic("y", "x1")   # Σ pearson_resid² + df_resid
+ps.pearson_chi_squared_poisson("y", "x1")
 ```
 
 ### Formula Syntax
@@ -179,20 +213,49 @@ df.group_by("group").agg(
 # Columns: term, estimate, std_error, statistic, p_value
 ```
 
+`*_summary` and `*_predict` are available for the full regression family,
+including Quantile, Isotonic, and LmDynamic where applicable:
+
+```python
+ps.quantile_summary("y", "x1", tau=0.5)   # Tidy coefs from quantile fit
+ps.quantile_predict("y", "x1", tau=0.5)   # Per-row predictions
+ps.isotonic_predict("y", "x")             # Step-function predictions
+ps.lm_dynamic_predict("y", "x1")          # Time-averaged predictions
+```
+
 ## Model Classes
 
 For direct model access outside Polars expressions:
 
 ```python
-from polars_statistics import OLS, Ridge, Logistic, ALM
+from polars_statistics import OLS, Ridge, Logistic, LogisticRegression, Huber, PLS, ALM
 
-# Fit model
+# Fit OLS with inference
 model = OLS(compute_inference=True).fit(X, y)
 print(model.coefficients, model.r_squared, model.p_values)
+
+# Sklearn-style logistic with L2 penalty
+lr = LogisticRegression(penalty="l2", C=1.0).fit(X, y)
+lr.predict_proba(X)
+lr.decision_function(X)
+lr.score(X, y)
+
+# Huber M-estimator (robust to outliers)
+hb = Huber(epsilon=1.35).fit(X, y)
+print(hb.coefficients, hb.n_outliers, hb.scale)
+
+# Partial Least Squares
+pls = PLS(n_components=2).fit(X, y)
+print(pls.explained_variance_ratio, pls.transform(X))
 
 # ALM with various distributions
 alm = ALM.laplace().fit(X, y)  # Robust to outliers
 ```
+
+Available model classes:
+- **Linear / robust**: `OLS`, `Ridge`, `ElasticNet`, `WLS`, `RLS`, `BLS`, `Quantile`, `Isotonic`, `Huber`, `PLS`
+- **GLMs**: `Logistic`, `LogisticRegression` (sklearn-style), `Poisson`, `NegativeBinomial`, `Tweedie`, `Probit`, `Cloglog`
+- **Augmented**: `ALM` (25 distributions), `LmDynamic`, `Aid`
 
 ## Test Model Classes
 
@@ -270,12 +333,17 @@ cargo run --example rust_wls --no-default-features
 
 ### Available fit functions
 
-All ~95 Polars expressions have a `*_fit` Rust entry point in `polars_statistics::expressions`:
+Every Polars expression has a `*_fit` Rust entry point in `polars_statistics::expressions`:
 
-- **Regression**: `ols_fit`, `ridge_fit`, `elastic_net_fit`, `wls_fit`, `rls_fit`, `bls_fit`, `quantile_fit`, `isotonic_fit`, `huber_fit`
+- **Regression**: `ols_fit`, `ridge_fit`, `elastic_net_fit`, `wls_fit`, `rls_fit`, `bls_fit`, `quantile_fit`, `isotonic_fit`, `huber_fit`, `pls_fit`
 - **GLMs**: `logistic_fit`, `logistic_regression_fit`, `poisson_fit`, `negative_binomial_fit`, `tweedie_fit`, `probit_fit`, `cloglog_fit`, `alm_fit`
-- **Diagnostics**: `condition_number_fit`, `check_binary_separation_fit`, `check_count_sparsity_fit`
-- **Summaries / predictions**: `ols_summary_fit`, `ols_predict_fit`, … (one per model)
+- **Diagnostics**:
+  - Pre-fit / multicollinearity: `condition_number_fit`, `vif_fit`, `generalized_vif_fit`, `high_vif_predictors_fit`, `check_binary_separation_fit`, `check_count_sparsity_fit`
+  - Residual battery: `standardized_residuals_fit`, `studentized_residuals_fit`, `externally_studentized_residuals_fit`, `residual_outliers_fit`
+  - GLM residuals: `logistic_*_residuals_fit`, `poisson_*_residuals_fit` (`pearson` / `deviance` / `working`)
+  - Goodness-of-fit: `pearson_chi_squared_logistic_fit`, `pearson_chi_squared_poisson_fit`
+  - Influence / leverage: `leverage_fit`, `cooks_distance_fit`, `dffits_fit`, `influential_cooks_fit`, `influential_dffits_fit`, `high_leverage_points_fit`
+- **Summaries / predictions**: `ols_summary_fit`, `ols_predict_fit`, …; plus `quantile_summary_fit`, `quantile_predict_fit`, `isotonic_predict_fit`, `lm_dynamic_predict_fit`
 - **Hypothesis tests**: `ttest_ind_fit`, `ttest_paired_fit`, `mann_whitney_fit`, `wilcoxon_fit`, `kruskal_wallis_fit`, `brunner_munzel_fit`, `brown_forsythe_fit`, `yuen_fit`, `shapiro_wilk_fit`, `dagostino_fit`
 - **Correlation**: `pearson_fit`, `spearman_fit`, `kendall_fit`, `distance_cor_fit`, `partial_cor_fit`, `semi_partial_cor_fit`, `icc_fit`
 - **Categorical**: `binom_test_fit`, `prop_test_one_fit`, `prop_test_two_fit`, `chisq_test_fit`, `fisher_exact_fit`, `mcnemar_test_fit`, `cohen_kappa_fit`, `cramers_v_fit`, …
