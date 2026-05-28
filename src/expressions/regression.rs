@@ -12,11 +12,11 @@ use anofox_regression::diagnostics::{
     SeparationCheck, SeparationType,
 };
 use anofox_regression::solvers::{
-    AidClassifier, AlmDistribution, AlmRegressor, AnomalyType, BinomialRegressor, BlsRegressor,
-    DemandDistribution, DemandType, ElasticNetRegressor, FittedRegressor, HuberRegressor,
-    InformationCriterion, IsotonicRegressor, LmDynamicRegressor, LogisticRegression,
-    NegativeBinomialRegressor, OlsRegressor, Penalty, PoissonRegressor, QuantileRegressor,
-    Regressor, RidgeRegressor, RlsRegressor, TweedieRegressor, WlsRegressor,
+    AidClassifier, AlmDistribution, AlmLoss, AlmRegressor, AnomalyType, BinomialRegressor,
+    BlsRegressor, DemandDistribution, DemandType, ElasticNetRegressor, FittedRegressor,
+    HuberRegressor, InformationCriterion, IsotonicRegressor, LinkFunction, LmDynamicRegressor,
+    LogisticRegression, NegativeBinomialRegressor, OlsRegressor, Penalty, PoissonRegressor,
+    QuantileRegressor, Regressor, RidgeRegressor, RlsRegressor, TweedieRegressor, WlsRegressor,
 };
 use anofox_regression::{HcType, IntervalType, SolverType};
 
@@ -1368,35 +1368,90 @@ fn pl_cloglog(inputs: &[Series]) -> PolarsResult<Series> {
 // ALM Expression
 // ============================================================================
 
-/// Parse distribution string to AlmDistribution enum.
+/// Parse distribution string to AlmDistribution enum. Mirrors `PyALM::parse_distribution`
+/// to keep the expression and class APIs in lockstep — all 25 variants supported.
 fn parse_alm_distribution(s: &str) -> Option<AlmDistribution> {
     match s.to_lowercase().as_str() {
         "normal" | "gaussian" => Some(AlmDistribution::Normal),
         "laplace" => Some(AlmDistribution::Laplace),
         "student_t" | "studentt" | "t" => Some(AlmDistribution::StudentT),
         "logistic" => Some(AlmDistribution::Logistic),
+        "asymmetric_laplace" | "asymmetriclaplace" => Some(AlmDistribution::AsymmetricLaplace),
+        "generalised_normal" | "generalisednormal" | "generalized_normal" => {
+            Some(AlmDistribution::GeneralisedNormal)
+        }
+        "s" => Some(AlmDistribution::S),
+        "lognormal" | "log_normal" => Some(AlmDistribution::LogNormal),
+        "loglaplace" | "log_laplace" => Some(AlmDistribution::LogLaplace),
+        "logs" | "log_s" => Some(AlmDistribution::LogS),
+        "loggeneralisednormal" | "log_generalised_normal" => {
+            Some(AlmDistribution::LogGeneralisedNormal)
+        }
         "gamma" => Some(AlmDistribution::Gamma),
         "inverse_gaussian" | "inversegaussian" => Some(AlmDistribution::InverseGaussian),
         "exponential" => Some(AlmDistribution::Exponential),
+        "folded_normal" | "foldednormal" => Some(AlmDistribution::FoldedNormal),
+        "rectified_normal" | "rectifiednormal" => Some(AlmDistribution::RectifiedNormal),
         "beta" => Some(AlmDistribution::Beta),
+        "logit_normal" | "logitnormal" => Some(AlmDistribution::LogitNormal),
         "poisson" => Some(AlmDistribution::Poisson),
         "negative_binomial" | "negativebinomial" | "negbin" => {
             Some(AlmDistribution::NegativeBinomial)
         }
         "binomial" => Some(AlmDistribution::Binomial),
         "geometric" => Some(AlmDistribution::Geometric),
-        "lognormal" | "log_normal" => Some(AlmDistribution::LogNormal),
-        "loglaplace" | "log_laplace" => Some(AlmDistribution::LogLaplace),
+        "cumulative_logistic" | "cumulativelogistic" | "ordinal_logistic" => {
+            Some(AlmDistribution::CumulativeLogistic)
+        }
+        "cumulative_normal" | "cumulativenormal" | "ordinal_probit" => {
+            Some(AlmDistribution::CumulativeNormal)
+        }
+        "boxcox_normal" | "boxcoxnormal" | "box_cox" => Some(AlmDistribution::BoxCoxNormal),
+        _ => None,
+    }
+}
+
+/// Parse link function string to LinkFunction enum. Mirrors `PyALM::parse_link`.
+fn parse_alm_link(s: &str) -> Option<LinkFunction> {
+    match s.to_lowercase().as_str() {
+        "identity" => Some(LinkFunction::Identity),
+        "log" => Some(LinkFunction::Log),
+        "logit" => Some(LinkFunction::Logit),
+        "probit" => Some(LinkFunction::Probit),
+        "inverse" => Some(LinkFunction::Inverse),
+        "sqrt" => Some(LinkFunction::Sqrt),
+        "cloglog" | "complementary_log_log" => Some(LinkFunction::Cloglog),
+        _ => None,
+    }
+}
+
+/// Parse loss string to AlmLoss enum. Mirrors `PyALM::parse_loss`.
+fn parse_alm_loss(s: &str, role_trim: Option<f64>) -> Option<AlmLoss> {
+    match s.to_lowercase().as_str() {
+        "likelihood" | "mle" => Some(AlmLoss::Likelihood),
+        "mse" => Some(AlmLoss::MSE),
+        "mae" => Some(AlmLoss::MAE),
+        "ham" => Some(AlmLoss::HAM),
+        "role" => Some(AlmLoss::ROLE {
+            trim: role_trim.unwrap_or(0.05),
+        }),
         _ => None,
     }
 }
 
 /// Public Rust-callable variant. Same input contract as the `pl_alm` expression shim.
+///
+/// Input contract: `[y, distribution (str), link (str|null), loss (str), role_trim (f64|null),
+///                   extra_parameter (f64|null), with_intercept (bool), x_0, ...]`.
 pub fn alm_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let dist_str = inputs[1].str()?.get(0).unwrap_or("normal");
-    let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
+    let link_str = inputs[2].str()?.get(0);
+    let loss_str = inputs[3].str()?.get(0).unwrap_or("likelihood");
+    let role_trim = inputs[4].f64()?.get(0);
+    let extra_parameter = inputs[5].f64()?.get(0);
+    let with_intercept = inputs[6].bool()?.get(0).unwrap_or(true);
 
-    let (x, y) = match build_xy_data(inputs, 0, 3) {
+    let (x, y) = match build_xy_data(inputs, 0, 7) {
         Ok(data) => data,
         Err(_) => return glm_nan_output(),
     };
@@ -1405,11 +1460,27 @@ pub fn alm_fit(inputs: &[Series]) -> PolarsResult<Series> {
         Some(d) => d,
         None => return glm_nan_output(),
     };
+    let loss = match parse_alm_loss(loss_str, role_trim) {
+        Some(l) => l,
+        None => return glm_nan_output(),
+    };
 
-    let model = AlmRegressor::builder()
+    let mut builder = AlmRegressor::builder()
         .distribution(distribution)
-        .with_intercept(with_intercept)
-        .build();
+        .loss(loss)
+        .with_intercept(with_intercept);
+
+    if let Some(link_s) = link_str {
+        match parse_alm_link(link_s) {
+            Some(link) => builder = builder.link(link),
+            None => return glm_nan_output(),
+        }
+    }
+    if let Some(extra) = extra_parameter {
+        builder = builder.extra_parameter(extra);
+    }
+
+    let model = builder.build();
 
     match model.fit(&x, &y) {
         Ok(fitted) => {
@@ -1427,7 +1498,9 @@ pub fn alm_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// ALM (Augmented Linear Model) expression.
-/// inputs[0] = y, inputs[1] = distribution (string), inputs[2] = with_intercept, inputs[3..] = x columns
+/// inputs[0] = y, inputs[1] = distribution (str), inputs[2] = link (str|null),
+/// inputs[3] = loss (str), inputs[4] = role_trim (f64|null), inputs[5] = extra_parameter (f64|null),
+/// inputs[6] = with_intercept (bool), inputs[7..] = x columns
 #[polars_expr(output_type_func=glm_output_dtype)]
 fn pl_alm(inputs: &[Series]) -> PolarsResult<Series> {
     alm_fit(inputs)
