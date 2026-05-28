@@ -8,8 +8,8 @@ use pyo3_polars::derive::polars_expr;
 use serde::Deserialize;
 
 use anofox_regression::diagnostics::{
-    check_binary_separation, check_count_sparsity, condition_diagnostic, ConditionSeverity,
-    SeparationCheck, SeparationType,
+    check_binary_separation, check_count_sparsity, compute_leverage, condition_diagnostic,
+    cooks_distance, variance_inflation_factor, ConditionSeverity, SeparationCheck, SeparationType,
 };
 use anofox_regression::solvers::{
     AidClassifier, AlmDistribution, AlmLoss, AlmRegressor, AnomalyType, BinomialRegressor,
@@ -147,6 +147,43 @@ fn separation_check_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field>
         Field::new("warning".into(), DataType::String),
     ];
     Ok(Field::new("separation".into(), DataType::Struct(fields)))
+}
+
+/// Output type for variance inflation factor (VIF) diagnostics.
+fn vif_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
+    let fields = vec![
+        Field::new("terms".into(), DataType::List(Box::new(DataType::String))),
+        Field::new("vif".into(), DataType::List(Box::new(DataType::Float64))),
+        Field::new("n_observations".into(), DataType::UInt32),
+    ];
+    Ok(Field::new("vif".into(), DataType::Struct(fields)))
+}
+
+/// Output type for leverage (hat matrix diagonal) diagnostics.
+fn leverage_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
+    let fields = vec![
+        Field::new(
+            "leverage".into(),
+            DataType::List(Box::new(DataType::Float64)),
+        ),
+        Field::new("n_observations".into(), DataType::UInt32),
+    ];
+    Ok(Field::new("leverage".into(), DataType::Struct(fields)))
+}
+
+/// Output type for Cook's distance diagnostics.
+fn cooks_distance_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
+    let fields = vec![
+        Field::new(
+            "cooks_d".into(),
+            DataType::List(Box::new(DataType::Float64)),
+        ),
+        Field::new("n_observations".into(), DataType::UInt32),
+    ];
+    Ok(Field::new(
+        "cooks_distance".into(),
+        DataType::Struct(fields),
+    ))
 }
 
 // ============================================================================
@@ -1210,6 +1247,199 @@ pub fn check_count_sparsity_fit(inputs: &[Series]) -> PolarsResult<Series> {
 #[polars_expr(output_type_func=separation_check_output_dtype)]
 fn pl_check_count_sparsity(inputs: &[Series]) -> PolarsResult<Series> {
     check_count_sparsity_fit(inputs)
+}
+
+// ----------------------------------------------------------------------------
+// Multicollinearity / influence diagnostics
+// ----------------------------------------------------------------------------
+
+/// Build a VIF output struct (terms, vif, n_observations).
+fn vif_output(terms: Vec<String>, vif: Vec<f64>, n_obs: usize) -> PolarsResult<Series> {
+    let terms_inner = Series::new("item".into(), terms);
+    let terms_s = Series::new("terms".into(), &[terms_inner]);
+    let vif_inner = Series::new("item".into(), vif);
+    let vif_s = Series::new("vif".into(), &[vif_inner]);
+    let n_obs_s = Series::new("n_observations".into(), &[n_obs as u32]);
+
+    StructChunked::from_series("vif".into(), 1, [&terms_s, &vif_s, &n_obs_s].into_iter())
+        .map(|ca| ca.into_series())
+}
+
+/// Empty/NaN output for VIF on error.
+fn vif_nan_output() -> PolarsResult<Series> {
+    vif_output(vec![], vec![], 0)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_vif` expression shim.
+///
+/// Input contract: `[x_0, x_1, ...]` (raw features only; no `y`, no intercept flag).
+/// VIF is computed per predictor, so an intercept column is not part of the input.
+pub fn vif_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    if inputs.is_empty() {
+        return vif_nan_output();
+    }
+    let n_features = inputs.len();
+    let n_rows = inputs[0].len();
+    if n_rows < 3 || n_features == 0 {
+        return vif_nan_output();
+    }
+
+    // Build X matrix from raw features.
+    let x = Mat::from_fn(n_rows, n_features, |row, col| {
+        inputs[col]
+            .f64()
+            .ok()
+            .and_then(|ca| ca.get(row))
+            .unwrap_or(f64::NAN)
+    });
+
+    // Bail on NaN inputs.
+    for i in 0..n_rows {
+        for j in 0..n_features {
+            if x[(i, j)].is_nan() {
+                return vif_nan_output();
+            }
+        }
+    }
+
+    let vif_col = variance_inflation_factor(&x);
+    let vif_vec: Vec<f64> = (0..vif_col.nrows()).map(|i| vif_col[i]).collect();
+    let terms = build_term_names(n_features, false);
+
+    vif_output(terms, vif_vec, n_rows)
+}
+
+/// Variance inflation factor (VIF) diagnostic expression.
+/// inputs[0..] = x columns (raw features only).
+#[polars_expr(output_type_func=vif_output_dtype)]
+fn pl_vif(inputs: &[Series]) -> PolarsResult<Series> {
+    vif_fit(inputs)
+}
+
+/// Build a leverage output struct (leverage values per row, n_observations).
+fn leverage_output(values: Vec<f64>, n_obs: usize) -> PolarsResult<Series> {
+    let inner = Series::new("item".into(), values);
+    let lev_s = Series::new("leverage".into(), &[inner]);
+    let n_obs_s = Series::new("n_observations".into(), &[n_obs as u32]);
+
+    StructChunked::from_series("leverage".into(), 1, [&lev_s, &n_obs_s].into_iter())
+        .map(|ca| ca.into_series())
+}
+
+/// Empty/NaN output for leverage on error.
+fn leverage_nan_output() -> PolarsResult<Series> {
+    leverage_output(vec![], 0)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_leverage` expression shim.
+///
+/// Input contract: `[with_intercept (bool scalar), x_0, x_1, ...]`.
+pub fn leverage_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    if inputs.is_empty() {
+        return leverage_nan_output();
+    }
+    let with_intercept = inputs[0].bool()?.get(0).unwrap_or(true);
+
+    let n_features = inputs.len() - 1;
+    if n_features == 0 {
+        return leverage_nan_output();
+    }
+    let n_rows = inputs[1].len();
+    if n_rows < 2 {
+        return leverage_nan_output();
+    }
+
+    let x = Mat::from_fn(n_rows, n_features, |row, col| {
+        inputs[1 + col]
+            .f64()
+            .ok()
+            .and_then(|ca| ca.get(row))
+            .unwrap_or(f64::NAN)
+    });
+
+    for i in 0..n_rows {
+        for j in 0..n_features {
+            if x[(i, j)].is_nan() {
+                return leverage_nan_output();
+            }
+        }
+    }
+
+    let lev_col = compute_leverage(&x, with_intercept);
+    let values: Vec<f64> = (0..lev_col.nrows()).map(|i| lev_col[i]).collect();
+    leverage_output(values, n_rows)
+}
+
+/// Leverage (hat matrix diagonal) diagnostic expression.
+/// inputs[0] = with_intercept (bool), inputs[1..] = x columns.
+#[polars_expr(output_type_func=leverage_output_dtype)]
+fn pl_leverage(inputs: &[Series]) -> PolarsResult<Series> {
+    leverage_fit(inputs)
+}
+
+/// Build a Cook's distance output struct (one value per row, n_observations).
+fn cooks_distance_output(values: Vec<f64>, n_obs: usize) -> PolarsResult<Series> {
+    let inner = Series::new("item".into(), values);
+    let cooks_s = Series::new("cooks_d".into(), &[inner]);
+    let n_obs_s = Series::new("n_observations".into(), &[n_obs as u32]);
+
+    StructChunked::from_series("cooks_distance".into(), 1, [&cooks_s, &n_obs_s].into_iter())
+        .map(|ca| ca.into_series())
+}
+
+/// Empty/NaN output for Cook's distance on error.
+fn cooks_distance_nan_output() -> PolarsResult<Series> {
+    cooks_distance_output(vec![], 0)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_cooks_distance` expression shim.
+///
+/// Input contract: `[y, with_intercept (bool scalar), x_0, x_1, ...]`.
+///
+/// Internally fits an OLS regression to obtain residuals and MSE, then combines them
+/// with the leverage values for the same design to compute Cook's distance per row.
+pub fn cooks_distance_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    if inputs.len() < 3 {
+        return cooks_distance_nan_output();
+    }
+    let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
+    let n_features = inputs.len() - 2;
+
+    let (x, y) = match build_xy_data(inputs, 0, 2) {
+        Ok(data) => data,
+        Err(_) => return cooks_distance_nan_output(),
+    };
+
+    let n_rows = x.nrows();
+    if n_rows < 2 || n_features == 0 {
+        return cooks_distance_nan_output();
+    }
+
+    let model = OlsRegressor::builder()
+        .with_intercept(with_intercept)
+        .build();
+    let fitted = match model.fit(&x, &y) {
+        Ok(f) => f,
+        Err(_) => return cooks_distance_nan_output(),
+    };
+
+    let result = fitted.result();
+    let residuals = &result.residuals;
+    let mse = result.mse;
+
+    let leverage = compute_leverage(&x, with_intercept);
+    let n_params = n_features + if with_intercept { 1 } else { 0 };
+
+    let cooks = cooks_distance(residuals, &leverage, mse, n_params);
+    let values: Vec<f64> = (0..cooks.nrows()).map(|i| cooks[i]).collect();
+    cooks_distance_output(values, n_rows)
+}
+
+/// Cook's distance diagnostic expression.
+/// inputs[0] = y, inputs[1] = with_intercept (bool), inputs[2..] = x columns.
+#[polars_expr(output_type_func=cooks_distance_output_dtype)]
+fn pl_cooks_distance(inputs: &[Series]) -> PolarsResult<Series> {
+    cooks_distance_fit(inputs)
 }
 
 // ============================================================================

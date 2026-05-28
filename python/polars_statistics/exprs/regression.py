@@ -952,6 +952,171 @@ def check_count_sparsity(
     )
 
 
+def vif(*x: Union[pl.Expr, str]) -> pl.Expr:
+    """Variance Inflation Factor (VIF) for multicollinearity detection.
+
+    VIF measures how much the variance of a coefficient estimate is inflated
+    by multicollinearity. For predictor j:
+
+        VIF_j = 1 / (1 - R²_j)
+
+    where R²_j is the R² from regressing x_j on all other predictors.
+
+    Parameters
+    ----------
+    *x : pl.Expr or str
+        Feature variables (two or more required). The intercept is NOT
+        included — VIF is defined per predictor only.
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing:
+        - terms: List[str] with one entry per feature column (``x1``, ``x2``, ...)
+        - vif: List[float] with one VIF value per feature
+        - n_observations: number of rows used
+
+    Interpretation
+    --------------
+    - VIF = 1: no collinearity with the other predictors
+    - VIF > 5: moderate multicollinearity
+    - VIF > 10: severe multicollinearity (estimates may be unreliable)
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> import polars_statistics as ps
+    >>> df = pl.DataFrame({"x1": [...], "x2": [...], "x3": [...]})
+    >>> df.select(ps.vif("x1", "x2", "x3").alias("vif"))
+    """
+    x_exprs = []
+    for xi in x:
+        if isinstance(xi, str):
+            xi = pl.col(xi)
+        x_exprs.append(xi.cast(pl.Float64))
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_vif",
+        args=x_exprs,
+        returns_scalar=True,
+    )
+
+
+def leverage(
+    *x: Union[pl.Expr, str],
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
+) -> pl.Expr:
+    """Leverage (hat matrix diagonal) for each observation.
+
+    Leverage h_ii measures the influence of observation i on its own fitted
+    value. It is the i-th diagonal element of H = X (X'X)^(-1) X'. Properties:
+
+    - 0 ≤ h_ii ≤ 1
+    - Σ h_ii = p (number of parameters)
+    - Points with h_ii > 2p/n are typically considered high-leverage.
+
+    Parameters
+    ----------
+    *x : pl.Expr or str
+        Feature variables.
+    add_intercept : bool, default True
+        Whether to include an intercept column in the design matrix.
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing:
+        - leverage: List[float] with one value per input row
+        - n_observations: number of rows used
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> import polars_statistics as ps
+    >>> df = pl.DataFrame({"x1": [...], "x2": [...]})
+    >>> df.select(ps.leverage("x1", "x2").alias("h"))
+    """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    x_exprs = []
+    for xi in x:
+        if isinstance(xi, str):
+            xi = pl.col(xi)
+        x_exprs.append(xi.cast(pl.Float64))
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_leverage",
+        args=[
+            pl.lit(add_intercept, dtype=pl.Boolean),
+            *x_exprs,
+        ],
+        returns_scalar=True,
+    )
+
+
+def cooks_distance(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
+) -> pl.Expr:
+    """Cook's distance for each observation under an OLS fit.
+
+    Cook's distance combines residual size and leverage to identify
+    observations that disproportionately influence the fitted regression:
+
+        D_i = (e_i² / (p · MSE)) · (h_ii / (1 - h_ii)²)
+
+    Observations with D_i > 4/n (or D_i > 1) are commonly flagged as
+    influential.
+
+    Parameters
+    ----------
+    y : pl.Expr or str
+        Response variable.
+    *x : pl.Expr or str
+        Feature variables.
+    add_intercept : bool, default True
+        Whether to include an intercept column when fitting the OLS model
+        and computing leverage.
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing:
+        - cooks_d: List[float] with one Cook's distance value per input row
+        - n_observations: number of rows used
+
+    Notes
+    -----
+    Internally fits an OLS model to obtain residuals and MSE; the leverage
+    component reuses the same design matrix. The fit is discarded after the
+    diagnostic is computed.
+    """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    if isinstance(y, str):
+        y = pl.col(y)
+
+    x_exprs = []
+    for xi in x:
+        if isinstance(xi, str):
+            xi = pl.col(xi)
+        x_exprs.append(xi.cast(pl.Float64))
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_cooks_distance",
+        args=[
+            y.cast(pl.Float64),
+            pl.lit(add_intercept, dtype=pl.Boolean),
+            *x_exprs,
+        ],
+        returns_scalar=True,
+    )
+
+
 # ============================================================================
 # GLM Expressions
 # ============================================================================

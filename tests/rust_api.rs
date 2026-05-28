@@ -887,6 +887,51 @@ fn diagnostic_fits() {
         let st = out.struct_().unwrap();
         let _has = st.field_by_name("has_separation").unwrap();
     }
+
+    // vif_fit: only x columns; needs at least 2 features for a meaningful VIF.
+    // Use two independent predictors so VIF should be close to 1.
+    {
+        let x_a: Vec<f64> = (0..30).map(|i| (i as f64 * 0.3).sin()).collect();
+        let x_b: Vec<f64> = (0..30).map(|i| (i as f64 * 0.3).cos()).collect();
+        let inputs = vec![series_f64("x1", &x_a), series_f64("x2", &x_b)];
+        let out = vif_fit(&inputs).expect("vif_fit failed");
+        let st = out.struct_().unwrap();
+        let _terms = st.field_by_name("terms").unwrap();
+        let _vif = st.field_by_name("vif").unwrap();
+        assert_n_obs_nonzero(&out, "n_observations");
+    }
+
+    // leverage_fit: with_intercept (bool), x columns.
+    {
+        let inputs = vec![
+            scalar_bool("with_intercept", true),
+            series_f64("x1", &x1),
+            series_f64("x2", &x2),
+        ];
+        let out = leverage_fit(&inputs).expect("leverage_fit failed");
+        let st = out.struct_().unwrap();
+        let _lev = st.field_by_name("leverage").unwrap();
+        assert_n_obs_nonzero(&out, "n_observations");
+    }
+
+    // cooks_distance_fit: y, with_intercept (bool), x columns.
+    {
+        let y_vals: Vec<f64> = x1
+            .iter()
+            .enumerate()
+            .map(|(i, xi)| 0.5 + 1.5 * xi + 0.1 * (i as f64).sin())
+            .collect();
+        let inputs = vec![
+            series_f64("y", &y_vals),
+            scalar_bool("with_intercept", true),
+            series_f64("x1", &x1),
+            series_f64("x2", &x2),
+        ];
+        let out = cooks_distance_fit(&inputs).expect("cooks_distance_fit failed");
+        let st = out.struct_().unwrap();
+        let _cd = st.field_by_name("cooks_d").unwrap();
+        assert_n_obs_nonzero(&out, "n_observations");
+    }
 }
 
 // =============================================================================
