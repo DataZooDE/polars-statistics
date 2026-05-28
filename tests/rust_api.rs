@@ -315,6 +315,48 @@ fn linear_regression_fits() {
         assert_n_obs_nonzero(&out, "n_observations");
     }
 
+    // quantile_summary_fit (issue #18): y, tau, with_intercept, x...
+    {
+        let inputs = vec![
+            series_f64("y", &y),
+            scalar_f64("tau", 0.5),
+            scalar_bool("with_intercept", true),
+            series_f64("x1", &x),
+        ];
+        let _ = quantile_summary_fit(&inputs).expect("quantile_summary_fit failed");
+    }
+
+    // quantile_predict_fit (issue #18): y, tau, with_intercept, null_policy, x...
+    {
+        let inputs = vec![
+            series_f64("y", &y),
+            scalar_f64("tau", 0.5),
+            scalar_bool("with_intercept", true),
+            scalar_str("null_policy", "drop"),
+            series_f64("x1", &x),
+        ];
+        let pk = PredictKwargs {
+            prefix: "q".to_string(),
+        };
+        let out = quantile_predict_fit(&inputs, pk).expect("quantile_predict_fit failed");
+        assert_eq!(out.len(), y.len());
+    }
+
+    // isotonic_predict_fit (issue #18): y, x, increasing, null_policy
+    {
+        let inputs = vec![
+            series_f64("y", &y),
+            series_f64("x", &x),
+            scalar_bool("increasing", true),
+            scalar_str("null_policy", "drop"),
+        ];
+        let pk = PredictKwargs {
+            prefix: "iso".to_string(),
+        };
+        let out = isotonic_predict_fit(&inputs, pk).expect("isotonic_predict_fit failed");
+        assert_eq!(out.len(), y.len());
+    }
+
     // -----------------------------------------------------------------
     // Summary variants (tidy coefficient output).
     // -----------------------------------------------------------------
@@ -1550,6 +1592,28 @@ fn dynamic_model_fits() {
         let out = lm_dynamic_fit(&inputs).expect("lm_dynamic_fit failed");
         // n_observations field non-zero.
         assert_n_obs_nonzero(&out, "n_observations");
+    }
+
+    // lm_dynamic_predict_fit (issue #18): y, ic, distribution, lowess_span,
+    //                 max_models (u32), with_intercept, null_policy, x columns
+    {
+        let (x, y) = linear_xy();
+        let kwargs = PredictKwargs {
+            prefix: "lmd".to_string(),
+        };
+        let inputs = vec![
+            series_f64("y", &y),
+            scalar_str("ic", "aicc"),
+            scalar_str("distribution", "normal"),
+            scalar_f64("lowess_span", 0.0),
+            scalar_u32("max_models", 16),
+            scalar_bool("with_intercept", true),
+            scalar_str("null_policy", "drop"),
+            series_f64("x1", &x),
+        ];
+        let out =
+            lm_dynamic_predict_fit(&inputs, kwargs).expect("lm_dynamic_predict_fit failed");
+        assert_eq!(out.len(), y.len());
     }
 }
 

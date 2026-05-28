@@ -876,6 +876,48 @@ fn pl_isotonic(inputs: &[Series]) -> PolarsResult<Series> {
     isotonic_fit(inputs)
 }
 
+/// Quantile summary fit — tidy coefficient table.
+///
+/// Input contract: `[y, tau (f64), with_intercept (bool), x_0, ...]`.
+/// Quantile regression has no asymptotic standard errors, so the `std_error`,
+/// `statistic`, and `p_value` columns are filled with NaN.
+pub fn quantile_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    let tau = inputs[1].f64()?.get(0).unwrap_or(0.5);
+    let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
+    let n_features = inputs.len() - 3;
+
+    let (x, y) = match build_xy_data(inputs, 0, 3) {
+        Ok(data) => data,
+        Err(_) => return summary_nan_output(),
+    };
+
+    let model = QuantileRegressor::builder()
+        .tau(tau)
+        .with_intercept(with_intercept)
+        .build();
+
+    match model.fit(&x, &y) {
+        Ok(fitted) => {
+            let terms = build_term_names(n_features, with_intercept);
+            let mut estimates = Vec::new();
+            if with_intercept {
+                estimates.push(fitted.intercept().unwrap_or(f64::NAN));
+            }
+            estimates.extend(col_to_vec(fitted.coefficients()));
+            let nans = vec![f64::NAN; estimates.len()];
+            summary_output(terms, estimates, nans.clone(), nans.clone(), nans)
+        }
+        Err(_) => summary_nan_output(),
+    }
+}
+
+/// Quantile summary expression.
+/// inputs[0] = y, inputs[1] = tau, inputs[2] = with_intercept, inputs[3..] = x columns
+#[polars_expr(output_type_func=summary_output_dtype)]
+fn pl_quantile_summary(inputs: &[Series]) -> PolarsResult<Series> {
+    quantile_summary_fit(inputs)
+}
+
 // ============================================================================
 // Diagnostics Expressions
 // ============================================================================
@@ -3098,6 +3140,98 @@ fn pl_bls_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Seri
     bls_predict_fit(inputs, kwargs)
 }
 
+/// Quantile prediction. Conditional quantile estimates; interval columns are NaN
+/// since quantile regression intervals require bootstrap (not yet wired).
+///
+/// Input contract: `[y, tau (f64), with_intercept (bool), null_policy (str), x_0, ...]`.
+pub fn quantile_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
+    let tau = inputs[1].f64()?.get(0).unwrap_or(0.5);
+    let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
+    let null_policy = inputs[3].str()?.get(0).unwrap_or("drop");
+    let prefix = &kwargs.prefix;
+    let n_rows = inputs[0].len();
+
+    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 4, null_policy)
+    {
+        Ok(data) => data,
+        Err(_) => return prediction_nan_output_with_prefix(n_rows, prefix),
+    };
+
+    let model = QuantileRegressor::builder()
+        .tau(tau)
+        .with_intercept(with_intercept)
+        .build();
+
+    match model.fit(&x_fit, &y) {
+        Ok(fitted) => {
+            let pred = fitted.predict(&x_pred);
+            let predictions: Vec<f64> = (0..n_rows)
+                .map(|i| {
+                    if null_policy == "drop" && !valid_mask[i] {
+                        f64::NAN
+                    } else {
+                        pred[i]
+                    }
+                })
+                .collect();
+            // No analytic intervals for quantile regression — fill with NaN.
+            let nan = vec![f64::NAN; n_rows];
+            prediction_output_with_prefix(predictions, nan.clone(), nan, prefix)
+        }
+        Err(_) => prediction_nan_output_with_prefix(n_rows, prefix),
+    }
+}
+
+/// Quantile prediction expression.
+/// inputs[0] = y, inputs[1] = tau, inputs[2] = with_intercept, inputs[3] = null_policy, inputs[4..] = x columns
+#[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
+fn pl_quantile_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
+    quantile_predict_fit(inputs, kwargs)
+}
+
+/// Isotonic prediction. Uses the fitted step function on the single x column.
+///
+/// Input contract: `[y, x (f64), increasing (bool), null_policy (str)]`.
+pub fn isotonic_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
+    let increasing = inputs[2].bool()?.get(0).unwrap_or(true);
+    let _null_policy = inputs[3].str()?.get(0).unwrap_or("drop");
+    let prefix = &kwargs.prefix;
+    let n_rows = inputs[0].len();
+
+    let y_ca = inputs[0].f64()?;
+    let x_ca = inputs[1].f64()?;
+
+    let y_vec: Vec<f64> = y_ca.into_no_null_iter().collect();
+    let x_vec: Vec<f64> = x_ca.into_no_null_iter().collect();
+    if y_vec.len() != x_vec.len() || y_vec.is_empty() {
+        return prediction_nan_output_with_prefix(n_rows, prefix);
+    }
+    let y_col = Col::from_fn(y_vec.len(), |i| y_vec[i]);
+    let x_col = Col::from_fn(x_vec.len(), |i| x_vec[i]);
+
+    let model = IsotonicRegressor::builder().increasing(increasing).build();
+
+    match model.fit_1d(&x_col, &y_col) {
+        Ok(fitted) => {
+            let pred = fitted.predict_1d(&x_col);
+            let mut predictions = vec![f64::NAN; n_rows];
+            for (i, v) in (0..pred.nrows()).map(|i| (i, pred[i])).take(n_rows) {
+                predictions[i] = v;
+            }
+            let nan = vec![f64::NAN; n_rows];
+            prediction_output_with_prefix(predictions, nan.clone(), nan, prefix)
+        }
+        Err(_) => prediction_nan_output_with_prefix(n_rows, prefix),
+    }
+}
+
+/// Isotonic prediction expression.
+/// inputs[0] = y, inputs[1] = x (single feature), inputs[2] = increasing, inputs[3] = null_policy
+#[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
+fn pl_isotonic_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
+    isotonic_predict_fit(inputs, kwargs)
+}
+
 /// Public Rust-callable variant. Same input contract as the `pl_logistic_predict` expression shim.
 pub fn logistic_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
     let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
@@ -4218,4 +4352,77 @@ pub fn lm_dynamic_fit(inputs: &[Series]) -> PolarsResult<Series> {
 #[polars_expr(output_type_func=lm_dynamic_output_dtype)]
 fn pl_lm_dynamic(inputs: &[Series]) -> PolarsResult<Series> {
     lm_dynamic_fit(inputs)
+}
+
+/// Dynamic Linear Model prediction using time-averaged coefficients.
+///
+/// Input contract: `[y, ic (str), distribution (str), lowess_span (f64),
+///                   max_models (u32), with_intercept (bool), null_policy (str), x_0, ...]`.
+/// Interval columns are NaN (no analytic intervals for the time-varying mixture).
+pub fn lm_dynamic_predict_fit(
+    inputs: &[Series],
+    kwargs: PredictKwargs,
+) -> PolarsResult<Series> {
+    let ic_str = inputs[1].str()?.get(0).unwrap_or("aicc");
+    let dist_str = inputs[2].str()?.get(0).unwrap_or("normal");
+    let lowess_span = inputs[3].f64()?.get(0).unwrap_or(0.3);
+    let max_models = inputs[4].u32()?.get(0).unwrap_or(64) as usize;
+    let with_intercept = inputs[5].bool()?.get(0).unwrap_or(true);
+    let null_policy = inputs[6].str()?.get(0).unwrap_or("drop");
+    let prefix = &kwargs.prefix;
+    let n_rows = inputs[0].len();
+
+    let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 7, null_policy)
+    {
+        Ok(data) => data,
+        Err(_) => return prediction_nan_output_with_prefix(n_rows, prefix),
+    };
+
+    let ic_type = match parse_ic(ic_str) {
+        Some(ic) => ic,
+        None => return prediction_nan_output_with_prefix(n_rows, prefix),
+    };
+    let distribution = match parse_alm_distribution(dist_str) {
+        Some(d) => d,
+        None => return prediction_nan_output_with_prefix(n_rows, prefix),
+    };
+
+    let mut builder = LmDynamicRegressor::builder()
+        .ic(ic_type)
+        .distribution(distribution)
+        .with_intercept(with_intercept)
+        .max_models(max_models);
+    if lowess_span > 0.0 {
+        builder = builder.lowess_span(lowess_span);
+    } else {
+        builder = builder.no_smoothing();
+    }
+
+    let model = builder.build();
+
+    match model.fit(&x_fit, &y) {
+        Ok(fitted) => {
+            let pred = fitted.predict(&x_pred);
+            let predictions: Vec<f64> = (0..n_rows)
+                .map(|i| {
+                    if null_policy == "drop" && !valid_mask[i] {
+                        f64::NAN
+                    } else {
+                        pred[i]
+                    }
+                })
+                .collect();
+            let nan = vec![f64::NAN; n_rows];
+            prediction_output_with_prefix(predictions, nan.clone(), nan, prefix)
+        }
+        Err(_) => prediction_nan_output_with_prefix(n_rows, prefix),
+    }
+}
+
+/// Dynamic Linear Model prediction expression.
+/// inputs[0] = y, inputs[1] = ic, inputs[2] = distribution, inputs[3] = lowess_span,
+/// inputs[4] = max_models (u32), inputs[5] = with_intercept, inputs[6] = null_policy, inputs[7..] = x
+#[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
+fn pl_lm_dynamic_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
+    lm_dynamic_predict_fit(inputs, kwargs)
 }
