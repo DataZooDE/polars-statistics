@@ -82,9 +82,8 @@ fn parse_bounds(bounds_type: &str, delta: f64, lower: f64, upper: f64) -> Equiva
     }
 }
 
-/// One-sample TOST equivalence test
-#[polars_expr(output_type_func=tost_output_dtype)]
-fn pl_tost_t_test_one_sample(inputs: &[Series]) -> PolarsResult<Series> {
+/// Public Rust-callable variant. Same input contract as the `pl_tost_t_test_one_sample` expression shim.
+pub fn tost_t_test_one_sample_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let x = inputs[0].f64()?;
     let mu = inputs[1].f64()?.get(0).unwrap_or(0.0);
     let bounds_type = inputs[2].str()?.get(0).unwrap_or("symmetric");
@@ -102,9 +101,14 @@ fn pl_tost_t_test_one_sample(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// Two-sample TOST equivalence test
+/// One-sample TOST equivalence test
 #[polars_expr(output_type_func=tost_output_dtype)]
-fn pl_tost_t_test_two_sample(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_tost_t_test_one_sample(inputs: &[Series]) -> PolarsResult<Series> {
+    tost_t_test_one_sample_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_tost_t_test_two_sample` expression shim.
+pub fn tost_t_test_two_sample_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let x = inputs[0].f64()?;
     let y = inputs[1].f64()?;
     let bounds_type = inputs[2].str()?.get(0).unwrap_or("symmetric");
@@ -124,9 +128,14 @@ fn pl_tost_t_test_two_sample(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// Paired-samples TOST equivalence test
+/// Two-sample TOST equivalence test
 #[polars_expr(output_type_func=tost_output_dtype)]
-fn pl_tost_t_test_paired(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_tost_t_test_two_sample(inputs: &[Series]) -> PolarsResult<Series> {
+    tost_t_test_two_sample_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_tost_t_test_paired` expression shim.
+pub fn tost_t_test_paired_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let x = inputs[0].f64()?;
     let y = inputs[1].f64()?;
     let bounds_type = inputs[2].str()?.get(0).unwrap_or("symmetric");
@@ -145,9 +154,14 @@ fn pl_tost_t_test_paired(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// Correlation TOST equivalence test
+/// Paired-samples TOST equivalence test
 #[polars_expr(output_type_func=tost_output_dtype)]
-fn pl_tost_correlation(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_tost_t_test_paired(inputs: &[Series]) -> PolarsResult<Series> {
+    tost_t_test_paired_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_tost_correlation` expression shim.
+pub fn tost_correlation_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let x = inputs[0].f64()?;
     let y = inputs[1].f64()?;
     let method_str = inputs[2].str()?.get(0).unwrap_or("pearson");
@@ -174,9 +188,14 @@ fn pl_tost_correlation(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// One-proportion TOST equivalence test
+/// Correlation TOST equivalence test
 #[polars_expr(output_type_func=tost_output_dtype)]
-fn pl_tost_prop_one(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_tost_correlation(inputs: &[Series]) -> PolarsResult<Series> {
+    tost_correlation_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_tost_prop_one` expression shim.
+pub fn tost_prop_one_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let successes = inputs[0].u32()?.get(0).unwrap_or(0) as usize;
     let n = inputs[1].u32()?.get(0).unwrap_or(1) as usize;
     let p0 = inputs[2].f64()?.get(0).unwrap_or(0.5);
@@ -194,9 +213,14 @@ fn pl_tost_prop_one(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// Two-proportion TOST equivalence test
+/// One-proportion TOST equivalence test
 #[polars_expr(output_type_func=tost_output_dtype)]
-fn pl_tost_prop_two(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_tost_prop_one(inputs: &[Series]) -> PolarsResult<Series> {
+    tost_prop_one_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_tost_prop_two` expression shim.
+pub fn tost_prop_two_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let successes1 = inputs[0].u32()?.get(0).unwrap_or(0) as usize;
     let n1 = inputs[1].u32()?.get(0).unwrap_or(1) as usize;
     let successes2 = inputs[2].u32()?.get(0).unwrap_or(0) as usize;
@@ -215,9 +239,14 @@ fn pl_tost_prop_two(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// Wilcoxon paired-samples TOST equivalence test
+/// Two-proportion TOST equivalence test
 #[polars_expr(output_type_func=tost_output_dtype)]
-fn pl_tost_wilcoxon_paired(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_tost_prop_two(inputs: &[Series]) -> PolarsResult<Series> {
+    tost_prop_two_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_tost_wilcoxon_paired` expression shim.
+pub fn tost_wilcoxon_paired_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let x = inputs[0].f64()?;
     let y = inputs[1].f64()?;
     let bounds_type = inputs[2].str()?.get(0).unwrap_or("symmetric");
@@ -236,9 +265,14 @@ fn pl_tost_wilcoxon_paired(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// Wilcoxon two-sample TOST equivalence test
+/// Wilcoxon paired-samples TOST equivalence test
 #[polars_expr(output_type_func=tost_output_dtype)]
-fn pl_tost_wilcoxon_two_sample(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_tost_wilcoxon_paired(inputs: &[Series]) -> PolarsResult<Series> {
+    tost_wilcoxon_paired_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_tost_wilcoxon_two_sample` expression shim.
+pub fn tost_wilcoxon_two_sample_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let x = inputs[0].f64()?;
     let y = inputs[1].f64()?;
     let bounds_type = inputs[2].str()?.get(0).unwrap_or("symmetric");
@@ -257,9 +291,14 @@ fn pl_tost_wilcoxon_two_sample(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// Bootstrap TOST equivalence test
+/// Wilcoxon two-sample TOST equivalence test
 #[polars_expr(output_type_func=tost_output_dtype)]
-fn pl_tost_bootstrap(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_tost_wilcoxon_two_sample(inputs: &[Series]) -> PolarsResult<Series> {
+    tost_wilcoxon_two_sample_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_tost_bootstrap` expression shim.
+pub fn tost_bootstrap_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let x = inputs[0].f64()?;
     let y = inputs[1].f64()?;
     let bounds_type = inputs[2].str()?.get(0).unwrap_or("symmetric");
@@ -280,9 +319,14 @@ fn pl_tost_bootstrap(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// Yuen TOST equivalence test (trimmed means)
+/// Bootstrap TOST equivalence test
 #[polars_expr(output_type_func=tost_output_dtype)]
-fn pl_tost_yuen(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_tost_bootstrap(inputs: &[Series]) -> PolarsResult<Series> {
+    tost_bootstrap_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_tost_yuen` expression shim.
+pub fn tost_yuen_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let x = inputs[0].f64()?;
     let y = inputs[1].f64()?;
     let trim = inputs[2].f64()?.get(0).unwrap_or(0.2);
@@ -300,4 +344,10 @@ fn pl_tost_yuen(inputs: &[Series]) -> PolarsResult<Series> {
         Ok(result) => tost_output(&result, "tost_yuen"),
         Err(_) => tost_error_output("tost_yuen"),
     }
+}
+
+/// Yuen TOST equivalence test (trimmed means)
+#[polars_expr(output_type_func=tost_output_dtype)]
+fn pl_tost_yuen(inputs: &[Series]) -> PolarsResult<Series> {
+    tost_yuen_fit(inputs)
 }

@@ -1,19 +1,31 @@
 //! polars-statistics: Statistical testing and regression for Polars DataFrames.
 //!
-//! This crate provides Python bindings for statistical analysis with Polars,
-//! wrapping the `anofox-regression` and `anofox-statistics` Rust libraries.
+//! This crate provides Polars expressions wrapping `anofox-regression` and
+//! `anofox-statistics`. It is consumable two ways:
+//!
+//! - As an **rlib** by other Rust crates: `polars-statistics = "0.4"` and
+//!   `use polars_statistics::expressions::*;` — no pyo3 linkage, no `python` feature.
+//! - As a **cdylib** Python extension: built by `maturin` with the default
+//!   `python` feature, producing the `_polars_statistics` module.
 
-use pyo3::prelude::*;
-use pyo3_polars::PolarsAllocator;
+pub mod expressions;
 
-mod expressions;
+#[cfg(feature = "python")]
 mod pymodels;
+#[cfg(feature = "python")]
 mod utils;
 
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
+#[cfg(feature = "python")]
+use pyo3_polars::PolarsAllocator;
+
+#[cfg(feature = "python")]
 #[global_allocator]
 static ALLOC: PolarsAllocator = PolarsAllocator::new();
 
 /// Python module for polars-statistics.
+#[cfg(feature = "python")]
 #[pymodule]
 fn _polars_statistics(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // Linear Models

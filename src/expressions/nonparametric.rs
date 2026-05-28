@@ -18,9 +18,8 @@ fn parse_alternative(s: &str) -> Alternative {
     }
 }
 
-/// Mann-Whitney U test
-#[polars_expr(output_type_func=stats_output_dtype)]
-fn pl_mann_whitney_u(inputs: &[Series]) -> PolarsResult<Series> {
+/// Public Rust-callable variant. Same input contract as the `pl_mann_whitney_u` expression shim.
+pub fn mann_whitney_u_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let x = inputs[0].f64()?;
     let y = inputs[1].f64()?;
     let alt_str = inputs[2].str()?.get(0).unwrap_or("two-sided");
@@ -48,9 +47,14 @@ fn pl_mann_whitney_u(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// Wilcoxon signed-rank test
+/// Mann-Whitney U test
 #[polars_expr(output_type_func=stats_output_dtype)]
-fn pl_wilcoxon_signed_rank(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_mann_whitney_u(inputs: &[Series]) -> PolarsResult<Series> {
+    mann_whitney_u_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_wilcoxon_signed_rank` expression shim.
+pub fn wilcoxon_signed_rank_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let x = inputs[0].f64()?;
     let y = inputs[1].f64()?;
     let alt_str = inputs[2].str()?.get(0).unwrap_or("two-sided");
@@ -80,9 +84,14 @@ fn pl_wilcoxon_signed_rank(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// Kruskal-Wallis H test
+/// Wilcoxon signed-rank test
 #[polars_expr(output_type_func=stats_output_dtype)]
-fn pl_kruskal_wallis(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_wilcoxon_signed_rank(inputs: &[Series]) -> PolarsResult<Series> {
+    wilcoxon_signed_rank_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_kruskal_wallis` expression shim.
+pub fn kruskal_wallis_fit(inputs: &[Series]) -> PolarsResult<Series> {
     // This takes multiple groups as separate series
     let groups: Vec<Vec<f64>> = inputs
         .iter()
@@ -97,9 +106,14 @@ fn pl_kruskal_wallis(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// Brunner-Munzel test (robust alternative to Mann-Whitney)
+/// Kruskal-Wallis H test
 #[polars_expr(output_type_func=stats_output_dtype)]
-fn pl_brunner_munzel(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_kruskal_wallis(inputs: &[Series]) -> PolarsResult<Series> {
+    kruskal_wallis_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_brunner_munzel` expression shim.
+pub fn brunner_munzel_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let x = inputs[0].f64()?;
     let y = inputs[1].f64()?;
     let alt_str = inputs[2].str()?.get(0).unwrap_or("two-sided");
@@ -114,4 +128,10 @@ fn pl_brunner_munzel(inputs: &[Series]) -> PolarsResult<Series> {
         Ok(result) => generic_stats_output(result.statistic, result.p_value, "brunner_munzel"),
         Err(_) => generic_stats_output(f64::NAN, f64::NAN, "brunner_munzel"),
     }
+}
+
+/// Brunner-Munzel test (robust alternative to Mann-Whitney)
+#[polars_expr(output_type_func=stats_output_dtype)]
+fn pl_brunner_munzel(inputs: &[Series]) -> PolarsResult<Series> {
+    brunner_munzel_fit(inputs)
 }

@@ -16,9 +16,8 @@ fn parse_alternative(s: &str) -> Alternative {
     }
 }
 
-/// Independent samples t-test from raw data
-#[polars_expr(output_type_func=stats_output_dtype)]
-fn pl_ttest_ind(inputs: &[Series]) -> PolarsResult<Series> {
+/// Public Rust-callable variant. Same input contract as the `pl_ttest_ind` expression shim.
+pub fn ttest_ind_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let x = inputs[0].f64()?;
     let y = inputs[1].f64()?;
     let alt_str = inputs[2].str()?.get(0).unwrap_or("two-sided");
@@ -42,9 +41,14 @@ fn pl_ttest_ind(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// Paired samples t-test
+/// Independent samples t-test from raw data
 #[polars_expr(output_type_func=stats_output_dtype)]
-fn pl_ttest_paired(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_ttest_ind(inputs: &[Series]) -> PolarsResult<Series> {
+    ttest_ind_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_ttest_paired` expression shim.
+pub fn ttest_paired_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let x = inputs[0].f64()?;
     let y = inputs[1].f64()?;
     let alt_str = inputs[2].str()?.get(0).unwrap_or("two-sided");
@@ -69,9 +73,14 @@ fn pl_ttest_paired(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// Brown-Forsythe test for equal variances
+/// Paired samples t-test
 #[polars_expr(output_type_func=stats_output_dtype)]
-fn pl_brown_forsythe(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_ttest_paired(inputs: &[Series]) -> PolarsResult<Series> {
+    ttest_paired_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_brown_forsythe` expression shim.
+pub fn brown_forsythe_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let x = inputs[0].f64()?;
     let y = inputs[1].f64()?;
 
@@ -87,9 +96,14 @@ fn pl_brown_forsythe(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// Yuen's test for trimmed means (robust alternative to t-test)
+/// Brown-Forsythe test for equal variances
 #[polars_expr(output_type_func=stats_output_dtype)]
-fn pl_yuen_test(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_brown_forsythe(inputs: &[Series]) -> PolarsResult<Series> {
+    brown_forsythe_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_yuen_test` expression shim.
+pub fn yuen_test_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let x = inputs[0].f64()?;
     let y = inputs[1].f64()?;
     let trim = inputs[2].f64()?.get(0).unwrap_or(0.2);
@@ -105,4 +119,10 @@ fn pl_yuen_test(inputs: &[Series]) -> PolarsResult<Series> {
         Ok(result) => generic_stats_output(result.statistic, result.p_value, "yuen_test"),
         Err(_) => generic_stats_output(f64::NAN, f64::NAN, "yuen_test"),
     }
+}
+
+/// Yuen's test for trimmed means (robust alternative to t-test)
+#[polars_expr(output_type_func=stats_output_dtype)]
+fn pl_yuen_test(inputs: &[Series]) -> PolarsResult<Series> {
+    yuen_test_fit(inputs)
 }

@@ -89,9 +89,8 @@ fn association_output(
     Ok(result.into_series())
 }
 
-/// Exact binomial test
-#[polars_expr(output_type_func=proportion_output_dtype)]
-fn pl_binom_test(inputs: &[Series]) -> PolarsResult<Series> {
+/// Public Rust-callable variant. Same input contract as the `pl_binom_test` expression shim.
+pub fn binom_test_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let successes = inputs[0].u32()?.get(0).unwrap_or(0) as usize;
     let n = inputs[1].u32()?.get(0).unwrap_or(1) as usize;
     let p0 = inputs[2].f64()?.get(0).unwrap_or(0.5);
@@ -121,9 +120,14 @@ fn pl_binom_test(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// One-sample proportion test
+/// Exact binomial test
 #[polars_expr(output_type_func=proportion_output_dtype)]
-fn pl_prop_test_one(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_binom_test(inputs: &[Series]) -> PolarsResult<Series> {
+    binom_test_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_prop_test_one` expression shim.
+pub fn prop_test_one_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let successes = inputs[0].u32()?.get(0).unwrap_or(0) as usize;
     let n = inputs[1].u32()?.get(0).unwrap_or(1) as usize;
     let p0 = inputs[2].f64()?.get(0).unwrap_or(0.5);
@@ -153,9 +157,14 @@ fn pl_prop_test_one(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// Two-sample proportion test
+/// One-sample proportion test
 #[polars_expr(output_type_func=proportion_output_dtype)]
-fn pl_prop_test_two(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_prop_test_one(inputs: &[Series]) -> PolarsResult<Series> {
+    prop_test_one_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_prop_test_two` expression shim.
+pub fn prop_test_two_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let successes1 = inputs[0].u32()?.get(0).unwrap_or(0) as usize;
     let n1 = inputs[1].u32()?.get(0).unwrap_or(1) as usize;
     let successes2 = inputs[2].u32()?.get(0).unwrap_or(0) as usize;
@@ -191,9 +200,14 @@ fn pl_prop_test_two(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// Chi-square test for contingency table
-#[polars_expr(output_type_func=chisq_output_dtype)]
-fn pl_chisq_test(inputs: &[Series]) -> PolarsResult<Series> {
+/// Two-sample proportion test
+#[polars_expr(output_type_func=proportion_output_dtype)]
+fn pl_prop_test_two(inputs: &[Series]) -> PolarsResult<Series> {
+    prop_test_two_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_chisq_test` expression shim.
+pub fn chisq_test_fit(inputs: &[Series]) -> PolarsResult<Series> {
     // Expects a flattened contingency table with dimensions
     let data = inputs[0].u32()?;
     let n_rows = inputs[1].u32()?.get(0).unwrap_or(2) as usize;
@@ -232,9 +246,14 @@ fn pl_chisq_test(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// Chi-square goodness-of-fit test
+/// Chi-square test for contingency table
 #[polars_expr(output_type_func=chisq_output_dtype)]
-fn pl_chisq_goodness_of_fit(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_chisq_test(inputs: &[Series]) -> PolarsResult<Series> {
+    chisq_test_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_chisq_goodness_of_fit` expression shim.
+pub fn chisq_goodness_of_fit_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let observed = inputs[0].u32()?;
     let has_expected = inputs[1].bool()?.get(0).unwrap_or(false);
 
@@ -263,9 +282,14 @@ fn pl_chisq_goodness_of_fit(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// G-test (likelihood ratio test)
+/// Chi-square goodness-of-fit test
 #[polars_expr(output_type_func=chisq_output_dtype)]
-fn pl_g_test(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_chisq_goodness_of_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    chisq_goodness_of_fit_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_g_test` expression shim.
+pub fn g_test_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let data = inputs[0].u32()?;
     let n_rows = inputs[1].u32()?.get(0).unwrap_or(2) as usize;
     let n_cols = inputs[2].u32()?.get(0).unwrap_or(2) as usize;
@@ -301,9 +325,14 @@ fn pl_g_test(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// Fisher's exact test for 2x2 tables
-#[polars_expr(output_type_func=stats_output_dtype)]
-fn pl_fisher_exact(inputs: &[Series]) -> PolarsResult<Series> {
+/// G-test (likelihood ratio test)
+#[polars_expr(output_type_func=chisq_output_dtype)]
+fn pl_g_test(inputs: &[Series]) -> PolarsResult<Series> {
+    g_test_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_fisher_exact` expression shim.
+pub fn fisher_exact_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let a = inputs[0].u32()?.get(0).unwrap_or(0) as usize;
     let b = inputs[1].u32()?.get(0).unwrap_or(0) as usize;
     let c = inputs[2].u32()?.get(0).unwrap_or(0) as usize;
@@ -339,9 +368,14 @@ fn pl_fisher_exact(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// McNemar's test for paired proportions
-#[polars_expr(output_type_func=chisq_output_dtype)]
-fn pl_mcnemar_test(inputs: &[Series]) -> PolarsResult<Series> {
+/// Fisher's exact test for 2x2 tables
+#[polars_expr(output_type_func=stats_output_dtype)]
+fn pl_fisher_exact(inputs: &[Series]) -> PolarsResult<Series> {
+    fisher_exact_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_mcnemar_test` expression shim.
+pub fn mcnemar_test_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let a = inputs[0].u32()?.get(0).unwrap_or(0) as usize;
     let b = inputs[1].u32()?.get(0).unwrap_or(0) as usize;
     let c = inputs[2].u32()?.get(0).unwrap_or(0) as usize;
@@ -359,9 +393,14 @@ fn pl_mcnemar_test(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// McNemar's exact test
-#[polars_expr(output_type_func=stats_output_dtype)]
-fn pl_mcnemar_exact(inputs: &[Series]) -> PolarsResult<Series> {
+/// McNemar's test for paired proportions
+#[polars_expr(output_type_func=chisq_output_dtype)]
+fn pl_mcnemar_test(inputs: &[Series]) -> PolarsResult<Series> {
+    mcnemar_test_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_mcnemar_exact` expression shim.
+pub fn mcnemar_exact_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let a = inputs[0].u32()?.get(0).unwrap_or(0) as usize;
     let b = inputs[1].u32()?.get(0).unwrap_or(0) as usize;
     let c = inputs[2].u32()?.get(0).unwrap_or(0) as usize;
@@ -396,9 +435,14 @@ fn pl_mcnemar_exact(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// Cohen's Kappa for inter-rater agreement
-#[polars_expr(output_type_func=association_output_dtype)]
-fn pl_cohen_kappa(inputs: &[Series]) -> PolarsResult<Series> {
+/// McNemar's exact test
+#[polars_expr(output_type_func=stats_output_dtype)]
+fn pl_mcnemar_exact(inputs: &[Series]) -> PolarsResult<Series> {
+    mcnemar_exact_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_cohen_kappa` expression shim.
+pub fn cohen_kappa_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let data = inputs[0].u32()?;
     let n_categories = inputs[1].u32()?.get(0).unwrap_or(2) as usize;
     let weighted = inputs[2].bool()?.get(0).unwrap_or(false);
@@ -421,9 +465,14 @@ fn pl_cohen_kappa(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// Cramér's V for association strength
+/// Cohen's Kappa for inter-rater agreement
 #[polars_expr(output_type_func=association_output_dtype)]
-fn pl_cramers_v(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_cohen_kappa(inputs: &[Series]) -> PolarsResult<Series> {
+    cohen_kappa_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_cramers_v` expression shim.
+pub fn cramers_v_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let data = inputs[0].u32()?;
     let n_rows = inputs[1].u32()?.get(0).unwrap_or(2) as usize;
     let n_cols = inputs[2].u32()?.get(0).unwrap_or(2) as usize;
@@ -455,9 +504,14 @@ fn pl_cramers_v(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// Phi coefficient for 2x2 tables
+/// Cramér's V for association strength
 #[polars_expr(output_type_func=association_output_dtype)]
-fn pl_phi_coefficient(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_cramers_v(inputs: &[Series]) -> PolarsResult<Series> {
+    cramers_v_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_phi_coefficient` expression shim.
+pub fn phi_coefficient_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let a = inputs[0].u32()?.get(0).unwrap_or(0) as usize;
     let b = inputs[1].u32()?.get(0).unwrap_or(0) as usize;
     let c = inputs[2].u32()?.get(0).unwrap_or(0) as usize;
@@ -476,9 +530,14 @@ fn pl_phi_coefficient(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
-/// Contingency coefficient
+/// Phi coefficient for 2x2 tables
 #[polars_expr(output_type_func=association_output_dtype)]
-fn pl_contingency_coef(inputs: &[Series]) -> PolarsResult<Series> {
+fn pl_phi_coefficient(inputs: &[Series]) -> PolarsResult<Series> {
+    phi_coefficient_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_contingency_coef` expression shim.
+pub fn contingency_coef_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let data = inputs[0].u32()?;
     let n_rows = inputs[1].u32()?.get(0).unwrap_or(2) as usize;
     let n_cols = inputs[2].u32()?.get(0).unwrap_or(2) as usize;
@@ -508,4 +567,10 @@ fn pl_contingency_coef(inputs: &[Series]) -> PolarsResult<Series> {
         ),
         Err(_) => association_output(f64::NAN, f64::NAN, f64::NAN, "contingency_coef"),
     }
+}
+
+/// Contingency coefficient
+#[polars_expr(output_type_func=association_output_dtype)]
+fn pl_contingency_coef(inputs: &[Series]) -> PolarsResult<Series> {
+    contingency_coef_fit(inputs)
 }

@@ -11,13 +11,17 @@ keywords = ["polars", "statistics", "regression", "hypothesis-testing"]
 categories = ["science", "mathematics"]
 
 [lib]
-name = "_polars_statistics"
-crate-type = ["cdylib"]
+name = "polars_statistics"
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = ["python"]
+python = ["dep:pyo3", "dep:numpy"]
 
 [dependencies]
-# Python bindings
-pyo3 = { version = "0.26", features = ["abi3-py39", "extension-module"] }
-numpy = "0.26"
+# Python bindings (gated behind `python` feature)
+pyo3 = { version = "0.26", features = ["abi3-py39", "extension-module"], optional = true }
+numpy = { version = "0.26", optional = true }
 pyo3-polars = { version = "0.25", features = ["derive", "lazy"] }
 
 # Polars
@@ -36,6 +40,7 @@ polars = { version = "0.52", default-features = false, features = [
     "is_in",
     "cross_join",
     "diff",
+    "partition_by",
 ] }
 polars-arrow = "0.52"
 
@@ -56,10 +61,10 @@ thiserror = "2.0.17"
 serde = { version = "1.0.228", features = ["derive"] }
 
 # Regression
-anofox-regression = "0.5.2"
+anofox-regression = "0.5.4"
 
 # Statistics
-anofox-statistics = "0.4.0"
+anofox-statistics = "0.4.1"
 
 [profile.release]
 codegen-units = 1

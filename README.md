@@ -10,6 +10,8 @@
 
 High-performance statistical testing and regression for [Polars](https://pola.rs/) DataFrames, powered by Rust.
 
+Usable from **Python** (as a Polars plugin) and from **Rust** (as an rlib that other Rust crates depend on directly — see [Use from Rust](#use-from-rust)).
+
 ## Features
 
 - **Native Polars Expressions**: Full support for `group_by`, `over`, and lazy evaluation
@@ -17,6 +19,7 @@ High-performance statistical testing and regression for [Polars](https://pola.rs
 - **Regression Models**: OLS, Ridge, Elastic Net, WLS, Quantile, Isotonic, GLMs, ALM (24+ distributions)
 - **Diagnostics**: Condition number, quasi-separation detection for GLMs
 - **Formula Syntax**: R-style formulas with polynomial and interaction effects
+- **Hybrid crate**: `cdylib` (Python wheel) and `rlib` (Rust dependency) from the same source
 - **High Performance**: Rust-powered with zero-copy data transfer
 
 ## Installation
@@ -212,6 +215,71 @@ print(test.summary())
 ```
 
 Available test classes: `TTestInd`, `TTestPaired`, `BrownForsythe`, `YuenTest`, `MannWhitneyU`, `WilcoxonSignedRank`, `KruskalWallis`, `BrunnerMunzel`, `ShapiroWilk`, `DAgostino`.
+
+## Use from Rust
+
+`polars-statistics` builds as both a Python extension (`cdylib`) and a Rust library (`rlib`). Other Rust crates can depend on it directly and call the same statistical and regression code that the Python plugin uses — no Python boundary, no FFI overhead.
+
+### Cargo dependency
+
+```toml
+[dependencies]
+polars = { version = "0.52", features = ["lazy", "partition_by"] }
+polars-statistics = { version = "0.4", default-features = false }
+```
+
+`default-features = false` disables the `python` feature, so pyo3 / numpy are not linked.
+
+### Calling the fit functions
+
+Every Polars expression has a public Rust-callable counterpart named `<name>_fit` that accepts a `&[Series]` input slice matching the expression's input contract and returns a `PolarsResult<Series>` (a one-row struct with the model output).
+
+```rust
+use polars::prelude::*;
+use polars_statistics::expressions::wls_fit;
+
+fn main() -> PolarsResult<()> {
+    let df = df!(
+        "site"   => &["A", "A", "A", "B", "B", "B"],
+        "y"      => &[1.0_f64, 3.0, 5.0, 2.0, 5.0, 8.0],
+        "weight" => &[1.0_f64, 1.0, 1.0, 1.0, 1.0, 1.0],
+        "x1"     => &[0.0_f64, 1.0, 2.0, 0.0, 1.0, 2.0],
+    )?;
+
+    for group in df.partition_by(["site"], true)? {
+        let y  = group.column("y")?.as_materialized_series().clone();
+        let w  = group.column("weight")?.as_materialized_series().clone();
+        let x1 = group.column("x1")?.as_materialized_series().clone();
+        let with_intercept = Series::new("with_intercept".into(), &[true]);
+        let solver         = Series::new("solve_method".into(), &[None::<&str>]);
+
+        let result = wls_fit(&[y, w, with_intercept, solver, x1])?;
+        println!("{result:?}");
+    }
+    Ok(())
+}
+```
+
+The full runnable version is in [`examples/rust_wls.rs`](examples/rust_wls.rs). Run with:
+
+```bash
+cargo run --example rust_wls --no-default-features
+```
+
+### Available fit functions
+
+All ~95 Polars expressions have a `*_fit` Rust entry point in `polars_statistics::expressions`:
+
+- **Regression**: `ols_fit`, `ridge_fit`, `elastic_net_fit`, `wls_fit`, `rls_fit`, `bls_fit`, `quantile_fit`, `isotonic_fit`
+- **GLMs**: `logistic_fit`, `poisson_fit`, `negative_binomial_fit`, `tweedie_fit`, `probit_fit`, `cloglog_fit`, `alm_fit`
+- **Diagnostics**: `condition_number_fit`, `check_binary_separation_fit`, `check_count_sparsity_fit`
+- **Summaries / predictions**: `ols_summary_fit`, `ols_predict_fit`, … (one per model)
+- **Hypothesis tests**: `ttest_ind_fit`, `ttest_paired_fit`, `mann_whitney_fit`, `wilcoxon_fit`, `kruskal_wallis_fit`, `brunner_munzel_fit`, `brown_forsythe_fit`, `yuen_fit`, `shapiro_wilk_fit`, `dagostino_fit`
+- **Correlation**: `pearson_fit`, `spearman_fit`, `kendall_fit`, `distance_cor_fit`, `partial_cor_fit`, `semi_partial_cor_fit`, `icc_fit`
+- **Categorical**: `binom_test_fit`, `prop_test_one_fit`, `prop_test_two_fit`, `chisq_test_fit`, `fisher_exact_fit`, `mcnemar_test_fit`, `cohen_kappa_fit`, `cramers_v_fit`, …
+- **Forecast comparison / TOST / modern**: see `expressions::forecast`, `expressions::tost`, `expressions::modern`.
+
+The input slice layout (which input is `y`, which are scalars, which are `x` columns) is documented above each function — same contract that the Polars plugin uses.
 
 ## Documentation
 
