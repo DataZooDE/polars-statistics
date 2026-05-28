@@ -27,18 +27,20 @@ pub struct PyCloglog {
     with_intercept: bool,
     max_iter: usize,
     tol: f64,
+    lambda_: f64,
     fitted: Option<FittedBinomial>,
 }
 
 #[pymethods]
 impl PyCloglog {
     #[new]
-    #[pyo3(signature = (with_intercept=true, max_iter=100, tol=1e-6))]
-    fn new(with_intercept: bool, max_iter: usize, tol: f64) -> Self {
+    #[pyo3(signature = (with_intercept=true, max_iter=100, tol=1e-6, lambda_=0.0))]
+    fn new(with_intercept: bool, max_iter: usize, tol: f64, lambda_: f64) -> Self {
         Self {
             with_intercept,
             max_iter,
             tol,
+            lambda_,
             fitted: None,
         }
     }
@@ -55,6 +57,7 @@ impl PyCloglog {
             .with_intercept(slf.with_intercept)
             .max_iterations(slf.max_iter)
             .tolerance(slf.tol)
+            .lambda(slf.lambda_)
             .build();
 
         let fitted = model
