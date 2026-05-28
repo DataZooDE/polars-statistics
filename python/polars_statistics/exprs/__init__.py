@@ -77,6 +77,7 @@ from polars_statistics.exprs.regression import (
     quantile,
     isotonic,
     huber,
+    pls,
     # Diagnostics
     condition_number,
     check_binary_separation,
@@ -229,6 +230,7 @@ __all__ = [
     "quantile",
     "isotonic",
     "huber",
+    "pls",
     # Diagnostics expressions
     "condition_number",
     "check_binary_separation",

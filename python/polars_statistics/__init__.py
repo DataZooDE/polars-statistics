@@ -15,6 +15,7 @@ from polars_statistics._polars_statistics import (
     Quantile,
     Isotonic,
     Huber,
+    PLS,
     # GLM models
     Logistic,
     LogisticRegression,
@@ -120,6 +121,7 @@ from polars_statistics.exprs import (
     quantile,
     isotonic,
     huber,
+    pls,
     # Diagnostics expressions
     condition_number,
     check_binary_separation,
@@ -219,6 +221,7 @@ __all__ = [
     "Quantile",
     "Isotonic",
     "Huber",
+    "PLS",
     # GLM Models
     "Logistic",
     "LogisticRegression",
@@ -321,6 +324,7 @@ __all__ = [
     "quantile",
     "isotonic",
     "huber",
+    "pls",
     # Diagnostics expressions
     "condition_number",
     "check_binary_separation",
