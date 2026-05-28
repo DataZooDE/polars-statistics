@@ -932,6 +932,53 @@ fn diagnostic_fits() {
         let _cd = st.field_by_name("cooks_d").unwrap();
         assert_n_obs_nonzero(&out, "n_observations");
     }
+
+    // residual diagnostics (issue #27 batch 1): standardized / studentized /
+    // externally studentized — same input contract as cooks_distance.
+    {
+        let y_vals: Vec<f64> = x1
+            .iter()
+            .enumerate()
+            .map(|(i, xi)| 0.5 + 1.5 * xi + 0.1 * (i as f64).sin())
+            .collect();
+        let inputs = vec![
+            series_f64("y", &y_vals),
+            scalar_bool("with_intercept", true),
+            series_f64("x1", &x1),
+            series_f64("x2", &x2),
+        ];
+        let _ = standardized_residuals_fit(&inputs).expect("standardized_residuals_fit failed");
+        let _ = studentized_residuals_fit(&inputs).expect("studentized_residuals_fit failed");
+        let _ = externally_studentized_residuals_fit(&inputs)
+            .expect("externally_studentized_residuals_fit failed");
+    }
+
+    // residual_outliers_fit: y, with_intercept, threshold, x...
+    {
+        let y_vals: Vec<f64> = x1
+            .iter()
+            .enumerate()
+            .map(|(i, xi)| 0.5 + 1.5 * xi + 0.1 * (i as f64).sin())
+            .collect();
+        let inputs = vec![
+            series_f64("y", &y_vals),
+            scalar_bool("with_intercept", true),
+            scalar_f64("threshold", 2.0),
+            series_f64("x1", &x1),
+            series_f64("x2", &x2),
+        ];
+        let out = residual_outliers_fit(&inputs).expect("residual_outliers_fit failed");
+        let st = out.struct_().unwrap();
+        let _ = st.field_by_name("is_outlier").unwrap();
+        let n_obs = st
+            .field_by_name("n_observations")
+            .unwrap()
+            .u32()
+            .unwrap()
+            .get(0)
+            .unwrap_or(0);
+        assert!(n_obs > 0);
+    }
 }
 
 // =============================================================================
