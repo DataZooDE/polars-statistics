@@ -14,8 +14,10 @@ from polars_statistics._polars_statistics import (
     # Robust regression
     Quantile,
     Isotonic,
+    Huber,
     # GLM models
     Logistic,
+    LogisticRegression,
     Poisson,
     NegativeBinomial,
     Tweedie,
@@ -117,12 +119,14 @@ from polars_statistics.exprs import (
     nnls,
     quantile,
     isotonic,
+    huber,
     # Diagnostics expressions
     condition_number,
     check_binary_separation,
     check_count_sparsity,
     # GLM expressions
     logistic,
+    logistic_regression,
     poisson,
     negative_binomial,
     tweedie,
@@ -214,8 +218,10 @@ __all__ = [
     # Robust Regression Models
     "Quantile",
     "Isotonic",
+    "Huber",
     # GLM Models
     "Logistic",
+    "LogisticRegression",
     "Poisson",
     "NegativeBinomial",
     "Tweedie",
@@ -314,12 +320,14 @@ __all__ = [
     "nnls",
     "quantile",
     "isotonic",
+    "huber",
     # Diagnostics expressions
     "condition_number",
     "check_binary_separation",
     "check_count_sparsity",
     # GLM expressions
     "logistic",
+    "logistic_regression",
     "poisson",
     "negative_binomial",
     "tweedie",

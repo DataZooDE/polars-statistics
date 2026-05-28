@@ -130,10 +130,12 @@ ps.elastic_net("y", "x1", "x2", lambda_=1.0, alpha=0.5)
 # Robust regression
 ps.quantile("y", "x1", "x2", tau=0.5)  # Median regression
 ps.isotonic("y", "x")                   # Monotonic regression
+ps.huber("y", "x1", epsilon=1.35)       # Huber M-estimator (outlier-robust)
 
 # GLM models (with optional Ridge regularization)
-ps.logistic("y", "x1", "x2", lambda_=0.1)  # Binary classification
-ps.poisson("y", "x1", "x2")                 # Count data
+ps.logistic("y", "x1", "x2", lambda_=0.1)             # Binary classification (BinomialRegressor)
+ps.logistic_regression("y", "x1", "x2", penalty="l2", C=1.0)  # sklearn-style logistic
+ps.poisson("y", "x1", "x2")                            # Count data
 
 # ALM - 24+ distributions
 ps.alm("y", "x1", "x2", distribution="laplace")  # Robust to outliers
@@ -270,8 +272,8 @@ cargo run --example rust_wls --no-default-features
 
 All ~95 Polars expressions have a `*_fit` Rust entry point in `polars_statistics::expressions`:
 
-- **Regression**: `ols_fit`, `ridge_fit`, `elastic_net_fit`, `wls_fit`, `rls_fit`, `bls_fit`, `quantile_fit`, `isotonic_fit`
-- **GLMs**: `logistic_fit`, `poisson_fit`, `negative_binomial_fit`, `tweedie_fit`, `probit_fit`, `cloglog_fit`, `alm_fit`
+- **Regression**: `ols_fit`, `ridge_fit`, `elastic_net_fit`, `wls_fit`, `rls_fit`, `bls_fit`, `quantile_fit`, `isotonic_fit`, `huber_fit`
+- **GLMs**: `logistic_fit`, `logistic_regression_fit`, `poisson_fit`, `negative_binomial_fit`, `tweedie_fit`, `probit_fit`, `cloglog_fit`, `alm_fit`
 - **Diagnostics**: `condition_number_fit`, `check_binary_separation_fit`, `check_count_sparsity_fit`
 - **Summaries / predictions**: `ols_summary_fit`, `ols_predict_fit`, … (one per model)
 - **Hypothesis tests**: `ttest_ind_fit`, `ttest_paired_fit`, `mann_whitney_fit`, `wilcoxon_fit`, `kruskal_wallis_fit`, `brunner_munzel_fit`, `brown_forsythe_fit`, `yuen_fit`, `shapiro_wilk_fit`, `dagostino_fit`

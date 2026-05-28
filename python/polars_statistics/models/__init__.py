@@ -8,8 +8,11 @@ from polars_statistics._polars_statistics import (
     WLS,
     RLS,
     BLS,
+    # Robust regression
+    Huber,
     # GLM models
     Logistic,
+    LogisticRegression,
     Poisson,
     NegativeBinomial,
     Tweedie,
@@ -28,8 +31,11 @@ __all__ = [
     "WLS",
     "RLS",
     "BLS",
+    # Robust regression
+    "Huber",
     # GLM models
     "Logistic",
+    "LogisticRegression",
     "Poisson",
     "NegativeBinomial",
     "Tweedie",
