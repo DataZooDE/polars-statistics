@@ -613,6 +613,13 @@ fn glm_fits() {
         assert_n_obs_nonzero(&out, "n_observations");
         // summary
         let _ = logistic_summary_fit(&inputs).expect("logistic_summary_fit failed");
+        // residual diagnostics (issue #27 batch 2)
+        let _ =
+            logistic_pearson_residuals_fit(&inputs).expect("logistic_pearson_residuals_fit failed");
+        let _ = logistic_deviance_residuals_fit(&inputs)
+            .expect("logistic_deviance_residuals_fit failed");
+        let _ =
+            logistic_working_residuals_fit(&inputs).expect("logistic_working_residuals_fit failed");
     }
 
     // logistic_regression_fit (issue #14, sklearn-style):
@@ -643,6 +650,13 @@ fn glm_fits() {
         let out = poisson_fit(&inputs).expect("poisson_fit failed");
         assert_n_obs_nonzero(&out, "n_observations");
         let _ = poisson_summary_fit(&inputs).expect("poisson_summary_fit failed");
+        // residual diagnostics (issue #27 batch 2)
+        let _ =
+            poisson_pearson_residuals_fit(&inputs).expect("poisson_pearson_residuals_fit failed");
+        let _ =
+            poisson_deviance_residuals_fit(&inputs).expect("poisson_deviance_residuals_fit failed");
+        let _ =
+            poisson_working_residuals_fit(&inputs).expect("poisson_working_residuals_fit failed");
     }
 
     // negative_binomial_fit: y, theta, lambda, with_intercept, x...
