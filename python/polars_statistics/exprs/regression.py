@@ -1272,12 +1272,17 @@ def alm(
     y: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
     distribution: str = "normal",
+    link: str | None = None,
+    loss: str = "likelihood",
+    role_trim: float | None = None,
+    extra_parameter: float | None = None,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Augmented Linear Model (ALM) as a Polars expression.
 
-    A flexible regression model supporting 24+ distributions.
+    A flexible regression model supporting 25 distributions, configurable
+    link functions and loss criteria. Mirrors the `ALM` model class.
 
     Parameters
     ----------
@@ -1286,11 +1291,25 @@ def alm(
     *x : pl.Expr or str
         Feature variables (one or more).
     distribution : str, default "normal"
-        Distribution family. Options include:
-        - Continuous: "normal", "laplace", "student_t", "logistic"
-        - Positive: "lognormal", "loglaplace", "gamma", "inverse_gaussian", "exponential"
-        - Bounded (0,1): "beta"
+        Distribution family. All 25 variants supported:
+        - Continuous: "normal", "laplace", "student_t", "logistic",
+          "asymmetric_laplace", "generalised_normal", "s"
+        - Positive: "lognormal", "loglaplace", "logs", "loggeneralisednormal",
+          "gamma", "inverse_gaussian", "exponential", "folded_normal",
+          "rectified_normal"
+        - Bounded (0,1): "beta", "logit_normal"
         - Count: "poisson", "negative_binomial", "binomial", "geometric"
+        - Ordinal: "cumulative_logistic", "cumulative_normal"
+        - Transformed: "boxcox_normal"
+    link : str, optional
+        Link function. If None, uses the canonical link for the distribution.
+        Options: "identity", "log", "logit", "probit", "inverse", "sqrt", "cloglog".
+    loss : str, default "likelihood"
+        Loss function. Options: "likelihood", "mse", "mae", "ham", "role".
+    role_trim : float, optional
+        Trim fraction for the "role" loss (default 0.05).
+    extra_parameter : float, optional
+        Extra parameter for certain distributions (e.g., degrees of freedom for Student-t).
     add_intercept : bool, default True
         Whether to include an intercept term.
 
@@ -1330,6 +1349,10 @@ def alm(
         args=[
             y.cast(pl.Float64),
             pl.lit(distribution, dtype=pl.String),
+            pl.lit(link, dtype=pl.String),
+            pl.lit(loss, dtype=pl.String),
+            pl.lit(role_trim, dtype=pl.Float64),
+            pl.lit(extra_parameter, dtype=pl.Float64),
             pl.lit(add_intercept, dtype=pl.Boolean),
             *x_exprs,
         ],

@@ -66,6 +66,10 @@ fn scalar_u64_null(name: &str) -> Series {
     Series::new(name.into(), &[None::<u64>])
 }
 
+fn scalar_f64_null(name: &str) -> Series {
+    Series::new(name.into(), &[None::<f64>])
+}
+
 /// Helper to assert that a struct Series has a `n_observations` field > 0.
 fn assert_n_obs_nonzero(s: &Series, field: &str) {
     let ca = s.struct_().expect("expected struct series");
@@ -654,17 +658,33 @@ fn glm_fits() {
         let _ = cloglog_summary_fit(&inputs).expect("cloglog_summary_fit failed");
     }
 
-    // alm_fit: y, distribution, with_intercept, x...
+    // alm_fit (issue #16, extended contract):
+    //   y, distribution, link (str|null), loss, role_trim (f64|null),
+    //   extra_parameter (f64|null), with_intercept, x...
     {
         let inputs = vec![
             series_f64("y", &y_pos),
             scalar_str("distribution", "normal"),
+            scalar_str_null("link"),
+            scalar_str("loss", "likelihood"),
+            scalar_f64_null("role_trim"),
+            scalar_f64_null("extra_parameter"),
             scalar_bool("with_intercept", true),
             series_f64("x1", &x_pos),
         ];
         let out = alm_fit(&inputs).expect("alm_fit failed");
         assert_n_obs_nonzero(&out, "n_observations");
-        let _ = alm_summary_fit(&inputs).expect("alm_summary_fit failed");
+    }
+
+    // alm_summary_fit kept the older 3-scalar contract — issue #18 will revisit.
+    {
+        let summary_inputs = vec![
+            series_f64("y", &y_pos),
+            scalar_str("distribution", "normal"),
+            scalar_bool("with_intercept", true),
+            series_f64("x1", &x_pos),
+        ];
+        let _ = alm_summary_fit(&summary_inputs).expect("alm_summary_fit failed");
     }
 
     // -----------------------------------------------------------------
