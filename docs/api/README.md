@@ -68,5 +68,5 @@ result.with_columns(
 
 ## See Also
 
-- [README](../../README.md) - Quick start guide
+- [README](https://github.com/DataZooDE/polars-statistics#readme) - Quick start guide
 - [Polars Documentation](https://docs.pola.rs/)

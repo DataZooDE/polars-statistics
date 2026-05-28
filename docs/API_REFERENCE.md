@@ -6,7 +6,7 @@
 > **Version:** 0.4.0
 > **Last Updated:** 2026-01-17
 
-Complete API reference for polars-statistics. For quick start examples, see the [README](../README.md).
+Complete API reference for polars-statistics. For quick start examples, see the [README](https://github.com/DataZooDE/polars-statistics#readme).
 
 ---
 
@@ -24,7 +24,6 @@ Complete API reference for polars-statistics. For quick start examples, see the 
   - [TOST Equivalence Tests](#tost-equivalence-tests)
 - [Regression Models](#regression-models)
   - [Linear Models](#linear-models)
-  - [Robust Regression](#robust-regression)
   - [Diagnostics](#diagnostics)
   - [GLM Models](#glm-models)
   - [Augmented Linear Model (ALM)](#augmented-linear-model-alm)
@@ -1978,7 +1977,7 @@ Struct {
 
 ## See Also
 
-- [README](../README.md) - Quick start guide
+- [README](https://github.com/DataZooDE/polars-statistics#readme) - Quick start guide
 - [Polars Documentation](https://docs.pola.rs/)
 - [faer](https://github.com/sarah-ek/faer-rs) - Linear algebra backend
 

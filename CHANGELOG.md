@@ -5,7 +5,66 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.4.0] - 2025-01-17
+## [0.5.0] - 2026-05-28
+
+### Added
+
+- **Hybrid crate (Rust + Python)** — `polars-statistics` now builds as both a
+  `cdylib` (Python plugin) and an `rlib` (Rust dependency). Every Polars
+  expression has a public `<name>_fit` Rust entry point in
+  `polars_statistics::expressions`. New `python` Cargo feature gates the
+  pyo3 / numpy / pymodels surface; downstream Rust crates use
+  `default-features = false`. (#13)
+- **New regression model wrappers**:
+  - `Huber` — M-estimator robust to outliers; class + `huber()` expression. (#14)
+  - `LogisticRegression` — sklearn-style API with `predict_proba`,
+    `decision_function`, `score`, `penalty="l2"`, `C` kwarg. Distinct from
+    the existing `Logistic` wrapper. (#14)
+  - `PLS` — Partial Least Squares with `transform()` for the latent space;
+    class + `pls()` expression. (#19)
+- **Penalized IRLS `lambda_` kwarg** on the GLM PyClass models — `PyLogistic`,
+  `PyPoisson`, `PyNegativeBinomial`, `PyTweedie`, `PyProbit`, `PyCloglog`
+  (the expression layer already supported it). (#15)
+- **ALM expression parity with `PyALM`** — all 25 distributions reachable
+  from `ps.alm(...)`, plus `loss`, `link`, `role_trim`, and
+  `extra_parameter` kwargs. (#16)
+- **Summary / predict completeness** — added the matching expressions for
+  families that previously only had a base fit (#18):
+  - `quantile_summary`, `quantile_predict`
+  - `isotonic_predict`
+  - `lm_dynamic_predict`
+- **Diagnostics toolkit** (#17 + #27):
+  - Multicollinearity: `vif`, `generalized_vif`, `high_vif_predictors`
+  - OLS residual battery: `standardized_residuals`,
+    `studentized_residuals`, `externally_studentized_residuals`,
+    `residual_outliers`
+  - GLM residuals (logistic + Poisson): `*_pearson_residuals`,
+    `*_deviance_residuals`, `*_working_residuals` for each family
+  - Influence / leverage: `leverage`, `cooks_distance`, `dffits`,
+    `influential_cooks`, `influential_dffits`, `high_leverage_points`
+  - Goodness of fit: `pearson_chi_squared_logistic`,
+    `pearson_chi_squared_poisson`
+- **Documentation**:
+  - Sweep of the README and mkdocs site to cover every v0.5.0 addition.
+  - New "Use from Rust" section + `examples/rust_wls.rs` walking through
+    the rlib path.
+
+### Changed
+
+- Updated `anofox-regression` dependency to v0.5.4 (introduces
+  `HuberRegressor` and the sklearn-style `LogisticRegression`)
+- Updated `anofox-statistics` dependency to v0.4.1
+- Python `__version__` caught up from 0.3.0 → 0.5.0 (was lagging two
+  minor versions behind the wheel metadata)
+
+### Backwards compatibility
+
+Additive. `PyLogistic` is unchanged — the new sklearn-style
+`LogisticRegression` is a separate class. The `alm()` expression's input
+contract grew but all existing keyword-only callers continue to work
+because the new kwargs default to `None` / `"likelihood"`.
+
+## [0.4.0] - 2026-01-17
 
 ### Added
 
@@ -197,6 +256,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - SIMD-optimized linear algebra via faer
   - Automatic parallelization for group operations
 
+[0.5.0]: https://github.com/DataZooDE/polars-statistics/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/DataZooDE/polars-statistics/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/DataZooDE/polars-statistics/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/DataZooDE/polars-statistics/compare/v0.1.0...v0.2.0

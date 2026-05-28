@@ -44,6 +44,18 @@ result.with_columns(
 )
 ```
 
+## Use from Rust
+
+`polars-statistics` builds as both a Python extension (`cdylib`) and a Rust library (`rlib`). Other Rust crates can depend on it directly and call the same statistical and regression code that the Python plugin uses — no Python boundary, no FFI overhead.
+
+```toml
+[dependencies]
+polars = { version = "0.52", features = ["lazy", "partition_by"] }
+polars-statistics = { version = "0.5", default-features = false }
+```
+
+`default-features = false` disables the `python` feature, so `pyo3` and `numpy` are not linked. Every Polars expression has a public Rust counterpart named `<name>_fit` (e.g. `ols_fit`, `vif_fit`, `logistic_predict_fit`) under `polars_statistics::expressions`. See the [Use from Rust](https://github.com/DataZooDE/polars-statistics#use-from-rust) section of the README for a full runnable example and the complete list of `_fit` entry points.
+
 ## Examples
 
 | Example | Description |

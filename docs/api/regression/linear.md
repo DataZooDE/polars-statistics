@@ -126,6 +126,55 @@ ps.nnls(
 
 ---
 
+## `huber`
+
+Huber M-estimator (robust regression). Down-weights observations with `|residual / scale| > epsilon`.
+
+```python
+ps.huber(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    epsilon: float = 1.35,       # Huber threshold (must be > 1.0)
+    alpha: float = 0.0001,       # L2 ridge penalty in the WLS update
+    max_iter: int = 100,
+    tol: float = 1e-5,
+    with_intercept: bool = True,
+) -> pl.Expr
+```
+
+**Returns:** See [Linear Model Output](../outputs.md#linear-model-output)
+
+**Example:**
+```python
+df.group_by("group").agg(ps.huber("y", "x1", "x2").alias("model"))
+```
+
+---
+
+## `pls`
+
+Partial Least Squares — projects `X` onto `n_components` latent variables maximizing covariance with `y`. Useful for highly collinear features.
+
+```python
+ps.pls(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    n_components: int = 2,
+    tol: float = 1e-6,
+    scale: bool = True,          # Scale X to unit variance before fitting
+    with_intercept: bool = True,
+) -> pl.Expr
+```
+
+**Returns:** See [Linear Model Output](../outputs.md#linear-model-output)
+
+**Example:**
+```python
+df.group_by("group").agg(ps.pls("y", "x1", "x2", "x3", n_components=2).alias("model"))
+```
+
+---
+
 ## `quantile`
 
 Quantile regression for estimating conditional quantiles (e.g., median).

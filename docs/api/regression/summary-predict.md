@@ -22,9 +22,12 @@ ps.tweedie_summary(y, *x, var_power=1.5, with_intercept=True) -> pl.Expr
 ps.probit_summary(y, *x, with_intercept=True) -> pl.Expr
 ps.cloglog_summary(y, *x, with_intercept=True) -> pl.Expr
 ps.alm_summary(y, *x, distribution="normal", with_intercept=True) -> pl.Expr
+ps.quantile_summary(y, *x, tau=0.5, with_intercept=True) -> pl.Expr
 ```
 
 Formula variants also available: `ps.ols_formula_summary(formula, ...)`, etc.
+
+**Note on `quantile_summary`:** Quantile regression has no analytic standard errors, so the `std_error`, `statistic`, and `p_value` columns are returned as NaN. The coefficient estimates themselves are still valid.
 
 **Returns:** See [Summary Output](../outputs.md#summary-output)
 
@@ -71,8 +74,34 @@ All models have prediction functions:
 - `logistic_predict`, `poisson_predict`, `negative_binomial_predict`
 - `tweedie_predict`, `probit_predict`, `cloglog_predict`
 - `alm_predict`
+- `quantile_predict`, `isotonic_predict`, `lm_dynamic_predict`
 
 Formula variants also available: `ps.ols_formula_predict(formula, ...)`, etc.
+
+**Models without analytic intervals.** The following predictors return `lower` / `upper` as NaN — point predictions only:
+
+| Function | Why no intervals |
+|----------|------------------|
+| `quantile_predict` | Quantile regression intervals require bootstrap (not yet wired through). |
+| `isotonic_predict` | Step-function fit with no parametric uncertainty estimate. |
+| `lm_dynamic_predict` | Predictions use time-averaged coefficients from the dynamic model. |
+
+```python
+# Quantile regression predictions
+df.with_columns(
+    ps.quantile_predict("y", "x1", "x2", tau=0.5).over("group").alias("p")
+).unnest("p")
+
+# Isotonic step-function predictions (single feature)
+df.with_columns(
+    ps.isotonic_predict("y", "x").alias("p")
+).unnest("p")
+
+# Dynamic linear model predictions
+df.with_columns(
+    ps.lm_dynamic_predict("y", "x1", "x2").over("group").alias("p")
+).unnest("p")
+```
 
 **Returns:** See [Prediction Output](../outputs.md#prediction-output)
 

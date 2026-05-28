@@ -88,6 +88,141 @@ Struct {
 
 ---
 
+## VIF Output
+
+Returned by `vif`.
+
+```
+Struct {
+    terms: List[String],          # "x1", "x2", ...
+    vif: List[Float64],
+    n_observations: UInt32,
+}
+```
+
+---
+
+## VIF Mask Output
+
+Returned by `high_vif_predictors`.
+
+```
+Struct {
+    is_high: List[Boolean],       # one per input feature column
+    n_high: UInt32,
+    n_features: UInt32,
+}
+```
+
+---
+
+## GVIF Output
+
+Returned by `generalized_vif`.
+
+```
+Struct {
+    gvif: List[Float64],          # one value per group
+    n_groups: UInt32,
+}
+```
+
+---
+
+## Leverage Output
+
+Returned by `leverage`.
+
+```
+Struct {
+    leverage: List[Float64],      # one h_ii per input row
+    n_observations: UInt32,
+}
+```
+
+---
+
+## Cook's Distance Output
+
+Returned by `cooks_distance`.
+
+```
+Struct {
+    cooks_d: List[Float64],       # one D_i per input row
+    n_observations: UInt32,
+}
+```
+
+---
+
+## DFFITS Output
+
+Returned by `dffits`.
+
+```
+Struct {
+    dffits: List[Float64],        # one value per input row
+    n_observations: UInt32,
+}
+```
+
+---
+
+## Influence Mask Output
+
+Returned by `influential_cooks`, `influential_dffits`, `high_leverage_points`.
+
+```
+Struct {
+    is_influential: List[Boolean],
+    n_influential: UInt32,
+    n_observations: UInt32,
+}
+```
+
+---
+
+## Residual Diagnostics Output
+
+Returned by `standardized_residuals`, `studentized_residuals`, `externally_studentized_residuals`, and all GLM residual functions (`logistic_*_residuals`, `poisson_*_residuals`).
+
+```
+Struct {
+    residuals: List[Float64],     # one residual per input row
+    n_observations: UInt32,
+}
+```
+
+---
+
+## Outlier Mask Output
+
+Returned by `residual_outliers`.
+
+```
+Struct {
+    is_outlier: List[Boolean],
+    n_outliers: UInt32,
+    n_observations: UInt32,
+}
+```
+
+---
+
+## Chi-Squared Output
+
+Returned by `pearson_chi_squared_logistic` and `pearson_chi_squared_poisson`.
+
+```
+Struct {
+    chi_squared: Float64,
+    df_resid: UInt32,
+    n_observations: UInt32,
+}
+```
+
+---
+
 ## GLM Output
 
 Returned by `logistic`, `poisson`, `negative_binomial`, `tweedie`, `probit`, `cloglog`.
