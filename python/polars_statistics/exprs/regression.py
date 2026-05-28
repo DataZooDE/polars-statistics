@@ -1117,6 +1117,107 @@ def cooks_distance(
     )
 
 
+def _residual_diag_args(y, x, add_intercept):
+    if isinstance(y, str):
+        y = pl.col(y)
+    x_exprs = [(pl.col(xi) if isinstance(xi, str) else xi).cast(pl.Float64) for xi in x]
+    return [y.cast(pl.Float64), pl.lit(add_intercept, dtype=pl.Boolean), *x_exprs]
+
+
+def standardized_residuals(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
+) -> pl.Expr:
+    """Standardized residuals (r_i / sqrt(MSE)) from an internal OLS fit.
+
+    Returns a struct with ``residuals`` (List[float]) and ``n_observations``.
+    """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_standardized_residuals",
+        args=_residual_diag_args(y, x, add_intercept),
+        returns_scalar=True,
+    )
+
+
+def studentized_residuals(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
+) -> pl.Expr:
+    """Internally studentized residuals — r_i / sqrt(MSE · (1 - h_ii)) — from an
+    internal OLS fit.
+
+    Returns a struct with ``residuals`` (List[float]) and ``n_observations``.
+    """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_studentized_residuals",
+        args=_residual_diag_args(y, x, add_intercept),
+        returns_scalar=True,
+    )
+
+
+def externally_studentized_residuals(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
+) -> pl.Expr:
+    """Externally studentized residuals (leave-one-out) from an internal OLS fit.
+
+    Follow a t-distribution with ``n - p - 1`` degrees of freedom under the
+    null hypothesis that observation ``i`` is not an outlier.
+
+    Returns a struct with ``residuals`` (List[float]) and ``n_observations``.
+    """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_externally_studentized_residuals",
+        args=_residual_diag_args(y, x, add_intercept),
+        returns_scalar=True,
+    )
+
+
+def residual_outliers(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    threshold: float = 2.0,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
+) -> pl.Expr:
+    """Boolean outlier mask from studentized residuals.
+
+    Flags observations whose internally-studentized residual exceeds the
+    given threshold in absolute value (default 2.0 — roughly the 95% CI on
+    standardized residuals).
+
+    Returns a struct with ``is_outlier`` (List[bool]), ``n_outliers`` and
+    ``n_observations``.
+    """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    if isinstance(y, str):
+        y = pl.col(y)
+    x_exprs = [(pl.col(xi) if isinstance(xi, str) else xi).cast(pl.Float64) for xi in x]
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_residual_outliers",
+        args=[
+            y.cast(pl.Float64),
+            pl.lit(add_intercept, dtype=pl.Boolean),
+            pl.lit(threshold, dtype=pl.Float64),
+            *x_exprs,
+        ],
+        returns_scalar=True,
+    )
+
+
 # ============================================================================
 # GLM Expressions
 # ============================================================================

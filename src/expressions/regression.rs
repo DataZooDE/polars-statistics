@@ -9,7 +9,9 @@ use serde::Deserialize;
 
 use anofox_regression::diagnostics::{
     check_binary_separation, check_count_sparsity, compute_leverage, condition_diagnostic,
-    cooks_distance, variance_inflation_factor, ConditionSeverity, SeparationCheck, SeparationType,
+    cooks_distance, externally_studentized_residuals, residual_outliers, standardized_residuals,
+    studentized_residuals, variance_inflation_factor, ConditionSeverity, SeparationCheck,
+    SeparationType,
 };
 use anofox_regression::solvers::{
     AidClassifier, AlmDistribution, AlmLoss, AlmRegressor, AnomalyType, BinomialRegressor,
@@ -23,6 +25,10 @@ use anofox_regression::{HcType, IntervalType, SolverType};
 
 /// Result type for build_xy_with_null_policy: (X_fit, y, valid_mask, X_pred)
 type XyNullPolicyResult = (Mat<f64>, Col<f64>, Vec<bool>, Mat<f64>);
+
+/// (residuals, leverage, mse, n_params, n_rows) from a fitted OLS used as
+/// the foundation for per-row residual diagnostics.
+type OlsResidualContext = (Col<f64>, Col<f64>, f64, usize, usize);
 
 /// Parse a solver type string into a SolverType enum.
 fn parse_solver_type(s: Option<&str>) -> Option<SolverType> {
@@ -184,6 +190,35 @@ fn cooks_distance_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
         "cooks_distance".into(),
         DataType::Struct(fields),
     ))
+}
+
+/// Output type for per-row residual diagnostics (standardized / studentized /
+/// externally studentized).
+fn residual_diag_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
+    let fields = vec![
+        Field::new(
+            "residuals".into(),
+            DataType::List(Box::new(DataType::Float64)),
+        ),
+        Field::new("n_observations".into(), DataType::UInt32),
+    ];
+    Ok(Field::new(
+        "residual_diagnostics".into(),
+        DataType::Struct(fields),
+    ))
+}
+
+/// Output type for the residual outlier mask: boolean per row + count.
+fn outlier_mask_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
+    let fields = vec![
+        Field::new(
+            "is_outlier".into(),
+            DataType::List(Box::new(DataType::Boolean)),
+        ),
+        Field::new("n_outliers".into(), DataType::UInt32),
+        Field::new("n_observations".into(), DataType::UInt32),
+    ];
+    Ok(Field::new("outliers".into(), DataType::Struct(fields)))
 }
 
 // ============================================================================
@@ -1440,6 +1475,159 @@ pub fn cooks_distance_fit(inputs: &[Series]) -> PolarsResult<Series> {
 #[polars_expr(output_type_func=cooks_distance_output_dtype)]
 fn pl_cooks_distance(inputs: &[Series]) -> PolarsResult<Series> {
     cooks_distance_fit(inputs)
+}
+
+/// Build a residual-diagnostic output struct (one value per row, n_observations).
+fn residual_diag_output(values: Vec<f64>, n_obs: usize) -> PolarsResult<Series> {
+    let inner = Series::new("item".into(), values);
+    let r_s = Series::new("residuals".into(), &[inner]);
+    let n_obs_s = Series::new("n_observations".into(), &[n_obs as u32]);
+    StructChunked::from_series(
+        "residual_diagnostics".into(),
+        1,
+        [&r_s, &n_obs_s].into_iter(),
+    )
+    .map(|ca| ca.into_series())
+}
+
+fn residual_diag_nan_output() -> PolarsResult<Series> {
+    residual_diag_output(vec![], 0)
+}
+
+/// Internal helper: fit OLS and return (residuals, leverage, mse, n_params, n_rows).
+/// Returns None on any failure.
+fn fit_ols_for_residual_diag(inputs: &[Series]) -> Option<OlsResidualContext> {
+    if inputs.len() < 3 {
+        return None;
+    }
+    let with_intercept = inputs[1].bool().ok()?.get(0).unwrap_or(true);
+    let n_features = inputs.len() - 2;
+    let (x, y) = build_xy_data(inputs, 0, 2).ok()?;
+    let n_rows = x.nrows();
+    if n_rows < 2 || n_features == 0 {
+        return None;
+    }
+    let model = OlsRegressor::builder()
+        .with_intercept(with_intercept)
+        .build();
+    let fitted = model.fit(&x, &y).ok()?;
+    let residuals = fitted.result().residuals.clone();
+    let mse = fitted.result().mse;
+    let leverage = compute_leverage(&x, with_intercept);
+    let n_params = n_features + if with_intercept { 1 } else { 0 };
+    Some((residuals, leverage, mse, n_params, n_rows))
+}
+
+/// Standardized residuals (r_i / sqrt(MSE)).
+///
+/// Input contract: `[y, with_intercept (bool), x_0, ...]`.
+pub fn standardized_residuals_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    let (residuals, _leverage, mse, _n_params, n_rows) = match fit_ols_for_residual_diag(inputs) {
+        Some(v) => v,
+        None => return residual_diag_nan_output(),
+    };
+    let r = standardized_residuals(&residuals, mse);
+    let values: Vec<f64> = (0..r.nrows()).map(|i| r[i]).collect();
+    residual_diag_output(values, n_rows)
+}
+
+#[polars_expr(output_type_func=residual_diag_output_dtype)]
+fn pl_standardized_residuals(inputs: &[Series]) -> PolarsResult<Series> {
+    standardized_residuals_fit(inputs)
+}
+
+/// Internally studentized residuals: r_i / sqrt(MSE * (1 - h_ii)).
+///
+/// Input contract: `[y, with_intercept (bool), x_0, ...]`.
+pub fn studentized_residuals_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    let (residuals, leverage, mse, _n_params, n_rows) = match fit_ols_for_residual_diag(inputs) {
+        Some(v) => v,
+        None => return residual_diag_nan_output(),
+    };
+    let r = studentized_residuals(&residuals, &leverage, mse);
+    let values: Vec<f64> = (0..r.nrows()).map(|i| r[i]).collect();
+    residual_diag_output(values, n_rows)
+}
+
+#[polars_expr(output_type_func=residual_diag_output_dtype)]
+fn pl_studentized_residuals(inputs: &[Series]) -> PolarsResult<Series> {
+    studentized_residuals_fit(inputs)
+}
+
+/// Externally studentized residuals (leave-one-out): follow a t-distribution
+/// with `n - p - 1` degrees of freedom.
+///
+/// Input contract: `[y, with_intercept (bool), x_0, ...]`.
+pub fn externally_studentized_residuals_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    let (residuals, leverage, mse, n_params, n_rows) = match fit_ols_for_residual_diag(inputs) {
+        Some(v) => v,
+        None => return residual_diag_nan_output(),
+    };
+    let r = externally_studentized_residuals(&residuals, &leverage, mse, n_params);
+    let values: Vec<f64> = (0..r.nrows()).map(|i| r[i]).collect();
+    residual_diag_output(values, n_rows)
+}
+
+#[polars_expr(output_type_func=residual_diag_output_dtype)]
+fn pl_externally_studentized_residuals(inputs: &[Series]) -> PolarsResult<Series> {
+    externally_studentized_residuals_fit(inputs)
+}
+
+/// Boolean outlier mask from studentized residuals.
+///
+/// Input contract: `[y, with_intercept (bool), threshold (f64), x_0, ...]`.
+/// Returns one boolean per row plus the total outlier count.
+pub fn residual_outliers_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    if inputs.len() < 4 {
+        return residual_outliers_nan_output();
+    }
+    let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
+    let threshold = inputs[2].f64()?.get(0).unwrap_or(2.0);
+    let n_features = inputs.len() - 3;
+    // Build the input slice expected by the OLS fit helper: [y, with_intercept, x...]
+    let mut fit_inputs: Vec<Series> = Vec::with_capacity(2 + n_features);
+    fit_inputs.push(inputs[0].clone());
+    fit_inputs.push(inputs[1].clone());
+    fit_inputs.extend(inputs[3..].iter().cloned());
+
+    let (residuals, leverage, mse, _n_params, n_rows) = match fit_ols_for_residual_diag(&fit_inputs)
+    {
+        Some(v) => v,
+        None => return residual_outliers_nan_output(),
+    };
+    let _ = with_intercept; // already consumed by the helper
+    let stud = studentized_residuals(&residuals, &leverage, mse);
+    let outlier_idx = residual_outliers(&stud, threshold);
+    let mut mask = vec![false; n_rows];
+    for i in outlier_idx.iter() {
+        if *i < n_rows {
+            mask[*i] = true;
+        }
+    }
+    let n_outliers = mask.iter().filter(|&&b| b).count();
+    residual_outliers_output(mask, n_outliers, n_rows)
+}
+
+fn residual_outliers_output(
+    mask: Vec<bool>,
+    n_outliers: usize,
+    n_obs: usize,
+) -> PolarsResult<Series> {
+    let inner = Series::new("item".into(), mask);
+    let m_s = Series::new("is_outlier".into(), &[inner]);
+    let no_s = Series::new("n_outliers".into(), &[n_outliers as u32]);
+    let nobs_s = Series::new("n_observations".into(), &[n_obs as u32]);
+    StructChunked::from_series("outliers".into(), 1, [&m_s, &no_s, &nobs_s].into_iter())
+        .map(|ca| ca.into_series())
+}
+
+fn residual_outliers_nan_output() -> PolarsResult<Series> {
+    residual_outliers_output(vec![], 0, 0)
+}
+
+#[polars_expr(output_type_func=outlier_mask_output_dtype)]
+fn pl_residual_outliers(inputs: &[Series]) -> PolarsResult<Series> {
+    residual_outliers_fit(inputs)
 }
 
 // ============================================================================

@@ -85,6 +85,10 @@ from polars_statistics.exprs.regression import (
     vif,
     leverage,
     cooks_distance,
+    standardized_residuals,
+    studentized_residuals,
+    externally_studentized_residuals,
+    residual_outliers,
     # GLM
     logistic,
     logistic_regression,
@@ -246,6 +250,10 @@ __all__ = [
     "vif",
     "leverage",
     "cooks_distance",
+    "standardized_residuals",
+    "studentized_residuals",
+    "externally_studentized_residuals",
+    "residual_outliers",
     # GLM expressions
     "logistic",
     "logistic_regression",
