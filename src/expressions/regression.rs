@@ -15,8 +15,9 @@ use anofox_regression::solvers::{
     AidClassifier, AlmDistribution, AlmLoss, AlmRegressor, AnomalyType, BinomialRegressor,
     BlsRegressor, DemandDistribution, DemandType, ElasticNetRegressor, FittedRegressor,
     HuberRegressor, InformationCriterion, IsotonicRegressor, LinkFunction, LmDynamicRegressor,
-    LogisticRegression, NegativeBinomialRegressor, OlsRegressor, Penalty, PoissonRegressor,
-    QuantileRegressor, Regressor, RidgeRegressor, RlsRegressor, TweedieRegressor, WlsRegressor,
+    LogisticRegression, NegativeBinomialRegressor, OlsRegressor, Penalty, PlsRegressor,
+    PoissonRegressor, QuantileRegressor, Regressor, RidgeRegressor, RlsRegressor, TweedieRegressor,
+    WlsRegressor,
 };
 use anofox_regression::{HcType, IntervalType, SolverType};
 
@@ -789,6 +790,57 @@ pub fn logistic_regression_fit(inputs: &[Series]) -> PolarsResult<Series> {
 #[polars_expr(output_type_func=glm_output_dtype)]
 fn pl_logistic_regression(inputs: &[Series]) -> PolarsResult<Series> {
     logistic_regression_fit(inputs)
+}
+
+/// PLS regression fit callable from Rust callers.
+///
+/// Input contract: `[y, n_components (u32), with_intercept (bool), tol (f64),
+///                   scale (bool), x_0, ...]`.
+pub fn pls_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    let n_components = inputs[1].u32()?.get(0).unwrap_or(2) as usize;
+    let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
+    let tol = inputs[3].f64()?.get(0).unwrap_or(1e-6);
+    let scale = inputs[4].bool()?.get(0).unwrap_or(true);
+
+    let (x, y) = match build_xy_data(inputs, 0, 5) {
+        Ok(data) => data,
+        Err(_) => return linear_nan_output(),
+    };
+
+    let model = PlsRegressor::builder()
+        .n_components(n_components)
+        .with_intercept(with_intercept)
+        .tolerance(tol)
+        .scale(scale)
+        .build();
+
+    match model.fit(&x, &y) {
+        Ok(fitted) => {
+            let result = fitted.result();
+            linear_output(
+                fitted.intercept(),
+                &col_to_vec(fitted.coefficients()),
+                result.r_squared,
+                result.adj_r_squared,
+                result.mse,
+                result.rmse,
+                result.f_statistic,
+                result.f_pvalue,
+                result.aic,
+                result.bic,
+                result.n_observations,
+            )
+        }
+        Err(_) => linear_nan_output(),
+    }
+}
+
+/// Partial Least Squares regression expression.
+/// inputs[0] = y, inputs[1] = n_components (u32), inputs[2] = with_intercept,
+/// inputs[3] = tol, inputs[4] = scale (bool), inputs[5..] = x columns
+#[polars_expr(output_type_func=linear_regression_output_dtype)]
+fn pl_pls(inputs: &[Series]) -> PolarsResult<Series> {
+    pls_fit(inputs)
 }
 
 // ============================================================================

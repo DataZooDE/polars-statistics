@@ -10,6 +10,7 @@ from polars_statistics._polars_statistics import (
     BLS,
     # Robust regression
     Huber,
+    PLS,
     # GLM models
     Logistic,
     LogisticRegression,
@@ -33,6 +34,7 @@ __all__ = [
     "BLS",
     # Robust regression
     "Huber",
+    "PLS",
     # GLM models
     "Logistic",
     "LogisticRegression",

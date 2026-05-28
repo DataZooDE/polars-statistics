@@ -606,6 +606,64 @@ def quantile(
     )
 
 
+def pls(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    n_components: int = 2,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
+    tol: float = 1e-6,
+    scale: bool = True,
+) -> pl.Expr:
+    """Partial Least Squares regression as a Polars expression.
+
+    PLS projects ``X`` onto ``n_components`` latent variables maximizing
+    covariance with ``y``, then fits a linear model in that space. Useful
+    when features are highly collinear.
+
+    Parameters
+    ----------
+    y : pl.Expr or str
+        Response variable.
+    *x : pl.Expr or str
+        Feature variables.
+    n_components : int, default 2
+        Number of latent components.
+    add_intercept : bool, default True
+    tol : float, default 1e-6
+    scale : bool, default True
+        Whether to scale ``X`` columns to unit variance before fitting.
+
+    Returns
+    -------
+    pl.Expr
+        Struct matching the linear-regression output schema.
+    """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    if isinstance(y, str):
+        y = pl.col(y)
+
+    x_exprs = []
+    for xi in x:
+        if isinstance(xi, str):
+            xi = pl.col(xi)
+        x_exprs.append(xi.cast(pl.Float64))
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_pls",
+        args=[
+            y.cast(pl.Float64),
+            pl.lit(n_components, dtype=pl.UInt32),
+            pl.lit(add_intercept, dtype=pl.Boolean),
+            pl.lit(tol, dtype=pl.Float64),
+            pl.lit(scale, dtype=pl.Boolean),
+            *x_exprs,
+        ],
+        returns_scalar=True,
+    )
+
+
 def isotonic(
     y: Union[pl.Expr, str],
     x: Union[pl.Expr, str],
