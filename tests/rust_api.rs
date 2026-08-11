@@ -1886,7 +1886,8 @@ fn ols_column_pivot_fix_differently_scaled() {
     let intercept = st.field_by_name("intercept").unwrap().f64().unwrap().get(0).unwrap();
     let coefs_inner = st.field_by_name("coefficients").unwrap().list().unwrap().get_as_series(0).unwrap();
     let c1 = coefs_inner.f64().unwrap().get(0).unwrap();
-    let c2 = coefs_inner.f64().unwrap().get(1).unwrap();
+    let c2 = coefs_inner.f64().unwrap().get(1)
+        .expect("expected coefficient[1] (x2) from the OLS pivot fit");
 
     assert!((intercept - 1.0).abs() < 1e-6, "pivot OLS intercept: expected 1.0, got {intercept}");
     assert!((c1 - 2.0).abs() < 1e-6, "pivot OLS x1 coef: expected 2.0, got {c1}");
@@ -1918,7 +1919,8 @@ fn wls_column_pivot_fix_differently_scaled() {
     let intercept = st.field_by_name("intercept").unwrap().f64().unwrap().get(0).unwrap();
     let coefs_inner = st.field_by_name("coefficients").unwrap().list().unwrap().get_as_series(0).unwrap();
     let c1 = coefs_inner.f64().unwrap().get(0).unwrap();
-    let c2 = coefs_inner.f64().unwrap().get(1).unwrap();
+    let c2 = coefs_inner.f64().unwrap().get(1)
+        .expect("expected coefficient[1] (x2) from the WLS pivot fit");
 
     assert!((intercept - 1.0).abs() < 1e-6, "pivot WLS intercept: expected 1.0, got {intercept}");
     assert!((c1 - 2.0).abs() < 1e-6, "pivot WLS x1 coef: expected 2.0, got {c1}");
@@ -1950,7 +1952,8 @@ fn bls_column_pivot_fix_differently_scaled() {
     let intercept = st.field_by_name("intercept").unwrap().f64().unwrap().get(0).unwrap();
     let coefs_inner = st.field_by_name("coefficients").unwrap().list().unwrap().get_as_series(0).unwrap();
     let c1 = coefs_inner.f64().unwrap().get(0).unwrap();
-    let c2 = coefs_inner.f64().unwrap().get(1).unwrap();
+    let c2 = coefs_inner.f64().unwrap().get(1)
+        .expect("expected coefficient[1] (x2) from the BLS pivot fit");
 
     assert!((intercept - 1.0).abs() < 1e-6, "pivot BLS intercept: expected 1.0, got {intercept}");
     assert!((c1 - 2.0).abs() < 1e-6, "pivot BLS x1 coef: expected 2.0, got {c1}");
