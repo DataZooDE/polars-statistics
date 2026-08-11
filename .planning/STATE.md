@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 2
-current_phase_name: Public API Audit
-status: verifying
+current_phase: 3
+current_phase_name: Statistics API Parity
+status: planning
 stopped_at: Completed 02-01-PLAN.md — 02-API-AUDIT.md written; all 21 candidates resolved; ICC stub, LOWESS, FactorSummary flagged; 3 deferred questions recorded
-last_updated: "2026-08-11T20:15:12.648Z"
+last_updated: "2026-08-11T20:32:11.690Z"
 last_activity: 2026-08-11
 last_activity_desc: Roadmap created (7 phases, layered structure, 28/28 requirements mapped)
 progress:
@@ -23,22 +23,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-11)
 
 **Core value:** Every public statistical capability in the backing `anofox-*` crates is exposed through the Polars/Python API — correctly, documented, tested, and shipped to PyPI.
-**Current focus:** Phase 2 — Public API Audit
+**Current focus:** Phase 3 — Statistics API Parity
 
 ## Current Position
 
-Phase: 2 (Public API Audit) — EXECUTING
-Plan: 1 of 1
-Status: Phase complete — ready for verification
-Last activity: 2026-08-11 — Phase 2 execution started
+Phase: 3 — Statistics API Parity
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-08-11 — Phase 2 complete, transitioned to Phase 3
 
-Progress: [██████████] 100% (1/7 phases complete)
+Progress: [██░░░░░░░░] 29% (2/7 phases complete)
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 2
+- Total plans completed: 3
 - Average duration: — min
 - Total execution time: 0.0 hours
 
@@ -47,6 +47,7 @@ Progress: [██████████] 100% (1/7 phases complete)
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 1 | 2 | - | - |
+| 2 | 1 | - | - |
 
 **Recent Trend:**
 
@@ -100,6 +101,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-11T20:15:11.749Z
-Stopped at: Completed 02-01-PLAN.md — 02-API-AUDIT.md written; all 21 candidates resolved; ICC stub, LOWESS, FactorSummary flagged; 3 deferred questions recorded
+Last session: 2026-08-11
+Stopped at: Phase 2 complete (audit doc verified passed after correcting HC-inference rows to PARTIAL/OLS); autonomous run advancing to Phase 3 (Statistics API Parity)
 Resume file: None

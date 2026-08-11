@@ -21,7 +21,7 @@ unblocks the next.
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Dependency Modernization** - Bump both anofox crates, reconcile breakage, keep existing tests green (completed 2026-08-11)
-- [ ] **Phase 2: Public API Audit** - Enumerate every unexposed function in both crates as an authoritative gap list
+- [x] **Phase 2: Public API Audit** - Enumerate every unexposed function in both crates as an authoritative gap list (completed 2026-08-11)
 - [ ] **Phase 3: Statistics API Parity** - Expose ANOVA family, energy distance, and all remaining statistics gaps
 - [ ] **Phase 4: Regression API Parity** - Expose GLMM, P-spline, Gamma GLM, HC inference, diagnostics, and remaining regression gaps
 - [ ] **Phase 5: Documentation** - Document all newly exposed API across docstrings, mkdocs, Rust doc comments, and CHANGELOG
@@ -149,7 +149,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Dependency Modernization | 2/2 | Complete    | 2026-08-11 |
-| 2. Public API Audit | 1/1 | In Progress|  |
+| 2. Public API Audit | 1/1 | Complete    | 2026-08-11 |
 | 3. Statistics API Parity | 0/TBD | Not started | - |
 | 4. Regression API Parity | 0/TBD | Not started | - |
 | 5. Documentation | 0/TBD | Not started | - |
