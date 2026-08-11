@@ -10,7 +10,7 @@ last_updated: "2026-08-11T19:48:34.110Z"
 last_activity: 2026-08-11
 last_activity_desc: Roadmap created (7 phases, layered structure, 28/28 requirements mapped)
 progress:
-  total_phases: 1
+  total_phases: 7
   completed_phases: 1
   total_plans: 2
   completed_plans: 2
@@ -23,7 +23,7 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-11)
 
 **Core value:** Every public statistical capability in the backing `anofox-*` crates is exposed through the Polars/Python API — correctly, documented, tested, and shipped to PyPI.
-**Current focus:** Phase 1 — Dependency Modernization
+**Current focus:** Phase 2 — Public API Audit
 
 ## Current Position
 
@@ -32,7 +32,7 @@ Plan: Not started
 Status: Ready to plan
 Last activity: 2026-08-11 — Phase 1 complete, transitioned to Phase 2
 
-Progress: [██████████] 100%
+Progress: [█░░░░░░░░░] 14% (1/7 phases complete)
 
 ## Performance Metrics
 
@@ -83,7 +83,8 @@ None yet.
 
 ### Blockers/Concerns
 
-- Phase 1 hard prerequisite: no new API can be wrapped until the dep bump lands and DEP-04 (existing tests still pass) is green. The regression bump also inherits a critical column-pivot coefficient correctness fix — treat DEP-04 as a correctness gate, not just a build gate.
+- ✓ Resolved (Phase 1): dep bump landed, DEP-04 green (Rust 15 + pytest 457 passing), and the column-pivot correctness fix is confirmed active via 3 new tests. New API can now be wrapped in Phases 3–4.
+- None currently open.
 
 ## Deferred Items
 
@@ -95,6 +96,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-11T19:27:47.037Z
-Stopped at: Completed 01-02-PLAN.md — full Rust (15 passed) and pytest (457 passed) suites green; DEP-04 satisfied
+Last session: 2026-08-11
+Stopped at: Phase 1 complete (verified passed, code-reviewed + fixed); autonomous run advancing to Phase 2 (Public API Audit)
 Resume file: None
