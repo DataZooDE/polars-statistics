@@ -235,3 +235,59 @@ class TestRmAnova:
         v = result[0, 0]
         # Should not panic; ws_f should be NaN on unbalanced input
         assert math.isnan(v["ws_f"])
+
+
+class TestEnergyDistanceNd:
+    """STAT-04: energy_distance_nd expression smoke tests (nD multivariate)."""
+
+    def test_returns_correct_schema(self):
+        """energy_distance_nd on 2D separated samples returns statistic and p_value fields."""
+        from polars_statistics.exprs.modern import energy_distance_nd
+
+        df = pl.DataFrame(
+            {
+                "x1": [0.0, 0.1, -0.1, 0.2],
+                "x2": [0.0, -0.1, 0.1, 0.05],
+                "y1": [3.0, 3.1, 2.9, 3.2],
+                "y2": [3.0, 2.9, 3.1, 3.05],
+            }
+        )
+        result = df.select(energy_distance_nd(["x1", "x2"], ["y1", "y2"], n_permutations=99, seed=42))
+        assert result.shape == (1, 1)
+        v = result[0, 0]
+        assert "statistic" in v
+        assert "p_value" in v
+
+    def test_separated_samples_positive_statistic(self):
+        """Well-separated 2D samples yield statistic > 0 and p_value in [0, 1]."""
+        from polars_statistics.exprs.modern import energy_distance_nd
+
+        df = pl.DataFrame(
+            {
+                "x1": [0.0, 0.1, -0.1, 0.2],
+                "x2": [0.0, -0.1, 0.1, 0.05],
+                "y1": [3.0, 3.1, 2.9, 3.2],
+                "y2": [3.0, 2.9, 3.1, 3.05],
+            }
+        )
+        result = df.select(energy_distance_nd(["x1", "x2"], ["y1", "y2"], n_permutations=99, seed=42))
+        v = result[0, 0]
+        assert v["statistic"] > 0
+        assert 0.0 <= v["p_value"] <= 1.0
+
+    def test_mismatched_dims_raises(self):
+        """energy_distance_nd raises ValueError when x_cols and y_cols have different lengths."""
+        from polars_statistics.exprs.modern import energy_distance_nd
+
+        import pytest
+
+        with pytest.raises(ValueError):
+            energy_distance_nd(["x1", "x2"], ["y1"])
+
+    def test_existing_1d_energy_distance_unchanged(self):
+        """Existing 1D energy_distance expression still works after adding nD variant."""
+        df = pl.DataFrame({"x": [0.0, 0.1, -0.1, 0.2], "y": [3.0, 3.1, 2.9, 3.2]})
+        result = df.select(ps.energy_distance("x", "y", n_permutations=99, seed=42))
+        v = result[0, 0]
+        assert v["statistic"] > 0
+        assert 0.0 <= v["p_value"] <= 1.0
