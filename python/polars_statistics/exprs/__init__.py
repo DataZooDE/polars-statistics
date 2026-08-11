@@ -5,6 +5,9 @@ from polars_statistics.exprs.parametric import (
     ttest_paired,
     brown_forsythe,
     yuen_test,
+    one_way_anova,
+    two_way_anova,
+    repeated_measures_anova,
 )
 from polars_statistics.exprs.nonparametric import (
     mann_whitney_u,
@@ -192,6 +195,9 @@ __all__ = [
     "ttest_paired",
     "brown_forsythe",
     "yuen_test",
+    "one_way_anova",
+    "two_way_anova",
+    "repeated_measures_anova",
     # Non-parametric tests
     "mann_whitney_u",
     "wilcoxon_signed_rank",

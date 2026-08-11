@@ -57,6 +57,9 @@ from polars_statistics.exprs import (
     ttest_paired,
     brown_forsythe,
     yuen_test,
+    one_way_anova,
+    two_way_anova,
+    repeated_measures_anova,
     # Non-parametric tests
     mann_whitney_u,
     wilcoxon_signed_rank,
@@ -286,6 +289,9 @@ __all__ = [
     "ttest_paired",
     "brown_forsythe",
     "yuen_test",
+    "one_way_anova",
+    "two_way_anova",
+    "repeated_measures_anova",
     # Non-parametric test expressions
     "mann_whitney_u",
     "wilcoxon_signed_rank",
