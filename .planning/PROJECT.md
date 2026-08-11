@@ -33,13 +33,13 @@ and shipped to users via PyPI.
 - ✓ CI matrix (Python 3.9–3.12 × Linux/macOS/Windows), clippy/fmt/ruff gates, coverage — existing
 - ✓ GitHub Actions PyPI + TestPyPI publish pipeline with OIDC trusted publishing — existing
 - ✓ mkdocs (Material) documentation published to GitHub Pages — existing
+- ✓ `anofox-statistics` bumped 0.4.1 → 0.4.2 — Phase 1 (clean build, existing tests green)
+- ✓ `anofox-regression` bumped 0.5.4 → 0.5.13, inheriting the column-pivot correctness fix — Phase 1 (zero wrapper reconciliation; 3 new column-pivot tests confirm the fix is active; Rust 15 + pytest 457 passing)
 
 ### Active
 
 <!-- This milestone. Hypotheses until shipped & validated. -->
 
-- [ ] Bump `anofox-statistics` 0.4.1 → 0.4.2 (build green, existing tests pass)
-- [ ] Bump `anofox-regression` 0.5.4 → 0.5.13, inheriting the column-pivot correctness fix (silent wrong OLS/WLS/NNLS coefficients on differently-scaled designs) and the relative rank-detection fix
 - [ ] Audit both crates' public API against the current wrapper and enumerate every unexposed function
 - [ ] Expose all unexposed `anofox-statistics` functions (known: ANOVA family — `one_way_anova`, `two_way_anova`, `repeated_measures_anova`; `energy_distance_test`; plus any surfaced by the audit)
 - [ ] Expose all unexposed `anofox-regression` functions (known candidates: `GlmmRegressor` mixed models, `PSplineRegressor` smoother, Gamma GLM, HC robust inference `HcInference`/`HcType`, diagnostics suite — Cook's distance, VIF, leverage, residual variants, condition diagnostics — streaming moment fits, and robust solvers e.g. Theil–Sen/RANSAC/LOWESS/Bayesian/passive-aggressive/LARS where applicable; final list from the audit)
@@ -74,7 +74,7 @@ and shipped to users via PyPI.
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Bump both `anofox-statistics` and `anofox-regression` (not statistics only) | User chose full modernization; regression 0.5.13 also carries a correctness fix and major new API | — Pending |
+| Bump both `anofox-statistics` and `anofox-regression` (not statistics only) | User chose full modernization; regression 0.5.13 also carries a correctness fix and major new API | ✓ Done — Phase 1 (zero reconciliation; column-pivot fix confirmed active by 3 new tests) |
 | Expose all unexposed functions (full API parity) | User chose completeness over a targeted subset | — Pending |
 | Production PyPI publish this milestone | User wants a real release, not TestPyPI/prepare-only | — Pending |
 | Target release version 0.6.0 | New API surface is additive → minor bump under semver | — Pending |
@@ -97,4 +97,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-08-11 after initialization*
+*Last updated: 2026-08-11 after Phase 1 (Dependency Modernization)*

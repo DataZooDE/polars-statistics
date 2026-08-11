@@ -20,7 +20,7 @@ unblocks the next.
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Dependency Modernization** - Bump both anofox crates, reconcile breakage, keep existing tests green
+- [x] **Phase 1: Dependency Modernization** - Bump both anofox crates, reconcile breakage, keep existing tests green (completed 2026-08-11)
 - [ ] **Phase 2: Public API Audit** - Enumerate every unexposed function in both crates as an authoritative gap list
 - [ ] **Phase 3: Statistics API Parity** - Expose ANOVA family, energy distance, and all remaining statistics gaps
 - [ ] **Phase 4: Regression API Parity** - Expose GLMM, P-spline, Gamma GLM, HC inference, diagnostics, and remaining regression gaps
@@ -145,7 +145,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Dependency Modernization | 2/2 | In Progress|  |
+| 1. Dependency Modernization | 2/2 | Complete    | 2026-08-11 |
 | 2. Public API Audit | 0/TBD | Not started | - |
 | 3. Statistics API Parity | 0/TBD | Not started | - |
 | 4. Regression API Parity | 0/TBD | Not started | - |
