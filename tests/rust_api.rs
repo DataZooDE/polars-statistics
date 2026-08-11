@@ -1849,3 +1849,110 @@ fn _touch_unused() {
     let s = Series::new("x".into(), &[1.0_f64]);
     assert_f64_finite_or_zero(&s, "x");
 }
+
+// =============================================================================
+// Column-pivot correctness tests (DEP-04)
+//
+// These three tests exercise a differently-scaled two-feature design that forces
+// a non-trivial QR column pivot (column-norm ratio >= 100:1). The pre-0.5.13
+// solver scrambled coefficients on such designs; 0.5.13 adds an unpermute step.
+//
+// Design: x1 = (i+1)*0.1 (range 0.1..2.0, norm ~5), x2 = ((i%7)+1)*100 (range
+// 100..700, periodic, norm ~1800). Norm ratio ~360:1, Pearson r ~0.24 (not
+// collinear). Ground truth y = 1 + 2*x1 + 3*x2 recoverable uniquely.
+// =============================================================================
+
+#[test]
+fn ols_column_pivot_fix_differently_scaled() {
+    // y = 1 + 2*x1 + 3*x2. x1 in [0.1, 2.0], x2 in [100, 700] (periodic mod 7).
+    // Column-norm ratio ~360:1 with low correlation (r~0.24) forces a non-trivial
+    // QR pivot permutation. Pre-0.5.13 OLS returned scrambled coefficients here.
+    let n = 20usize;
+    let x1: Vec<f64> = (0..n).map(|i| (i as f64 + 1.0) * 0.1).collect();
+    let x2: Vec<f64> = (0..n).map(|i| ((i % 7) as f64 + 1.0) * 100.0).collect();
+    let y: Vec<f64> = x1.iter().zip(x2.iter())
+        .map(|(&a, &b)| 1.0 + 2.0 * a + 3.0 * b)
+        .collect();
+
+    let inputs = vec![
+        series_f64("y", &y),
+        scalar_bool("with_intercept", true),
+        scalar_str_null("solve_method"),
+        series_f64("x1", &x1),
+        series_f64("x2", &x2),
+    ];
+    let out = ols_fit(&inputs).expect("ols_fit pivot test failed");
+    let st = out.struct_().unwrap();
+    let intercept = st.field_by_name("intercept").unwrap().f64().unwrap().get(0).unwrap();
+    let coefs_inner = st.field_by_name("coefficients").unwrap().list().unwrap().get_as_series(0).unwrap();
+    let c1 = coefs_inner.f64().unwrap().get(0).unwrap();
+    let c2 = coefs_inner.f64().unwrap().get(1).unwrap();
+
+    assert!((intercept - 1.0).abs() < 1e-6, "pivot OLS intercept: expected 1.0, got {intercept}");
+    assert!((c1 - 2.0).abs() < 1e-6, "pivot OLS x1 coef: expected 2.0, got {c1}");
+    assert!((c2 - 3.0).abs() < 1e-6, "pivot OLS x2 coef: expected 3.0, got {c2}");
+}
+
+#[test]
+fn wls_column_pivot_fix_differently_scaled() {
+    // Same differently-scaled design as the OLS pivot test; unit weights so
+    // WLS reduces to OLS. Verifies WLS also applies the 0.5.13 unpermute fix.
+    let n = 20usize;
+    let x1: Vec<f64> = (0..n).map(|i| (i as f64 + 1.0) * 0.1).collect();
+    let x2: Vec<f64> = (0..n).map(|i| ((i % 7) as f64 + 1.0) * 100.0).collect();
+    let y: Vec<f64> = x1.iter().zip(x2.iter())
+        .map(|(&a, &b)| 1.0 + 2.0 * a + 3.0 * b)
+        .collect();
+    let w = vec![1.0_f64; n];
+
+    let inputs = vec![
+        series_f64("y", &y),
+        series_f64("w", &w),
+        scalar_bool("with_intercept", true),
+        scalar_str_null("solve_method"),
+        series_f64("x1", &x1),
+        series_f64("x2", &x2),
+    ];
+    let out = wls_fit(&inputs).expect("wls_fit pivot test failed");
+    let st = out.struct_().unwrap();
+    let intercept = st.field_by_name("intercept").unwrap().f64().unwrap().get(0).unwrap();
+    let coefs_inner = st.field_by_name("coefficients").unwrap().list().unwrap().get_as_series(0).unwrap();
+    let c1 = coefs_inner.f64().unwrap().get(0).unwrap();
+    let c2 = coefs_inner.f64().unwrap().get(1).unwrap();
+
+    assert!((intercept - 1.0).abs() < 1e-6, "pivot WLS intercept: expected 1.0, got {intercept}");
+    assert!((c1 - 2.0).abs() < 1e-6, "pivot WLS x1 coef: expected 2.0, got {c1}");
+    assert!((c2 - 3.0).abs() < 1e-6, "pivot WLS x2 coef: expected 3.0, got {c2}");
+}
+
+#[test]
+fn bls_column_pivot_fix_differently_scaled() {
+    // BLS (NNLS-bounded) on the same positive-coefficient differently-scaled design.
+    // Bounds [-10, 10] are loose enough to not constrain the true solution
+    // (true coefficients are 2.0 and 3.0, both within bounds).
+    let n = 20usize;
+    let x1: Vec<f64> = (0..n).map(|i| (i as f64 + 1.0) * 0.1).collect();
+    let x2: Vec<f64> = (0..n).map(|i| ((i % 7) as f64 + 1.0) * 100.0).collect();
+    let y: Vec<f64> = x1.iter().zip(x2.iter())
+        .map(|(&a, &b)| 1.0 + 2.0 * a + 3.0 * b)
+        .collect();
+
+    let inputs = vec![
+        series_f64("y", &y),
+        scalar_f64("lower_bound", -10.0),
+        scalar_f64("upper_bound", 10.0),
+        scalar_bool("with_intercept", true),
+        series_f64("x1", &x1),
+        series_f64("x2", &x2),
+    ];
+    let out = bls_fit(&inputs).expect("bls_fit pivot test failed");
+    let st = out.struct_().unwrap();
+    let intercept = st.field_by_name("intercept").unwrap().f64().unwrap().get(0).unwrap();
+    let coefs_inner = st.field_by_name("coefficients").unwrap().list().unwrap().get_as_series(0).unwrap();
+    let c1 = coefs_inner.f64().unwrap().get(0).unwrap();
+    let c2 = coefs_inner.f64().unwrap().get(1).unwrap();
+
+    assert!((intercept - 1.0).abs() < 1e-6, "pivot BLS intercept: expected 1.0, got {intercept}");
+    assert!((c1 - 2.0).abs() < 1e-6, "pivot BLS x1 coef: expected 2.0, got {c1}");
+    assert!((c2 - 3.0).abs() < 1e-6, "pivot BLS x2 coef: expected 3.0, got {c2}");
+}
