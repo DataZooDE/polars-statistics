@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 3
 current_phase_name: Statistics API Parity
 status: executing
-stopped_at: Completed 02-01-PLAN.md — 02-API-AUDIT.md written; all 21 candidates resolved; ICC stub, LOWESS, FactorSummary flagged; 3 deferred questions recorded
-last_updated: "2026-08-11T21:42:18.833Z"
+stopped_at: Completed 03-01-PLAN.md (ANOVA family)
+last_updated: "2026-08-11T22:16:41.676Z"
 last_activity: 2026-08-11
 last_activity_desc: Roadmap created (7 phases, layered structure, 28/28 requirements mapped)
 progress:
   total_phases: 3
   completed_phases: 2
   total_plans: 7
-  completed_plans: 3
+  completed_plans: 4
 ---
 
 # Project State
@@ -27,12 +27,12 @@ See: .planning/PROJECT.md (updated 2026-08-11)
 
 ## Current Position
 
-Phase: 3 — Statistics API Parity
-Plan: Not started
+Phase: 3 (Statistics API Parity) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-08-11 — Phase 2 complete, transitioned to Phase 3
+Last activity: 2026-08-11 — Phase 3 execution started
 
-Progress: [██░░░░░░░░] 29% (2/7 phases complete)
+Progress: [██████░░░░] 57% (2/7 phases complete)
 
 ## Performance Metrics
 
@@ -62,6 +62,7 @@ Progress: [██░░░░░░░░] 29% (2/7 phases complete)
 | Phase 01 P01 | 10 | 1 tasks | 1 files |
 | Phase 01 P02 | 9 | 2 tasks | 1 files |
 | Phase 02-public-api-audit P01 | 12 | 1 tasks | 1 files |
+| Phase 03-statistics-api-parity P01 | 5400 | 4 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -81,6 +82,8 @@ Recent decisions affecting current work:
 - [Phase ?]: ICC stub classified as exposed-but-stubbed — icc_fit returns all-NaN with TODO; Phase 3 must implement real matrix-input ICC
 - [Phase ?]: LOWESS confirmed internal-only — lowess_smooth_weights not in solvers/mod.rs pub use list; not a user-facing gap
 - [Phase ?]: FactorSummary classified HIGH priority user output (FittedGlmm::factors()) — not internal despite naming
+- [Phase ?]: one_way_anova uses separate-group-Series input (kruskal_wallis pattern) with kind literal as last arg
+- [Phase ?]: Factor/subject/condition encoding uses rank(dense)-1 for per-column 0-indexed codes (Categorical.to_physical shares global catalog)
 
 ### Pending Todos
 
@@ -101,6 +104,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-11
-Stopped at: Phase 2 complete (audit doc verified passed after correcting HC-inference rows to PARTIAL/OLS); autonomous run advancing to Phase 3 (Statistics API Parity)
+Last session: 2026-08-11T22:16:41.657Z
+Stopped at: Completed 03-01-PLAN.md (ANOVA family)
 Resume file: None
