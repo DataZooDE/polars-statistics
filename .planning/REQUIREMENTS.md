@@ -9,9 +9,9 @@ Requirements for this milestone (`anofox-*` upgrade + API parity + 0.6.0 release
 
 ### Dependency Upgrade
 
-- [ ] **DEP-01**: `anofox-statistics` is bumped 0.4.1 → 0.4.2 in `Cargo.toml`/`Cargo.lock` and the workspace builds with the `python` feature
-- [ ] **DEP-02**: `anofox-regression` is bumped 0.5.4 → 0.5.13 in `Cargo.toml`/`Cargo.lock` and the workspace builds
-- [ ] **DEP-03**: Any breaking API changes introduced by the bumps are reconciled in the wrapper layer so it compiles and existing behavior is preserved
+- [x] **DEP-01**: `anofox-statistics` is bumped 0.4.1 → 0.4.2 in `Cargo.toml`/`Cargo.lock` and the workspace builds with the `python` feature
+- [x] **DEP-02**: `anofox-regression` is bumped 0.5.4 → 0.5.13 in `Cargo.toml`/`Cargo.lock` and the workspace builds
+- [x] **DEP-03**: Any breaking API changes introduced by the bumps are reconciled in the wrapper layer so it compiles and existing behavior is preserved
 - [ ] **DEP-04**: All pre-existing tests (Rust + pytest) pass against the upgraded crates — no regressions from the bump
 
 ### API Audit
@@ -79,9 +79,9 @@ Deferred to future releases.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DEP-01 | Phase 1 | Pending |
-| DEP-02 | Phase 1 | Pending |
-| DEP-03 | Phase 1 | Pending |
+| DEP-01 | Phase 1 | Complete |
+| DEP-02 | Phase 1 | Complete |
+| DEP-03 | Phase 1 | Complete |
 | DEP-04 | Phase 1 | Pending |
 | AUDIT-01 | Phase 2 | Pending |
 | AUDIT-02 | Phase 2 | Pending |
@@ -111,6 +111,7 @@ Deferred to future releases.
 | REL-04 | Phase 7 | Pending |
 
 **Coverage:**
+
 - v1 requirements: 28 total
 - Mapped to phases: 28
 - Unmapped: 0 ✓
