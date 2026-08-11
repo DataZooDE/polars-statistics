@@ -38,7 +38,9 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. Any breaking API changes from the bumps are reconciled so the wrapper compiles clean under clippy `-D warnings` with existing behavior preserved
   3. The full pre-existing test suite (Rust `rust_api` + pytest) passes with no regressions against the upgraded crates
   4. OLS/WLS/NNLS fits on differently-scaled designs now return correct coefficients (the 0.5.13 column-pivot fix is confirmed active)
-**Plans**: TBD
+**Plans**: 2 plans
+- [ ] 01-01-PLAN.md — Bump both anofox crate pins, regenerate Cargo.lock, prove wrapper compiles clean under clippy (tracer)
+- [ ] 01-02-PLAN.md — Add three column-pivot correctness tests, run full Rust + pytest suites (no regressions)
 
 ### Phase 2: Public API Audit
 **Goal**: An authoritative, documented gap list enumerates exactly which public functions in each upgraded crate are not yet exposed, defining the concrete scope for the two parity phases.
@@ -116,7 +118,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Dependency Modernization | 0/TBD | Not started | - |
+| 1. Dependency Modernization | 0/2 | Not started | - |
 | 2. Public API Audit | 0/TBD | Not started | - |
 | 3. Statistics API Parity | 0/TBD | Not started | - |
 | 4. Regression API Parity | 0/TBD | Not started | - |
