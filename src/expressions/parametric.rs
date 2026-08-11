@@ -210,11 +210,9 @@ pub fn one_way_anova_fit(inputs: &[Series]) -> PolarsResult<Series> {
             let df_between = Series::new("df_between".into(), &[r.df_between]);
             let df_within = Series::new("df_within".into(), &[r.df_within]);
             let p_value = Series::new("p_value".into(), &[r.p_value]);
-            let ss_between =
-                Series::new("ss_between".into(), &[r.ss_between.unwrap_or(f64::NAN)]);
+            let ss_between = Series::new("ss_between".into(), &[r.ss_between.unwrap_or(f64::NAN)]);
             let ss_within = Series::new("ss_within".into(), &[r.ss_within.unwrap_or(f64::NAN)]);
-            let ms_between =
-                Series::new("ms_between".into(), &[r.ms_between.unwrap_or(f64::NAN)]);
+            let ms_between = Series::new("ms_between".into(), &[r.ms_between.unwrap_or(f64::NAN)]);
             let ms_within = Series::new("ms_within".into(), &[r.ms_within.unwrap_or(f64::NAN)]);
             let eta_squared = Series::new("eta_squared".into(), &[eta_sq]);
             let n_groups = Series::new("n_groups".into(), &[r.n_groups as u32]);
@@ -273,9 +271,26 @@ fn two_way_anova_error_output() -> PolarsResult<Series> {
         "two_way_anova".into(),
         1,
         [
-            &a_ss, &a_df, &a_ms, &a_f, &a_p_value, &b_ss, &b_df, &b_ms, &b_f, &b_p_value,
-            &ab_ss, &ab_df, &ab_ms, &ab_f, &ab_p_value, &residual_ss, &residual_df, &residual_ms,
-            &grand_mean, &n,
+            &a_ss,
+            &a_df,
+            &a_ms,
+            &a_f,
+            &a_p_value,
+            &b_ss,
+            &b_df,
+            &b_ms,
+            &b_f,
+            &b_p_value,
+            &ab_ss,
+            &ab_df,
+            &ab_ms,
+            &ab_f,
+            &ab_p_value,
+            &residual_ss,
+            &residual_df,
+            &residual_ms,
+            &grand_mean,
+            &n,
         ]
         .into_iter(),
     )
@@ -310,21 +325,29 @@ pub fn two_way_anova_fit(inputs: &[Series]) -> PolarsResult<Series> {
             let a_df = Series::new("a_df".into(), &[r.factor_a.df]);
             let a_ms = Series::new("a_ms".into(), &[r.factor_a.ms]);
             let a_f = Series::new("a_f".into(), &[r.factor_a.f_statistic.unwrap_or(f64::NAN)]);
-            let a_p_value =
-                Series::new("a_p_value".into(), &[r.factor_a.p_value.unwrap_or(f64::NAN)]);
+            let a_p_value = Series::new(
+                "a_p_value".into(),
+                &[r.factor_a.p_value.unwrap_or(f64::NAN)],
+            );
             let b_ss = Series::new("b_ss".into(), &[r.factor_b.ss]);
             let b_df = Series::new("b_df".into(), &[r.factor_b.df]);
             let b_ms = Series::new("b_ms".into(), &[r.factor_b.ms]);
             let b_f = Series::new("b_f".into(), &[r.factor_b.f_statistic.unwrap_or(f64::NAN)]);
-            let b_p_value =
-                Series::new("b_p_value".into(), &[r.factor_b.p_value.unwrap_or(f64::NAN)]);
+            let b_p_value = Series::new(
+                "b_p_value".into(),
+                &[r.factor_b.p_value.unwrap_or(f64::NAN)],
+            );
             let ab_ss = Series::new("ab_ss".into(), &[r.interaction.ss]);
             let ab_df = Series::new("ab_df".into(), &[r.interaction.df]);
             let ab_ms = Series::new("ab_ms".into(), &[r.interaction.ms]);
-            let ab_f =
-                Series::new("ab_f".into(), &[r.interaction.f_statistic.unwrap_or(f64::NAN)]);
-            let ab_p_value =
-                Series::new("ab_p_value".into(), &[r.interaction.p_value.unwrap_or(f64::NAN)]);
+            let ab_f = Series::new(
+                "ab_f".into(),
+                &[r.interaction.f_statistic.unwrap_or(f64::NAN)],
+            );
+            let ab_p_value = Series::new(
+                "ab_p_value".into(),
+                &[r.interaction.p_value.unwrap_or(f64::NAN)],
+            );
             let residual_ss = Series::new("residual_ss".into(), &[r.residual.ss]);
             let residual_df = Series::new("residual_df".into(), &[r.residual.df]);
             let residual_ms = Series::new("residual_ms".into(), &[r.residual.ms]);
@@ -334,9 +357,26 @@ pub fn two_way_anova_fit(inputs: &[Series]) -> PolarsResult<Series> {
                 "two_way_anova".into(),
                 1,
                 [
-                    &a_ss, &a_df, &a_ms, &a_f, &a_p_value, &b_ss, &b_df, &b_ms, &b_f,
-                    &b_p_value, &ab_ss, &ab_df, &ab_ms, &ab_f, &ab_p_value, &residual_ss,
-                    &residual_df, &residual_ms, &grand_mean, &n,
+                    &a_ss,
+                    &a_df,
+                    &a_ms,
+                    &a_f,
+                    &a_p_value,
+                    &b_ss,
+                    &b_df,
+                    &b_ms,
+                    &b_f,
+                    &b_p_value,
+                    &ab_ss,
+                    &ab_df,
+                    &ab_ms,
+                    &ab_f,
+                    &ab_p_value,
+                    &residual_ss,
+                    &residual_df,
+                    &residual_ms,
+                    &grand_mean,
+                    &n,
                 ]
                 .into_iter(),
             )
