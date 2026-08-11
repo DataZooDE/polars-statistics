@@ -115,9 +115,16 @@ def two_way_anova(
     if isinstance(factor_b, str):
         factor_b = pl.col(factor_b)
 
-    # Encode factor columns as 0-indexed UInt32 codes (String→UInt32 direct cast fails)
-    factor_a_enc = factor_a.cast(pl.Categorical).to_physical().cast(pl.UInt32)
-    factor_b_enc = factor_b.cast(pl.Categorical).to_physical().cast(pl.UInt32)
+    # Encode each factor column as 0-indexed UInt32 codes independently.
+    # Using rank()-based encoding ensures each factor starts at 0 regardless of
+    # global Categorical catalog ordering (Pitfall 2: shared catalog shifts codes).
+    # rank(method="dense") - 1 gives 0-indexed integer codes for any string/int column.
+    factor_a_enc = (
+        factor_a.rank(method="dense").cast(pl.UInt32) - pl.lit(1, dtype=pl.UInt32)
+    )
+    factor_b_enc = (
+        factor_b.rank(method="dense").cast(pl.UInt32) - pl.lit(1, dtype=pl.UInt32)
+    )
 
     # Apply the finite mask to all three columns to keep row alignment
     mask = value.is_finite()
