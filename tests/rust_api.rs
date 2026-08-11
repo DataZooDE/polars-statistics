@@ -1870,7 +1870,9 @@ fn ols_column_pivot_fix_differently_scaled() {
     let n = 20usize;
     let x1: Vec<f64> = (0..n).map(|i| (i as f64 + 1.0) * 0.1).collect();
     let x2: Vec<f64> = (0..n).map(|i| ((i % 7) as f64 + 1.0) * 100.0).collect();
-    let y: Vec<f64> = x1.iter().zip(x2.iter())
+    let y: Vec<f64> = x1
+        .iter()
+        .zip(x2.iter())
         .map(|(&a, &b)| 1.0 + 2.0 * a + 3.0 * b)
         .collect();
 
@@ -1883,15 +1885,39 @@ fn ols_column_pivot_fix_differently_scaled() {
     ];
     let out = ols_fit(&inputs).expect("ols_fit pivot test failed");
     let st = out.struct_().unwrap();
-    let intercept = st.field_by_name("intercept").unwrap().f64().unwrap().get(0).unwrap();
-    let coefs_inner = st.field_by_name("coefficients").unwrap().list().unwrap().get_as_series(0).unwrap();
+    let intercept = st
+        .field_by_name("intercept")
+        .unwrap()
+        .f64()
+        .unwrap()
+        .get(0)
+        .unwrap();
+    let coefs_inner = st
+        .field_by_name("coefficients")
+        .unwrap()
+        .list()
+        .unwrap()
+        .get_as_series(0)
+        .unwrap();
     let c1 = coefs_inner.f64().unwrap().get(0).unwrap();
-    let c2 = coefs_inner.f64().unwrap().get(1)
+    let c2 = coefs_inner
+        .f64()
+        .unwrap()
+        .get(1)
         .expect("expected coefficient[1] (x2) from the OLS pivot fit");
 
-    assert!((intercept - 1.0).abs() < 1e-6, "pivot OLS intercept: expected 1.0, got {intercept}");
-    assert!((c1 - 2.0).abs() < 1e-6, "pivot OLS x1 coef: expected 2.0, got {c1}");
-    assert!((c2 - 3.0).abs() < 1e-6, "pivot OLS x2 coef: expected 3.0, got {c2}");
+    assert!(
+        (intercept - 1.0).abs() < 1e-6,
+        "pivot OLS intercept: expected 1.0, got {intercept}"
+    );
+    assert!(
+        (c1 - 2.0).abs() < 1e-6,
+        "pivot OLS x1 coef: expected 2.0, got {c1}"
+    );
+    assert!(
+        (c2 - 3.0).abs() < 1e-6,
+        "pivot OLS x2 coef: expected 3.0, got {c2}"
+    );
 }
 
 #[test]
@@ -1901,7 +1927,9 @@ fn wls_column_pivot_fix_differently_scaled() {
     let n = 20usize;
     let x1: Vec<f64> = (0..n).map(|i| (i as f64 + 1.0) * 0.1).collect();
     let x2: Vec<f64> = (0..n).map(|i| ((i % 7) as f64 + 1.0) * 100.0).collect();
-    let y: Vec<f64> = x1.iter().zip(x2.iter())
+    let y: Vec<f64> = x1
+        .iter()
+        .zip(x2.iter())
         .map(|(&a, &b)| 1.0 + 2.0 * a + 3.0 * b)
         .collect();
     let w = vec![1.0_f64; n];
@@ -1916,15 +1944,39 @@ fn wls_column_pivot_fix_differently_scaled() {
     ];
     let out = wls_fit(&inputs).expect("wls_fit pivot test failed");
     let st = out.struct_().unwrap();
-    let intercept = st.field_by_name("intercept").unwrap().f64().unwrap().get(0).unwrap();
-    let coefs_inner = st.field_by_name("coefficients").unwrap().list().unwrap().get_as_series(0).unwrap();
+    let intercept = st
+        .field_by_name("intercept")
+        .unwrap()
+        .f64()
+        .unwrap()
+        .get(0)
+        .unwrap();
+    let coefs_inner = st
+        .field_by_name("coefficients")
+        .unwrap()
+        .list()
+        .unwrap()
+        .get_as_series(0)
+        .unwrap();
     let c1 = coefs_inner.f64().unwrap().get(0).unwrap();
-    let c2 = coefs_inner.f64().unwrap().get(1)
+    let c2 = coefs_inner
+        .f64()
+        .unwrap()
+        .get(1)
         .expect("expected coefficient[1] (x2) from the WLS pivot fit");
 
-    assert!((intercept - 1.0).abs() < 1e-6, "pivot WLS intercept: expected 1.0, got {intercept}");
-    assert!((c1 - 2.0).abs() < 1e-6, "pivot WLS x1 coef: expected 2.0, got {c1}");
-    assert!((c2 - 3.0).abs() < 1e-6, "pivot WLS x2 coef: expected 3.0, got {c2}");
+    assert!(
+        (intercept - 1.0).abs() < 1e-6,
+        "pivot WLS intercept: expected 1.0, got {intercept}"
+    );
+    assert!(
+        (c1 - 2.0).abs() < 1e-6,
+        "pivot WLS x1 coef: expected 2.0, got {c1}"
+    );
+    assert!(
+        (c2 - 3.0).abs() < 1e-6,
+        "pivot WLS x2 coef: expected 3.0, got {c2}"
+    );
 }
 
 #[test]
@@ -1937,7 +1989,9 @@ fn bls_column_pivot_fix_differently_scaled() {
     let n = 20usize;
     let x1: Vec<f64> = (0..n).map(|i| (i as f64 + 1.0) * 0.1).collect();
     let x2: Vec<f64> = (0..n).map(|i| ((i % 7) as f64 + 1.0) * 100.0).collect();
-    let y: Vec<f64> = x1.iter().zip(x2.iter())
+    let y: Vec<f64> = x1
+        .iter()
+        .zip(x2.iter())
         .map(|(&a, &b)| 1.0 + 2.0 * a + 3.0 * b)
         .collect();
 
@@ -1951,13 +2005,37 @@ fn bls_column_pivot_fix_differently_scaled() {
     ];
     let out = bls_fit(&inputs).expect("bls_fit pivot test failed");
     let st = out.struct_().unwrap();
-    let intercept = st.field_by_name("intercept").unwrap().f64().unwrap().get(0).unwrap();
-    let coefs_inner = st.field_by_name("coefficients").unwrap().list().unwrap().get_as_series(0).unwrap();
+    let intercept = st
+        .field_by_name("intercept")
+        .unwrap()
+        .f64()
+        .unwrap()
+        .get(0)
+        .unwrap();
+    let coefs_inner = st
+        .field_by_name("coefficients")
+        .unwrap()
+        .list()
+        .unwrap()
+        .get_as_series(0)
+        .unwrap();
     let c1 = coefs_inner.f64().unwrap().get(0).unwrap();
-    let c2 = coefs_inner.f64().unwrap().get(1)
+    let c2 = coefs_inner
+        .f64()
+        .unwrap()
+        .get(1)
         .expect("expected coefficient[1] (x2) from the BLS pivot fit");
 
-    assert!((intercept - 1.0).abs() < 1e-6, "pivot BLS intercept: expected 1.0, got {intercept}");
-    assert!((c1 - 2.0).abs() < 1e-6, "pivot BLS x1 coef: expected 2.0, got {c1}");
-    assert!((c2 - 3.0).abs() < 1e-6, "pivot BLS x2 coef: expected 3.0, got {c2}");
+    assert!(
+        (intercept - 1.0).abs() < 1e-6,
+        "pivot BLS intercept: expected 1.0, got {intercept}"
+    );
+    assert!(
+        (c1 - 2.0).abs() < 1e-6,
+        "pivot BLS x1 coef: expected 2.0, got {c1}"
+    );
+    assert!(
+        (c2 - 3.0).abs() < 1e-6,
+        "pivot BLS x2 coef: expected 3.0, got {c2}"
+    );
 }

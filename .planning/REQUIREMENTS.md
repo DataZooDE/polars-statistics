@@ -21,9 +21,9 @@ Requirements for this milestone (`anofox-*` upgrade + API parity + 0.6.0 release
 
 ### Statistics API Parity
 
-- [ ] **STAT-01**: User can compute a one-way ANOVA via the Polars expression API
-- [ ] **STAT-02**: User can compute a two-way ANOVA via the Polars expression API
-- [ ] **STAT-03**: User can compute a repeated-measures ANOVA via the Polars expression API
+- [x] **STAT-01**: User can compute a one-way ANOVA via the Polars expression API
+- [x] **STAT-02**: User can compute a two-way ANOVA via the Polars expression API
+- [x] **STAT-03**: User can compute a repeated-measures ANOVA via the Polars expression API
 - [ ] **STAT-04**: User can compute the energy distance test via the Polars expression API
 - [ ] **STAT-05**: Every remaining unexposed `anofox-statistics` function identified in AUDIT-01 is callable via the Polars/Python API
 
@@ -85,9 +85,9 @@ Deferred to future releases.
 | DEP-04 | Phase 1 | Complete |
 | AUDIT-01 | Phase 2 | Complete |
 | AUDIT-02 | Phase 2 | Complete |
-| STAT-01 | Phase 3 | Pending |
-| STAT-02 | Phase 3 | Pending |
-| STAT-03 | Phase 3 | Pending |
+| STAT-01 | Phase 3 | Complete |
+| STAT-02 | Phase 3 | Complete |
+| STAT-03 | Phase 3 | Complete |
 | STAT-04 | Phase 3 | Pending |
 | STAT-05 | Phase 3 | Pending |
 | REGR-01 | Phase 4 | Pending |
