@@ -168,10 +168,11 @@ class TestRmAnova:
     """STAT-03: repeated_measures_anova expression smoke tests."""
 
     def _balanced_df(self):
-        """4 subjects × 3 conditions balanced long-format data."""
+        """4 subjects × 3 conditions balanced long-format data with within-subject noise."""
         return pl.DataFrame(
             {
-                "y": [1.0, 2.0, 3.0, 2.0, 3.0, 4.0, 3.0, 4.0, 5.0, 4.0, 5.0, 6.0],
+                # Slight jitter so error_ss > 0 and ws_f is not inf
+                "y": [1.0, 2.1, 3.2, 2.3, 3.1, 4.0, 3.2, 4.3, 5.1, 4.1, 5.2, 6.3],
                 "s": [1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4],
                 "c": [1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3],
             }
