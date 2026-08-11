@@ -1929,9 +1929,11 @@ fn wls_column_pivot_fix_differently_scaled() {
 
 #[test]
 fn bls_column_pivot_fix_differently_scaled() {
-    // BLS (NNLS-bounded) on the same positive-coefficient differently-scaled design.
-    // Bounds [-10, 10] are loose enough to not constrain the true solution
-    // (true coefficients are 2.0 and 3.0, both within bounds).
+    // BLS uses QR with column pivoting in its `solve_passive_set` step; 0.5.13
+    // applies the same col_piv_qr unpermute fix as OLS/WLS. Bounds [-10, 10] are
+    // loose enough to not constrain the true solution (true coefficients 2.0 and
+    // 3.0 are both within bounds), so the active set is empty and BLS reduces to
+    // an unconstrained QR solve — exercising the pivot fix directly.
     let n = 20usize;
     let x1: Vec<f64> = (0..n).map(|i| (i as f64 + 1.0) * 0.1).collect();
     let x2: Vec<f64> = (0..n).map(|i| ((i % 7) as f64 + 1.0) * 100.0).collect();
