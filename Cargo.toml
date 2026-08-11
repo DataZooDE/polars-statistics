@@ -61,10 +61,10 @@ thiserror = "2.0.17"
 serde = { version = "1.0.228", features = ["derive"] }
 
 # Regression
-anofox-regression = "0.5.4"
+anofox-regression = "0.5.13"
 
 # Statistics
-anofox-statistics = "0.4.1"
+anofox-statistics = "0.4.2"
 
 [profile.release]
 codegen-units = 1
