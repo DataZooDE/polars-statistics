@@ -77,17 +77,44 @@ Deferred to future releases.
 
 ## Traceability
 
-Populated during roadmap creation.
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (to be mapped by roadmap) | — | Pending |
+| DEP-01 | Phase 1 | Pending |
+| DEP-02 | Phase 1 | Pending |
+| DEP-03 | Phase 1 | Pending |
+| DEP-04 | Phase 1 | Pending |
+| AUDIT-01 | Phase 2 | Pending |
+| AUDIT-02 | Phase 2 | Pending |
+| STAT-01 | Phase 3 | Pending |
+| STAT-02 | Phase 3 | Pending |
+| STAT-03 | Phase 3 | Pending |
+| STAT-04 | Phase 3 | Pending |
+| STAT-05 | Phase 3 | Pending |
+| REGR-01 | Phase 4 | Pending |
+| REGR-02 | Phase 4 | Pending |
+| REGR-03 | Phase 4 | Pending |
+| REGR-04 | Phase 4 | Pending |
+| REGR-05 | Phase 4 | Pending |
+| REGR-06 | Phase 4 | Pending |
+| DOCS-01 | Phase 5 | Pending |
+| DOCS-02 | Phase 5 | Pending |
+| DOCS-03 | Phase 5 | Pending |
+| DOCS-04 | Phase 5 | Pending |
+| TEST-01 | Phase 6 | Pending |
+| TEST-02 | Phase 6 | Pending |
+| TEST-03 | Phase 6 | Pending |
+| TEST-04 | Phase 6 | Pending |
+| TEST-05 | Phase 6 | Pending |
+| REL-01 | Phase 7 | Pending |
+| REL-02 | Phase 7 | Pending |
+| REL-03 | Phase 7 | Pending |
+| REL-04 | Phase 7 | Pending |
 
 **Coverage:**
 - v1 requirements: 28 total
-- Mapped to phases: 0 (roadmap pending)
-- Unmapped: 28 ⚠️
+- Mapped to phases: 28
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-08-11*
-*Last updated: 2026-08-11 after initial definition*
+*Last updated: 2026-08-11 after roadmap creation (traceability populated)*
