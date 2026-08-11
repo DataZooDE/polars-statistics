@@ -4,16 +4,16 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 1
 current_phase_name: Dependency Modernization
-status: executing
-stopped_at: Completed 01-01-PLAN.md — both anofox crates bumped, build + clippy clean
-last_updated: "2026-08-11T19:15:43.145Z"
+status: verifying
+stopped_at: Completed 01-02-PLAN.md — full Rust (15 passed) and pytest (457 passed) suites green; DEP-04 satisfied
+last_updated: "2026-08-11T19:27:47.066Z"
 last_activity: 2026-08-11
 last_activity_desc: Roadmap created (7 phases, layered structure, 28/28 requirements mapped)
 progress:
   total_phases: 1
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 1
+  completed_plans: 2
 ---
 
 # Project State
@@ -29,10 +29,10 @@ See: .planning/PROJECT.md (updated 2026-08-11)
 
 Phase: 1 (Dependency Modernization) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-08-11 — Phase 1 execution started
 
-Progress: [█████░░░░░] 50%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -59,6 +59,7 @@ Progress: [█████░░░░░] 50%
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
 | Phase 01 P01 | 10 | 1 tasks | 1 files |
+| Phase 01 P02 | 9 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -73,6 +74,8 @@ Recent decisions affecting current work:
 - Roadmap: Layered (sequential technical-stage) phase structure — dep bump first, release last, audit before parity.
 - [Phase ?]: Scoped cargo update (-p flags) prevents polars/pyo3 version churn from unrelated dep bumps
 - [Phase ?]: No wrapper source reconciliation needed for anofox 0.5.4->0.5.13 bump — all call-site symbols stable
+- [Phase ?]: Fixed rank-deficient test design (x2=100*x1) to periodic modular x2=((i%7)+1)*100 — maintains >=100:1 norm ratio with full rank
+- [Phase ?]: Pre-existing .venv used for maturin develop + pytest — no new venv creation needed
 
 ### Pending Todos
 
@@ -92,6 +95,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-11T19:15:43.137Z
-Stopped at: Completed 01-01-PLAN.md — both anofox crates bumped, build + clippy clean
+Last session: 2026-08-11T19:27:47.037Z
+Stopped at: Completed 01-02-PLAN.md — full Rust (15 passed) and pytest (457 passed) suites green; DEP-04 satisfied
 Resume file: None
