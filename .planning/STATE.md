@@ -4,16 +4,16 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 2
 current_phase_name: Public API Audit
-status: executing
-stopped_at: Completed 01-02-PLAN.md — full Rust (15 passed) and pytest (457 passed) suites green; DEP-04 satisfied
-last_updated: "2026-08-11T20:08:57.383Z"
+status: verifying
+stopped_at: Completed 02-01-PLAN.md — 02-API-AUDIT.md written; all 21 candidates resolved; ICC stub, LOWESS, FactorSummary flagged; 3 deferred questions recorded
+last_updated: "2026-08-11T20:15:12.648Z"
 last_activity: 2026-08-11
 last_activity_desc: Roadmap created (7 phases, layered structure, 28/28 requirements mapped)
 progress:
   total_phases: 2
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 3
-  completed_plans: 2
+  completed_plans: 3
 ---
 
 # Project State
@@ -27,12 +27,12 @@ See: .planning/PROJECT.md (updated 2026-08-11)
 
 ## Current Position
 
-Phase: 2 — Public API Audit
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-08-11 — Phase 1 complete, transitioned to Phase 2
+Phase: 2 (Public API Audit) — EXECUTING
+Plan: 1 of 1
+Status: Phase complete — ready for verification
+Last activity: 2026-08-11 — Phase 2 execution started
 
-Progress: [█░░░░░░░░░] 14% (1/7 phases complete)
+Progress: [██████████] 100% (1/7 phases complete)
 
 ## Performance Metrics
 
@@ -60,6 +60,7 @@ Progress: [█░░░░░░░░░] 14% (1/7 phases complete)
 |------|----------|-------|-------|
 | Phase 01 P01 | 10 | 1 tasks | 1 files |
 | Phase 01 P02 | 9 | 2 tasks | 1 files |
+| Phase 02-public-api-audit P01 | 12 | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -76,6 +77,9 @@ Recent decisions affecting current work:
 - [Phase ?]: No wrapper source reconciliation needed for anofox 0.5.4->0.5.13 bump — all call-site symbols stable
 - [Phase ?]: Fixed rank-deficient test design (x2=100*x1) to periodic modular x2=((i%7)+1)*100 — maintains >=100:1 norm ratio with full rank
 - [Phase ?]: Pre-existing .venv used for maturin develop + pytest — no new venv creation needed
+- [Phase ?]: ICC stub classified as exposed-but-stubbed — icc_fit returns all-NaN with TODO; Phase 3 must implement real matrix-input ICC
+- [Phase ?]: LOWESS confirmed internal-only — lowess_smooth_weights not in solvers/mod.rs pub use list; not a user-facing gap
+- [Phase ?]: FactorSummary classified HIGH priority user output (FittedGlmm::factors()) — not internal despite naming
 
 ### Pending Todos
 
@@ -96,6 +100,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-11
-Stopped at: Phase 1 complete (verified passed, code-reviewed + fixed); autonomous run advancing to Phase 2 (Public API Audit)
+Last session: 2026-08-11T20:15:11.749Z
+Stopped at: Completed 02-01-PLAN.md — 02-API-AUDIT.md written; all 21 candidates resolved; ICC stub, LOWESS, FactorSummary flagged; 3 deferred questions recorded
 Resume file: None

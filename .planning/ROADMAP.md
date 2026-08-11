@@ -63,10 +63,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Each gap entry records the target exposure surface (Polars expression, PyModel class, or both) so parity work is unambiguous
   4. The known candidates (ANOVA family, energy distance, GLMM, P-spline, Gamma GLM, HC inference, diagnostics) are confirmed present-or-absent against the actual upgraded crate surface
 
-**Plans**: 1 plan
+**Plans**: 1/1 plans executed
 **Wave 1**
 
-- [ ] 02-01-PLAN.md — Synthesize RESEARCH.md enumeration into the authoritative 02-API-AUDIT.md gap list (both crates, verdict + target surface per item)
+- [x] 02-01-PLAN.md — Synthesize RESEARCH.md enumeration into the authoritative 02-API-AUDIT.md gap list (both crates, verdict + target surface per item)
 
 ### Phase 3: Statistics API Parity
 
@@ -149,7 +149,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Dependency Modernization | 2/2 | Complete    | 2026-08-11 |
-| 2. Public API Audit | 0/1 | Not started | - |
+| 2. Public API Audit | 1/1 | In Progress|  |
 | 3. Statistics API Parity | 0/TBD | Not started | - |
 | 4. Regression API Parity | 0/TBD | Not started | - |
 | 5. Documentation | 0/TBD | Not started | - |

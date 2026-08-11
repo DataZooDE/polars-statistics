@@ -16,8 +16,8 @@ Requirements for this milestone (`anofox-*` upgrade + API parity + 0.6.0 release
 
 ### API Audit
 
-- [ ] **AUDIT-01**: An authoritative, documented gap list enumerates every public `anofox-statistics` function not yet exposed via the Polars/Python API
-- [ ] **AUDIT-02**: An authoritative, documented gap list enumerates every public `anofox-regression` capability not yet exposed via expressions or PyModel classes
+- [x] **AUDIT-01**: An authoritative, documented gap list enumerates every public `anofox-statistics` function not yet exposed via the Polars/Python API
+- [x] **AUDIT-02**: An authoritative, documented gap list enumerates every public `anofox-regression` capability not yet exposed via expressions or PyModel classes
 
 ### Statistics API Parity
 
@@ -83,8 +83,8 @@ Deferred to future releases.
 | DEP-02 | Phase 1 | Complete |
 | DEP-03 | Phase 1 | Complete |
 | DEP-04 | Phase 1 | Complete |
-| AUDIT-01 | Phase 2 | Pending |
-| AUDIT-02 | Phase 2 | Pending |
+| AUDIT-01 | Phase 2 | Complete |
+| AUDIT-02 | Phase 2 | Complete |
 | STAT-01 | Phase 3 | Pending |
 | STAT-02 | Phase 3 | Pending |
 | STAT-03 | Phase 3 | Pending |
