@@ -279,12 +279,12 @@ internal helpers with no meaningful user-facing purpose. They are not gaps that 
 
 | Item | Kind | Exposed? | Target Surface | Priority | Notes |
 |------|------|----------|----------------|----------|-------|
-| `HcType` | enum | YES (imported) | expression (parameter) — **HC output not yet wired** | HIGH | Required by REGR-04; `HcType` is imported in `regression.rs` and `parse_hc_type` exists, but no user-callable expression returns HC inference output |
-| `HcInference` | struct | **NO** | expression (output) | HIGH | Required by REGR-04; holds HC SE, t-stats, p-values, CIs per coefficient |
-| `HcResult` | struct | **NO** | expression (internal) | HIGH | Helper struct within HC inference |
-| `HcInterceptInference` | struct | **NO** | expression (output) | HIGH | Intercept-specific HC inference |
-| `compute_hc_inference` | fn | **NO** | expression (backing fn) | HIGH | The function that computes `HcInference` from residuals + leverage + X |
-| `compute_hc_standard_errors` | fn | **NO** | expression (backing fn) | MEDIUM | Lower-level: SEs only, without full t/p/CI |
+| `HcType` | enum | YES | expression (parameter) + PyModel | MEDIUM | Exposed today: `ols_summary` accepts an `hc_type` parameter, and `OLS.hc_inference(x, hc_type)` accepts it. `parse_hc_type` maps the string. Fully reachable for OLS. |
+| `HcInference` | struct | **PARTIAL (OLS only)** | expression (output) + PyModel | HIGH | HC output IS surfaced for OLS: `ols_summary` with `hc_type` routes through `HcInference` and populates `std_error`/`statistic`/`p_value` (`src/expressions/regression.rs:2640-2690`); `OLS.hc_inference()` returns a dict of HC SEs (`src/pymodels/py_ols.rs:371-405`). **Gap (REGR-04) = extend HC output to non-OLS regressors (Ridge/WLS/GLM…) and/or broaden the expression surface — NOT implement from scratch.** |
+| `HcResult` | struct | PARTIAL (OLS path) | expression (internal) | LOW | Helper struct within the already-wired OLS HC inference path |
+| `HcInterceptInference` | struct | PARTIAL (OLS path) | expression (output) | MEDIUM | Intercept-specific HC inference; reachable via the OLS HC path, gap = non-OLS coverage |
+| `compute_hc_inference` | fn | PARTIAL (OLS path) | expression (backing fn) | MEDIUM | Backing fn already invoked by the OLS `hc_type` path; gap = wire it for other regressors |
+| `compute_hc_standard_errors` | fn | PARTIAL (OLS path) | expression (backing fn) | LOW | Lower-level SEs-only path; used within the OLS HC route |
 | `CoefficientInference` | struct | NO | util | LOW | Internal inference struct used by OLS/Ridge summary; not user-facing directly |
 | `compute_prediction_intervals` | fn | NO | util | LOW | Internal prediction interval computation; already surfaced via `*_predict` expressions |
 | `compute_xtx_inverse*` (8 variants) | fn | NO | util | LOW | Matrix inversion helpers; internal |
@@ -423,7 +423,7 @@ All 21 known candidates from the CONTEXT.md enumeration, with explicit verdicts.
 | `GlmmRegressor` | YES (regression 0.5.12+) | NO | Gap confirmed — Phase 4 action item |
 | `PSplineRegressor` | YES (regression 0.5.10+) | NO | Gap confirmed — Phase 4 action item |
 | Gamma GLM (`GammaRegressor`) | YES (regression 0.5.5+) | NO | Gap confirmed — Phase 4 action item |
-| `HcInference` / `HcType` | YES (both) | `HcType` imported but HC output not wired | Partial — HC output is a gap (REGR-04) |
+| `HcInference` / `HcType` | YES (both) | PARTIAL — HC output IS wired for OLS (`ols_summary` `hc_type` param + `OLS.hc_inference()`) | Partial — reachable for OLS; REGR-04 gap = extend HC to non-OLS regressors, not implement from scratch |
 | Cook's distance | YES | YES | No gap — `cooks_distance`, `influential_cooks`, `influential_dffits` all exposed |
 | VIF | YES | YES | No gap — `vif`, `high_vif_predictors`, `generalized_vif` all exposed |
 | Leverage | YES | YES | No gap — `leverage`, `high_leverage_points` exposed |
@@ -485,8 +485,8 @@ type for multi-factor `GlmmRegressor` fits and must be exposed as part of the Ph
 
 ## Deferred Scope Questions (for Phase 3/4 planning)
 
-These three questions were identified during enumeration and carry a recommendation but have NOT
-been resolved here — they are deferred as explicit decisions for the Phase 3 and Phase 4 planners.
+These four questions were identified during enumeration/verification and carry a recommendation but
+have NOT been resolved here — they are deferred as explicit decisions for the Phase 3 and Phase 4 planners.
 
 ### Q1: Does STAT-04 require the nD `energy_distance_test` overload, or is the existing 1D wrapper sufficient?
 
@@ -521,6 +521,24 @@ been resolved here — they are deferred as explicit decisions for the Phase 3 a
 - **Status:** Deferred to Phase 3 planning. Recorded in this audit as MEDIUM priority under STAT-05,
   with the "exposed-but-stubbed" special-case flag above.
 
+### Q4: How should REGR-04 (HC inference) be framed, given HC is already reachable for OLS?
+
+- **What we know (corrected during Phase 2 verification):** HC inference is NOT unexposed. It is
+  already reachable for OLS via two surfaces: the `ols_summary` expression accepts an `hc_type`
+  parameter that routes through `HcInference` and populates `std_error`/`statistic`/`p_value`
+  (`src/expressions/regression.rs:2640-2690`), and the `OLS` PyModel exposes
+  `.hc_inference(x, hc_type)` returning a dict of HC standard errors (`src/pymodels/py_ols.rs:371-405`).
+  `HcType`/`parse_hc_type` are wired. The earlier "NO / not wired" rows in this audit were inaccurate
+  and have been corrected to PARTIAL (OLS only).
+- **What is unclear:** REGR-04's target scope. Two framings:
+  - **Option A (conservative):** REGR-04 = validate + document the existing OLS HC surface only.
+  - **Option B (extend):** REGR-04 = extend HC output to non-OLS regressors (Ridge/WLS/GLM…) and/or
+    broaden the expression surface beyond `ols_summary`.
+- **Recommendation:** Phase 4 planner decides A vs B based on how broadly HC standard errors are
+  expected across regressor types. Do NOT plan REGR-04 as "implement HC from scratch" — that work
+  already exists for OLS.
+- **Status:** Deferred to Phase 4 planning.
+
 ---
 
 ## Cross-Reference: Requirement to Gap
@@ -535,7 +553,7 @@ been resolved here — they are deferred as explicit decisions for the Phase 3 a
 | REGR-01 | `GlmmRegressor` / `FittedGlmm` / `GlmmRegressorBuilder` / `FactorSummary` | Phase 4 | HIGH |
 | REGR-02 | `PSplineRegressor` / `FittedPSpline` | Phase 4 | HIGH |
 | REGR-03 | `GammaRegressor` / `FittedGamma` | Phase 4 | HIGH |
-| REGR-04 | `HcInference` + `compute_hc_inference` + `HcResult` + `HcInterceptInference` (and `HcType` output wiring — already imported but not surfaced) | Phase 4 | HIGH |
+| REGR-04 | HC inference is ALREADY reachable for OLS (`ols_summary` `hc_type` param + `OLS.hc_inference()`). REGR-04 scope = **extend** HC output to non-OLS regressors (Ridge/WLS/GLM…) and/or broaden the expression surface — NOT implement from scratch. See Deferred Scope Question #4. | Phase 4 | HIGH |
 | REGR-05 | GLM dispersion/residual variants: `estimate_dispersion_deviance`, `estimate_dispersion_pearson`, `pearson_chi_squared` (general form), `standardized_deviance_residuals`, `standardized_pearson_residuals` — most diagnostics already exposed | Phase 4 | MEDIUM |
 | REGR-06 | `TheilSenRegressor`, `RansacRegressor`, `BayesianRidge` / `ArdRegression`, `LarsRegressor`, `PassiveAggressiveRegressor`, `MomentAccumulator` | Phase 4 | MEDIUM |
 
