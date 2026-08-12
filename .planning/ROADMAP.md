@@ -147,7 +147,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Rust doc comments are present for all new public wrapper functions
   4. The CHANGELOG documents the new API and the 0.6.0 release
 
-**Plans**: 1/4 plans executed
+**Plans**: 2/4 plans executed
 
 **Wave 1** *(tracer — proves the doc pipeline on one symbol)*
 
@@ -155,7 +155,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Wave 2** *(blocked on 05-01 — parallel; disjoint file sets)*
 
-- [ ] 05-02-PLAN.md — DOCS-01/03: audit + fill Python docstrings and Rust /// doc comments for all remaining new statistics + regression symbols (incl. WLS-HC + ICC caveats)
+- [x] 05-02-PLAN.md — DOCS-01/03: audit + fill Python docstrings and Rust /// doc comments for all remaining new statistics + regression symbols (incl. WLS-HC + ICC caveats)
 - [ ] 05-03-PLAN.md — DOCS-02: add mkdocs reference sections + nav for all remaining new API; clean mkdocs build
 - [ ] 05-04-PLAN.md — DOCS-04: complete the CHANGELOG 0.6.0 section (new API, crate bumps, column-pivot fix, known limitations)
 
@@ -199,6 +199,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 2. Public API Audit | 1/1 | Complete    | 2026-08-11 |
 | 3. Statistics API Parity | 4/4 | Complete    | 2026-08-12 |
 | 4. Regression API Parity | 6/6 | Complete    | 2026-08-12 |
-| 5. Documentation | 1/4 | In Progress|  |
+| 5. Documentation | 2/4 | In Progress|  |
 | 6. Testing & Validation | 0/TBD | Not started | - |
 | 7. Release 0.6.0 | 0/TBD | Not started | - |
