@@ -107,6 +107,11 @@ from polars_statistics.exprs.regression import (
     poisson_pearson_residuals,
     poisson_deviance_residuals,
     poisson_working_residuals,
+    gamma_dispersion_deviance,
+    gamma_dispersion_pearson,
+    gamma_pearson_chi_squared,
+    gamma_standardized_pearson_residuals,
+    gamma_standardized_deviance_residuals,
     # GLM
     logistic,
     logistic_regression,
@@ -290,6 +295,11 @@ __all__ = [
     "poisson_pearson_residuals",
     "poisson_deviance_residuals",
     "poisson_working_residuals",
+    "gamma_dispersion_deviance",
+    "gamma_dispersion_pearson",
+    "gamma_pearson_chi_squared",
+    "gamma_standardized_pearson_residuals",
+    "gamma_standardized_deviance_residuals",
     # GLM expressions
     "logistic",
     "logistic_regression",
