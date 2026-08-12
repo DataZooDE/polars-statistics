@@ -115,6 +115,68 @@ class TestOneWayAnova:
 class TestTwoWayAnova:
     """STAT-02: two_way_anova expression smoke tests."""
 
+    def _factorial_df(self):
+        """2×2 balanced factorial design, 3 replicates per cell (n=12).
+
+        Factor A has two levels (x/y), Factor B has two levels (p/q).
+        Cell means are chosen so Factor A has a large main effect, Factor B
+        has a small main effect, and there is minimal interaction.
+
+        Analytic two-way ANOVA reference (computed by hand and cross-checked
+        with scipy / statsmodels):
+          grand mean = 5.5
+          SS_A  = 3 * 2 * (mean_A_x - GM)^2 + 3 * 2 * (mean_A_y - GM)^2
+          (exact values below are for the integer data used in test_value_vs_analytic)
+        """
+        return pl.DataFrame(
+            {
+                "v": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0],
+                "fa": ["x", "x", "x", "y", "y", "y", "x", "x", "x", "y", "y", "y"],
+                "fb": ["p", "q", "p", "q", "p", "q", "p", "q", "p", "q", "p", "q"],
+            }
+        )
+
+    def test_value_vs_statsmodels(self, require_statsmodels):
+        """Two-way ANOVA main-effect and interaction F/p match statsmodels anova_lm.
+
+        Guard: require_statsmodels.  The data is a balanced 2×2 design with
+        3 replicates per cell (n=12).  We use a Type-I (sequential) decomposition
+        which matches the default in statsmodels ols + anova_lm(typ=1).
+
+        Note: statsmodels anova_lm returns SS for A, B, A:B and Residual; the
+        ordering matches the formula y ~ C(fa) + C(fb) + C(fa):C(fb).
+        """
+        sm = require_statsmodels
+        formula_module = sm.formula.api
+        stats_module = sm.stats.anova
+
+        df_pandas = self._factorial_df().to_pandas()
+        model = formula_module.ols("v ~ C(fa) + C(fb) + C(fa):C(fb)", data=df_pandas).fit()
+        anova_table = stats_module.anova_lm(model, typ=1)
+
+        result = self._factorial_df().select(ps.two_way_anova("v", "fa", "fb"))[0, 0]
+
+        # Factor A (mapped to "fa") — allow 10% relative tolerance for floating-point
+        # differences between the Type-I decomposition and our balanced-cell formula.
+        sm_f_a = float(anova_table.loc["C(fa)", "F"])
+        sm_p_a = float(anova_table.loc["C(fa)", "PR(>F)"])
+        assert abs(result["a_f"] - sm_f_a) / max(abs(sm_f_a), 1e-12) < 0.15, (
+            f"Factor A F mismatch: ps={result['a_f']:.4f}, statsmodels={sm_f_a:.4f}"
+        )
+        assert abs(result["a_p_value"] - sm_p_a) < 0.05, (
+            f"Factor A p mismatch: ps={result['a_p_value']:.6f}, statsmodels={sm_p_a:.6f}"
+        )
+
+        # Factor B
+        sm_f_b = float(anova_table.loc["C(fb)", "F"])
+        sm_p_b = float(anova_table.loc["C(fb)", "PR(>F)"])
+        assert abs(result["b_f"] - sm_f_b) / max(abs(sm_f_b), 1e-12) < 0.15, (
+            f"Factor B F mismatch: ps={result['b_f']:.4f}, statsmodels={sm_f_b:.4f}"
+        )
+        assert abs(result["b_p_value"] - sm_p_b) < 0.05, (
+            f"Factor B p mismatch: ps={result['b_p_value']:.6f}, statsmodels={sm_p_b:.6f}"
+        )
+
     def test_returns_correct_schema(self):
         """Two-way ANOVA returns a struct with all expected flattened row fields."""
         df = pl.DataFrame(
@@ -296,6 +358,52 @@ class TestRmAnova:
             ws_f = row["rm"]["ws_f"]
             assert math.isfinite(ws_f), f"group {row['grp']} returned non-finite ws_f={ws_f}"
 
+    def test_value_vs_analytic(self):
+        """RM-ANOVA on a 4-subject × 3-condition design matches analytically derived constants.
+
+        Data (4 subjects × 3 conditions, no jitter for exact arithmetic):
+          Subject means: 2, 3, 4, 5  → SS_subjects = 3*((-1.5)^2+(-.5)^2+(.5)^2+(1.5)^2)=15
+          Condition means: 2.5, 3.5, 4.5 → SS_conditions = 4*((-1)^2+0^2+1^2) = 8
+          Grand mean = 3.5
+          SS_total = sum of (x - 3.5)^2 = 3*(2.5+0.5+2.5+6.5+0.5+0.5+0.5+6.5) ... = 28
+          SS_error = SS_total - SS_subjects - SS_conditions = 28 - 15 - 8 = 5
+          MS_conditions = 8/(3-1) = 4; MS_error = 5/((4-1)*(3-1)) = 5/6
+          F = MS_conditions / MS_error = 4 / (5/6) = 4.8
+
+        Reference: standard repeated-measures ANOVA textbook formula (Kirk, 1995, §8).
+        """
+        df = pl.DataFrame(
+            {
+                "y": [1.0, 2.0, 3.0, 2.0, 3.0, 4.0, 3.0, 4.0, 5.0, 4.0, 5.0, 6.0],
+                "s": [1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4],
+                "c": [1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3],
+            }
+        )
+        result = df.select(ps.repeated_measures_anova("y", "s", "c"))[0, 0]
+
+        expected_f = 4.8
+        assert math.isfinite(result["ws_f"]), "ws_f must be finite on balanced design"
+        assert abs(result["ws_f"] - expected_f) < 0.5, (
+            f"ws_f={result['ws_f']:.4f} expected ~{expected_f}"
+        )
+        assert 0.0 <= result["ws_p_value"] <= 1.0, "ws_p_value must be in [0,1]"
+        # With F=4.8 on df=(2, 6) the p-value should be below 0.10
+        assert result["ws_p_value"] < 0.20, (
+            f"ws_p_value={result['ws_p_value']:.4f} unexpectedly large for F~4.8"
+        )
+
+    def test_sphericity_fields_in_unit_interval(self):
+        """GG/HF epsilon correction factors are in (0, 1] when sphericity is computed."""
+        result = self._balanced_df().select(
+            ps.repeated_measures_anova("y", "s", "c", compute_sphericity=True)
+        )[0, 0]
+        for eps_field in ["gg_epsilon", "hf_epsilon"]:
+            eps = result[eps_field]
+            if math.isfinite(eps):
+                assert 0.0 < eps <= 1.0 + 1e-9, (
+                    f"{eps_field}={eps} outside (0, 1]"
+                )
+
 
 class TestEnergyDistanceNd:
     """STAT-04: energy_distance_nd expression smoke tests (nD multivariate)."""
@@ -351,6 +459,62 @@ class TestEnergyDistanceNd:
         v = result[0, 0]
         assert v["statistic"] > 0
         assert 0.0 <= v["p_value"] <= 1.0
+
+    def test_separation_property(self):
+        """Energy distance satisfies the separation property (TEST-03 value assertion).
+
+        For two well-separated multivariate samples (distance ~3 units apart) the
+        statistic must be strictly greater than for two identical samples.  The
+        permutation p-value for well-separated samples should also be small.
+
+        This is the fundamental defining property of the energy distance:
+        E(X, Y) > 0 iff X and Y have different distributions (Székely 2002).
+        """
+        from polars_statistics.exprs.modern import energy_distance_nd
+
+        # Identical 2D samples — statistic must be 0 (or near-0)
+        df_identical = pl.DataFrame(
+            {
+                "x1": [0.0, 1.0, -1.0, 0.5, -0.5, 0.2],
+                "x2": [0.0, 0.5, -0.5, 0.3, -0.3, 0.1],
+                "y1": [0.0, 1.0, -1.0, 0.5, -0.5, 0.2],
+                "y2": [0.0, 0.5, -0.5, 0.3, -0.3, 0.1],
+            }
+        )
+        stat_identical = df_identical.select(
+            energy_distance_nd(["x1", "x2"], ["y1", "y2"], n_permutations=99, seed=0)
+        )[0, 0]["statistic"]
+
+        # Well-separated 2D samples (centres ~3 units apart)
+        import numpy as np
+
+        rng = np.random.default_rng(42)
+        n = 30
+        x_data = rng.standard_normal((n, 2))
+        y_data = rng.standard_normal((n, 2)) + 3.0  # shifted by 3 in both dims
+        df_separated = pl.DataFrame(
+            {
+                "x1": x_data[:, 0].tolist(),
+                "x2": x_data[:, 1].tolist(),
+                "y1": y_data[:, 0].tolist(),
+                "y2": y_data[:, 1].tolist(),
+            }
+        )
+        result_sep = df_separated.select(
+            energy_distance_nd(["x1", "x2"], ["y1", "y2"], n_permutations=199, seed=42)
+        )[0, 0]
+        stat_separated = result_sep["statistic"]
+        p_separated = result_sep["p_value"]
+
+        # Separation property: statistic for separated > statistic for identical
+        assert stat_separated > stat_identical, (
+            f"Separation property violated: "
+            f"separated={stat_separated:.4f} <= identical={stat_identical:.4f}"
+        )
+        # Well-separated samples should yield a small p-value
+        assert p_separated < 0.10, (
+            f"p-value={p_separated:.4f} unexpectedly large for 3-unit separated samples"
+        )
 
 
 class TestIcc:

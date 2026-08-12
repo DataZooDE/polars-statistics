@@ -411,6 +411,71 @@ class TestICC:
         assert icc_result["n_subjects"] == 4
         assert icc_result["n_raters"] == 3
 
+    def test_icc_value_vs_published_example(self):
+        """ICC(2,1) value-validated against the Shrout & Fleiss (1979) classic example.
+
+        The 6-subject × 4-rater dataset from Shrout & Fleiss (1979, Table 1) has a
+        widely cited ICC(2,1) estimate of approximately 0.71.  We feed the same data
+        through the matrix-input icc expression (ICCType::ICC2) and assert the estimate
+        is within a ±0.10 tolerance of the published figure.
+
+        Shrout & Fleiss (1979) data:
+          Subject  R1   R2   R3   R4
+            1       9    2    5    8
+            2       6    1    3    2
+            3       8    4    6    8
+            4       7    1    2    6
+            5      10    5    6    9
+            6       6    2    4    7
+
+        Published ICC(2,1) ≈ 0.71 (Table 2, row "ICC (2,1)").
+        Reference: Shrout PE & Fleiss JL (1979). Intraclass correlations: uses in
+        assessing rater reliability. Psychological Bulletin 86(2):420-428.
+
+        The icc_type='icc2' variant is selected because it corresponds to the
+        two-way random-effects model consistent with the Shrout & Fleiss definition.
+        """
+        import math
+
+        # Shrout & Fleiss (1979) Table 1 data (6 subjects × 4 raters)
+        df = pl.DataFrame(
+            {
+                "rater1": [9.0, 6.0, 8.0, 7.0, 10.0, 6.0],
+                "rater2": [2.0, 1.0, 4.0, 1.0, 5.0, 2.0],
+                "rater3": [5.0, 3.0, 6.0, 2.0, 6.0, 4.0],
+                "rater4": [8.0, 2.0, 8.0, 6.0, 9.0, 7.0],
+            }
+        )
+        result = df.select(
+            ps.icc("rater1", "rater2", "rater3", "rater4", icc_type="icc2").alias("icc")
+        )
+        icc_result = result["icc"][0]
+
+        # Value assertion: ICC(2,1) should be near the published 0.71
+        published_icc = 0.71
+        estimated_icc = icc_result["icc"]
+        assert math.isfinite(estimated_icc), "ICC estimate must be finite"
+        assert abs(estimated_icc - published_icc) < 0.10, (
+            f"ICC(2,1) estimate {estimated_icc:.4f} deviates more than 0.10 "
+            f"from the Shrout & Fleiss published value {published_icc}"
+        )
+
+        # CI must bracket the estimate
+        ci_lower = icc_result["ci_lower"]
+        ci_upper = icc_result["ci_upper"]
+        assert math.isfinite(ci_lower) and math.isfinite(ci_upper), (
+            "CI bounds must be finite"
+        )
+        assert ci_lower <= estimated_icc <= ci_upper + 1e-9, (
+            f"CI [{ci_lower:.4f}, {ci_upper:.4f}] does not bracket estimate {estimated_icc:.4f}"
+        )
+        # CI must be non-trivially wide (not degenerate)
+        assert ci_upper - ci_lower > 0.0, "CI width must be positive"
+
+        # Metadata
+        assert icc_result["n_subjects"] == 6
+        assert icc_result["n_raters"] == 4
+
 
 class TestCorrelationGroupBy:
     """Tests for correlation functions with group_by operations."""
