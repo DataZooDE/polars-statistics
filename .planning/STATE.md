@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 3
 current_phase_name: Statistics API Parity
 status: executing
-stopped_at: Completed 03-02-PLAN.md (energy_distance_nd STAT-04)
-last_updated: "2026-08-12T05:32:56.370Z"
+stopped_at: Completed 03-03-PLAN.md (ICC stub replacement)
+last_updated: "2026-08-12T05:41:55.214Z"
 last_activity: 2026-08-11
 last_activity_desc: Roadmap created (7 phases, layered structure, 28/28 requirements mapped)
 progress:
   total_phases: 3
   completed_phases: 2
   total_plans: 7
-  completed_plans: 5
+  completed_plans: 6
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-08-11)
 ## Current Position
 
 Phase: 3 (Statistics API Parity) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-08-11 — Phase 3 execution started
 
-Progress: [███████░░░] 71% (2/7 phases complete)
+Progress: [█████████░] 86% (2/7 phases complete)
 
 ## Performance Metrics
 
@@ -64,6 +64,7 @@ Progress: [███████░░░] 71% (2/7 phases complete)
 | Phase 02-public-api-audit P01 | 12 | 1 tasks | 1 files |
 | Phase 03-statistics-api-parity P01 | 5400 | 4 tasks | 6 files |
 | Phase 03-statistics-api-parity P02 | 10m | 2 tasks | 2 files |
+| Phase 03-statistics-api-parity P03 | 7 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -86,6 +87,8 @@ Recent decisions affecting current work:
 - [Phase ?]: one_way_anova uses separate-group-Series input (kruskal_wallis pattern) with kind literal as last arg
 - [Phase ?]: Factor/subject/condition encoding uses rank(dense)-1 for per-column 0-indexed codes (Categorical.to_physical shares global catalog)
 - [Phase ?]: Reuse stats_output_dtype for energy_distance_nd — no new output_dtype needed
+- [Phase ?]: icc() crate-root import confirmed; anofox_statistics::icc re-exported at root, not correlation::icc
+- [Phase ?]: Zero-rater guard: Python builder short-circuits before pl.all_horizontal([]) when no rater columns passed
 
 ### Pending Todos
 
@@ -106,6 +109,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-12T05:32:56.362Z
-Stopped at: Completed 03-02-PLAN.md (energy_distance_nd STAT-04)
+Last session: 2026-08-12T05:41:55.205Z
+Stopped at: Completed 03-03-PLAN.md (ICC stub replacement)
 Resume file: None

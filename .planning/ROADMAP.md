@@ -81,7 +81,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. Every remaining statistics function from the AUDIT-01 gap list is callable via the Polars/Python API
   5. All new statistics expressions define output-struct schemas consistent with existing expression conventions
 
-**Plans**: 2/4 plans executed
+**Plans**: 3/4 plans executed
 
 **Wave 1** *(parallel — no shared files)*
 
@@ -90,7 +90,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Wave 2** *(blocked on 03-01 — shares output_types.rs)*
 
-- [ ] 03-03-PLAN.md — real matrix-input ICC replacing the all-NaN stub + icc_output_dtype + rewritten icc builder (STAT-05)
+- [x] 03-03-PLAN.md — real matrix-input ICC replacing the all-NaN stub + icc_output_dtype + rewritten icc builder (STAT-05)
 
 **Wave 3** *(blocked on 03-01/02/03 — registration + integration)*
 
@@ -163,7 +163,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 |-------|----------------|--------|-----------|
 | 1. Dependency Modernization | 2/2 | Complete    | 2026-08-11 |
 | 2. Public API Audit | 1/1 | Complete    | 2026-08-11 |
-| 3. Statistics API Parity | 2/4 | In Progress|  |
+| 3. Statistics API Parity | 3/4 | In Progress|  |
 | 4. Regression API Parity | 0/TBD | Not started | - |
 | 5. Documentation | 0/TBD | Not started | - |
 | 6. Testing & Validation | 0/TBD | Not started | - |
