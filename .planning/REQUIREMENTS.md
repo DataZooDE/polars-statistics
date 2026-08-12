@@ -49,7 +49,7 @@ Requirements for this milestone (`anofox-*` upgrade + API parity + 0.6.0 release
 - [x] **TEST-02**: Each newly exposed regression capability has a pytest test asserting correct output shape and values
 - [x] **TEST-03**: New results are validated against R reference values where the crates provide them
 - [x] **TEST-04**: Rust-side tests cover the new expression wrappers and output-type schemas
-- [ ] **TEST-05**: The full CI matrix (Python 3.9–3.12 × Linux/macOS/Windows, clippy/fmt/ruff) passes green
+- [x] **TEST-05**: The full CI matrix (Python 3.9–3.12 × Linux/macOS/Windows, clippy/fmt/ruff) passes green
 
 ### Release
 
@@ -104,7 +104,7 @@ Deferred to future releases.
 | TEST-02 | Phase 6 | Complete |
 | TEST-03 | Phase 6 | Complete |
 | TEST-04 | Phase 6 | Complete |
-| TEST-05 | Phase 6 | Pending |
+| TEST-05 | Phase 6 | Complete |
 | REL-01 | Phase 7 | Pending |
 | REL-02 | Phase 7 | Pending |
 | REL-03 | Phase 7 | Pending |

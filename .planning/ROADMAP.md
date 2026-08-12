@@ -25,7 +25,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Statistics API Parity** - Expose ANOVA family, energy distance, and all remaining statistics gaps (completed 2026-08-12)
 - [x] **Phase 4: Regression API Parity** - Expose GLMM, P-spline, Gamma GLM, HC inference, diagnostics, and remaining regression gaps (completed 2026-08-12)
 - [x] **Phase 5: Documentation** - Document all newly exposed API across docstrings, mkdocs, Rust doc comments, and CHANGELOG (completed 2026-08-12)
-- [ ] **Phase 6: Testing & Validation** - Cover all new API with pytest + Rust tests, validated against R, CI matrix green
+- [x] **Phase 6: Testing & Validation** - Cover all new API with pytest + Rust tests, validated against R, CI matrix green (completed 2026-08-12)
 - [ ] **Phase 7: Release 0.6.0** - Bump version, publish wheels to production PyPI, smoke-check the release
 
 ## Phase Details
@@ -176,17 +176,17 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Wave 1** *(tracer — establishes the scipy-reference validation pattern)*
 
-- [ ] 06-01-PLAN.md — Tracer: reference-lib skip guard (conftest) + one_way_anova validated vs scipy.stats.f_oneway (TEST-01/03)
+- [x] 06-01-PLAN.md — Tracer: reference-lib skip guard (conftest) + one_way_anova validated vs scipy.stats.f_oneway (TEST-01/03)
 
 **Wave 2** *(blocked on 06-01; disjoint file sets — run sequentially to avoid git races)*
 
-- [ ] 06-02-PLAN.md — Value tests for remaining new statistics (two_way/RM-ANOVA, energy_distance_nd, icc) vs scipy/statsmodels/analytic (TEST-01/03)
-- [ ] 06-03-PLAN.md — Value tests for new regression capabilities (Gamma+5 diagnostics, GLMM, PSpline, TheilSen/RANSAC/BayesianRidge/ARD/LARS, PA, MomentAccumulator, HC, fit_from_accumulator) (TEST-02/03)
-- [ ] 06-04-PLAN.md — Rust-side tests in rust_api.rs for new *_fit wrappers + output schemas (ANOVA/energy + 5 gamma_*) (TEST-04)
+- [x] 06-02-PLAN.md — Value tests for remaining new statistics (two_way/RM-ANOVA, energy_distance_nd, icc) vs scipy/statsmodels/analytic (TEST-01/03)
+- [x] 06-03-PLAN.md — Value tests for new regression capabilities (Gamma+5 diagnostics, GLMM, PSpline, TheilSen/RANSAC/BayesianRidge/ARD/LARS, PA, MomentAccumulator, HC, fit_from_accumulator) (TEST-02/03)
+- [x] 06-04-PLAN.md — Rust-side tests in rust_api.rs for new *_fit wrappers + output schemas (ANOVA/energy + 5 gamma_*) (TEST-04)
 
 **Wave 3** *(phase gate — blocked on 06-01..04)*
 
-- [ ] 06-05-PLAN.md — Local green-gate (clippy/fmt/ruff/rust_api) + orchestrator-run maturin+pytest full-suite phase gate (TEST-05)
+- [x] 06-05-PLAN.md — Local green-gate (clippy/fmt/ruff/rust_api) + orchestrator-run maturin+pytest full-suite phase gate (TEST-05)
 
 ### Phase 7: Release 0.6.0
 
@@ -214,5 +214,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 3. Statistics API Parity | 4/4 | Complete    | 2026-08-12 |
 | 4. Regression API Parity | 6/6 | Complete    | 2026-08-12 |
 | 5. Documentation | 4/4 | Complete    | 2026-08-12 |
-| 6. Testing & Validation | 0/5 | Not started | - |
+| 6. Testing & Validation | 5/5 | Complete    | 2026-08-12 |
 | 7. Release 0.6.0 | 0/TBD | Not started | - |

@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 6
-current_phase_name: Testing & Validation
-status: executing
-stopped_at: Completed 06-02, 06-03, 06-04 plans
-last_updated: "2026-08-12T14:29:03.553Z"
+current_phase: 7
+current_phase_name: Release 0.6.0
+status: planning
+stopped_at: context exhaustion at 75% (2026-08-12)
+last_updated: "2026-08-12T14:37:50.927Z"
 last_activity: 2026-08-12
 last_activity_desc: Phase 3 complete, transitioned to Phase 4
 progress:
   total_phases: 6
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 22
-  completed_plans: 21
+  completed_plans: 22
 ---
 
 # Project State
@@ -23,22 +23,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-11)
 
 **Core value:** Every public statistical capability in the backing `anofox-*` crates is exposed through the Polars/Python API — correctly, documented, tested, and shipped to PyPI.
-**Current focus:** Phase 6 — Testing & Validation
+**Current focus:** Phase 7 — Release 0.6.0
 
 ## Current Position
 
-Phase: 6 (Testing & Validation) — EXECUTING
-Plan: 4 of 5
-Status: Ready to execute
-Last activity: 2026-08-12 — Phase 6 execution started
+Phase: 7 — Release 0.6.0
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-08-12 — Phase 6 complete, transitioned to Phase 7
 
-Progress: [██████████] 95% (5/7 phases complete)
+Progress: [████████░░] 86% (6/7 phases complete)
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 17
+- Total plans completed: 22
 - Average duration: — min
 - Total execution time: 0.0 hours
 
@@ -51,6 +51,7 @@ Progress: [██████████] 95% (5/7 phases complete)
 | 3 | 4 | - | - |
 | 4 | 6 | - | - |
 | 5 | 4 | - | - |
+| 6 | 5 | - | - |
 
 **Recent Trend:**
 
@@ -146,6 +147,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-12T14:29:03.538Z
-Stopped at: Completed 06-02, 06-03, 06-04 plans
+Last session: 2026-08-12T14:33:00.691Z
+Stopped at: Phase 6 complete (602 pytest + 17 rust_api green; values validated vs references); at Phase 7 (Release 0.6.0) — PAUSED for user decision on production PyPI publish
 Resume file: None

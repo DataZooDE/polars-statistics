@@ -39,12 +39,12 @@ and shipped to users via PyPI.
 - ✓ All unexposed `anofox-statistics` functions exposed as Polars expressions — Phase 3 (one/two-way + repeated-measures ANOVA, energy_distance_nd, real matrix-input ICC replacing the NaN stub; 479 pytest + 15 rust_api green; 3 critical ANOVA factor-encoding bugs caught in review and fixed with regression tests)
 - ✓ All unexposed `anofox-regression` capabilities exposed (full parity) — Phase 4 (10 new PyModels: Gamma, GLMM, PSpline, TheilSen, RANSAC, BayesianRidge, ARD, LARS, PassiveAggressive, MomentAccumulator; Ridge/WLS HC; 5 GLM-diagnostic expressions; OLS/Ridge fit_from_accumulator. 582 pytest + 15 rust_api green; 5 critical + 6 warning review findings fixed. Known limitation: weighted HC for WLS raises NotImplementedError pending crate support.)
 - ✓ Full API documentation for the new surface — Phase 5 (Python docstrings w/ runnable examples, mkdocs reference pages, Rust /// comments, CHANGELOG 0.6.0 with known limitations)
+- ✓ Value + shape tests for all new API, validated vs scipy/statsmodels/analytic references — Phase 6 (602 pytest + 17 rust_api green; ICC(3,1)=0.715 vs Shrout&Fleiss, GLMM slope vs truth, Gamma vs statsmodels, fit_from_accumulator==batch; full OS/py matrix delegated to GH Actions)
 
 ### Active
 
 <!-- This milestone. Hypotheses until shipped & validated. -->
 
-- [ ] Create tests (pytest + Rust) covering all newly exposed API, validated against R where the crates provide reference values
 - [ ] Bump `polars-statistics` 0.5.0 → 0.6.0 (Cargo.toml + pyproject.toml) and publish to production PyPI via the GitHub Actions pipeline
 
 ### Out of Scope
@@ -97,4 +97,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-08-12 after Phase 5 (Documentation)*
+*Last updated: 2026-08-12 after Phase 6 (Testing & Validation)*
