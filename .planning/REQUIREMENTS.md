@@ -38,10 +38,10 @@ Requirements for this milestone (`anofox-*` upgrade + API parity + 0.6.0 release
 
 ### Documentation
 
-- [ ] **DOCS-01**: Every newly exposed function/class has a Python docstring with signature, parameters, and a runnable example
-- [ ] **DOCS-02**: The mkdocs API reference pages are updated to list all newly exposed API
-- [ ] **DOCS-03**: Rust doc comments are added for all new public wrapper functions
-- [ ] **DOCS-04**: The CHANGELOG / release notes document the new API and the 0.6.0 release
+- [x] **DOCS-01**: Every newly exposed function/class has a Python docstring with signature, parameters, and a runnable example
+- [x] **DOCS-02**: The mkdocs API reference pages are updated to list all newly exposed API
+- [x] **DOCS-03**: Rust doc comments are added for all new public wrapper functions
+- [x] **DOCS-04**: The CHANGELOG / release notes document the new API and the 0.6.0 release
 
 ### Testing
 
@@ -96,10 +96,10 @@ Deferred to future releases.
 | REGR-04 | Phase 4 | Complete |
 | REGR-05 | Phase 4 | Complete |
 | REGR-06 | Phase 4 | Complete |
-| DOCS-01 | Phase 5 | Pending |
-| DOCS-02 | Phase 5 | Pending |
-| DOCS-03 | Phase 5 | Pending |
-| DOCS-04 | Phase 5 | Pending |
+| DOCS-01 | Phase 5 | Complete |
+| DOCS-02 | Phase 5 | Complete |
+| DOCS-03 | Phase 5 | Complete |
+| DOCS-04 | Phase 5 | Complete |
 | TEST-01 | Phase 6 | Pending |
 | TEST-02 | Phase 6 | Pending |
 | TEST-03 | Phase 6 | Pending |
