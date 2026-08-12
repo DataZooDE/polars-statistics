@@ -42,6 +42,9 @@ fn _polars_statistics(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<pymodels::PyIsotonic>()?;
     m.add_class::<pymodels::PyHuber>()?;
 
+    // Smoothers
+    m.add_class::<pymodels::PyPSpline>()?;
+
     // GLM Models
     m.add_class::<pymodels::PyGamma>()?;
     m.add_class::<pymodels::PyGLMM>()?;
