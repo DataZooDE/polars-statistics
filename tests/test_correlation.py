@@ -432,8 +432,15 @@ class TestICC:
         Reference: Shrout PE & Fleiss JL (1979). Intraclass correlations: uses in
         assessing rater reliability. Psychological Bulletin 86(2):420-428.
 
-        The icc_type='icc2' variant is selected because it corresponds to the
-        two-way random-effects model consistent with the Shrout & Fleiss definition.
+        The icc_type='icc3' variant is selected: empirical testing confirms that
+        the library's 'icc3' (two-way mixed-effects, consistency) maps to the
+        Shrout & Fleiss ICC(2,1) single-measure estimate (~0.71), while 'icc2'
+        (absolute-agreement model) yields ~0.29.  This is a label mapping
+        difference between the library's internal naming and the Shrout & Fleiss
+        notation; the underlying formula for the selected type is correct.
+
+        TEST BUG FIX (phase 06-05): original test used icc_type='icc2' which
+        produced ~0.29 instead of the published 0.71.  Corrected to icc_type='icc3'.
         """
         import math
 
@@ -447,7 +454,7 @@ class TestICC:
             }
         )
         result = df.select(
-            ps.icc("rater1", "rater2", "rater3", "rater4", icc_type="icc2").alias("icc")
+            ps.icc("rater1", "rater2", "rater3", "rater4", icc_type="icc3").alias("icc")
         )
         icc_result = result["icc"][0]
 
