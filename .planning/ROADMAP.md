@@ -172,7 +172,21 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. Rust-side tests cover the new expression wrappers and output-type schemas
   5. The full CI matrix (Python 3.9–3.12 × Linux/macOS/Windows, clippy/fmt/ruff) passes green
 
-**Plans**: TBD
+**Plans**: 5 plans
+
+**Wave 1** *(tracer — establishes the scipy-reference validation pattern)*
+
+- [ ] 06-01-PLAN.md — Tracer: reference-lib skip guard (conftest) + one_way_anova validated vs scipy.stats.f_oneway (TEST-01/03)
+
+**Wave 2** *(blocked on 06-01; disjoint file sets — run sequentially to avoid git races)*
+
+- [ ] 06-02-PLAN.md — Value tests for remaining new statistics (two_way/RM-ANOVA, energy_distance_nd, icc) vs scipy/statsmodels/analytic (TEST-01/03)
+- [ ] 06-03-PLAN.md — Value tests for new regression capabilities (Gamma+5 diagnostics, GLMM, PSpline, TheilSen/RANSAC/BayesianRidge/ARD/LARS, PA, MomentAccumulator, HC, fit_from_accumulator) (TEST-02/03)
+- [ ] 06-04-PLAN.md — Rust-side tests in rust_api.rs for new *_fit wrappers + output schemas (ANOVA/energy + 5 gamma_*) (TEST-04)
+
+**Wave 3** *(phase gate — blocked on 06-01..04)*
+
+- [ ] 06-05-PLAN.md — Local green-gate (clippy/fmt/ruff/rust_api) + orchestrator-run maturin+pytest full-suite phase gate (TEST-05)
 
 ### Phase 7: Release 0.6.0
 
@@ -200,5 +214,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 3. Statistics API Parity | 4/4 | Complete    | 2026-08-12 |
 | 4. Regression API Parity | 6/6 | Complete    | 2026-08-12 |
 | 5. Documentation | 4/4 | Complete    | 2026-08-12 |
-| 6. Testing & Validation | 0/TBD | Not started | - |
+| 6. Testing & Validation | 0/5 | Not started | - |
 | 7. Release 0.6.0 | 0/TBD | Not started | - |
