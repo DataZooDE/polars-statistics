@@ -3,6 +3,8 @@
 // Regression models
 mod py_aid;
 mod py_alm;
+mod py_ard;
+mod py_bayesian_ridge;
 mod py_bls;
 mod py_bootstrap;
 mod py_cloglog;
@@ -43,6 +45,8 @@ mod py_yuen_test;
 // Regression model exports
 pub use py_aid::{PyAid, PyAidResult};
 pub use py_alm::PyALM;
+pub use py_ard::PyARD;
+pub use py_bayesian_ridge::PyBayesianRidge;
 pub use py_bls::PyBLS;
 pub use py_bootstrap::{PyCircularBlockBootstrap, PyStationaryBootstrap};
 pub use py_cloglog::PyCloglog;

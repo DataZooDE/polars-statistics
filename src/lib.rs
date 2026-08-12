@@ -45,6 +45,8 @@ fn _polars_statistics(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // Robust & Sklearn-Style Solvers
     m.add_class::<pymodels::PyTheilSen>()?;
     m.add_class::<pymodels::PyRANSAC>()?;
+    m.add_class::<pymodels::PyBayesianRidge>()?;
+    m.add_class::<pymodels::PyARD>()?;
 
     // Smoothers
     m.add_class::<pymodels::PyPSpline>()?;
