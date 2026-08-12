@@ -4,16 +4,16 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 5
 current_phase_name: Documentation
-status: executing
-stopped_at: Completed 05-03-PLAN.md
-last_updated: "2026-08-12T13:35:25.571Z"
+status: verifying
+stopped_at: Completed 05-04-PLAN.md
+last_updated: "2026-08-12T13:37:19.038Z"
 last_activity: 2026-08-12
 last_activity_desc: Phase 3 complete, transitioned to Phase 4
 progress:
   total_phases: 5
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 17
-  completed_plans: 16
+  completed_plans: 17
 ---
 
 # Project State
@@ -29,10 +29,10 @@ See: .planning/PROJECT.md (updated 2026-08-11)
 
 Phase: 5 (Documentation) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-08-12 — Phase 5 execution started
 
-Progress: [█████████░] 94% (4/7 phases complete)
+Progress: [██████████] 100% (4/7 phases complete)
 
 ## Performance Metrics
 
@@ -75,6 +75,7 @@ Progress: [█████████░] 94% (4/7 phases complete)
 | Phase 05-documentation P01 | 8 | 2 tasks | 5 files |
 | Phase 05-documentation P02 | 8 | 3 tasks | 9 files |
 | Phase 05-documentation P03 | 5 | 2 tasks | 9 files |
+| Phase 05-documentation P04 | 3 | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -116,6 +117,8 @@ Recent decisions affecting current work:
 - [Phase ?]: check_rust_docs.py uses line-walk not regex to handle #[pyo3] attrs between /// and fn hc_inference
 - [Phase ?]: energy_distance_nd placed in forecast.md Modern Distribution Tests (alongside energy_distance)
 - [Phase ?]: icc updated to matrix-input contract with Breaking Change note in correlation.md
+- [Phase ?]: Breaking Changes section added for icc matrix-input contract change (user-visible API change)
+- [Phase ?]: [0.6.0] footer link uses HEAD since Phase 7 handles the actual release tag
 
 ### Pending Todos
 
@@ -136,6 +139,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-12T13:35:25.561Z
-Stopped at: Completed 05-03-PLAN.md
+Last session: 2026-08-12T13:37:19.029Z
+Stopped at: Completed 05-04-PLAN.md
 Resume file: None
