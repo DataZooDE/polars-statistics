@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 5
 current_phase_name: Documentation
 status: executing
-stopped_at: Completed 05-02-PLAN.md
-last_updated: "2026-08-12T13:27:48.503Z"
+stopped_at: Completed 05-03-PLAN.md
+last_updated: "2026-08-12T13:35:25.571Z"
 last_activity: 2026-08-12
 last_activity_desc: Phase 3 complete, transitioned to Phase 4
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 17
-  completed_plans: 15
+  completed_plans: 16
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-08-11)
 ## Current Position
 
 Phase: 5 (Documentation) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-08-12 — Phase 5 execution started
 
-Progress: [█████████░] 88% (4/7 phases complete)
+Progress: [█████████░] 94% (4/7 phases complete)
 
 ## Performance Metrics
 
@@ -74,6 +74,7 @@ Progress: [█████████░] 88% (4/7 phases complete)
 | Phase 04-regression-api-parity P05 | 10m | 3 tasks | 11 files |
 | Phase 05-documentation P01 | 8 | 2 tasks | 5 files |
 | Phase 05-documentation P02 | 8 | 3 tasks | 9 files |
+| Phase 05-documentation P03 | 5 | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -113,6 +114,8 @@ Recent decisions affecting current work:
 - [Phase ?]: CHANGELOG 0.6.0 section seeded with full API listing; plan 05-04 will finalize
 - [Phase ?]: TheilSen/RANSAC/BayesianRidge/ARD needed class examples and getter docs; LARS/PA only needed is_fitted(); Ridge/WLS needed full doc lift
 - [Phase ?]: check_rust_docs.py uses line-walk not regex to handle #[pyo3] attrs between /// and fn hc_inference
+- [Phase ?]: energy_distance_nd placed in forecast.md Modern Distribution Tests (alongside energy_distance)
+- [Phase ?]: icc updated to matrix-input contract with Breaking Change note in correlation.md
 
 ### Pending Todos
 
@@ -133,6 +136,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-12T13:27:48.495Z
-Stopped at: Completed 05-02-PLAN.md
+Last session: 2026-08-12T13:35:25.561Z
+Stopped at: Completed 05-03-PLAN.md
 Resume file: None
