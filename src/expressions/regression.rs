@@ -2207,10 +2207,6 @@ fn build_gamma_log(lambda: f64, with_intercept: bool) -> GammaRegressor {
     b.build()
 }
 
-fn col_into_vec(c: &Col<f64>) -> Vec<f64> {
-    (0..c.nrows()).map(|i| c[i]).collect()
-}
-
 /// Logistic Pearson residuals.
 pub fn logistic_pearson_residuals_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
@@ -2222,7 +2218,7 @@ pub fn logistic_pearson_residuals_fit(inputs: &[Series]) -> PolarsResult<Series>
     let n = y.nrows();
     let model = build_binomial_logit(lambda, with_intercept);
     match model.fit(&x, &y) {
-        Ok(f) => residual_diag_output(col_into_vec(&f.pearson_residuals()), n),
+        Ok(f) => residual_diag_output(col_to_vec(&f.pearson_residuals()), n),
         Err(_) => residual_diag_nan_output(),
     }
 }
@@ -2243,7 +2239,7 @@ pub fn logistic_deviance_residuals_fit(inputs: &[Series]) -> PolarsResult<Series
     let n = y.nrows();
     let model = build_binomial_logit(lambda, with_intercept);
     match model.fit(&x, &y) {
-        Ok(f) => residual_diag_output(col_into_vec(&f.deviance_residuals()), n),
+        Ok(f) => residual_diag_output(col_to_vec(&f.deviance_residuals()), n),
         Err(_) => residual_diag_nan_output(),
     }
 }
@@ -2264,7 +2260,7 @@ pub fn logistic_working_residuals_fit(inputs: &[Series]) -> PolarsResult<Series>
     let n = y.nrows();
     let model = build_binomial_logit(lambda, with_intercept);
     match model.fit(&x, &y) {
-        Ok(f) => residual_diag_output(col_into_vec(&f.working_residuals()), n),
+        Ok(f) => residual_diag_output(col_to_vec(&f.working_residuals()), n),
         Err(_) => residual_diag_nan_output(),
     }
 }
@@ -2285,7 +2281,7 @@ pub fn poisson_pearson_residuals_fit(inputs: &[Series]) -> PolarsResult<Series> 
     let n = y.nrows();
     let model = build_poisson_log(lambda, with_intercept);
     match model.fit(&x, &y) {
-        Ok(f) => residual_diag_output(col_into_vec(&f.pearson_residuals()), n),
+        Ok(f) => residual_diag_output(col_to_vec(&f.pearson_residuals()), n),
         Err(_) => residual_diag_nan_output(),
     }
 }
@@ -2306,7 +2302,7 @@ pub fn poisson_deviance_residuals_fit(inputs: &[Series]) -> PolarsResult<Series>
     let n = y.nrows();
     let model = build_poisson_log(lambda, with_intercept);
     match model.fit(&x, &y) {
-        Ok(f) => residual_diag_output(col_into_vec(&f.deviance_residuals()), n),
+        Ok(f) => residual_diag_output(col_to_vec(&f.deviance_residuals()), n),
         Err(_) => residual_diag_nan_output(),
     }
 }
@@ -2327,7 +2323,7 @@ pub fn poisson_working_residuals_fit(inputs: &[Series]) -> PolarsResult<Series> 
     let n = y.nrows();
     let model = build_poisson_log(lambda, with_intercept);
     match model.fit(&x, &y) {
-        Ok(f) => residual_diag_output(col_into_vec(&f.working_residuals()), n),
+        Ok(f) => residual_diag_output(col_to_vec(&f.working_residuals()), n),
         Err(_) => residual_diag_nan_output(),
     }
 }
@@ -2352,6 +2348,9 @@ fn pl_poisson_working_residuals(inputs: &[Series]) -> PolarsResult<Series> {
 ///
 /// Input contract: `[y, lambda (f64), with_intercept (bool), x_0, ...]`.
 pub fn gamma_dispersion_deviance_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    if inputs.len() < 4 {
+        return dispersion_nan_output();
+    }
     let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let n_features = inputs.len().saturating_sub(3);
@@ -2384,6 +2383,9 @@ fn pl_gamma_dispersion_deviance(inputs: &[Series]) -> PolarsResult<Series> {
 ///
 /// Input contract: `[y, lambda (f64), with_intercept (bool), x_0, ...]`.
 pub fn gamma_dispersion_pearson_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    if inputs.len() < 4 {
+        return dispersion_nan_output();
+    }
     let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let n_features = inputs.len().saturating_sub(3);
@@ -2455,6 +2457,9 @@ fn pl_gamma_pearson_chi_squared(inputs: &[Series]) -> PolarsResult<Series> {
 /// the Pearson-method dispersion estimate φ̂ before standardizing.
 /// Input contract: `[y, lambda (f64), with_intercept (bool), x_0, ...]`.
 pub fn gamma_standardized_pearson_residuals_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    if inputs.len() < 4 {
+        return residual_diag_nan_output();
+    }
     let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let n_features = inputs.len().saturating_sub(3);
@@ -2474,7 +2479,7 @@ pub fn gamma_standardized_pearson_residuals_fit(inputs: &[Series]) -> PolarsResu
             let dispersion = estimate_dispersion_pearson(&y_slice, &mu_slice, &family, n_params);
             let leverage = compute_leverage(&x, with_intercept);
             let resid = standardized_pearson_residuals(&y, &mu, &family, &leverage, dispersion);
-            residual_diag_output(col_into_vec(&resid), n)
+            residual_diag_output(col_to_vec(&resid), n)
         }
         Err(_) => residual_diag_nan_output(),
     }
@@ -2491,6 +2496,9 @@ fn pl_gamma_standardized_pearson_residuals(inputs: &[Series]) -> PolarsResult<Se
 /// the deviance-method dispersion estimate φ̂ before standardizing.
 /// Input contract: `[y, lambda (f64), with_intercept (bool), x_0, ...]`.
 pub fn gamma_standardized_deviance_residuals_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    if inputs.len() < 4 {
+        return residual_diag_nan_output();
+    }
     let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let n_features = inputs.len().saturating_sub(3);
@@ -2510,7 +2518,7 @@ pub fn gamma_standardized_deviance_residuals_fit(inputs: &[Series]) -> PolarsRes
             let dispersion = estimate_dispersion_deviance(&y_slice, &mu_slice, &family, n_params);
             let leverage = compute_leverage(&x, with_intercept);
             let resid = standardized_deviance_residuals(&y, &mu, &family, &leverage, dispersion);
-            residual_diag_output(col_into_vec(&resid), n)
+            residual_diag_output(col_to_vec(&resid), n)
         }
         Err(_) => residual_diag_nan_output(),
     }
