@@ -31,6 +31,20 @@ use crate::utils::{IntoNumpy, ToFaer};
 ///     Stop early once this many inliers are found. None → no early stop.
 /// random_state : int, default 0
 ///     Seed for reproducible subsample draws.
+///
+/// Examples
+/// --------
+/// >>> import numpy as np
+/// >>> from polars_statistics import RANSAC
+/// >>> rng = np.random.default_rng(0)
+/// >>> X = rng.standard_normal((50, 2))
+/// >>> y = X @ [1.0, -0.5] + 0.1 * rng.standard_normal(50)
+/// >>> y[0] = 100.0  # outlier
+/// >>> model = RANSAC(random_state=0).fit(X, y)
+/// >>> model.is_fitted()
+/// True
+/// >>> model.n_inliers  # only non-outlier rows
+/// 49
 #[pyclass(name = "RANSAC")]
 pub struct PyRANSAC {
     with_intercept: bool,
@@ -103,7 +117,17 @@ impl PyRANSAC {
         Ok(slf)
     }
 
-    /// Predict response values.
+    /// Predict response values for new data.
+    ///
+    /// Parameters
+    /// ----------
+    /// x : numpy.ndarray of shape (n_samples, n_features)
+    ///     Feature matrix. Must be float64.
+    ///
+    /// Returns
+    /// -------
+    /// numpy.ndarray of shape (n_samples,)
+    ///     Predicted values (from the consensus-set model).
     fn predict<'py>(
         &self,
         py: Python<'py>,
@@ -118,10 +142,12 @@ impl PyRANSAC {
         Ok(fitted.predict(&x_mat).into_numpy(py))
     }
 
+    /// Whether the model has been fitted.
     fn is_fitted(&self) -> bool {
         self.fitted.is_some()
     }
 
+    /// Fitted slope coefficients from the consensus-set model (excludes intercept).
     #[getter]
     fn coefficients<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyArray1<f64>>> {
         let fitted = self
@@ -132,6 +158,7 @@ impl PyRANSAC {
         Ok(fitted.coefficients().into_numpy(py))
     }
 
+    /// Fitted intercept, or None when with_intercept=False.
     #[getter]
     fn intercept(&self) -> PyResult<Option<f64>> {
         let fitted = self
@@ -142,6 +169,7 @@ impl PyRANSAC {
         Ok(fitted.intercept())
     }
 
+    /// Coefficient of determination R² on the full dataset (inliers + outliers).
     #[getter]
     fn r_squared(&self) -> PyResult<f64> {
         let fitted = self
@@ -152,6 +180,7 @@ impl PyRANSAC {
         Ok(fitted.result().r_squared)
     }
 
+    /// Residuals (y − ŷ) for the full training dataset.
     #[getter]
     fn residuals<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyArray1<f64>>> {
         let fitted = self
@@ -206,6 +235,7 @@ impl PyRANSAC {
         Ok(fitted.residual_threshold())
     }
 
+    /// Total number of observations (inliers + outliers) in the training data.
     #[getter]
     fn n_observations(&self) -> PyResult<usize> {
         let fitted = self

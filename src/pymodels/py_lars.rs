@@ -130,6 +130,7 @@ impl PyLARS {
         Ok(fitted.predict(&x_mat).into_numpy(py))
     }
 
+    /// Whether the model has been fitted.
     fn is_fitted(&self) -> bool {
         self.fitted.is_some()
     }

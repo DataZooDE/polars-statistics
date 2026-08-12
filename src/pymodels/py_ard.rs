@@ -32,6 +32,18 @@ use crate::utils::{IntoNumpy, ToFaer};
 ///     Rate parameter of the Gamma prior over per-feature weight precision.
 /// threshold_lambda : float, default 10000.0
 ///     Features with precision above this threshold are pruned.
+///
+/// Examples
+/// --------
+/// >>> import numpy as np
+/// >>> from polars_statistics import ARD
+/// >>> X = np.random.randn(80, 4)
+/// >>> y = X[:, 0] - 0.5 * X[:, 1] + 0.1 * np.random.randn(80)
+/// >>> model = ARD().fit(X, y)
+/// >>> model.is_fitted()
+/// True
+/// >>> model.coefficients  # irrelevant features pruned toward zero
+/// array([...])
 #[pyclass(name = "ARD")]
 pub struct PyARD {
     fit_intercept: bool,
@@ -103,7 +115,17 @@ impl PyARD {
         Ok(slf)
     }
 
-    /// Predict response values.
+    /// Predict response values for new data.
+    ///
+    /// Parameters
+    /// ----------
+    /// x : numpy.ndarray of shape (n_samples, n_features)
+    ///     Feature matrix. Must be float64.
+    ///
+    /// Returns
+    /// -------
+    /// numpy.ndarray of shape (n_samples,)
+    ///     Predicted values.
     fn predict<'py>(
         &self,
         py: Python<'py>,
@@ -118,10 +140,12 @@ impl PyARD {
         Ok(fitted.predict(&x_mat).into_numpy(py))
     }
 
+    /// Whether the model has been fitted.
     fn is_fitted(&self) -> bool {
         self.fitted.is_some()
     }
 
+    /// Fitted slope coefficients (pruned features have near-zero coefficients).
     #[getter]
     fn coefficients<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyArray1<f64>>> {
         let fitted = self
@@ -132,6 +156,7 @@ impl PyARD {
         Ok(fitted.coefficients().into_numpy(py))
     }
 
+    /// Fitted intercept, or None when fit_intercept=False.
     #[getter]
     fn intercept(&self) -> PyResult<Option<f64>> {
         let fitted = self
@@ -142,6 +167,7 @@ impl PyARD {
         Ok(fitted.intercept())
     }
 
+    /// Coefficient of determination R².
     #[getter]
     fn r_squared(&self) -> PyResult<f64> {
         let fitted = self
@@ -152,6 +178,7 @@ impl PyARD {
         Ok(fitted.result().r_squared)
     }
 
+    /// Residuals (y − ŷ) for the training data.
     #[getter]
     fn residuals<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyArray1<f64>>> {
         let fitted = self
@@ -187,6 +214,7 @@ impl PyARD {
         Ok(PyArray1::from_slice(py, fitted.lambdas()))
     }
 
+    /// Number of observations used in the fit.
     #[getter]
     fn n_observations(&self) -> PyResult<usize> {
         let fitted = self

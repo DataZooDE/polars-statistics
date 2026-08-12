@@ -35,6 +35,20 @@ use crate::utils::{IntoNumpy, ToFaer};
 ///     Initial value for noise precision. None → 1/Var(y).
 /// lambda_init : float or None, default None
 ///     Initial value for weight precision. None → 1.0.
+///
+/// Examples
+/// --------
+/// >>> import numpy as np
+/// >>> from polars_statistics import BayesianRidge
+/// >>> X = np.random.randn(80, 3)
+/// >>> y = X @ [1.0, -0.5, 0.2] + 0.3 * np.random.randn(80)
+/// >>> model = BayesianRidge().fit(X, y)
+/// >>> model.is_fitted()
+/// True
+/// >>> model.coefficients
+/// array([...])
+/// >>> model.alpha_  # estimated noise precision
+/// ...
 #[pyclass(name = "BayesianRidge")]
 pub struct PyBayesianRidge {
     fit_intercept: bool,
@@ -114,7 +128,17 @@ impl PyBayesianRidge {
         Ok(slf)
     }
 
-    /// Predict response values.
+    /// Predict response values for new data.
+    ///
+    /// Parameters
+    /// ----------
+    /// x : numpy.ndarray of shape (n_samples, n_features)
+    ///     Feature matrix. Must be float64.
+    ///
+    /// Returns
+    /// -------
+    /// numpy.ndarray of shape (n_samples,)
+    ///     Predicted values.
     fn predict<'py>(
         &self,
         py: Python<'py>,
@@ -129,10 +153,12 @@ impl PyBayesianRidge {
         Ok(fitted.predict(&x_mat).into_numpy(py))
     }
 
+    /// Whether the model has been fitted.
     fn is_fitted(&self) -> bool {
         self.fitted.is_some()
     }
 
+    /// Fitted slope coefficients (excludes intercept).
     #[getter]
     fn coefficients<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyArray1<f64>>> {
         let fitted = self
@@ -143,6 +169,7 @@ impl PyBayesianRidge {
         Ok(fitted.coefficients().into_numpy(py))
     }
 
+    /// Fitted intercept, or None when fit_intercept=False.
     #[getter]
     fn intercept(&self) -> PyResult<Option<f64>> {
         let fitted = self
@@ -153,6 +180,7 @@ impl PyBayesianRidge {
         Ok(fitted.intercept())
     }
 
+    /// Coefficient of determination R².
     #[getter]
     fn r_squared(&self) -> PyResult<f64> {
         let fitted = self
@@ -163,6 +191,7 @@ impl PyBayesianRidge {
         Ok(fitted.result().r_squared)
     }
 
+    /// Residuals (y − ŷ) for the training data.
     #[getter]
     fn residuals<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyArray1<f64>>> {
         let fitted = self
@@ -206,6 +235,7 @@ impl PyBayesianRidge {
         Ok(PyArray1::from_slice(py, fitted.sigma_diag()))
     }
 
+    /// Number of observations used in the fit.
     #[getter]
     fn n_observations(&self) -> PyResult<usize> {
         let fitted = self

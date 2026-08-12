@@ -24,6 +24,18 @@ use crate::utils::{IntoNumpy, ToFaer};
 ///     Whether to compute statistical inference.
 /// confidence_level : float, default 0.95
 ///     Confidence level for confidence intervals.
+///
+/// Examples
+/// --------
+/// >>> import numpy as np
+/// >>> from polars_statistics import Ridge
+/// >>> X = np.random.randn(60, 3)
+/// >>> y = X @ [1.0, -0.5, 0.2] + 0.3 * np.random.randn(60)
+/// >>> model = Ridge(lambda_=0.1).fit(X, y)
+/// >>> model.is_fitted()
+/// True
+/// >>> model.r_squared
+/// 0.9...
 #[pyclass(name = "Ridge")]
 pub struct PyRidge {
     lambda_: f64,
@@ -52,6 +64,19 @@ impl PyRidge {
         }
     }
 
+    /// Fit the Ridge regression model.
+    ///
+    /// Parameters
+    /// ----------
+    /// x : numpy.ndarray of shape (n_samples, n_features)
+    ///     Feature matrix. Must be float64.
+    /// y : numpy.ndarray of shape (n_samples,)
+    ///     Response vector.
+    ///
+    /// Returns
+    /// -------
+    /// self
+    ///     The fitted model (enables method chaining).
     fn fit<'py>(
         mut slf: PyRefMut<'py, Self>,
         x: PyReadonlyArray2<'py, f64>,
@@ -75,6 +100,17 @@ impl PyRidge {
         Ok(slf)
     }
 
+    /// Predict response values for new data.
+    ///
+    /// Parameters
+    /// ----------
+    /// x : numpy.ndarray of shape (n_samples, n_features)
+    ///     Feature matrix. Must be float64.
+    ///
+    /// Returns
+    /// -------
+    /// numpy.ndarray of shape (n_samples,)
+    ///     Predicted values.
     fn predict<'py>(
         &self,
         py: Python<'py>,
@@ -91,10 +127,12 @@ impl PyRidge {
         Ok(predictions.into_numpy(py))
     }
 
+    /// Whether the model has been fitted.
     fn is_fitted(&self) -> bool {
         self.fitted.is_some()
     }
 
+    /// Fitted slope coefficients (excludes intercept).
     #[getter]
     fn coefficients<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyArray1<f64>>> {
         let fitted = self
@@ -105,6 +143,7 @@ impl PyRidge {
         Ok(fitted.coefficients().into_numpy(py))
     }
 
+    /// Fitted intercept, or None when with_intercept=False.
     #[getter]
     fn intercept(&self) -> PyResult<Option<f64>> {
         let fitted = self
@@ -115,6 +154,7 @@ impl PyRidge {
         Ok(fitted.intercept())
     }
 
+    /// Coefficient of determination R².
     #[getter]
     fn r_squared(&self) -> PyResult<f64> {
         let fitted = self
@@ -125,6 +165,7 @@ impl PyRidge {
         Ok(fitted.r_squared())
     }
 
+    /// Adjusted R² accounting for number of predictors.
     #[getter]
     fn adj_r_squared(&self) -> PyResult<f64> {
         let fitted = self
@@ -135,6 +176,7 @@ impl PyRidge {
         Ok(fitted.result().adj_r_squared)
     }
 
+    /// The regularization strength lambda_ used at construction time.
     #[getter]
     fn lambda_value(&self) -> f64 {
         self.lambda_

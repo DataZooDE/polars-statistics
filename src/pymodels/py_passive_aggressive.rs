@@ -237,6 +237,7 @@ impl PyPassiveAggressive {
         Ok(fitted.predict(&x_mat).into_numpy(py))
     }
 
+    /// Whether the model has been fitted (either via ``fit`` or ``partial_fit``).
     fn is_fitted(&self) -> bool {
         self.fitted.is_some() || self.state.is_some()
     }

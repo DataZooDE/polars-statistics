@@ -29,6 +29,20 @@ use crate::utils::{IntoNumpy, ToFaer};
 ///     Convergence tolerance for the Weiszfeld algorithm.
 /// random_state : int, default 0
 ///     Seed for reproducible subsample draws.
+///
+/// Examples
+/// --------
+/// >>> import numpy as np
+/// >>> from polars_statistics import TheilSen
+/// >>> X = np.array([[1.0], [2.0], [3.0], [4.0], [5.0]])
+/// >>> y = np.array([2.1, 3.9, 6.2, 7.8, 10.1])
+/// >>> model = TheilSen(random_state=0).fit(X, y)
+/// >>> model.is_fitted()
+/// True
+/// >>> model.coefficients
+/// array([...])
+/// >>> model.r_squared
+/// 0.99...
 #[pyclass(name = "TheilSen")]
 pub struct PyTheilSen {
     with_intercept: bool,
@@ -64,6 +78,18 @@ impl PyTheilSen {
     }
 
     /// Fit the Theil-Sen regression model.
+    ///
+    /// Parameters
+    /// ----------
+    /// x : numpy.ndarray of shape (n_samples, n_features)
+    ///     Feature matrix. Must be float64.
+    /// y : numpy.ndarray of shape (n_samples,)
+    ///     Response vector.
+    ///
+    /// Returns
+    /// -------
+    /// self
+    ///     The fitted model (enables method chaining).
     fn fit<'py>(
         mut slf: PyRefMut<'py, Self>,
         x: PyReadonlyArray2<'py, f64>,
@@ -91,7 +117,17 @@ impl PyTheilSen {
         Ok(slf)
     }
 
-    /// Predict response values.
+    /// Predict response values for new data.
+    ///
+    /// Parameters
+    /// ----------
+    /// x : numpy.ndarray of shape (n_samples, n_features)
+    ///     Feature matrix. Must be float64.
+    ///
+    /// Returns
+    /// -------
+    /// numpy.ndarray of shape (n_samples,)
+    ///     Predicted values.
     fn predict<'py>(
         &self,
         py: Python<'py>,
@@ -106,10 +142,12 @@ impl PyTheilSen {
         Ok(fitted.predict(&x_mat).into_numpy(py))
     }
 
+    /// Whether the model has been fitted.
     fn is_fitted(&self) -> bool {
         self.fitted.is_some()
     }
 
+    /// Fitted slope coefficients (excludes intercept).
     #[getter]
     fn coefficients<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyArray1<f64>>> {
         let fitted = self
@@ -120,6 +158,7 @@ impl PyTheilSen {
         Ok(fitted.coefficients().into_numpy(py))
     }
 
+    /// Fitted intercept, or None when with_intercept=False.
     #[getter]
     fn intercept(&self) -> PyResult<Option<f64>> {
         let fitted = self
@@ -130,6 +169,7 @@ impl PyTheilSen {
         Ok(fitted.intercept())
     }
 
+    /// Coefficient of determination R².
     #[getter]
     fn r_squared(&self) -> PyResult<f64> {
         let fitted = self
@@ -140,6 +180,7 @@ impl PyTheilSen {
         Ok(fitted.result().r_squared)
     }
 
+    /// Mean squared error of residuals.
     #[getter]
     fn mse(&self) -> PyResult<f64> {
         let fitted = self
@@ -150,6 +191,7 @@ impl PyTheilSen {
         Ok(fitted.result().mse)
     }
 
+    /// Root mean squared error of residuals.
     #[getter]
     fn rmse(&self) -> PyResult<f64> {
         let fitted = self
@@ -160,6 +202,7 @@ impl PyTheilSen {
         Ok(fitted.result().rmse)
     }
 
+    /// Residuals (y − ŷ) for the training data.
     #[getter]
     fn residuals<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyArray1<f64>>> {
         let fitted = self
@@ -170,6 +213,7 @@ impl PyTheilSen {
         Ok((&fitted.result().residuals).into_numpy(py))
     }
 
+    /// Number of observations used in the fit.
     #[getter]
     fn n_observations(&self) -> PyResult<usize> {
         let fitted = self
