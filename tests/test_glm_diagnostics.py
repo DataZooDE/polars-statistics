@@ -199,26 +199,17 @@ class TestWlsHcInference:
         weights = np.abs(RNG.standard_normal(n)) + 0.5
         return X, y, weights
 
-    def test_std_errors_finite(self):
+    def test_hc_inference_not_implemented_for_wls(self):
+        """WLS.hc_inference intentionally raises NotImplementedError: a correct WLS HC
+        sandwich must incorporate the weights ((X'WX)^-1 (X'diag(w e^2) X) (X'WX)^-1),
+        and the backing crate does not currently expose a weighted-HC path. Raising is
+        the honest choice — returning the unweighted OLS sandwich would be statistically
+        wrong (see code review CR-03). Deferred: plumb weights through for real WLS HC."""
         WLS = pytest.importorskip("polars_statistics").WLS
         X, y, w = self._xyw()
         model = WLS().fit(X, y, w)
-        hc = model.hc_inference(X)
-        assert np.all(np.isfinite(hc["std_errors"])), "HC std_errors must be finite"
-
-    def test_dict_keys_present(self):
-        WLS = pytest.importorskip("polars_statistics").WLS
-        X, y, w = self._xyw()
-        hc = WLS().fit(X, y, w).hc_inference(X, hc_type="hc2")
-        required = {"std_errors", "t_statistics", "p_values",
-                    "conf_interval_lower", "conf_interval_upper"}
-        assert required.issubset(hc.keys())
-
-    def test_shape_matches_features(self):
-        WLS = pytest.importorskip("polars_statistics").WLS
-        X, y, w = self._xyw(p=4)
-        hc = WLS().fit(X, y, w).hc_inference(X)
-        assert len(hc["std_errors"]) == 4
+        with pytest.raises(NotImplementedError):
+            model.hc_inference(X)
 
     def test_not_fitted_raises(self):
         WLS = pytest.importorskip("polars_statistics").WLS
