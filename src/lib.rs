@@ -43,6 +43,7 @@ fn _polars_statistics(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<pymodels::PyHuber>()?;
 
     // GLM Models
+    m.add_class::<pymodels::PyGamma>()?;
     m.add_class::<pymodels::PyLogistic>()?;
     m.add_class::<pymodels::PyLogisticRegression>()?;
     m.add_class::<pymodels::PyPoisson>()?;

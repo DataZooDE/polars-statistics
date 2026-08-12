@@ -17,6 +17,7 @@ from polars_statistics._polars_statistics import (
     Huber,
     PLS,
     # GLM models
+    Gamma,
     Logistic,
     LogisticRegression,
     Poisson,
@@ -253,6 +254,7 @@ __all__ = [
     "Huber",
     "PLS",
     # GLM Models
+    "Gamma",
     "Logistic",
     "LogisticRegression",
     "Poisson",
