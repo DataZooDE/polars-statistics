@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 4
 current_phase_name: Regression API Parity
 status: executing
-stopped_at: Completed 04-03-PLAN.md
-last_updated: "2026-08-12T12:11:36.891Z"
+stopped_at: Completed 04-04-PLAN.md
+last_updated: "2026-08-12T12:22:46.610Z"
 last_activity: 2026-08-12
 last_activity_desc: Phase 3 complete, transitioned to Phase 4
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 13
-  completed_plans: 10
+  completed_plans: 11
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-08-11)
 ## Current Position
 
 Phase: 4 (Regression API Parity) — EXECUTING
-Plan: 5 of 6
+Plan: 6 of 6
 Status: Ready to execute
 Last activity: 2026-08-12 — Phase 4 execution started
 
-Progress: [████████░░] 77% (3/7 phases complete)
+Progress: [█████████░] 85% (3/7 phases complete)
 
 ## Performance Metrics
 
@@ -69,6 +69,7 @@ Progress: [████████░░] 77% (3/7 phases complete)
 | Phase 04-regression-api-parity P01 | 4 | 2 tasks | 4 files |
 | Phase 04-regression-api-parity P02 | 56m | 3 tasks | 7 files |
 | Phase 04-regression-api-parity P03 | 5896 | 3 tasks | 7 files |
+| Phase 04-regression-api-parity P04 | 8 | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -99,6 +100,8 @@ Recent decisions affecting current work:
 - [Phase ?]: FactorSummary exposed as Python list[dict] (not a separate PyClass) per RESEARCH FactorSummary exposure strategy
 - [Phase ?]: dispersion_output_dtype uses single-field struct (not bare Float64) for consistency with all other diagnostic output types
 - [Phase ?]: compute_hc_inference arg order: actual crate signature differs from RESEARCH.md draft — corrected to (x, coef, intercept, residuals, aliased, with_intercept, hc_type, confidence_level) with no df param
+- [Phase ?]: Registrations added in Tasks 1/2 not deferred to Task 3 to keep clippy -D warnings clean throughout
+- [Phase ?]: fit_intercept (BayesianRidge/ARD) vs with_intercept (TheilSen/RANSAC) preserved per RESEARCH anti-pattern note
 
 ### Pending Todos
 
@@ -119,6 +122,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-12T12:11:36.862Z
-Stopped at: Completed 04-03-PLAN.md
+Last session: 2026-08-12T12:22:46.601Z
+Stopped at: Completed 04-04-PLAN.md
 Resume file: None
