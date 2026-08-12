@@ -31,7 +31,7 @@ Requirements for this milestone (`anofox-*` upgrade + API parity + 0.6.0 release
 
 - [ ] **REGR-01**: User can fit a generalized linear mixed model (`GlmmRegressor`) via a PyModel class
 - [ ] **REGR-02**: User can fit a penalized B-spline (P-spline) smoother via the API
-- [ ] **REGR-03**: User can fit a Gamma GLM via the API
+- [x] **REGR-03**: User can fit a Gamma GLM via the API
 - [ ] **REGR-04**: User can obtain HC (heteroskedasticity-consistent) robust standard errors (`HcInference`/`HcType`) for regression fits
 - [ ] **REGR-05**: User can compute regression diagnostics — Cook's distance, VIF, leverage, residual variants, and condition diagnostics — via the API
 - [ ] **REGR-06**: Every remaining unexposed `anofox-regression` capability identified in AUDIT-02 is callable via expressions and/or PyModel classes
@@ -92,7 +92,7 @@ Deferred to future releases.
 | STAT-05 | Phase 3 | Complete |
 | REGR-01 | Phase 4 | Pending |
 | REGR-02 | Phase 4 | Pending |
-| REGR-03 | Phase 4 | Pending |
+| REGR-03 | Phase 4 | Complete |
 | REGR-04 | Phase 4 | Pending |
 | REGR-05 | Phase 4 | Pending |
 | REGR-06 | Phase 4 | Pending |

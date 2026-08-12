@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 4
 current_phase_name: Regression API Parity
 status: executing
-stopped_at: Completed 03-03-PLAN.md (ICC stub replacement)
-last_updated: "2026-08-12T08:05:10.724Z"
+stopped_at: Completed 04-01-PLAN.md (Gamma PyModel tracer)
+last_updated: "2026-08-12T08:46:14.308Z"
 last_activity: 2026-08-12
 last_activity_desc: Phase 3 complete, transitioned to Phase 4
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 13
-  completed_plans: 7
+  completed_plans: 8
 ---
 
 # Project State
@@ -27,12 +27,12 @@ See: .planning/PROJECT.md (updated 2026-08-11)
 
 ## Current Position
 
-Phase: 4 — Regression API Parity
-Plan: Not started
+Phase: 4 (Regression API Parity) — EXECUTING
+Plan: 2 of 6
 Status: Ready to execute
-Last activity: 2026-08-12 — Phase 3 complete, transitioned to Phase 4
+Last activity: 2026-08-12 — Phase 4 execution started
 
-Progress: [████░░░░░░] 43% (3/7 phases complete)
+Progress: [██████░░░░] 62% (3/7 phases complete)
 
 ## Performance Metrics
 
@@ -66,6 +66,7 @@ Progress: [████░░░░░░] 43% (3/7 phases complete)
 | Phase 03-statistics-api-parity P01 | 5400 | 4 tasks | 6 files |
 | Phase 03-statistics-api-parity P02 | 10m | 2 tasks | 2 files |
 | Phase 03-statistics-api-parity P03 | 7 | 2 tasks | 4 files |
+| Phase 04-regression-api-parity P01 | 4 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -90,6 +91,7 @@ Recent decisions affecting current work:
 - [Phase ?]: Reuse stats_output_dtype for energy_distance_nd — no new output_dtype needed
 - [Phase ?]: icc() crate-root import confirmed; anofox_statistics::icc re-exported at root, not correlation::icc
 - [Phase ?]: Zero-rater guard: Python builder short-circuits before pl.all_horizontal([]) when no rater columns passed
+- [Phase ?]: Used GammaRegressor::builder() pattern mirroring PyTweedie as the exact structural analog; predict_eta exposed as method not getter since it requires x input
 
 ### Pending Todos
 
@@ -110,6 +112,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-12
-Stopped at: Phase 3 complete (ANOVA family + energy nD + real ICC; verified passed; 3 critical ANOVA bugs caught in review and fixed with regression tests); autonomous run advancing to Phase 4 (Regression API Parity)
+Last session: 2026-08-12T08:46:14.299Z
+Stopped at: Completed 04-01-PLAN.md (Gamma PyModel tracer)
 Resume file: None
