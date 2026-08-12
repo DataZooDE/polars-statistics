@@ -4,11 +4,11 @@ use polars::prelude::*;
 use pyo3_polars::derive::polars_expr;
 
 use anofox_statistics::{
-    distance_cor_test, kendall, partial_cor, pearson, semi_partial_cor, spearman,
-    CorrelationResult, KendallVariant,
+    distance_cor_test, icc, kendall, partial_cor, pearson, semi_partial_cor, spearman,
+    CorrelationResult, ICCType, KendallVariant,
 };
 
-use crate::expressions::output_types::correlation_output_dtype;
+use crate::expressions::output_types::{correlation_output_dtype, icc_output_dtype};
 
 /// Helper to create correlation output
 fn correlation_output(result: &CorrelationResult, name: &str) -> PolarsResult<Series> {
@@ -266,38 +266,121 @@ fn pl_semi_partial_cor(inputs: &[Series]) -> PolarsResult<Series> {
     semi_partial_cor_fit(inputs)
 }
 
-/// Public Rust-callable variant. Same input contract as the `pl_icc` expression shim.
-pub fn icc_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    // Data is passed as a matrix where each column is a rater
-    // For simplicity, we expect groups and values columns
-    let values = inputs[0].f64()?;
-    let _icc_type_str = inputs[1].str()?.get(0).unwrap_or("icc1");
-    let _conf_level = inputs[2].f64()?.get(0).unwrap_or(0.95);
+/// Parse an ICC type string into an `ICCType` variant.
+///
+/// Unknown strings fall back to `ICCType::ICC2` (the crate default).
+fn parse_icc_type(s: &str) -> ICCType {
+    match s.to_lowercase().as_str() {
+        "icc1" => ICCType::ICC1,
+        "icc3" => ICCType::ICC3,
+        "icc1k" => ICCType::ICC1k,
+        "icc2k" => ICCType::ICC2k,
+        "icc3k" => ICCType::ICC3k,
+        _ => ICCType::ICC2,
+    }
+}
 
-    let values_vec: Vec<f64> = values.into_no_null_iter().collect();
-
-    // ICC requires a 2D matrix structure - this is a simplified placeholder
-    // The actual implementation would need proper matrix handling
-    // TODO: Implement proper ICC with matrix input
-    let estimate = Series::new("estimate".into(), &[f64::NAN]);
-    let statistic = Series::new("statistic".into(), &[f64::NAN]);
+/// Return an all-NaN ICC output struct matching `icc_output_dtype`.
+fn icc_error_output() -> PolarsResult<Series> {
+    let icc_val = Series::new("icc".into(), &[f64::NAN]);
+    let f_value = Series::new("f_value".into(), &[f64::NAN]);
+    let df1 = Series::new("df1".into(), &[f64::NAN]);
+    let df2 = Series::new("df2".into(), &[f64::NAN]);
     let p_value = Series::new("p_value".into(), &[f64::NAN]);
     let ci_lower = Series::new("ci_lower".into(), &[f64::NAN]);
     let ci_upper = Series::new("ci_upper".into(), &[f64::NAN]);
-    let n = Series::new("n".into(), &[values_vec.len() as u32]);
+    let n_subjects = Series::new("n_subjects".into(), &[0u32]);
+    let n_raters = Series::new("n_raters".into(), &[0u32]);
 
     let df = StructChunked::from_series(
         "icc".into(),
         1,
-        [&estimate, &statistic, &p_value, &ci_lower, &ci_upper, &n].into_iter(),
+        [
+            &icc_val,
+            &f_value,
+            &df1,
+            &df2,
+            &p_value,
+            &ci_lower,
+            &ci_upper,
+            &n_subjects,
+            &n_raters,
+        ]
+        .into_iter(),
     )?;
     Ok(df.into_series())
 }
 
-/// Intraclass correlation coefficient (ICC)
-/// Note: ICC requires a 2D matrix structure (subjects x raters).
-/// This is a placeholder that requires proper matrix input handling.
-#[polars_expr(output_type_func=correlation_output_dtype)]
+/// Public Rust-callable variant. Same input contract as the `pl_icc` expression shim.
+///
+/// Input contract:
+/// - `inputs[0]`: UInt32 literal — number of rater columns
+/// - `inputs[1]`: String literal — ICC type ("icc1", "icc2", "icc3", "icc1k", "icc2k", "icc3k")
+/// - `inputs[2..2+n_raters]`: one f64 Series per rater column (rows = subjects)
+pub fn icc_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    let n_raters = inputs[0].u32()?.get(0).unwrap_or(0) as usize;
+    let icc_type_str = inputs[1].str()?.get(0).unwrap_or("icc2");
+    let icc_type = parse_icc_type(icc_type_str);
+
+    // Collect one Vec<f64> per rater column; matrix[rater][subject]
+    let mut matrix: Vec<Vec<f64>> = Vec::new();
+    for i in 0..n_raters {
+        if let Some(rater_series) = inputs.get(2 + i) {
+            let col: Vec<f64> = rater_series.f64()?.into_no_null_iter().collect();
+            matrix.push(col);
+        }
+    }
+
+    // Guard against empty or single-rater input
+    if matrix.is_empty() || matrix[0].is_empty() {
+        return icc_error_output();
+    }
+
+    let n_subjects = matrix[0].len();
+
+    // Transpose: icc() expects data[subject][rater]
+    let data: Vec<Vec<f64>> = (0..n_subjects)
+        .map(|s| (0..n_raters).map(|r| matrix[r][s]).collect())
+        .collect();
+
+    match icc(&data, icc_type) {
+        Ok(r) => {
+            let icc_val = Series::new("icc".into(), &[r.icc]);
+            let f_value = Series::new("f_value".into(), &[r.f_value]);
+            let df1 = Series::new("df1".into(), &[r.df1]);
+            let df2 = Series::new("df2".into(), &[r.df2]);
+            let p_value = Series::new("p_value".into(), &[r.p_value]);
+            let ci_lower = Series::new("ci_lower".into(), &[r.conf_int_lower]);
+            let ci_upper = Series::new("ci_upper".into(), &[r.conf_int_upper]);
+            let n_subjects_s = Series::new("n_subjects".into(), &[r.n_subjects as u32]);
+            let n_raters_s = Series::new("n_raters".into(), &[r.n_raters as u32]);
+
+            let df = StructChunked::from_series(
+                "icc".into(),
+                1,
+                [
+                    &icc_val,
+                    &f_value,
+                    &df1,
+                    &df2,
+                    &p_value,
+                    &ci_lower,
+                    &ci_upper,
+                    &n_subjects_s,
+                    &n_raters_s,
+                ]
+                .into_iter(),
+            )?;
+            Ok(df.into_series())
+        }
+        Err(_) => icc_error_output(),
+    }
+}
+
+/// Intraclass correlation coefficient (ICC).
+///
+/// Computes the ICC for a subjects x raters matrix passed as multiple rater columns.
+#[polars_expr(output_type_func=icc_output_dtype)]
 fn pl_icc(inputs: &[Series]) -> PolarsResult<Series> {
     icc_fit(inputs)
 }

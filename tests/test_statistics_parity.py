@@ -291,3 +291,72 @@ class TestEnergyDistanceNd:
         v = result[0, 0]
         assert v["statistic"] > 0
         assert 0.0 <= v["p_value"] <= 1.0
+
+
+class TestIcc:
+    """STAT-05: ps.icc real matrix-input ICC smoke tests."""
+
+    def _rater_df(self):
+        """4 subjects x 3 raters with strong agreement."""
+        return pl.DataFrame(
+            {
+                "rater1": [1.0, 2.0, 3.0, 4.0],
+                "rater2": [1.1, 2.2, 2.9, 4.1],
+                "rater3": [0.9, 1.9, 3.1, 3.9],
+            }
+        )
+
+    def test_returns_correct_schema(self):
+        """ICC returns a struct with all expected fields."""
+        result = self._rater_df().select(ps.icc("rater1", "rater2", "rater3"))
+        assert result.shape == (1, 1)
+        v = result[0, 0]
+        for field in [
+            "icc",
+            "f_value",
+            "df1",
+            "df2",
+            "p_value",
+            "ci_lower",
+            "ci_upper",
+            "n_subjects",
+            "n_raters",
+        ]:
+            assert field in v, f"Missing field: {field}"
+
+    def test_icc_value_finite_and_in_range(self):
+        """ICC value is finite and in [-1, 1], n_subjects/n_raters are correct."""
+        result = self._rater_df().select(ps.icc("rater1", "rater2", "rater3"))
+        v = result[0, 0]
+        assert math.isfinite(v["icc"])
+        assert -1.0 <= v["icc"] <= 1.0
+        assert v["n_subjects"] == 4
+        assert v["n_raters"] == 3
+
+    def test_ci_bounds_finite(self):
+        """Confidence interval bounds are finite for valid input."""
+        result = self._rater_df().select(ps.icc("rater1", "rater2", "rater3"))
+        v = result[0, 0]
+        assert math.isfinite(v["ci_lower"])
+        assert math.isfinite(v["ci_upper"])
+        assert v["ci_lower"] <= v["ci_upper"]
+
+    def test_icc_type_parameter_honored(self):
+        """icc_type='icc3' produces a different icc value than the default 'icc2'."""
+        df = self._rater_df()
+        r2 = df.select(ps.icc("rater1", "rater2", "rater3", icc_type="icc2"))[0, 0]
+        r3 = df.select(ps.icc("rater1", "rater2", "rater3", icc_type="icc3"))[0, 0]
+        # Both must be finite; they differ for non-trivial data
+        assert math.isfinite(r2["icc"])
+        assert math.isfinite(r3["icc"])
+        assert r2["icc"] != r3["icc"]
+
+    def test_degenerate_no_raters_returns_nan_struct(self):
+        """Calling ps.icc with no rater columns returns all-NaN struct without panic."""
+        df = pl.DataFrame({"dummy": [1.0, 2.0]})
+        # Pass zero rater columns — the builder sends n_raters=0 to Rust
+        result = df.select(ps.icc())
+        v = result[0, 0]
+        assert math.isnan(v["icc"])
+        assert v["n_subjects"] == 0
+        assert v["n_raters"] == 0

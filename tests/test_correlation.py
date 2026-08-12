@@ -380,22 +380,36 @@ class TestSemiPartialCorrelation:
 
 
 class TestICC:
-    """Tests for intraclass correlation coefficient."""
+    """Tests for intraclass correlation coefficient (real matrix-input, STAT-05)."""
 
     def test_icc_basic(self):
-        """Test basic ICC computation."""
-        np.random.seed(42)
-        df = pl.DataFrame({
-            "values": np.random.randn(30).tolist(),
-        })
+        """Real ICC on 4 subjects x 3 raters returns non-NaN struct fields."""
+        import math
 
-        result = df.select(
-            ps.icc("values", icc_type="icc1").alias("icc")
+        df = pl.DataFrame(
+            {
+                "rater1": [1.0, 2.0, 3.0, 4.0],
+                "rater2": [1.1, 2.2, 2.9, 4.1],
+                "rater3": [0.9, 1.9, 3.1, 3.9],
+            }
         )
+
+        result = df.select(ps.icc("rater1", "rater2", "rater3", icc_type="icc2").alias("icc"))
 
         assert result.shape == (1, 1)
         icc_result = result["icc"][0]
-        assert "estimate" in icc_result
+        assert "icc" in icc_result
+        assert "f_value" in icc_result
+        assert "p_value" in icc_result
+        assert "ci_lower" in icc_result
+        assert "ci_upper" in icc_result
+        assert "n_subjects" in icc_result
+        assert "n_raters" in icc_result
+        # Real (non-NaN) values
+        assert math.isfinite(icc_result["icc"])
+        assert -1.0 <= icc_result["icc"] <= 1.0
+        assert icc_result["n_subjects"] == 4
+        assert icc_result["n_raters"] == 3
 
 
 class TestCorrelationGroupBy:
