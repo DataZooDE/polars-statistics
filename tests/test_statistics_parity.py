@@ -39,21 +39,40 @@ class TestOneWayAnova:
         assert "eta_squared" in v
         assert "n_groups" in v
 
-    def test_fisher_plausible_f_and_p(self):
-        """Fisher ANOVA on clearly separated groups yields F >> 1 and p < 0.05."""
-        df = pl.DataFrame(
-            {
-                "a": [1.0, 2.0, 3.0],
-                "b": [4.0, 5.0, 6.0],
-                "c": [7.0, 8.0, 9.0],
-            }
-        )
+    def test_fisher_plausible_f_and_p(self, require_scipy):
+        """Fisher ANOVA matches scipy.stats.f_oneway within tolerance.
+
+        Validates F-statistic and p-value against scipy's well-tested reference
+        implementation (TEST-03 value-validation pattern).  The fixture
+        ``require_scipy`` skips this test automatically when scipy is absent,
+        keeping the runtime wheel dependency-light.
+        """
+        scipy_stats = require_scipy.stats
+
+        groups = [
+            [1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0],
+            [7.0, 8.0, 9.0],
+        ]
+        df = pl.DataFrame({"a": groups[0], "b": groups[1], "c": groups[2]})
         result = df.select(ps.one_way_anova("a", "b", "c"))
         v = result[0, 0]
+
+        ref = scipy_stats.f_oneway(*groups)
+
+        # Plausibility guards (keep the original contract)
         assert v["statistic"] > 1.0
         assert 0.0 <= v["p_value"] <= 1.0
         assert v["p_value"] < 0.05
         assert v["n_groups"] == 3
+
+        # Value-correctness against scipy reference (TEST-03)
+        assert abs(v["statistic"] - ref.statistic) / max(abs(ref.statistic), 1e-12) < 1e-6, (
+            f"F-statistic mismatch: polars-statistics={v['statistic']}, scipy={ref.statistic}"
+        )
+        assert abs(v["p_value"] - ref.pvalue) < 1e-9, (
+            f"p-value mismatch: polars-statistics={v['p_value']}, scipy={ref.pvalue}"
+        )
 
     def test_fisher_has_ss_fields(self):
         """Fisher ANOVA populates ss_between/ss_within/ms_between/ms_within and eta_squared."""

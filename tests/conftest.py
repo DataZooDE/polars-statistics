@@ -4,6 +4,27 @@ import numpy as np
 import pytest
 
 
+# ---------------------------------------------------------------------------
+# Reference-library skip guards (TEST-03)
+#
+# Use these fixtures in any test that compares polars-statistics output against
+# scipy or statsmodels.  When the reference library is absent the test is
+# skipped automatically, keeping the runtime wheel dependency-light.
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def require_scipy():
+    """Return the scipy module, or skip the test if scipy is unavailable."""
+    return pytest.importorskip("scipy")
+
+
+@pytest.fixture
+def require_statsmodels():
+    """Return the statsmodels module, or skip the test if statsmodels is unavailable."""
+    return pytest.importorskip("statsmodels")
+
+
 @pytest.fixture
 def random_seed():
     """Set random seed for reproducibility."""
