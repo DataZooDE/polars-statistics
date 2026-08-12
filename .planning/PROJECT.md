@@ -36,12 +36,12 @@ and shipped to users via PyPI.
 - ✓ `anofox-statistics` bumped 0.4.1 → 0.4.2 — Phase 1 (clean build, existing tests green)
 - ✓ `anofox-regression` bumped 0.5.4 → 0.5.13, inheriting the column-pivot correctness fix — Phase 1 (zero wrapper reconciliation; 3 new column-pivot tests confirm the fix is active; Rust 15 + pytest 457 passing)
 - ✓ Authoritative public-API gap list for both crates (`02-API-AUDIT.md`) — Phase 2 (statistics: 3 ANOVA fns + energy nD + ICC stub; regression: Gamma/GLMM/PSpline/FactorSummary + HC-extend + 6 solvers + minor diagnostics; all 21 known candidates resolved; HC confirmed already-PARTIAL for OLS)
+- ✓ All unexposed `anofox-statistics` functions exposed as Polars expressions — Phase 3 (one/two-way + repeated-measures ANOVA, energy_distance_nd, real matrix-input ICC replacing the NaN stub; 479 pytest + 15 rust_api green; 3 critical ANOVA factor-encoding bugs caught in review and fixed with regression tests)
 
 ### Active
 
 <!-- This milestone. Hypotheses until shipped & validated. -->
 
-- [ ] Expose all unexposed `anofox-statistics` functions (known: ANOVA family — `one_way_anova`, `two_way_anova`, `repeated_measures_anova`; `energy_distance_test`; plus any surfaced by the audit)
 - [ ] Expose all unexposed `anofox-regression` functions (known candidates: `GlmmRegressor` mixed models, `PSplineRegressor` smoother, Gamma GLM, HC robust inference `HcInference`/`HcType`, diagnostics suite — Cook's distance, VIF, leverage, residual variants, condition diagnostics — streaming moment fits, and robust solvers e.g. Theil–Sen/RANSAC/LOWESS/Bayesian/passive-aggressive/LARS where applicable; final list from the audit)
 - [ ] Update documentation (mkdocs API pages, Python docstrings, Rust doc comments) for all newly exposed API
 - [ ] Create tests (pytest + Rust) covering all newly exposed API, validated against R where the crates provide reference values
@@ -97,4 +97,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-08-11 after Phase 2 (Public API Audit)*
+*Last updated: 2026-08-12 after Phase 3 (Statistics API Parity)*

@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 3
-current_phase_name: Statistics API Parity
-status: executing
+current_phase: 4
+current_phase_name: Regression API Parity
+status: planning
 stopped_at: Completed 03-03-PLAN.md (ICC stub replacement)
-last_updated: "2026-08-12T05:41:55.214Z"
-last_activity: 2026-08-11
-last_activity_desc: Roadmap created (7 phases, layered structure, 28/28 requirements mapped)
+last_updated: "2026-08-12T07:09:48.647Z"
+last_activity: 2026-08-12
+last_activity_desc: Phase 3 complete, transitioned to Phase 4
 progress:
   total_phases: 3
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 7
-  completed_plans: 6
+  completed_plans: 7
 ---
 
 # Project State
@@ -23,22 +23,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-11)
 
 **Core value:** Every public statistical capability in the backing `anofox-*` crates is exposed through the Polars/Python API — correctly, documented, tested, and shipped to PyPI.
-**Current focus:** Phase 3 — Statistics API Parity
+**Current focus:** Phase 4 — Regression API Parity
 
 ## Current Position
 
-Phase: 3 (Statistics API Parity) — EXECUTING
-Plan: 4 of 4
-Status: Ready to execute
-Last activity: 2026-08-11 — Phase 3 execution started
+Phase: 4 — Regression API Parity
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-08-12 — Phase 3 complete, transitioned to Phase 4
 
-Progress: [█████████░] 86% (2/7 phases complete)
+Progress: [████░░░░░░] 43% (3/7 phases complete)
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 3
+- Total plans completed: 7
 - Average duration: — min
 - Total execution time: 0.0 hours
 
@@ -48,6 +48,7 @@ Progress: [█████████░] 86% (2/7 phases complete)
 |-------|-------|-------|----------|
 | 1 | 2 | - | - |
 | 2 | 1 | - | - |
+| 3 | 4 | - | - |
 
 **Recent Trend:**
 
@@ -109,6 +110,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-12T05:41:55.205Z
-Stopped at: Completed 03-03-PLAN.md (ICC stub replacement)
+Last session: 2026-08-12
+Stopped at: Phase 3 complete (ANOVA family + energy nD + real ICC; verified passed; 3 critical ANOVA bugs caught in review and fixed with regression tests); autonomous run advancing to Phase 4 (Regression API Parity)
 Resume file: None

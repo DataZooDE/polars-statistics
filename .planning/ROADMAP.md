@@ -22,7 +22,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Dependency Modernization** - Bump both anofox crates, reconcile breakage, keep existing tests green (completed 2026-08-11)
 - [x] **Phase 2: Public API Audit** - Enumerate every unexposed function in both crates as an authoritative gap list (completed 2026-08-11)
-- [ ] **Phase 3: Statistics API Parity** - Expose ANOVA family, energy distance, and all remaining statistics gaps
+- [x] **Phase 3: Statistics API Parity** - Expose ANOVA family, energy distance, and all remaining statistics gaps (completed 2026-08-12)
 - [ ] **Phase 4: Regression API Parity** - Expose GLMM, P-spline, Gamma GLM, HC inference, diagnostics, and remaining regression gaps
 - [ ] **Phase 5: Documentation** - Document all newly exposed API across docstrings, mkdocs, Rust doc comments, and CHANGELOG
 - [ ] **Phase 6: Testing & Validation** - Cover all new API with pytest + Rust tests, validated against R, CI matrix green
@@ -94,7 +94,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Wave 3** *(blocked on 03-01/02/03 — registration + integration)*
 
-- [ ] 03-04-PLAN.md — register energy_distance_nd, full smoke-test suite (5 classes) + Rust smoke tests, clippy/fmt/ruff + full-suite phase gate (STAT-01..05)
+- [x] 03-04-PLAN.md — register energy_distance_nd, full smoke-test suite (5 classes) + Rust smoke tests, clippy/fmt/ruff + full-suite phase gate (STAT-01..05)
 
 ### Phase 4: Regression API Parity
 
@@ -163,7 +163,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 |-------|----------------|--------|-----------|
 | 1. Dependency Modernization | 2/2 | Complete    | 2026-08-11 |
 | 2. Public API Audit | 1/1 | Complete    | 2026-08-11 |
-| 3. Statistics API Parity | 3/4 | In Progress|  |
+| 3. Statistics API Parity | 4/4 | Complete    | 2026-08-12 |
 | 4. Regression API Parity | 0/TBD | Not started | - |
 | 5. Documentation | 0/TBD | Not started | - |
 | 6. Testing & Validation | 0/TBD | Not started | - |
