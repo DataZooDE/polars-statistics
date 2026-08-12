@@ -15,6 +15,11 @@ from polars_statistics._polars_statistics import (
     Quantile,
     Isotonic,
     Huber,
+    # Robust & sklearn-style solvers
+    TheilSen,
+    RANSAC,
+    BayesianRidge,
+    ARD,
     # Smoothers
     PSpline,
     PLS,
@@ -261,6 +266,11 @@ __all__ = [
     "Isotonic",
     "Huber",
     "PLS",
+    # Robust & sklearn-style solvers
+    "TheilSen",
+    "RANSAC",
+    "BayesianRidge",
+    "ARD",
     # Smoothers
     "PSpline",
     # GLM Models
