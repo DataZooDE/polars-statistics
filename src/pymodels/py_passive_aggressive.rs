@@ -154,14 +154,73 @@ impl PyPassiveAggressive {
     /// y_value : float
     ///     Target value for the sample.
     fn partial_fit(&mut self, x_row: PyReadonlyArray1<'_, f64>, y_value: f64) -> PyResult<()> {
-        let slice = x_row.as_slice().unwrap();
+        let slice = x_row.as_slice().map_err(|_| {
+            PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                "x_row must be a contiguous (C-order) 1-D float64 array; \
+                     try passing np.ascontiguousarray(x_row) if it is a slice",
+            )
+        })?;
         let n_features = slice.len();
+        // Validate feature-count consistency before get_or_insert_with (WR-04).
+        if let Some(ref state) = self.state {
+            if state.weights.len() != n_features {
+                return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
+                    "x_row has {} features but model was initialized with {}",
+                    n_features,
+                    state.weights.len()
+                )));
+            }
+        }
         // Build model before taking mutable borrow of state to avoid borrow conflict.
         let model = self.build_model();
         let state = self.state.get_or_insert_with(|| PaState::new(n_features));
         model
             .partial_fit(state, slice, y_value)
             .map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>(e.to_string()))
+    }
+
+    /// Predict response values from the online state (after ``partial_fit``).
+    ///
+    /// Use this method when the model was trained exclusively via ``partial_fit``
+    /// and ``is_fitted()`` returns ``False``.  For models trained with ``fit``
+    /// prefer :meth:`predict` which uses the full fitted object.
+    ///
+    /// Parameters
+    /// ----------
+    /// x : array-like of shape (n_samples, n_features)
+    ///     Feature matrix.
+    ///
+    /// Returns
+    /// -------
+    /// numpy.ndarray of shape (n_samples,)
+    fn predict_from_state<'py>(
+        &self,
+        py: Python<'py>,
+        x: PyReadonlyArray2<'py, f64>,
+    ) -> PyResult<Bound<'py, PyArray1<f64>>> {
+        let state = self.state.as_ref().ok_or_else(|| {
+            PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
+                "No partial_fit state available; call partial_fit at least once",
+            )
+        })?;
+        let x_mat = x.to_faer();
+        let n = x_mat.nrows();
+        let p = x_mat.ncols();
+        let intercept = if self.with_intercept {
+            state.intercept
+        } else {
+            0.0
+        };
+        let preds: Vec<f64> = (0..n)
+            .map(|i| {
+                let mut v = intercept;
+                for j in 0..p {
+                    v += x_mat[(i, j)] * state.weights[j];
+                }
+                v
+            })
+            .collect();
+        Ok(PyArray1::from_vec(py, preds))
     }
 
     /// Predict response values.
@@ -179,7 +238,7 @@ impl PyPassiveAggressive {
     }
 
     fn is_fitted(&self) -> bool {
-        self.fitted.is_some()
+        self.fitted.is_some() || self.state.is_some()
     }
 
     /// Number of training iterations performed (early-stop count).

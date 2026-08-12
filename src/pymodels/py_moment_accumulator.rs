@@ -68,7 +68,12 @@ impl PyMomentAccumulator {
     ///     If ``x_row`` has the wrong length.
     fn push_row(&mut self, x_row: PyReadonlyArray1<'_, f64>, y: f64) -> PyResult<()> {
         // Threat T-04-12: explicit length check before calling push_row (Pitfall 4).
-        let slice = x_row.as_slice().unwrap();
+        let slice = x_row.as_slice().map_err(|_| {
+            PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                "x_row must be a contiguous (C-order) 1-D float64 array; \
+                 try passing np.ascontiguousarray(x_row) if it is a slice",
+            )
+        })?;
         let n = slice.len();
         let expected = self.inner.n_features();
         if n != expected {
