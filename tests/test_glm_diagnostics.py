@@ -154,7 +154,8 @@ class TestGammaStandardizedDevianceResiduals:
 class TestRidgeHcInference:
     def _xy(self, n: int = 50, p: int = 2):
         X = RNG.standard_normal((n, p))
-        y = X @ np.array([1.0, -0.5]) + 0.1 * RNG.standard_normal(n)
+        # length-p coefficient so p != 2 still conforms (linspace(1,-0.5,2) == [1,-0.5])
+        y = X @ np.linspace(1.0, -0.5, p) + 0.1 * RNG.standard_normal(n)
         return X, y
 
     def test_std_errors_finite(self):
@@ -193,7 +194,8 @@ class TestRidgeHcInference:
 class TestWlsHcInference:
     def _xyw(self, n: int = 50, p: int = 2):
         X = RNG.standard_normal((n, p))
-        y = X @ np.array([2.0, -1.0]) + 0.2 * RNG.standard_normal(n)
+        # length-p coefficient so p != 2 still conforms (linspace(2,-1,2) == [2,-1])
+        y = X @ np.linspace(2.0, -1.0, p) + 0.2 * RNG.standard_normal(n)
         weights = np.abs(RNG.standard_normal(n)) + 0.5
         return X, y, weights
 
