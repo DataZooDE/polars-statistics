@@ -57,6 +57,113 @@ df.select(ps.one_way_anova("control", "treatment_a", "treatment_b", kind="welch"
 
 ---
 
+## `two_way_anova`
+
+Two-way ANOVA for testing main effects of two factors and their interaction.
+
+Partitions the total variance into contributions from factor A, factor B, the A×B
+interaction, and within-group error. Pass data as columns of equal length — one column
+per cell in the A×B design (or use a long-format column with group columns).
+
+```python
+ps.two_way_anova(
+    *groups: Union[pl.Expr, str],   # Data columns for each cell (A_levels × B_levels)
+    n_levels_a: int,                 # Number of levels for factor A
+    n_levels_b: int,                 # Number of levels for factor B
+    kind: str = "fisher",            # "fisher" (default; assumes equal variances)
+) -> pl.Expr
+```
+
+**Returns:**
+`Struct{f_a: Float64, p_a: Float64, f_b: Float64, p_b: Float64,
+f_ab: Float64, p_ab: Float64, df_a: Float64, df_b: Float64, df_ab: Float64,
+df_within: Float64, ss_a: Float64, ss_b: Float64, ss_ab: Float64, ss_within: Float64}`
+
+**Assumptions:**
+- Independent observations within each cell
+- Equal variances across cells (Fisher variant)
+- Data approximately normally distributed per cell
+- Balanced or near-balanced design recommended
+
+**When to use:**
+- Testing whether two categorical factors each influence a continuous outcome
+- Testing whether the effect of factor A differs across levels of factor B (interaction)
+- Use `one_way_anova` when only one grouping factor is present
+
+**Example:**
+```python
+import polars as pl
+import polars_statistics as ps
+
+# 2×2 design: 2 treatments × 2 time points, 4 observations per cell
+df = pl.DataFrame({
+    "treat_a_time_1": [1.0, 2.0, 1.5, 2.5],
+    "treat_a_time_2": [3.0, 4.0, 3.5, 4.5],
+    "treat_b_time_1": [2.0, 3.0, 2.5, 3.5],
+    "treat_b_time_2": [5.0, 6.0, 5.5, 6.5],
+})
+
+result = df.select(
+    ps.two_way_anova(
+        "treat_a_time_1", "treat_a_time_2",
+        "treat_b_time_1", "treat_b_time_2",
+        n_levels_a=2, n_levels_b=2
+    ).alias("anova")
+)
+```
+
+---
+
+## `repeated_measures_anova`
+
+Repeated-measures ANOVA with Mauchly's sphericity test and epsilon corrections.
+
+Extends one-way ANOVA to within-subject designs where each participant is measured
+under all conditions. Automatically applies Greenhouse-Geisser (ε) and Huynh-Feldt
+(ε̃) corrections when sphericity is violated.
+
+```python
+ps.repeated_measures_anova(
+    *conditions: Union[pl.Expr, str],  # One column per repeated condition
+) -> pl.Expr
+```
+
+**Returns:**
+`Struct{f_statistic: Float64, p_value: Float64, df_between: Float64, df_error: Float64,
+ss_between: Float64, ss_error: Float64, mauchly_w: Float64, mauchly_p: Float64,
+epsilon_gg: Float64, epsilon_hf: Float64, p_gg: Float64, p_hf: Float64,
+eta_squared: Float64, n_subjects: UInt32}`
+
+**Assumptions:**
+- Same subjects measured across all conditions (within-subject design)
+- Sphericity (equality of variances of pairwise differences) — tested automatically via Mauchly's test
+- Use ε-corrected p-values (`p_gg` or `p_hf`) when `mauchly_p < 0.05`
+
+**When to use:**
+- Before/after measurements with more than two time points
+- Crossover experiments where subjects receive all treatments
+- Preference: use `p_gg` for conservative correction; `p_hf` when the Huynh-Feldt estimate is close to 1
+
+**Example:**
+```python
+import polars as pl
+import polars_statistics as ps
+
+# 10 subjects measured at 3 time points
+df = pl.DataFrame({
+    "time1": [4.0, 5.0, 3.0, 6.0, 4.5, 5.5, 3.5, 6.5, 4.0, 5.0],
+    "time2": [5.0, 6.0, 4.0, 7.0, 5.5, 6.5, 4.5, 7.5, 5.0, 6.0],
+    "time3": [6.0, 7.0, 5.0, 8.0, 6.5, 7.5, 5.5, 8.5, 6.0, 7.0],
+})
+
+result = df.select(
+    ps.repeated_measures_anova("time1", "time2", "time3").alias("rm_anova")
+)
+# Use result["rm_anova"]["p_gg"] for Greenhouse-Geisser corrected p-value
+```
+
+---
+
 ## `ttest_ind`
 
 Independent samples t-test for comparing means of two groups.
@@ -213,6 +320,9 @@ df.select(ps.yuen_test("treatment", "control", trim=0.1))
 | Two independent groups, outliers present | `yuen_test` |
 | Paired/repeated measurements | `ttest_paired` |
 | Check variance equality | `brown_forsythe` |
+| Three or more independent groups | `one_way_anova` |
+| Two independent factors (main effects + interaction) | `two_way_anova` |
+| Same subjects measured across conditions | `repeated_measures_anova` |
 | Non-normal data | Consider [Non-Parametric Tests](nonparametric.md) |
 
 ---

@@ -228,6 +228,56 @@ ps.energy_distance(
 
 ---
 
+### `energy_distance_nd`
+
+Multivariate energy distance for comparing two multivariate samples.
+
+Extends `energy_distance` to arbitrary dimension — accepts multiple feature columns and
+computes the energy distance between the two multivariate distributions. Particularly
+useful for comparing joint distributions of forecast error vectors or multivariate
+covariate shifts.
+
+```python
+ps.energy_distance_nd(
+    *columns: Union[pl.Expr, str],   # Feature columns; first half = sample X, second half = sample Y
+    n_permutations: int = 999,
+    seed: int | None = None,
+) -> pl.Expr
+```
+
+**Returns:** `Struct{statistic: Float64, p_value: Float64}`
+
+**Null hypothesis:** The two multivariate samples come from the same joint distribution.
+
+**Difference from `energy_distance`:**
+- `energy_distance`: univariate (single pair of columns)
+- `energy_distance_nd`: multivariate (multiple feature columns per sample)
+
+**When to use:**
+- Comparing joint distributions of multivariate forecasts
+- Detecting multivariate distribution shift
+- Validating that two groups have the same multivariate covariate distribution
+
+**Example:**
+```python
+import polars as pl
+import polars_statistics as ps
+
+# Two samples with 2 features each
+df = pl.DataFrame({
+    "x1_a": [1.0, 2.0, 3.0, 4.0, 5.0],
+    "x2_a": [0.5, 1.5, 2.5, 3.5, 4.5],
+    "x1_b": [1.5, 2.5, 3.5, 4.5, 5.5],
+    "x2_b": [1.0, 2.0, 3.0, 4.0, 5.0],
+})
+
+result = df.select(
+    ps.energy_distance_nd("x1_a", "x2_a", "x1_b", "x2_b", seed=42).alias("ed_nd")
+)
+```
+
+---
+
 ### `mmd_test`
 
 Maximum Mean Discrepancy (MMD) test with Gaussian kernel.
