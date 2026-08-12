@@ -24,7 +24,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Public API Audit** - Enumerate every unexposed function in both crates as an authoritative gap list (completed 2026-08-11)
 - [x] **Phase 3: Statistics API Parity** - Expose ANOVA family, energy distance, and all remaining statistics gaps (completed 2026-08-12)
 - [x] **Phase 4: Regression API Parity** - Expose GLMM, P-spline, Gamma GLM, HC inference, diagnostics, and remaining regression gaps (completed 2026-08-12)
-- [ ] **Phase 5: Documentation** - Document all newly exposed API across docstrings, mkdocs, Rust doc comments, and CHANGELOG
+- [x] **Phase 5: Documentation** - Document all newly exposed API across docstrings, mkdocs, Rust doc comments, and CHANGELOG (completed 2026-08-12)
 - [ ] **Phase 6: Testing & Validation** - Cover all new API with pytest + Rust tests, validated against R, CI matrix green
 - [ ] **Phase 7: Release 0.6.0** - Bump version, publish wheels to production PyPI, smoke-check the release
 
@@ -199,6 +199,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 2. Public API Audit | 1/1 | Complete    | 2026-08-11 |
 | 3. Statistics API Parity | 4/4 | Complete    | 2026-08-12 |
 | 4. Regression API Parity | 6/6 | Complete    | 2026-08-12 |
-| 5. Documentation | 4/4 | In Progress|  |
+| 5. Documentation | 4/4 | Complete    | 2026-08-12 |
 | 6. Testing & Validation | 0/TBD | Not started | - |
 | 7. Release 0.6.0 | 0/TBD | Not started | - |

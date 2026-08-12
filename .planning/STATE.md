@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 5
-current_phase_name: Documentation
-status: verifying
+current_phase: 6
+current_phase_name: Testing & Validation
+status: planning
 stopped_at: Completed 05-04-PLAN.md
-last_updated: "2026-08-12T13:37:19.038Z"
+last_updated: "2026-08-12T13:39:02.913Z"
 last_activity: 2026-08-12
 last_activity_desc: Phase 3 complete, transitioned to Phase 4
 progress:
@@ -23,22 +23,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-11)
 
 **Core value:** Every public statistical capability in the backing `anofox-*` crates is exposed through the Polars/Python API — correctly, documented, tested, and shipped to PyPI.
-**Current focus:** Phase 5 — Documentation
+**Current focus:** Phase 6 — Testing & Validation
 
 ## Current Position
 
-Phase: 5 (Documentation) — EXECUTING
-Plan: 4 of 4
-Status: Phase complete — ready for verification
-Last activity: 2026-08-12 — Phase 5 execution started
+Phase: 6 — Testing & Validation
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-08-12 — Phase 5 complete, transitioned to Phase 6
 
-Progress: [██████████] 100% (4/7 phases complete)
+Progress: [██████░░░░] 71% (5/7 phases complete)
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 13
+- Total plans completed: 17
 - Average duration: — min
 - Total execution time: 0.0 hours
 
@@ -50,6 +50,7 @@ Progress: [██████████] 100% (4/7 phases complete)
 | 2 | 1 | - | - |
 | 3 | 4 | - | - |
 | 4 | 6 | - | - |
+| 5 | 4 | - | - |
 
 **Recent Trend:**
 
@@ -140,5 +141,5 @@ Items acknowledged and carried forward from previous milestone close:
 ## Session Continuity
 
 Last session: 2026-08-12T13:37:19.029Z
-Stopped at: Completed 05-04-PLAN.md
+Stopped at: Phase 5 complete (all new API documented: docstrings, mkdocs, Rust ���, CHANGELOG 0.6.0); autonomous run advancing to Phase 6 (Testing & Validation)
 Resume file: None

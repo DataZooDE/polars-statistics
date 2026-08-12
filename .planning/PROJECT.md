@@ -38,12 +38,12 @@ and shipped to users via PyPI.
 - ✓ Authoritative public-API gap list for both crates (`02-API-AUDIT.md`) — Phase 2 (statistics: 3 ANOVA fns + energy nD + ICC stub; regression: Gamma/GLMM/PSpline/FactorSummary + HC-extend + 6 solvers + minor diagnostics; all 21 known candidates resolved; HC confirmed already-PARTIAL for OLS)
 - ✓ All unexposed `anofox-statistics` functions exposed as Polars expressions — Phase 3 (one/two-way + repeated-measures ANOVA, energy_distance_nd, real matrix-input ICC replacing the NaN stub; 479 pytest + 15 rust_api green; 3 critical ANOVA factor-encoding bugs caught in review and fixed with regression tests)
 - ✓ All unexposed `anofox-regression` capabilities exposed (full parity) — Phase 4 (10 new PyModels: Gamma, GLMM, PSpline, TheilSen, RANSAC, BayesianRidge, ARD, LARS, PassiveAggressive, MomentAccumulator; Ridge/WLS HC; 5 GLM-diagnostic expressions; OLS/Ridge fit_from_accumulator. 582 pytest + 15 rust_api green; 5 critical + 6 warning review findings fixed. Known limitation: weighted HC for WLS raises NotImplementedError pending crate support.)
+- ✓ Full API documentation for the new surface — Phase 5 (Python docstrings w/ runnable examples, mkdocs reference pages, Rust /// comments, CHANGELOG 0.6.0 with known limitations)
 
 ### Active
 
 <!-- This milestone. Hypotheses until shipped & validated. -->
 
-- [ ] Update documentation (mkdocs API pages, Python docstrings, Rust doc comments) for all newly exposed API
 - [ ] Create tests (pytest + Rust) covering all newly exposed API, validated against R where the crates provide reference values
 - [ ] Bump `polars-statistics` 0.5.0 → 0.6.0 (Cargo.toml + pyproject.toml) and publish to production PyPI via the GitHub Actions pipeline
 
@@ -97,4 +97,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-08-12 after Phase 4 (Regression API Parity)*
+*Last updated: 2026-08-12 after Phase 5 (Documentation)*
