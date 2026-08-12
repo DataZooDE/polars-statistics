@@ -37,12 +37,12 @@ and shipped to users via PyPI.
 - ✓ `anofox-regression` bumped 0.5.4 → 0.5.13, inheriting the column-pivot correctness fix — Phase 1 (zero wrapper reconciliation; 3 new column-pivot tests confirm the fix is active; Rust 15 + pytest 457 passing)
 - ✓ Authoritative public-API gap list for both crates (`02-API-AUDIT.md`) — Phase 2 (statistics: 3 ANOVA fns + energy nD + ICC stub; regression: Gamma/GLMM/PSpline/FactorSummary + HC-extend + 6 solvers + minor diagnostics; all 21 known candidates resolved; HC confirmed already-PARTIAL for OLS)
 - ✓ All unexposed `anofox-statistics` functions exposed as Polars expressions — Phase 3 (one/two-way + repeated-measures ANOVA, energy_distance_nd, real matrix-input ICC replacing the NaN stub; 479 pytest + 15 rust_api green; 3 critical ANOVA factor-encoding bugs caught in review and fixed with regression tests)
+- ✓ All unexposed `anofox-regression` capabilities exposed (full parity) — Phase 4 (10 new PyModels: Gamma, GLMM, PSpline, TheilSen, RANSAC, BayesianRidge, ARD, LARS, PassiveAggressive, MomentAccumulator; Ridge/WLS HC; 5 GLM-diagnostic expressions; OLS/Ridge fit_from_accumulator. 582 pytest + 15 rust_api green; 5 critical + 6 warning review findings fixed. Known limitation: weighted HC for WLS raises NotImplementedError pending crate support.)
 
 ### Active
 
 <!-- This milestone. Hypotheses until shipped & validated. -->
 
-- [ ] Expose all unexposed `anofox-regression` functions (known candidates: `GlmmRegressor` mixed models, `PSplineRegressor` smoother, Gamma GLM, HC robust inference `HcInference`/`HcType`, diagnostics suite — Cook's distance, VIF, leverage, residual variants, condition diagnostics — streaming moment fits, and robust solvers e.g. Theil–Sen/RANSAC/LOWESS/Bayesian/passive-aggressive/LARS where applicable; final list from the audit)
 - [ ] Update documentation (mkdocs API pages, Python docstrings, Rust doc comments) for all newly exposed API
 - [ ] Create tests (pytest + Rust) covering all newly exposed API, validated against R where the crates provide reference values
 - [ ] Bump `polars-statistics` 0.5.0 → 0.6.0 (Cargo.toml + pyproject.toml) and publish to production PyPI via the GitHub Actions pipeline
@@ -75,7 +75,7 @@ and shipped to users via PyPI.
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
 | Bump both `anofox-statistics` and `anofox-regression` (not statistics only) | User chose full modernization; regression 0.5.13 also carries a correctness fix and major new API | ✓ Done — Phase 1 (zero reconciliation; column-pivot fix confirmed active by 3 new tests) |
-| Expose all unexposed functions (full API parity) | User chose completeness over a targeted subset | — Pending |
+| Expose all unexposed functions (full API parity) | User chose completeness over a targeted subset | ✓ Done — Phases 3+4 (all statistics + regression gaps exposed) |
 | Production PyPI publish this milestone | User wants a real release, not TestPyPI/prepare-only | — Pending |
 | Target release version 0.6.0 | New API surface is additive → minor bump under semver | — Pending |
 
@@ -97,4 +97,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-08-12 after Phase 3 (Statistics API Parity)*
+*Last updated: 2026-08-12 after Phase 4 (Regression API Parity)*

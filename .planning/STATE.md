@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 4
-current_phase_name: Regression API Parity
-status: verifying
+current_phase: 5
+current_phase_name: Documentation
+status: planning
 stopped_at: Completed 04-05-PLAN.md (LARS, PassiveAggressive, MomentAccumulator, fit_from_accumulator)
-last_updated: "2026-08-12T12:35:55.857Z"
+last_updated: "2026-08-12T13:03:48.283Z"
 last_activity: 2026-08-12
 last_activity_desc: Phase 3 complete, transitioned to Phase 4
 progress:
   total_phases: 4
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 13
-  completed_plans: 12
+  completed_plans: 13
 ---
 
 # Project State
@@ -23,22 +23,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-11)
 
 **Core value:** Every public statistical capability in the backing `anofox-*` crates is exposed through the Polars/Python API — correctly, documented, tested, and shipped to PyPI.
-**Current focus:** Phase 4 — Regression API Parity
+**Current focus:** Phase 5 — Documentation
 
 ## Current Position
 
-Phase: 4 (Regression API Parity) — EXECUTING
-Plan: 6 of 6
-Status: Phase complete — ready for verification
-Last activity: 2026-08-12 — Phase 4 execution started
+Phase: 5 — Documentation
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-08-12 — Phase 4 complete, transitioned to Phase 5
 
-Progress: [█████████░] 92% (3/7 phases complete)
+Progress: [█████░░░░░] 57% (4/7 phases complete)
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 7
+- Total plans completed: 13
 - Average duration: — min
 - Total execution time: 0.0 hours
 
@@ -49,6 +49,7 @@ Progress: [█████████░] 92% (3/7 phases complete)
 | 1 | 2 | - | - |
 | 2 | 1 | - | - |
 | 3 | 4 | - | - |
+| 4 | 6 | - | - |
 
 **Recent Trend:**
 
@@ -126,6 +127,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-12T12:35:55.847Z
-Stopped at: Completed 04-05-PLAN.md (LARS, PassiveAggressive, MomentAccumulator, fit_from_accumulator)
+Last session: 2026-08-12
+Stopped at: Phase 4 complete (full regression parity; verified passed; 582 pytest green; 5 critical + 6 warning review findings fixed); autonomous run advancing to Phase 5 (Documentation)
 Resume file: None
