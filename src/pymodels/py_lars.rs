@@ -31,9 +31,6 @@ use crate::utils::{IntoNumpy, ToFaer};
 ///     interpolated to produce exactly ``alpha``-regularised coefficients.
 /// standardize : bool, default False
 ///     Whether to standardize features before fitting.
-/// eps : float, default machine epsilon
-///     Accepted for API compatibility; the underlying crate builder uses
-///     its own fixed default value.
 ///
 /// Examples
 /// --------
@@ -52,22 +49,19 @@ pub struct PyLARS {
     n_nonzero_coefs: Option<usize>,
     alpha: f64,
     standardize: bool,
-    #[allow(dead_code)]
-    eps: f64,
     fitted: Option<FittedLars>,
 }
 
 #[pymethods]
 impl PyLARS {
     #[new]
-    #[pyo3(signature = (method="lar", fit_intercept=true, n_nonzero_coefs=None, alpha=0.0, standardize=false, eps=f64::EPSILON))]
+    #[pyo3(signature = (method="lar", fit_intercept=true, n_nonzero_coefs=None, alpha=0.0, standardize=false))]
     fn new(
         method: &str,
         fit_intercept: bool,
         n_nonzero_coefs: Option<usize>,
         alpha: f64,
         standardize: bool,
-        eps: f64,
     ) -> Self {
         Self {
             method: method.to_owned(),
@@ -75,7 +69,6 @@ impl PyLARS {
             n_nonzero_coefs,
             alpha,
             standardize,
-            eps,
             fitted: None,
         }
     }
