@@ -1321,16 +1321,33 @@ fn correlation_fits() {
         let _ = semi_partial_cor_fit(&inputs).expect("semi_partial_cor_fit failed");
     }
 
-    // icc_fit: values, icc_type, conf_level. This is currently a placeholder
-    // implementation in the crate (returns NaNs) but must still be reachable.
+    // icc_fit: n_raters (u32), icc_type (str), then one Series of subject scores
+    // per rater. Real matrix-input implementation (Phase 3, STAT-05) — replaced the
+    // former all-NaN placeholder. Must be reachable and return a finite ICC.
     {
-        let vals: Vec<f64> = (0..30).map(|i| i as f64).collect();
+        let r1: Vec<f64> = vec![9.0, 6.0, 8.0, 7.0, 10.0, 6.0];
+        let r2: Vec<f64> = vec![9.0, 6.0, 8.0, 7.0, 10.0, 6.0];
+        let r3: Vec<f64> = vec![8.0, 5.0, 8.0, 6.0, 9.0, 5.0];
         let inputs = vec![
-            series_f64("values", &vals),
-            scalar_str("icc_type", "icc1"),
-            scalar_f64("conf_level", 0.95),
+            scalar_u32("n_raters", 3),
+            scalar_str("icc_type", "icc2"),
+            series_f64("r1", &r1),
+            series_f64("r2", &r2),
+            series_f64("r3", &r3),
         ];
-        let _ = icc_fit(&inputs).expect("icc_fit failed");
+        let out = icc_fit(&inputs).expect("icc_fit failed");
+        let st = out.struct_().unwrap();
+        let icc = st
+            .field_by_name("icc")
+            .unwrap()
+            .f64()
+            .unwrap()
+            .get(0)
+            .expect("expected icc value");
+        assert!(
+            icc.is_finite(),
+            "real matrix-input ICC must return a finite value, got {icc}"
+        );
     }
 }
 

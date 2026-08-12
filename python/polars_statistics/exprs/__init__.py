@@ -29,6 +29,7 @@ from polars_statistics.exprs.forecast import (
 )
 from polars_statistics.exprs.modern import (
     energy_distance,
+    energy_distance_nd,
     mmd_test,
 )
 from polars_statistics.exprs.tost import (
@@ -215,6 +216,7 @@ __all__ = [
     "mspe_adjusted",
     # Modern distribution tests
     "energy_distance",
+    "energy_distance_nd",
     "mmd_test",
     # TOST equivalence tests
     "tost_t_test_one_sample",

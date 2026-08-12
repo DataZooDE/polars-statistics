@@ -77,6 +77,7 @@ from polars_statistics.exprs import (
     mspe_adjusted,
     # Modern tests
     energy_distance,
+    energy_distance_nd,
     mmd_test,
     # TOST equivalence tests
     tost_t_test_one_sample,
@@ -309,6 +310,7 @@ __all__ = [
     "mspe_adjusted",
     # Modern test expressions
     "energy_distance",
+    "energy_distance_nd",
     "mmd_test",
     # TOST equivalence test expressions
     "tost_t_test_one_sample",
