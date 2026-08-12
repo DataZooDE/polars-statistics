@@ -4,6 +4,59 @@ Parametric statistical tests that assume specific distributional properties of t
 
 > **Validation:** All tests are validated against R implementations in the anofox-statistics crate.
 
+## `one_way_anova`
+
+One-way ANOVA for comparing means across two or more independent groups.
+
+Supports two variants: **Fisher's ANOVA** (classic F-test, assumes equal variances) and
+**Welch's ANOVA** (does not assume equal variances). Use `df.select(ps.one_way_anova(...))` on
+the full DataFrame — pass each group as its own column, not as a long-format column.
+
+```python
+ps.one_way_anova(
+    *groups: Union[pl.Expr, str],   # Two or more column expressions or names
+    kind: str = "fisher",           # "fisher" (default) or "welch"
+) -> pl.Expr
+```
+
+**Returns:**
+`Struct{statistic: Float64, df_between: Float64, df_within: Float64, p_value: Float64,
+ss_between: Float64, ss_within: Float64, ms_between: Float64, ms_within: Float64,
+eta_squared: Float64, n_groups: UInt32}`
+
+> **Note:** When `kind="welch"`, the fields `ss_between`, `ss_within`, `ms_between`,
+> `ms_within`, and `eta_squared` are `NaN` — Welch's method does not decompose sums of squares.
+
+**Assumptions:**
+- Independent observations within and between groups
+- For Fisher variant: equal variances (homoscedasticity)
+- Data approximately normally distributed per group
+
+**When to use:**
+- Comparing means across three or more groups in one step
+- Use `kind="welch"` when group variances differ (heteroscedasticity)
+- Check variance equality first with [`brown_forsythe`](#brown_forsythe)
+
+**Example:**
+```python
+import polars as pl
+import polars_statistics as ps
+
+df = pl.DataFrame({
+    "control":     [1.0, 2.0, 3.0],
+    "treatment_a": [4.0, 5.0, 6.0],
+    "treatment_b": [7.0, 8.0, 9.0],
+})
+
+# Fisher ANOVA (assumes equal variances)
+df.select(ps.one_way_anova("control", "treatment_a", "treatment_b"))
+
+# Welch ANOVA (does not assume equal variances)
+df.select(ps.one_way_anova("control", "treatment_a", "treatment_b", kind="welch"))
+```
+
+---
+
 ## `ttest_ind`
 
 Independent samples t-test for comparing means of two groups.

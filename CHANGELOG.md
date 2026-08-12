@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - Unreleased
+
+### Added
+
+- **New statistics API** (Phase 3 — `anofox-statistics` 0.4.1 → 0.4.2):
+  - `one_way_anova` — one-way ANOVA with Fisher and Welch variants; returns
+    F-statistic, degrees of freedom, p-value, sums of squares, and η² effect size.
+  - `two_way_anova` — two-way ANOVA with A×B interaction term.
+  - `repeated_measures_anova` — repeated-measures ANOVA with Mauchly's sphericity
+    test and Greenhouse-Geisser / Huynh-Feldt corrections.
+  - `energy_distance_nd` — multivariate energy distance for two samples.
+  - `icc` — intraclass correlation (new matrix-input contract; see Breaking Changes).
+- **New regression model classes** (Phase 4 — `anofox-regression` 0.5.4 → 0.5.13):
+  - `Gamma`, `GLMM`, `PSpline`, `TheilSen`, `RANSAC`, `BayesianRidge`, `ARD`,
+    `LARS`, `PassiveAggressive`, `MomentAccumulator`.
+  - `Ridge.hc_inference`, `OLS.fit_from_accumulator`, `Ridge.fit_from_accumulator`.
+  - GLM diagnostic expressions: `gamma_dispersion_deviance`,
+    `gamma_dispersion_pearson`, `gamma_pearson_chi_squared`,
+    `gamma_standardized_pearson_residuals`, `gamma_standardized_deviance_residuals`.
+
+### Known Limitations
+
+- `WLS.hc_inference` raises `NotImplementedError` — heteroscedasticity-consistent
+  inference is not yet implemented for WLS; use `OLS.hc_inference` or `Ridge.hc_inference`.
+
+---
+
 ## [0.5.0] - 2026-05-28
 
 ### Added

@@ -177,11 +177,32 @@ fn one_way_anova_error_output() -> PolarsResult<Series> {
 
 /// One-way ANOVA (Fisher or Welch) from separate group Series.
 ///
-/// Input contract:
-///   inputs[0..n-1] — f64 Series, one per group (variable arity, ≥ 2 groups)
-///   inputs[n-1]    — String literal: "fisher" | "welch"
+/// Computes an F-test (Fisher variant) or Welch's F-test across two or more independent
+/// groups. The Fisher variant assumes equal variances (homoscedasticity); the Welch variant
+/// does not and is robust to heteroscedasticity.
 ///
-/// The LAST input is always the kind literal; all preceding inputs are group data.
+/// # Input contract
+/// - `inputs[0..n-1]` — `f64` Series, one per group (variable arity, ≥ 2 groups).
+///   Each Series holds the raw values for one group; non-finite values are pre-filtered
+///   by the Python expression builder.
+/// - `inputs[n-1]` — `String` literal: `"fisher"` | `"welch"` (the `kind` selector).
+///   The last input is always the kind literal; all preceding inputs are group data.
+///
+/// # Output struct fields
+/// Returns a one-row `Struct` Series named `"one_way_anova"` with fields:
+/// - `statistic: f64` — F-statistic (or Welch's F-statistic).
+/// - `df_between: f64` — Degrees of freedom between groups (k - 1).
+/// - `df_within: f64` — Degrees of freedom within groups (N - k), or Satterthwaite
+///   approximation for Welch's.
+/// - `p_value: f64` — p-value from the F-distribution.
+/// - `ss_between: f64` — Sum of squares between groups (`NaN` for Welch).
+/// - `ss_within: f64` — Sum of squares within groups (`NaN` for Welch).
+/// - `ms_between: f64` — Mean square between groups (`NaN` for Welch).
+/// - `ms_within: f64` — Mean square within groups (`NaN` for Welch).
+/// - `eta_squared: f64` — Effect size η² = SS_between / SS_total (`NaN` for Welch).
+/// - `n_groups: u32` — Number of groups k.
+///
+/// Returns an all-`NaN` struct on fewer than 2 groups or on solver error.
 pub fn one_way_anova_fit(inputs: &[Series]) -> PolarsResult<Series> {
     if inputs.len() < 3 {
         // Need at least 2 groups + the kind literal
