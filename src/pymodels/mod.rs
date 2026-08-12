@@ -21,8 +21,10 @@ mod py_poisson;
 mod py_probit;
 mod py_pspline;
 mod py_quantile;
+mod py_ransac;
 mod py_ridge;
 mod py_rls;
+mod py_theil_sen;
 mod py_tweedie;
 mod py_wls;
 
@@ -59,8 +61,10 @@ pub use py_poisson::PyPoisson;
 pub use py_probit::PyProbit;
 pub use py_pspline::PyPSpline;
 pub use py_quantile::PyQuantile;
+pub use py_ransac::PyRANSAC;
 pub use py_ridge::PyRidge;
 pub use py_rls::PyRLS;
+pub use py_theil_sen::PyTheilSen;
 pub use py_tweedie::PyTweedie;
 pub use py_wls::PyWLS;
 
