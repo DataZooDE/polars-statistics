@@ -109,7 +109,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. User can compute regression diagnostics — Cook's distance, VIF, leverage, residual variants, and condition diagnostics — via the API
   5. Every remaining regression capability from the AUDIT-02 gap list is callable via expressions and/or PyModel classes
 
-**Plans**: 1/6 plans executed
+**Plans**: 2/6 plans executed
 
 **Wave 1** *(tracer)*
 
@@ -117,7 +117,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Wave 2** *(blocked on 04-01 — shares registration files)*
 
-- [ ] 04-02-PLAN.md — `GLMM` (+FactorSummary) and `PSpline` PyModels + registration + smoke tests (REGR-01/02)
+- [x] 04-02-PLAN.md — `GLMM` (+FactorSummary) and `PSpline` PyModels + registration + smoke tests (REGR-01/02)
 
 **Wave 3** *(blocked on 04-02 — shares __init__.py)*
 
@@ -188,7 +188,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 1. Dependency Modernization | 2/2 | Complete    | 2026-08-11 |
 | 2. Public API Audit | 1/1 | Complete    | 2026-08-11 |
 | 3. Statistics API Parity | 4/4 | Complete    | 2026-08-12 |
-| 4. Regression API Parity | 1/6 | In Progress|  |
+| 4. Regression API Parity | 2/6 | In Progress|  |
 | 5. Documentation | 0/TBD | Not started | - |
 | 6. Testing & Validation | 0/TBD | Not started | - |
 | 7. Release 0.6.0 | 0/TBD | Not started | - |

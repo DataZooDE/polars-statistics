@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 4
 current_phase_name: Regression API Parity
 status: executing
-stopped_at: Completed 04-01-PLAN.md (Gamma PyModel tracer)
-last_updated: "2026-08-12T08:46:14.308Z"
+stopped_at: Completed 04-02-PLAN.md (GLMM + PSpline PyModels)
+last_updated: "2026-08-12T09:45:25.544Z"
 last_activity: 2026-08-12
 last_activity_desc: Phase 3 complete, transitioned to Phase 4
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 13
-  completed_plans: 8
+  completed_plans: 9
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-08-11)
 ## Current Position
 
 Phase: 4 (Regression API Parity) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 Status: Ready to execute
 Last activity: 2026-08-12 — Phase 4 execution started
 
-Progress: [██████░░░░] 62% (3/7 phases complete)
+Progress: [███████░░░] 69% (3/7 phases complete)
 
 ## Performance Metrics
 
@@ -67,6 +67,7 @@ Progress: [██████░░░░] 62% (3/7 phases complete)
 | Phase 03-statistics-api-parity P02 | 10m | 2 tasks | 2 files |
 | Phase 03-statistics-api-parity P03 | 7 | 2 tasks | 4 files |
 | Phase 04-regression-api-parity P01 | 4 | 2 tasks | 4 files |
+| Phase 04-regression-api-parity P02 | 56m | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -92,6 +93,9 @@ Recent decisions affecting current work:
 - [Phase ?]: icc() crate-root import confirmed; anofox_statistics::icc re-exported at root, not correlation::icc
 - [Phase ?]: Zero-rater guard: Python builder short-circuits before pl.all_horizontal([]) when no rater columns passed
 - [Phase ?]: Used GammaRegressor::builder() pattern mirroring PyTweedie as the exact structural analog; predict_eta exposed as method not getter since it requires x input
+- [Phase ?]: GLMM fit(x,y,group) accepts Vec<u64> for portability across 32/64-bit wheel targets; converts to Vec<usize> inside wrapper
+- [Phase ?]: PSpline ncols guard runs after to_faer() to reuse faer matrix API, matching existing py_isotonic.rs pattern
+- [Phase ?]: FactorSummary exposed as Python list[dict] (not a separate PyClass) per RESEARCH FactorSummary exposure strategy
 
 ### Pending Todos
 
@@ -112,6 +116,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-12T08:46:14.299Z
-Stopped at: Completed 04-01-PLAN.md (Gamma PyModel tracer)
-Resume file: None
+Last session: 2026-08-12T09:45:25.535Z
+Stopped at: Completed 04-02-PLAN.md (GLMM + PSpline PyModels)
+Resume file: 04-03-PLAN.md
