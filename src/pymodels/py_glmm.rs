@@ -127,6 +127,14 @@ impl PyGLMM {
     ) -> PyResult<PyRefMut<'py, Self>> {
         let x_mat = x.to_faer();
         let y_col = y.to_faer();
+        let n_rows = x_mat.nrows();
+        if group.len() != n_rows {
+            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
+                "group length ({}) must equal number of samples ({})",
+                group.len(),
+                n_rows
+            )));
+        }
         // Portably convert u64 → usize (safe on all wheel targets)
         let group_usize: Vec<usize> = group.iter().map(|&g| g as usize).collect();
 
@@ -176,6 +184,17 @@ impl PyGLMM {
     ) -> PyResult<PyRefMut<'py, Self>> {
         let x_mat = x.to_faer();
         let y_col = y.to_faer();
+        let n_rows = x_mat.nrows();
+        for (i, g) in groups.iter().enumerate() {
+            if g.len() != n_rows {
+                return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
+                    "groups[{}] length ({}) must equal number of samples ({})",
+                    i,
+                    g.len(),
+                    n_rows
+                )));
+            }
+        }
         let groups_usize: Vec<Vec<usize>> = groups
             .iter()
             .map(|g| g.iter().map(|&v| v as usize).collect())
