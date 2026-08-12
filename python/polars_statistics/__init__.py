@@ -15,9 +15,12 @@ from polars_statistics._polars_statistics import (
     Quantile,
     Isotonic,
     Huber,
+    # Smoothers
+    PSpline,
     PLS,
     # GLM models
     Gamma,
+    GLMM,
     Logistic,
     LogisticRegression,
     Poisson,
@@ -253,8 +256,11 @@ __all__ = [
     "Isotonic",
     "Huber",
     "PLS",
+    # Smoothers
+    "PSpline",
     # GLM Models
     "Gamma",
+    "GLMM",
     "Logistic",
     "LogisticRegression",
     "Poisson",
