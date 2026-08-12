@@ -8,11 +8,11 @@ Complete API documentation for polars-statistics.
 |----------|-------------|
 | [Conventions](conventions.md) | API patterns, column references, return types |
 | **Statistical Tests** | |
-| [Parametric Tests](tests/parametric.md) | t-tests, Brown-Forsythe, Yuen |
+| [Parametric Tests](tests/parametric.md) | t-tests, Brown-Forsythe, Yuen, one_way_anova, two_way_anova, repeated_measures_anova |
 | [Non-Parametric Tests](tests/nonparametric.md) | Mann-Whitney, Wilcoxon, Kruskal-Wallis, Brunner-Munzel |
 | [Distributional Tests](tests/distributional.md) | Shapiro-Wilk, D'Agostino normality tests |
 | [Forecast Tests](tests/forecast.md) | Diebold-Mariano, Clark-West, SPA, MCS |
-| [Correlation Tests](tests/correlation.md) | Pearson, Spearman, Kendall, distance correlation, partial correlation |
+| [Correlation Tests](tests/correlation.md) | Pearson, Spearman, Kendall, distance correlation, partial correlation, icc (matrix-input) |
 | [Categorical Tests](tests/categorical.md) | Chi-square, Fisher exact, McNemar, Cohen's Kappa |
 | [TOST Equivalence](tests/tost.md) | Two One-Sided Tests for equivalence |
 | **Regression** | |
@@ -23,10 +23,10 @@ Complete API documentation for polars-statistics.
 | [Demand Classification](regression/aid.md) | AID demand patterns and anomaly detection |
 | [Formula Syntax](regression/formula.md) | R-style formulas with interactions and polynomials |
 | [Summary & Predict](regression/summary-predict.md) | Coefficient tables and prediction intervals |
-| [Diagnostics](regression/diagnostics.md) | Condition number, quasi-separation detection |
+| [Diagnostics](regression/diagnostics.md) | Condition number, quasi-separation detection, gamma_* GLM diagnostics |
 | **Model Classes** | |
-| [Linear Model Classes](classes/linear.md) | OLS, Ridge, ElasticNet, WLS, RLS, BLS, Quantile, Isotonic |
-| [GLM Model Classes](classes/glm.md) | Logistic, Poisson, NegativeBinomial, Tweedie, Probit, Cloglog |
+| [Linear Model Classes](classes/linear.md) | OLS, Ridge, ElasticNet, WLS, RLS, BLS, Quantile, Isotonic, TheilSen, RANSAC, BayesianRidge, ARD, LARS, PassiveAggressive, MomentAccumulator |
+| [GLM Model Classes](classes/glm.md) | Logistic, Poisson, NegativeBinomial, Tweedie, Probit, Cloglog, Gamma, GLMM, PSpline |
 | [ALM Class](classes/alm.md) | Augmented Linear Model class |
 | [LmDynamic Class](classes/dynamic.md) | Dynamic linear model class |
 | [Aid Class](classes/aid.md) | Demand classification class |
