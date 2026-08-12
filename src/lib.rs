@@ -48,6 +48,11 @@ fn _polars_statistics(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<pymodels::PyBayesianRidge>()?;
     m.add_class::<pymodels::PyARD>()?;
 
+    // Streaming & Online
+    m.add_class::<pymodels::PyLARS>()?;
+    m.add_class::<pymodels::PyPassiveAggressive>()?;
+    m.add_class::<pymodels::PyMomentAccumulator>()?;
+
     // Smoothers
     m.add_class::<pymodels::PyPSpline>()?;
 

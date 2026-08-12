@@ -20,6 +20,10 @@ from polars_statistics._polars_statistics import (
     RANSAC,
     BayesianRidge,
     ARD,
+    # Streaming & Online
+    LARS,
+    PassiveAggressive,
+    MomentAccumulator,
     # Smoothers
     PSpline,
     PLS,
@@ -271,6 +275,10 @@ __all__ = [
     "RANSAC",
     "BayesianRidge",
     "ARD",
+    # Streaming & Online
+    "LARS",
+    "PassiveAggressive",
+    "MomentAccumulator",
     # Smoothers
     "PSpline",
     # GLM Models
