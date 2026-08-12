@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 4
 current_phase_name: Regression API Parity
 status: executing
-stopped_at: Completed 04-02-PLAN.md (GLMM + PSpline PyModels)
-last_updated: "2026-08-12T09:45:25.544Z"
+stopped_at: Completed 04-03-PLAN.md
+last_updated: "2026-08-12T12:11:36.891Z"
 last_activity: 2026-08-12
 last_activity_desc: Phase 3 complete, transitioned to Phase 4
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 13
-  completed_plans: 9
+  completed_plans: 10
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-08-11)
 ## Current Position
 
 Phase: 4 (Regression API Parity) — EXECUTING
-Plan: 3 of 6
+Plan: 5 of 6
 Status: Ready to execute
 Last activity: 2026-08-12 — Phase 4 execution started
 
-Progress: [███████░░░] 69% (3/7 phases complete)
+Progress: [████████░░] 77% (3/7 phases complete)
 
 ## Performance Metrics
 
@@ -68,6 +68,7 @@ Progress: [███████░░░] 69% (3/7 phases complete)
 | Phase 03-statistics-api-parity P03 | 7 | 2 tasks | 4 files |
 | Phase 04-regression-api-parity P01 | 4 | 2 tasks | 4 files |
 | Phase 04-regression-api-parity P02 | 56m | 3 tasks | 7 files |
+| Phase 04-regression-api-parity P03 | 5896 | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -96,6 +97,8 @@ Recent decisions affecting current work:
 - [Phase ?]: GLMM fit(x,y,group) accepts Vec<u64> for portability across 32/64-bit wheel targets; converts to Vec<usize> inside wrapper
 - [Phase ?]: PSpline ncols guard runs after to_faer() to reuse faer matrix API, matching existing py_isotonic.rs pattern
 - [Phase ?]: FactorSummary exposed as Python list[dict] (not a separate PyClass) per RESEARCH FactorSummary exposure strategy
+- [Phase ?]: dispersion_output_dtype uses single-field struct (not bare Float64) for consistency with all other diagnostic output types
+- [Phase ?]: compute_hc_inference arg order: actual crate signature differs from RESEARCH.md draft — corrected to (x, coef, intercept, residuals, aliased, with_intercept, hc_type, confidence_level) with no df param
 
 ### Pending Todos
 
@@ -116,6 +119,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-12T09:45:25.535Z
-Stopped at: Completed 04-02-PLAN.md (GLMM + PSpline PyModels)
-Resume file: 04-03-PLAN.md
+Last session: 2026-08-12T12:11:36.862Z
+Stopped at: Completed 04-03-PLAN.md
+Resume file: None
