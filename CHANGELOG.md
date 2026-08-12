@@ -9,26 +9,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **New statistics API** (Phase 3 — `anofox-statistics` 0.4.1 → 0.4.2):
+- **New statistics API** (`anofox-statistics` 0.4.1 → 0.4.2):
   - `one_way_anova` — one-way ANOVA with Fisher and Welch variants; returns
     F-statistic, degrees of freedom, p-value, sums of squares, and η² effect size.
-  - `two_way_anova` — two-way ANOVA with A×B interaction term.
+  - `two_way_anova` — two-way ANOVA with A×B interaction term; partitions variance
+    into main effects (A, B) and interaction (A×B).
   - `repeated_measures_anova` — repeated-measures ANOVA with Mauchly's sphericity
-    test and Greenhouse-Geisser / Huynh-Feldt corrections.
-  - `energy_distance_nd` — multivariate energy distance for two samples.
-  - `icc` — intraclass correlation (new matrix-input contract; see Breaking Changes).
-- **New regression model classes** (Phase 4 — `anofox-regression` 0.5.4 → 0.5.13):
-  - `Gamma`, `GLMM`, `PSpline`, `TheilSen`, `RANSAC`, `BayesianRidge`, `ARD`,
-    `LARS`, `PassiveAggressive`, `MomentAccumulator`.
-  - `Ridge.hc_inference`, `OLS.fit_from_accumulator`, `Ridge.fit_from_accumulator`.
-  - GLM diagnostic expressions: `gamma_dispersion_deviance`,
-    `gamma_dispersion_pearson`, `gamma_pearson_chi_squared`,
-    `gamma_standardized_pearson_residuals`, `gamma_standardized_deviance_residuals`.
+    test and Greenhouse-Geisser / Huynh-Feldt ε corrections.
+  - `energy_distance_nd` — multivariate energy distance for two multivariate samples
+    (generalization of `energy_distance` to arbitrary dimension).
+  - `icc` — intraclass correlation with real matrix-input contract; replaced the
+    previous all-NaN stub (see Breaking Changes).
+- **New regression model classes** (`anofox-regression` 0.5.4 → 0.5.13):
+  - **GLM family:** `Gamma` (log link, positive data), `GLMM` (generalized linear
+    mixed model with random intercepts), `PSpline` (penalized B-spline smoother).
+  - **Robust / sparse linear:** `TheilSen` (median-of-slopes, ~29% breakdown point),
+    `RANSAC` (random sample consensus), `BayesianRidge` (evidence-maximisation
+    hyperparameter tuning), `ARD` (automatic relevance determination with per-feature
+    precision), `LARS` (least angle regression with full path), `PassiveAggressive`
+    (online PA/PA-I/PA-II regression).
+  - **Online learning:** `MomentAccumulator` — accumulates sufficient statistics
+    (XᵀX, Xᵀy) from streaming batches; pass to `OLS.fit_from_accumulator` or
+    `Ridge.fit_from_accumulator`.
+  - **HC-robust inference:** `Ridge.hc_inference(X, y, hc_type)` — HC0–HC3
+    sandwich standard errors for Ridge fits.
+  - **GLM diagnostic expressions** for Gamma GLM fits:
+    `gamma_dispersion_deviance`, `gamma_dispersion_pearson`,
+    `gamma_pearson_chi_squared`,
+    `gamma_standardized_pearson_residuals`,
+    `gamma_standardized_deviance_residuals`.
+
+### Changed
+
+- Updated `anofox-statistics` dependency 0.4.1 → **0.4.2**.
+- Updated `anofox-regression` dependency 0.5.4 → **0.5.13**.
+- **Column-pivot correctness fix** (inherited from `anofox-regression` 0.5.13):
+  OLS, WLS, and NNLS models trained on differently-scaled designs (e.g. one predictor
+  in units of thousands while another is in units of ones) now return correct
+  coefficients. The previous release could pivot to the wrong column when building the
+  design matrix, causing coefficients to be assigned to the wrong predictor.
+
+### Breaking Changes
+
+- **`icc` new contract:** the expression now accepts one column per rater
+  (`ps.icc("rater1", "rater2", "rater3", icc_type="icc3")`) and computes real
+  ICC values validated against R's `irr::icc()`. The old single-column stub always
+  returned NaN and is removed. Update call sites to pass all rater columns explicitly.
 
 ### Known Limitations
 
 - `WLS.hc_inference` raises `NotImplementedError` — heteroscedasticity-consistent
-  inference is not yet implemented for WLS; use `OLS.hc_inference` or `Ridge.hc_inference`.
+  inference is not yet implemented for WLS; use `OLS.hc_inference` or
+  `Ridge.hc_inference` as alternatives.
+- `icc` matrix-input contract change: code passing only a single column to `ps.icc()`
+  must be updated to pass one column per rater.
 
 ---
 
@@ -283,6 +317,7 @@ because the new kwargs default to `None` / `"likelihood"`.
   - SIMD-optimized linear algebra via faer
   - Automatic parallelization for group operations
 
+[0.6.0]: https://github.com/DataZooDE/polars-statistics/compare/v0.5.0...HEAD
 [0.5.0]: https://github.com/DataZooDE/polars-statistics/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/DataZooDE/polars-statistics/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/DataZooDE/polars-statistics/compare/v0.2.0...v0.3.0
