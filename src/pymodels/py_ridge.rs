@@ -179,7 +179,14 @@ impl PyRidge {
         let intercept = fitted.intercept();
         let aliased = vec![false; x_mat.ncols()];
         let result = compute_hc_inference(
-            &x_mat, &coef, intercept, &residuals, &aliased, true, hc, 0.95,
+            &x_mat,
+            &coef,
+            intercept,
+            &residuals,
+            &aliased,
+            true,
+            hc,
+            self.confidence_level,
         )
         .map_err(PyErr::new::<pyo3::exceptions::PyValueError, _>)?;
         let dict = pyo3::types::PyDict::new(py);
