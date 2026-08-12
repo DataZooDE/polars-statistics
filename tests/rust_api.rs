@@ -1891,15 +1891,34 @@ fn anova_and_energy_fits() {
             .unwrap()
             .get(0)
             .expect("expected statistic value");
-        assert!(stat.is_finite() && stat > 0.0, "one_way_anova statistic must be finite > 0, got {stat}");
-        let _df_between = st.field_by_name("df_between").expect("missing field `df_between`");
-        let _df_within = st.field_by_name("df_within").expect("missing field `df_within`");
-        let _p_value = st.field_by_name("p_value").expect("missing field `p_value`");
-        let _ss_between = st.field_by_name("ss_between").expect("missing field `ss_between`");
-        let _ss_within = st.field_by_name("ss_within").expect("missing field `ss_within`");
-        let _ms_between = st.field_by_name("ms_between").expect("missing field `ms_between`");
-        let _ms_within = st.field_by_name("ms_within").expect("missing field `ms_within`");
-        let _eta_squared = st.field_by_name("eta_squared").expect("missing field `eta_squared`");
+        assert!(
+            stat.is_finite() && stat > 0.0,
+            "one_way_anova statistic must be finite > 0, got {stat}"
+        );
+        let _df_between = st
+            .field_by_name("df_between")
+            .expect("missing field `df_between`");
+        let _df_within = st
+            .field_by_name("df_within")
+            .expect("missing field `df_within`");
+        let _p_value = st
+            .field_by_name("p_value")
+            .expect("missing field `p_value`");
+        let _ss_between = st
+            .field_by_name("ss_between")
+            .expect("missing field `ss_between`");
+        let _ss_within = st
+            .field_by_name("ss_within")
+            .expect("missing field `ss_within`");
+        let _ms_between = st
+            .field_by_name("ms_between")
+            .expect("missing field `ms_between`");
+        let _ms_within = st
+            .field_by_name("ms_within")
+            .expect("missing field `ms_within`");
+        let _eta_squared = st
+            .field_by_name("eta_squared")
+            .expect("missing field `eta_squared`");
         let n_groups = st
             .field_by_name("n_groups")
             .expect("missing field `n_groups`")
@@ -1916,7 +1935,9 @@ fn anova_and_energy_fits() {
     // -----------------------------------------------------------------------
     {
         // 2×2 balanced design, 3 replicates per cell (n=12)
-        let vals: Vec<f64> = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0];
+        let vals: Vec<f64> = vec![
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0,
+        ];
         // factor_a: A0 for first 6, A1 for last 6
         let fa: Vec<u32> = vec![0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1];
         // factor_b: alternating B0/B1
@@ -1929,11 +1950,29 @@ fn anova_and_energy_fits() {
         let out = two_way_anova_fit(&inputs).expect("two_way_anova_fit failed");
         let st = out.struct_().expect("expected struct series");
         // Assert all expected schema fields are present
-        for field in ["a_ss", "a_df", "a_ms", "a_f", "a_p_value",
-                      "b_ss", "b_df", "b_ms", "b_f", "b_p_value",
-                      "ab_ss", "ab_df", "ab_ms", "ab_f", "ab_p_value",
-                      "residual_ss", "residual_df", "residual_ms", "grand_mean"] {
-            let _ = st.field_by_name(field)
+        for field in [
+            "a_ss",
+            "a_df",
+            "a_ms",
+            "a_f",
+            "a_p_value",
+            "b_ss",
+            "b_df",
+            "b_ms",
+            "b_f",
+            "b_p_value",
+            "ab_ss",
+            "ab_df",
+            "ab_ms",
+            "ab_f",
+            "ab_p_value",
+            "residual_ss",
+            "residual_df",
+            "residual_ms",
+            "grand_mean",
+        ] {
+            let _ = st
+                .field_by_name(field)
                 .unwrap_or_else(|_| panic!("two_way_anova_fit: missing field `{field}`"));
         }
         let n = st
@@ -1952,7 +1991,10 @@ fn anova_and_energy_fits() {
             .unwrap()
             .get(0)
             .unwrap_or(f64::NAN);
-        assert!(a_f.is_finite() && a_f > 0.0, "a_f must be finite > 0, got {a_f}");
+        assert!(
+            a_f.is_finite() && a_f > 0.0,
+            "a_f must be finite > 0, got {a_f}"
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -1964,10 +2006,10 @@ fn anova_and_energy_fits() {
         // so error_ss > 0 and ws_f is finite (not inf).
         // Condition means increase (signal), error is non-zero.
         let vals: Vec<f64> = vec![
-            1.0, 2.1, 3.2,  // subject 0
-            2.3, 3.1, 4.0,  // subject 1
-            3.2, 4.3, 5.1,  // subject 2
-            4.1, 5.2, 6.3,  // subject 3
+            1.0, 2.1, 3.2, // subject 0
+            2.3, 3.1, 4.0, // subject 1
+            3.2, 4.3, 5.1, // subject 2
+            4.1, 5.2, 6.3, // subject 3
         ];
         let subjects: Vec<u32> = vec![0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3];
         let conditions: Vec<u32> = vec![0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2];
@@ -1979,13 +2021,25 @@ fn anova_and_energy_fits() {
         ];
         let out = repeated_measures_anova_fit(&inputs).expect("repeated_measures_anova_fit failed");
         let st = out.struct_().expect("expected struct series");
-        for field in ["ws_f", "ws_df", "ws_ss", "ws_ms", "ws_p_value",
-                      "error_df", "error_ss", "error_ms",
-                      "mauchly_w", "mauchly_p_value",
-                      "gg_epsilon", "gg_p_value",
-                      "hf_epsilon", "hf_p_value",
-                      "grand_mean"] {
-            let _ = st.field_by_name(field)
+        for field in [
+            "ws_f",
+            "ws_df",
+            "ws_ss",
+            "ws_ms",
+            "ws_p_value",
+            "error_df",
+            "error_ss",
+            "error_ms",
+            "mauchly_w",
+            "mauchly_p_value",
+            "gg_epsilon",
+            "gg_p_value",
+            "hf_epsilon",
+            "hf_p_value",
+            "grand_mean",
+        ] {
+            let _ = st
+                .field_by_name(field)
                 .unwrap_or_else(|_| panic!("repeated_measures_anova_fit: missing field `{field}`"));
         }
         let ws_f = st
@@ -1995,8 +2049,10 @@ fn anova_and_energy_fits() {
             .unwrap()
             .get(0)
             .unwrap_or(f64::NAN);
-        assert!(ws_f.is_finite() && ws_f > 0.0,
-                "repeated_measures_anova ws_f must be finite > 0, got {ws_f}");
+        assert!(
+            ws_f.is_finite() && ws_f > 0.0,
+            "repeated_measures_anova ws_f must be finite > 0, got {ws_f}"
+        );
         let grand_mean = st
             .field_by_name("grand_mean")
             .unwrap()
@@ -2004,7 +2060,10 @@ fn anova_and_energy_fits() {
             .unwrap()
             .get(0)
             .unwrap_or(f64::NAN);
-        assert!(grand_mean.is_finite(), "grand_mean must be finite, got {grand_mean}");
+        assert!(
+            grand_mean.is_finite(),
+            "grand_mean must be finite, got {grand_mean}"
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -2037,9 +2096,13 @@ fn anova_and_energy_fits() {
             .unwrap()
             .get(0)
             .unwrap_or(f64::NAN);
-        assert!(stat.is_finite() && stat > 0.0,
-                "energy_distance_nd statistic must be finite > 0, got {stat}");
-        let _p_value = st.field_by_name("p_value").expect("missing field `p_value`");
+        assert!(
+            stat.is_finite() && stat > 0.0,
+            "energy_distance_nd statistic must be finite > 0, got {stat}"
+        );
+        let _p_value = st
+            .field_by_name("p_value")
+            .expect("missing field `p_value`");
     }
 }
 
@@ -2074,7 +2137,7 @@ fn gamma_diagnostic_fits() {
             let mu = (0.3 + 0.5 * a - 0.2 * b).exp();
             // Multiplicative noise: scale by 1 + 0.3 * sin(i * 1.7), clipped > 0
             let noise = 1.0 + 0.3 * ((i as f64) * 1.7).sin();
-            mu * noise.max(0.1)  // ensure strictly positive
+            mu * noise.max(0.1) // ensure strictly positive
         })
         .collect();
 
@@ -2093,8 +2156,8 @@ fn gamma_diagnostic_fits() {
             series_f64("x1", &x1),
             series_f64("x2", &x2),
         ];
-        let out = gamma_dispersion_deviance_fit(&inputs)
-            .expect("gamma_dispersion_deviance_fit failed");
+        let out =
+            gamma_dispersion_deviance_fit(&inputs).expect("gamma_dispersion_deviance_fit failed");
         let st = out.struct_().expect("expected struct series");
         let disp = st
             .field_by_name("dispersion")
@@ -2103,8 +2166,10 @@ fn gamma_diagnostic_fits() {
             .unwrap()
             .get(0)
             .unwrap_or(f64::NAN);
-        assert!(disp.is_finite() && disp > 0.0,
-                "gamma_dispersion_deviance dispersion must be finite > 0, got {disp}");
+        assert!(
+            disp.is_finite() && disp > 0.0,
+            "gamma_dispersion_deviance dispersion must be finite > 0, got {disp}"
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -2119,8 +2184,8 @@ fn gamma_diagnostic_fits() {
             series_f64("x1", &x1),
             series_f64("x2", &x2),
         ];
-        let out = gamma_dispersion_pearson_fit(&inputs)
-            .expect("gamma_dispersion_pearson_fit failed");
+        let out =
+            gamma_dispersion_pearson_fit(&inputs).expect("gamma_dispersion_pearson_fit failed");
         let st = out.struct_().expect("expected struct series");
         let disp = st
             .field_by_name("dispersion")
@@ -2129,8 +2194,10 @@ fn gamma_diagnostic_fits() {
             .unwrap()
             .get(0)
             .unwrap_or(f64::NAN);
-        assert!(disp.is_finite() && disp > 0.0,
-                "gamma_dispersion_pearson dispersion must be finite > 0, got {disp}");
+        assert!(
+            disp.is_finite() && disp > 0.0,
+            "gamma_dispersion_pearson dispersion must be finite > 0, got {disp}"
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -2145,8 +2212,8 @@ fn gamma_diagnostic_fits() {
             series_f64("x1", &x1),
             series_f64("x2", &x2),
         ];
-        let out = gamma_pearson_chi_squared_fit(&inputs)
-            .expect("gamma_pearson_chi_squared_fit failed");
+        let out =
+            gamma_pearson_chi_squared_fit(&inputs).expect("gamma_pearson_chi_squared_fit failed");
         let st = out.struct_().expect("expected struct series");
         let chi2 = st
             .field_by_name("chi_squared")
@@ -2155,8 +2222,10 @@ fn gamma_diagnostic_fits() {
             .unwrap()
             .get(0)
             .unwrap_or(f64::NAN);
-        assert!(chi2.is_finite() && chi2 > 0.0,
-                "gamma_pearson_chi_squared must be finite > 0, got {chi2}");
+        assert!(
+            chi2.is_finite() && chi2 > 0.0,
+            "gamma_pearson_chi_squared must be finite > 0, got {chi2}"
+        );
         let df_resid = st
             .field_by_name("df_resid")
             .expect("missing field `df_resid`")
@@ -2195,7 +2264,9 @@ fn gamma_diagnostic_fits() {
             .expect("missing field `residuals`");
         // residuals field is a List<f64> — check it is non-empty
         let resid_list = resid_series.list().expect("residuals must be List type");
-        let inner = resid_list.get_as_series(0).expect("expected residuals list");
+        let inner = resid_list
+            .get_as_series(0)
+            .expect("expected residuals list");
         assert_eq!(inner.len(), n, "residuals length must equal n");
         // All residuals must be finite
         let vals: Vec<f64> = inner.f64().unwrap().into_no_null_iter().collect();
@@ -2224,7 +2295,9 @@ fn gamma_diagnostic_fits() {
             .field_by_name("residuals")
             .expect("missing field `residuals`");
         let resid_list = resid_series.list().expect("residuals must be List type");
-        let inner = resid_list.get_as_series(0).expect("expected residuals list");
+        let inner = resid_list
+            .get_as_series(0)
+            .expect("expected residuals list");
         assert_eq!(inner.len(), n, "residuals length must equal n");
         let vals: Vec<f64> = inner.f64().unwrap().into_no_null_iter().collect();
         assert!(
