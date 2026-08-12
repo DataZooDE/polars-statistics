@@ -109,7 +109,31 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. User can compute regression diagnostics — Cook's distance, VIF, leverage, residual variants, and condition diagnostics — via the API
   5. Every remaining regression capability from the AUDIT-02 gap list is callable via expressions and/or PyModel classes
 
-**Plans**: TBD
+**Plans**: 6 plans
+
+**Wave 1** *(tracer)*
+
+- [ ] 04-01-PLAN.md — GammaRegressor tracer: `Gamma` PyModel wired end-to-end (3-file registration + smoke test) (REGR-03)
+
+**Wave 2** *(blocked on 04-01 — shares registration files)*
+
+- [ ] 04-02-PLAN.md — `GLMM` (+FactorSummary) and `PSpline` PyModels + registration + smoke tests (REGR-01/02)
+
+**Wave 3** *(blocked on 04-02 — shares __init__.py)*
+
+- [ ] 04-03-PLAN.md — 5 GLM diagnostic expressions + HC extension on Ridge/WLS + expression registration (REGR-04/05)
+
+**Wave 4** *(blocked on 04-03 — shares registration files)*
+
+- [ ] 04-04-PLAN.md — `TheilSen`, `RANSAC`, `BayesianRidge`, `ARD` PyModels + registration + smoke tests (REGR-06)
+
+**Wave 5** *(blocked on 04-04 — shares registration files)*
+
+- [ ] 04-05-PLAN.md — `LARS`, `PassiveAggressive`, `MomentAccumulator` PyModels + OLS/Ridge `fit_from_accumulator` + registration (REGR-06)
+
+**Wave 6** *(phase gate — blocked on 04-01..05)*
+
+- [ ] 04-06-PLAN.md — CI-parity gates (clippy/fmt/ruff) + definitive maturin+pytest full-suite phase gate (REGR-01..06)
 
 ### Phase 5: Documentation
 
