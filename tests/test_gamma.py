@@ -6,6 +6,21 @@ import pytest
 from polars_statistics import Gamma
 
 
+def _gamma_design(seed: int = 42, n: int = 100):
+    """Return (X, y, true_beta) for a well-conditioned Gamma GLM with log link.
+
+    y ~ Gamma(shape=3, scale=exp(X @ beta) / 3)  so E[y] = exp(X @ beta).
+    True intercept = 0.5, true slope for x1 = 0.8.
+    """
+    rng = np.random.default_rng(seed)
+    x1 = rng.standard_normal(n)
+    eta = 0.5 + 0.8 * x1
+    mu = np.exp(eta)
+    y = rng.gamma(shape=3.0, scale=mu / 3.0)
+    X = x1.reshape(-1, 1)
+    return X, y, np.array([0.8])  # true slope (intercept handled separately)
+
+
 class TestGamma:
     def test_fit_basic(self):
         """Gamma().fit(X, y) returns is_fitted()==True and finite coefficients."""
@@ -93,3 +108,34 @@ class TestGamma:
         X = np.ones((10, 2))
         with pytest.raises(Exception):
             model.predict(X)
+
+    def test_coefficients_vs_statsmodels(self, require_statsmodels):
+        """Gamma GLM coefficients match statsmodels GLM(family=Gamma) within loose tolerance.
+
+        Uses a 1-predictor Gamma design (log link, n=200) and asserts the slope
+        recovered by polars-statistics is within 0.15 of statsmodels' MLE estimate.
+        Guarded by require_statsmodels so the test skips when statsmodels is absent.
+        """
+        sm = require_statsmodels
+        X, y, _ = _gamma_design(seed=7, n=200)
+        ps_model = Gamma(with_intercept=True).fit(X, y)
+        ps_slope = ps_model.coefficients[0]
+
+        # statsmodels reference
+        import statsmodels.api as sm_api
+
+        X_sm = sm_api.add_constant(X)
+        sm_model = sm_api.GLM(y, X_sm, family=sm_api.families.Gamma(link=sm_api.families.links.Log())).fit()
+        sm_slope = float(sm_model.params[1])
+
+        assert abs(ps_slope - sm_slope) < 0.15, (
+            f"Gamma slope mismatch: polars-statistics={ps_slope:.4f}, "
+            f"statsmodels={sm_slope:.4f} (tolerance 0.15)"
+        )
+        # Also check intercept direction
+        ps_intercept = ps_model.intercept
+        sm_intercept = float(sm_model.params[0])
+        if ps_intercept is not None:
+            assert abs(ps_intercept - sm_intercept) < 0.30, (
+                f"Gamma intercept mismatch: ps={ps_intercept:.4f}, sm={sm_intercept:.4f}"
+            )

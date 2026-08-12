@@ -96,6 +96,37 @@ class TestBayesianRidge:
         model = BayesianRidge().fit(X, y)
         assert model.n_observations == n
 
+    def test_recovers_known_coefficients(self):
+        """BayesianRidge recovers known coefficients on a well-conditioned linear design.
+
+        Ground truth: y = 2.0 * x1 - 1.0 * x2 + tiny noise.
+        The regularization is mild (default priors), so the posterior mean should
+        be within 0.20 of the true values.
+        """
+        np.random.seed(99)
+        n = 200
+        X = np.random.randn(n, 2)
+        true_beta = np.array([2.0, -1.0])
+        y = X @ true_beta + 0.05 * np.random.randn(n)
+        model = BayesianRidge(fit_intercept=False).fit(X, y)
+        np.testing.assert_allclose(model.coefficients, true_beta, atol=0.20,
+                                   err_msg="BayesianRidge failed to recover known coefficients")
+
+    def test_vs_sklearn_on_clean_data(self):
+        """BayesianRidge coefficients are close to sklearn BayesianRidge on clean data.
+
+        sklearn is NOT a declared dependency — guard with importorskip.
+        """
+        sklearn_linear = pytest.importorskip("sklearn.linear_model")
+        np.random.seed(17)
+        n = 120
+        X = np.random.randn(n, 2)
+        y = X @ np.array([1.0, -2.0]) + 0.1 * np.random.randn(n)
+        ps_model = BayesianRidge(fit_intercept=False).fit(X, y)
+        sk_model = sklearn_linear.BayesianRidge(fit_intercept=False).fit(X, y)
+        np.testing.assert_allclose(ps_model.coefficients, sk_model.coef_, atol=0.30,
+                                   err_msg="BayesianRidge vs sklearn coefficient mismatch")
+
 
 class TestARD:
     def test_fit_basic(self):
@@ -179,3 +210,33 @@ class TestARD:
         # Relevant features should have larger magnitude than irrelevant ones
         assert abs(coef[0]) > abs(coef[3])
         assert abs(coef[1]) > abs(coef[4])
+
+    def test_recovers_known_coefficients(self):
+        """ARD recovers known non-zero coefficients on a clean design.
+
+        Ground truth: y = 1.5 * x1 - 0.8 * x2 + tiny noise.
+        ARD posterior mean should be within 0.20 of the true values.
+        """
+        np.random.seed(88)
+        n = 200
+        X = np.random.randn(n, 2)
+        true_beta = np.array([1.5, -0.8])
+        y = X @ true_beta + 0.05 * np.random.randn(n)
+        model = ARD(fit_intercept=False).fit(X, y)
+        np.testing.assert_allclose(model.coefficients, true_beta, atol=0.20,
+                                   err_msg="ARD failed to recover known coefficients")
+
+    def test_vs_sklearn_on_clean_data(self):
+        """ARD coefficients are close to sklearn ARDRegression on clean data.
+
+        sklearn is NOT a declared dependency — guard with importorskip.
+        """
+        sklearn_linear = pytest.importorskip("sklearn.linear_model")
+        np.random.seed(33)
+        n = 150
+        X = np.random.randn(n, 2)
+        y = X @ np.array([2.0, -1.0]) + 0.1 * np.random.randn(n)
+        ps_model = ARD(fit_intercept=False).fit(X, y)
+        sk_model = sklearn_linear.ARDRegression(fit_intercept=False).fit(X, y)
+        np.testing.assert_allclose(ps_model.coefficients, sk_model.coef_, atol=0.30,
+                                   err_msg="ARD vs sklearn coefficient mismatch")

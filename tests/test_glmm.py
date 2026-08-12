@@ -80,3 +80,45 @@ class TestGLMM:
         """GLMM.binomial() factory can be constructed."""
         model = GLMM.binomial()
         assert not model.is_fitted()
+
+    def test_fixed_effect_near_truth(self):
+        """GLMM Gaussian random-intercept: fixed-effect estimate is near the true slope.
+
+        Design: y = 1.5 * x + u_g + noise, where u_g ~ N(0, 0.5^2) is a
+        group-specific random intercept across 10 groups of 10 observations.
+        The fixed-effect slope should be recovered within 0.30 of 1.5.
+        """
+        rng = np.random.default_rng(42)
+        n_groups, n_per = 10, 10
+        n = n_groups * n_per
+        X = rng.standard_normal((n, 1))
+        group = np.repeat(np.arange(n_groups), n_per).astype(np.int64)
+        u = rng.normal(0, 0.5, n_groups)  # random intercepts
+        true_slope = 1.5
+        y = true_slope * X[:, 0] + u[group] + rng.standard_normal(n) * 0.3
+        model = GLMM.gaussian().fit(X, y, group.tolist())
+        fe = model.fixed_effects
+        assert abs(fe[0] - true_slope) < 0.30, (
+            f"GLMM fixed-effect slope {fe[0]:.4f} far from true {true_slope}"
+        )
+        # Factor variance must be positive (random intercept is non-zero)
+        fs = model.factors()
+        assert len(fs) >= 1
+        assert fs[0]["sd"] > 0.0, "Random intercept SD must be positive"
+        assert np.isfinite(fs[0]["sd"]), "Random intercept SD must be finite"
+
+    def test_factor_summary_populated(self):
+        """factors() returns a list of dicts with expected keys after fit."""
+        rng = np.random.default_rng(7)
+        n = 60
+        X = rng.standard_normal((n, 2))
+        group = np.repeat(np.arange(6), 10).astype(np.int64)
+        y = X @ np.array([1.0, -0.5]) + rng.standard_normal(n) * 0.3
+        model = GLMM.gaussian().fit(X, y, group.tolist())
+        fs = model.factors()
+        assert len(fs) >= 1
+        for fd in fs:
+            assert "n_levels" in fd
+            assert "sd" in fd
+            assert "blups" in fd
+            assert np.isfinite(fd["sd"])

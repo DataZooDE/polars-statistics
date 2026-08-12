@@ -98,3 +98,42 @@ class TestRANSAC:
         y = X @ np.array([1.0, -1.0]) + 0.1 * np.random.randn(n)
         model = RANSAC().fit(X, y)
         assert model.n_observations == n
+
+    def test_recovers_known_slope_with_outliers(self):
+        """RANSAC recovers the true slope even with 20% outliers.
+
+        Ground truth: y = 2.5 * x + noise.  20 of 100 observations are
+        contaminated by ±30 spikes.  RANSAC should recover the slope within 0.3.
+        """
+        np.random.seed(42)
+        n = 100
+        x = np.random.randn(n, 1)
+        true_slope = 2.5
+        y = true_slope * x[:, 0] + 0.1 * np.random.randn(n)
+        # Plant 20 severe outliers
+        y[:20] += np.random.choice([-30.0, 30.0], size=20)
+        model = RANSAC().fit(x, y)
+        assert abs(model.coefficients[0] - true_slope) < 0.3, (
+            f"RANSAC slope {model.coefficients[0]:.4f} far from true {true_slope}"
+        )
+
+    def test_vs_sklearn_on_clean_data(self):
+        """RANSAC coefficients are close to sklearn RANSACRegressor on clean data.
+
+        sklearn is NOT a declared dependency — guard with importorskip.
+        """
+        sklearn_linear = pytest.importorskip("sklearn.linear_model")
+        np.random.seed(77)
+        n = 80
+        X = np.random.randn(n, 1)
+        true_slope = 2.0
+        y = 1.0 + true_slope * X[:, 0] + 0.1 * np.random.randn(n)
+
+        ps_model = RANSAC().fit(X, y)
+        sk_model = sklearn_linear.RANSACRegressor(random_state=77).fit(X, y)
+
+        # RANSAC is stochastic — allow generous tolerance
+        assert abs(ps_model.coefficients[0] - float(sk_model.estimator_.coef_[0])) < 0.5, (
+            f"RANSAC vs sklearn slope mismatch: "
+            f"ps={ps_model.coefficients[0]:.4f}, sk={sk_model.estimator_.coef_[0]:.4f}"
+        )

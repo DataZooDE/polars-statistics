@@ -70,3 +70,26 @@ class TestPSpline:
         y = x.ravel() + 0.05 * np.random.randn(60)
         model = PSpline(n_basis=10).fit(x, y)
         assert model.is_fitted()
+
+    def test_tracks_smooth_function_rmse(self):
+        """PSpline fitted values track the underlying smooth curve with low RMSE.
+
+        Smoothing property: fitted values y_hat should have RMSE against the
+        true signal (sin function) below a loose bound, proving the spline
+        captures the nonlinear trend rather than fitting noise.
+
+        Data: y = sin(2*pi*x) + small noise, n=100, x in [0, 1].
+        True signal RMSE bound: fitted values within 0.15 of sin(2*pi*x).
+        """
+        rng = np.random.default_rng(42)
+        n = 100
+        x = np.linspace(0, 1, n)
+        true_signal = np.sin(2 * np.pi * x)
+        y = true_signal + rng.standard_normal(n) * 0.05
+        X = x.reshape(-1, 1)
+        model = PSpline().fit(X, y)
+        fitted = model.predict(X)
+        rmse = float(np.sqrt(np.mean((fitted - true_signal) ** 2)))
+        assert rmse < 0.15, (
+            f"PSpline RMSE vs true signal = {rmse:.4f}, expected < 0.15"
+        )

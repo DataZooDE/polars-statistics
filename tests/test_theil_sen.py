@@ -80,3 +80,38 @@ class TestTheilSen:
         y = X @ np.array([1.0, 1.0]) + 0.1 * np.random.randn(45)
         model = TheilSen().fit(X, y)
         assert model.n_observations == 45
+
+    def test_recovers_known_slope_clean(self):
+        """Theil-Sen recovers known slope on clean data within tight tolerance.
+
+        Ground truth: y = 1.0 + 3.0 * x (single predictor, no intercept in X).
+        With low noise the recovered coefficient should be within 0.15 of 3.0.
+        """
+        np.random.seed(21)
+        n = 150
+        x = np.random.randn(n, 1)
+        y = 1.0 + 3.0 * x[:, 0] + 0.05 * np.random.randn(n)
+        model = TheilSen(with_intercept=True).fit(x, y)
+        assert abs(model.coefficients[0] - 3.0) < 0.15, (
+            f"TheilSen slope {model.coefficients[0]:.4f} far from true 3.0"
+        )
+
+    def test_vs_sklearn_on_clean_data(self):
+        """TheilSen coefficients are close to sklearn TheilSenRegressor on clean data.
+
+        sklearn is NOT a declared dependency — guard with importorskip.
+        """
+        sklearn_linear = pytest.importorskip("sklearn.linear_model")
+        np.random.seed(55)
+        n = 80
+        X = np.random.randn(n, 2)
+        true_beta = np.array([1.5, -0.5])
+        y = X @ true_beta + 0.1 * np.random.randn(n)
+
+        ps_model = TheilSen(with_intercept=False).fit(X, y)
+        sk_model = sklearn_linear.TheilSenRegressor(fit_intercept=False).fit(X, y)
+
+        np.testing.assert_allclose(
+            ps_model.coefficients, sk_model.coef_, atol=0.25,
+            err_msg="TheilSen vs sklearn coefficient mismatch"
+        )

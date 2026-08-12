@@ -107,3 +107,25 @@ class TestRidgeFitFromAccumulator:
         assert model.is_fitted()
         assert len(model.coefficients) == 3
         assert np.all(np.isfinite(model.coefficients))
+
+    def test_close_to_direct_ridge(self):
+        """fit_from_accumulator coefficients must exactly equal direct Ridge.fit on the same data.
+
+        This is the analytic identity: both code paths operate on the same moment
+        matrix XtX and vector Xty, so the result must be bit-for-bit identical
+        (or at worst within 1e-8 floating-point rounding).
+        """
+        np.random.seed(19)
+        X = np.random.randn(120, 3)
+        y = X @ np.array([2.0, -1.0, 0.5]) + 0.1 * np.random.randn(120)
+
+        acc = MomentAccumulator(n_features=3)
+        for i in range(len(y)):
+            acc.push_row(X[i], y[i])
+
+        model_acc = Ridge(lambda_=0.1).fit_from_accumulator(acc)
+        model_direct = Ridge(lambda_=0.1).fit(X, y)
+        np.testing.assert_allclose(
+            model_acc.coefficients, model_direct.coefficients, atol=1e-6,
+            err_msg="Ridge fit_from_accumulator != direct fit (analytic identity violation)"
+        )

@@ -58,3 +58,34 @@ class TestLARS:
         model = LARS(fit_intercept=True).fit(X, y)
         assert model.intercept is not None
         assert np.isfinite(model.intercept)
+
+    def test_recovers_known_coefficients(self):
+        """LARS recovers known coefficients on a low-noise linear design.
+
+        Ground truth: y = 1.0 * x1 + 2.0 * x2 - 1.0 * x3.  With tiny noise
+        the full LARS path should reach the OLS solution and the final coefficients
+        should be within 0.20 of the true values.
+        """
+        np.random.seed(15)
+        n = 120
+        X = np.random.randn(n, 3)
+        true_beta = np.array([1.0, 2.0, -1.0])
+        y = X @ true_beta + 0.05 * np.random.randn(n)
+        model = LARS(fit_intercept=False).fit(X, y)
+        np.testing.assert_allclose(model.coefficients, true_beta, atol=0.20,
+                                   err_msg="LARS failed to recover known coefficients")
+
+    def test_vs_sklearn_lars(self):
+        """LARS coefficients are close to sklearn Lars on clean data.
+
+        sklearn is NOT a declared dependency — guard with importorskip.
+        """
+        sklearn_linear = pytest.importorskip("sklearn.linear_model")
+        np.random.seed(44)
+        n = 100
+        X = np.random.randn(n, 3)
+        y = X @ np.array([1.0, -1.0, 0.5]) + 0.1 * np.random.randn(n)
+        ps_model = LARS(fit_intercept=False).fit(X, y)
+        sk_model = sklearn_linear.Lars(fit_intercept=False).fit(X, y)
+        np.testing.assert_allclose(ps_model.coefficients, sk_model.coef_, atol=0.30,
+                                   err_msg="LARS vs sklearn coefficient mismatch")
