@@ -202,8 +202,16 @@ pub fn one_way_anova_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
     match one_way_anova(&group_refs, kind) {
         Ok(r) => {
+            // Prefer ss_between / ss_total when the crate supplies ss_total; otherwise
+            // fall back to ss_between / (ss_between + ss_within), which equals eta-squared
+            // for a one-way design (ss_total = ss_between + ss_within). This keeps eta²
+            // finite for Fisher fits where ss_total is not populated (WR-02).
             let eta_sq = match (r.ss_between, r.ss_total) {
                 (Some(ssb), Some(sst)) if sst > 0.0 => ssb / sst,
+                (Some(ssb), _) => match r.ss_within {
+                    Some(ssw) if (ssb + ssw) > 0.0 => ssb / (ssb + ssw),
+                    _ => f64::NAN,
+                },
                 _ => f64::NAN,
             };
             let statistic = Series::new("statistic".into(), &[r.statistic]);

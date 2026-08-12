@@ -163,6 +163,28 @@ class TestTwoWayAnova:
             if not math.isnan(pval):
                 assert 0.0 <= pval <= 1.0, f"{pfield}={pval} out of range"
 
+    def test_nulls_dropped_and_aligned(self):
+        """Regression (CR-01/CR-02): rows with null factors or non-finite values are
+        dropped and factor codes are re-densified, so the result matches the same data
+        without those rows (no phantom factor level, no array misalignment)."""
+        base = {
+            "v": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0],
+            "fa": ["x", "x", "x", "y", "y", "y", "x", "x", "x", "y", "y", "y"],
+            "fb": ["p", "q", "p", "q", "p", "q", "p", "q", "p", "q", "p", "q"],
+        }
+        clean = pl.DataFrame(base).select(ps.two_way_anova("v", "fa", "fb"))[0, 0]
+        # Append rows that MUST be ignored: a null factor_a, a null factor_b, and a NaN value.
+        dirty = pl.DataFrame(
+            {
+                "v": base["v"] + [99.0, 99.0, float("nan")],
+                "fa": base["fa"] + [None, "x", "y"],
+                "fb": base["fb"] + ["p", None, "q"],
+            }
+        ).select(ps.two_way_anova("v", "fa", "fb"))[0, 0]
+        assert dirty["n"] == 12, "null/NaN rows must be excluded (n stays 12)"
+        assert math.isclose(dirty["a_ss"], clean["a_ss"], rel_tol=1e-9, abs_tol=1e-9)
+        assert math.isclose(dirty["residual_ss"], clean["residual_ss"], rel_tol=1e-9, abs_tol=1e-9)
+
 
 class TestRmAnova:
     """STAT-03: repeated_measures_anova expression smoke tests."""
@@ -235,6 +257,25 @@ class TestRmAnova:
         v = result[0, 0]
         # Should not panic; ws_f should be NaN on unbalanced input
         assert math.isnan(v["ws_f"])
+
+    def test_group_by_multiple_groups(self):
+        """Regression (CR-03): RM-ANOVA inside group_by(...).agg() over multiple groups
+        must produce a valid (finite) result for EVERY group. The former
+        cast(Categorical).to_physical() encoding shared a global catalog, so a second
+        group's first label got a non-zero code and the balance check failed (all-NaN).
+        rank(method='dense') encodes each group independently."""
+        one = self._balanced_df().with_columns(pl.lit("g1").alias("grp"))
+        two = self._balanced_df().with_columns(pl.lit("g2").alias("grp"))
+        stacked = pl.concat([one, two])
+        out = (
+            stacked.group_by("grp")
+            .agg(ps.repeated_measures_anova("y", "s", "c").alias("rm"))
+            .sort("grp")
+        )
+        assert out.height == 2
+        for row in out.iter_rows(named=True):
+            ws_f = row["rm"]["ws_f"]
+            assert math.isfinite(ws_f), f"group {row['grp']} returned non-finite ws_f={ws_f}"
 
 
 class TestEnergyDistanceNd:

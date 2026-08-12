@@ -338,6 +338,15 @@ pub fn icc_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
     let n_subjects = matrix[0].len();
 
+    // Defensive guard before the transpose indexes matrix[r][s]: every rater column
+    // must be present (a missing inputs.get(2+i) would leave matrix shorter than
+    // n_raters) and rectangular (equal length). A ragged/short matrix would panic on
+    // the raw index below (WR-01). The Python builder already enforces this, but the
+    // Rust entry point must not panic on a malformed call.
+    if matrix.len() != n_raters || matrix.iter().any(|col| col.len() != n_subjects) {
+        return icc_error_output();
+    }
+
     // Transpose: icc() expects data[subject][rater]
     let data: Vec<Vec<f64>> = (0..n_subjects)
         .map(|s| (0..n_raters).map(|r| matrix[r][s]).collect())

@@ -115,22 +115,26 @@ def two_way_anova(
     if isinstance(factor_b, str):
         factor_b = pl.col(factor_b)
 
-    # Encode each factor column as 0-indexed UInt32 codes independently.
-    # Using rank()-based encoding ensures each factor starts at 0 regardless of
-    # global Categorical catalog ordering (Pitfall 2: shared catalog shifts codes).
-    # rank(method="dense") - 1 gives 0-indexed integer codes for any string/int column.
-    factor_a_enc = (
-        factor_a.rank(method="dense").cast(pl.UInt32) - pl.lit(1, dtype=pl.UInt32)
-    )
-    factor_b_enc = (
-        factor_b.rank(method="dense").cast(pl.UInt32) - pl.lit(1, dtype=pl.UInt32)
-    )
-
-    # Apply the finite mask to all three columns to keep row alignment
-    mask = value.is_finite()
+    # Drop rows where the value is non-finite OR either factor is null, so all three
+    # columns stay row-aligned (the Rust side uses into_no_null_iter(), which would
+    # otherwise silently shorten a column that still contained nulls — CR-02).
+    mask = value.is_finite() & factor_a.is_not_null() & factor_b.is_not_null()
     value_clean = value.filter(mask)
-    factor_a_clean = factor_a_enc.filter(mask)
-    factor_b_clean = factor_b_enc.filter(mask)
+
+    # Encode each factor as 0-indexed UInt32 codes AFTER filtering, so the dense
+    # codes are contiguous starting at 0 over the surviving rows. Ranking before the
+    # filter can leave a gap (e.g. codes [1, 2]) if a whole factor level is dropped,
+    # which the crate would misread as an extra phantom level (CR-01). rank("dense")
+    # is also per-column independent, avoiding the shared Categorical-catalog shift
+    # that plagues to_physical() inside a group_by (Pitfall 2).
+    factor_a_clean = (
+        factor_a.filter(mask).rank(method="dense").cast(pl.UInt32)
+        - pl.lit(1, dtype=pl.UInt32)
+    )
+    factor_b_clean = (
+        factor_b.filter(mask).rank(method="dense").cast(pl.UInt32)
+        - pl.lit(1, dtype=pl.UInt32)
+    )
 
     return register_plugin_function(
         plugin_path=LIB,
@@ -198,15 +202,27 @@ def repeated_measures_anova(
     if isinstance(condition, str):
         condition = pl.col(condition)
 
-    # Encode subject and condition as 0-indexed UInt32 codes
-    subject_enc = subject.cast(pl.Categorical).to_physical().cast(pl.UInt32)
-    condition_enc = condition.cast(pl.Categorical).to_physical().cast(pl.UInt32)
-
-    # Filter rows where value is not finite, keeping alignment across all columns
-    mask = value.is_finite()
+    # Drop rows where the value is non-finite OR subject/condition is null, so all
+    # three columns stay row-aligned (the Rust side uses into_no_null_iter() — an
+    # unmasked null would silently shorten a column and misalign the arrays, CR-02).
+    mask = value.is_finite() & subject.is_not_null() & condition.is_not_null()
     value_clean = value.filter(mask)
-    subject_clean = subject_enc.filter(mask)
-    condition_clean = condition_enc.filter(mask)
+
+    # Encode subject and condition as 0-indexed dense UInt32 codes AFTER filtering.
+    # rank("dense") is per-column independent, so it starts at 0 regardless of the
+    # global Polars Categorical catalog. The previous cast(Categorical).to_physical()
+    # shared that catalog: inside a group_by(...).agg(...) an earlier group could fill
+    # code slots 0..k so this group's first level got code k+1 instead of 0, breaking
+    # the balance check and yielding an all-NaN result (CR-03). Ranking after the
+    # filter also keeps the codes contiguous (mirrors two_way_anova, CR-01).
+    subject_clean = (
+        subject.filter(mask).rank(method="dense").cast(pl.UInt32)
+        - pl.lit(1, dtype=pl.UInt32)
+    )
+    condition_clean = (
+        condition.filter(mask).rank(method="dense").cast(pl.UInt32)
+        - pl.lit(1, dtype=pl.UInt32)
+    )
 
     return register_plugin_function(
         plugin_path=LIB,

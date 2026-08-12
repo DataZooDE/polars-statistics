@@ -121,6 +121,11 @@ def energy_distance_nd(
             f"x_cols and y_cols must have the same length (dimension d), "
             f"got len(x_cols)={len(x_cols)} and len(y_cols)={len(y_cols)}"
         )
+    if len(x_cols) == 0:
+        raise ValueError(
+            "x_cols and y_cols must contain at least one column (dimension d >= 1); "
+            "got empty column lists"
+        )
     d = len(x_cols)
     x_exprs = [_to_expr(c).cast(pl.Float64) for c in x_cols]
     y_exprs = [_to_expr(c).cast(pl.Float64) for c in y_cols]
