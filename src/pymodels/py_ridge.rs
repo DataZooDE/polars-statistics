@@ -4,7 +4,7 @@ use numpy::{PyArray1, PyReadonlyArray1, PyReadonlyArray2};
 use pyo3::prelude::*;
 
 use anofox_regression::inference::compute_hc_inference;
-use anofox_regression::solvers::{FittedRegressor, Regressor, RidgeRegressor};
+use anofox_regression::solvers::{FittedRegressor, FittedRidge, Regressor, RidgeRegressor};
 use anofox_regression::HcType;
 
 use crate::utils::{IntoNumpy, ToFaer};
@@ -200,5 +200,37 @@ impl PyRidge {
             dict.set_item("intercept_p_value", int_inf.p_value)?;
         }
         Ok(dict)
+    }
+
+    /// Fit Ridge from a :class:`MomentAccumulator` without materialising the
+    /// full design matrix.
+    ///
+    /// Mathematically equivalent to ``fit`` when the centered Gram matrix is
+    /// well-conditioned.  Per-row statistics (R², residuals, AIC, BIC) are
+    /// ``NaN`` in the result because individual rows are not retained.
+    ///
+    /// Parameters
+    /// ----------
+    /// acc : MomentAccumulator
+    ///     Populated accumulator.
+    ///
+    /// Returns
+    /// -------
+    /// self
+    fn fit_from_accumulator<'py>(
+        mut slf: PyRefMut<'py, Self>,
+        acc: &crate::pymodels::py_moment_accumulator::PyMomentAccumulator,
+    ) -> PyResult<PyRefMut<'py, Self>> {
+        let model = RidgeRegressor::builder()
+            .lambda(slf.lambda_)
+            .with_intercept(slf.with_intercept)
+            .compute_inference(slf.compute_inference)
+            .confidence_level(slf.confidence_level)
+            .build();
+        let fitted: FittedRidge = model
+            .fit_from_accumulator(&acc.inner)
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>(e.to_string()))?;
+        slf.fitted = Some(Box::new(fitted));
+        Ok(slf)
     }
 }
