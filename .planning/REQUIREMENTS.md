@@ -53,8 +53,8 @@ Requirements for this milestone (`anofox-*` upgrade + API parity + 0.6.0 release
 
 ### Release
 
-- [ ] **REL-01**: `polars-statistics` version is bumped 0.5.0 → 0.6.0 in both `Cargo.toml` and `pyproject.toml`
-- [ ] **REL-02**: A 0.6.0 git tag and release notes are prepared
+- [x] **REL-01**: `polars-statistics` version is bumped 0.5.0 → 0.6.0 in both `Cargo.toml` and `pyproject.toml`
+- [x] **REL-02**: A 0.6.0 git tag and release notes are prepared
 - [ ] **REL-03**: Wheels (sdist + platform wheels) are built and published to production PyPI via the GitHub Actions pipeline
 - [ ] **REL-04**: The published 0.6.0 wheel installs and imports cleanly as a post-release smoke check
 
@@ -105,8 +105,8 @@ Deferred to future releases.
 | TEST-03 | Phase 6 | Complete |
 | TEST-04 | Phase 6 | Complete |
 | TEST-05 | Phase 6 | Complete |
-| REL-01 | Phase 7 | Pending |
-| REL-02 | Phase 7 | Pending |
+| REL-01 | Phase 7 | Complete |
+| REL-02 | Phase 7 | Complete |
 | REL-03 | Phase 7 | Pending |
 | REL-04 | Phase 7 | Pending |
 
