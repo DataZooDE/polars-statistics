@@ -107,7 +107,7 @@ Deferred to future releases.
 | TEST-05 | Phase 6 | Complete |
 | REL-01 | Phase 7 | Complete |
 | REL-02 | Phase 7 | Complete |
-| REL-03 | Phase 7 | Pending |
+| REL-03 | Phase 7 | In progress (GH Actions publish.yml running for v0.6.0 release) |
 | REL-04 | Phase 7 | Pending |
 
 **Coverage:**

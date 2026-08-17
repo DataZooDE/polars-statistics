@@ -5,8 +5,8 @@ milestone_name: milestone
 current_phase: 7
 current_phase_name: Release 0.6.0
 status: planning
-stopped_at: context exhaustion at 75% (2026-08-12)
-last_updated: "2026-08-12T14:37:50.927Z"
+stopped_at: context exhaustion at 76% (2026-08-17)
+last_updated: "2026-08-17T14:55:46.862Z"
 last_activity: 2026-08-12
 last_activity_desc: Phase 3 complete, transitioned to Phase 4
 progress:
@@ -147,6 +147,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-12T14:33:00.691Z
-Stopped at: Phase 6 complete (602 pytest + 17 rust_api green; values validated vs references); at Phase 7 (Release 0.6.0) — PAUSED for user decision on production PyPI publish
+Last session: 2026-08-17T14:55:46.852Z
+Stopped at: Phase 7 — v0.6.0 tag + GitHub Release published; publish.yml running (REL-03 in progress). REL-04 smoke check pending workflow completion (~25min) + PyPI propagation.
 Resume file: None
