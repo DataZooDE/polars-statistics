@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-08-11)
 Phase: 7 — Release 0.6.0
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-08-12 — Phase 6 complete, transitioned to Phase 7
+Last activity: 2026-08-18 — Completed quick task 260818-rj2: add Examples section to README (fixes #36)
 
 Progress: [████████░░] 86% (6/7 phases complete)
 
@@ -136,6 +136,12 @@ None yet.
 
 - ✓ Resolved (Phase 1): dep bump landed, DEP-04 green (Rust 15 + pytest 457 passing), and the column-pivot correctness fix is confirmed active via 3 new tests. New API can now be wrapped in Phases 3–4.
 - None currently open.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260818-rj2 | Add Examples section to README linking runnable examples/ scripts and docs/examples cookbook (fixes #36) | 2026-08-18 | b5e8e16 | [260818-rj2-add-examples-section-to-readme-linking-r](./quick/260818-rj2-add-examples-section-to-readme-linking-r/) |
 
 ## Deferred Items
 
