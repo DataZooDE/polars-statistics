@@ -354,7 +354,6 @@ def expanding_ols(
         Struct containing regression results.
     """
     add_intercept = _resolve_intercept(add_intercept, with_intercept)
-    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     return rls(y, *x, forgetting_factor=1.0, add_intercept=add_intercept)
 
 
@@ -472,7 +471,6 @@ def lasso(
     pl.Expr
         Struct containing regression results.
     """
-    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     add_intercept = _resolve_intercept(add_intercept, with_intercept)
     return elastic_net(y, *x, lambda_=lambda_, alpha=1.0, add_intercept=add_intercept)
 
@@ -1586,6 +1584,109 @@ def poisson_working_residuals(
     )
 
 
+def gamma_dispersion_deviance(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    lambda_: float = 0.0,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
+) -> pl.Expr:
+    """Dispersion estimate (deviance method) from an internal Gamma GLM fit.
+
+    Returns a struct with ``dispersion`` (Float64): φ̂ = D / (n − p).
+    """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_gamma_dispersion_deviance",
+        args=_glm_residual_args(y, x, lambda_, add_intercept),
+        returns_scalar=True,
+    )
+
+
+def gamma_dispersion_pearson(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    lambda_: float = 0.0,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
+) -> pl.Expr:
+    """Dispersion estimate (Pearson method) from an internal Gamma GLM fit.
+
+    Returns a struct with ``dispersion`` (Float64): φ̂ = X² / (n − p).
+    """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_gamma_dispersion_pearson",
+        args=_glm_residual_args(y, x, lambda_, add_intercept),
+        returns_scalar=True,
+    )
+
+
+def gamma_pearson_chi_squared(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    lambda_: float = 0.0,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
+) -> pl.Expr:
+    """Pearson chi-squared goodness-of-fit from an internal Gamma GLM fit.
+
+    Returns a struct with ``chi_squared`` (Float64), ``df_resid`` (UInt32),
+    and ``n_observations`` (UInt32).
+    """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_gamma_pearson_chi_squared",
+        args=_glm_residual_args(y, x, lambda_, add_intercept),
+        returns_scalar=True,
+    )
+
+
+def gamma_standardized_pearson_residuals(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    lambda_: float = 0.0,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
+) -> pl.Expr:
+    """Standardized Pearson residuals from an internal Gamma GLM fit.
+
+    Returns a struct with ``residuals`` (List[float]) and ``n_observations``.
+    Standardization: r_P / sqrt(φ · (1 − h_ii)).
+    """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_gamma_standardized_pearson_residuals",
+        args=_glm_residual_args(y, x, lambda_, add_intercept),
+        returns_scalar=True,
+    )
+
+
+def gamma_standardized_deviance_residuals(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    lambda_: float = 0.0,
+    add_intercept: bool | None = None,
+    with_intercept: bool | None = None,
+) -> pl.Expr:
+    """Standardized deviance residuals from an internal Gamma GLM fit.
+
+    Returns a struct with ``residuals`` (List[float]) and ``n_observations``.
+    Standardization: r_D / sqrt(φ · (1 − h_ii)).
+    """
+    add_intercept = _resolve_intercept(add_intercept, with_intercept)
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_gamma_standardized_deviance_residuals",
+        args=_glm_residual_args(y, x, lambda_, add_intercept),
+        returns_scalar=True,
+    )
+
+
 # ============================================================================
 # GLM Expressions
 # ============================================================================
@@ -2167,7 +2268,6 @@ def elastic_net_summary(
 ) -> pl.Expr:
     """Elastic Net regression coefficient summary in tidy format."""
     add_intercept = _resolve_intercept(add_intercept, with_intercept)
-    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     if isinstance(y, str):
         y = pl.col(y)
 
@@ -2202,7 +2302,6 @@ def lasso_summary(
 
     Shorthand for elastic_net_summary(..., alpha=1.0).
     """
-    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     add_intercept = _resolve_intercept(add_intercept, with_intercept)
     return elastic_net_summary(
         y, *x, lambda_=lambda_, alpha=1.0, add_intercept=add_intercept
@@ -2253,7 +2352,6 @@ def rls_summary(
 ) -> pl.Expr:
     """Recursive Least Squares coefficient summary in tidy format."""
     add_intercept = _resolve_intercept(add_intercept, with_intercept)
-    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     if isinstance(y, str):
         y = pl.col(y)
 
@@ -2285,7 +2383,6 @@ def bls_summary(
     with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Bounded Least Squares coefficient summary in tidy format."""
-    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     add_intercept = _resolve_intercept(add_intercept, with_intercept)
     if isinstance(y, str):
         y = pl.col(y)
@@ -2327,7 +2424,6 @@ def logistic_summary(
 ) -> pl.Expr:
     """Logistic regression coefficient summary in tidy format."""
     add_intercept = _resolve_intercept(add_intercept, with_intercept)
-    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     if isinstance(y, str):
         y = pl.col(y)
 
@@ -2358,7 +2454,6 @@ def poisson_summary(
     with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Poisson regression coefficient summary in tidy format."""
-    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     add_intercept = _resolve_intercept(add_intercept, with_intercept)
     if isinstance(y, str):
         y = pl.col(y)
@@ -2391,7 +2486,6 @@ def negative_binomial_summary(
     with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Negative Binomial regression coefficient summary in tidy format."""
-    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     add_intercept = _resolve_intercept(add_intercept, with_intercept)
     if isinstance(y, str):
         y = pl.col(y)
@@ -2428,7 +2522,6 @@ def tweedie_summary(
 ) -> pl.Expr:
     """Tweedie GLM coefficient summary in tidy format."""
     add_intercept = _resolve_intercept(add_intercept, with_intercept)
-    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     if isinstance(y, str):
         y = pl.col(y)
 
@@ -2461,7 +2554,6 @@ def probit_summary(
 ) -> pl.Expr:
     """Probit regression coefficient summary in tidy format."""
     add_intercept = _resolve_intercept(add_intercept, with_intercept)
-    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     if isinstance(y, str):
         y = pl.col(y)
 
@@ -2493,7 +2585,6 @@ def cloglog_summary(
 ) -> pl.Expr:
     """Complementary log-log regression coefficient summary in tidy format."""
     add_intercept = _resolve_intercept(add_intercept, with_intercept)
-    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     if isinstance(y, str):
         y = pl.col(y)
 
@@ -2524,7 +2615,6 @@ def alm_summary(
     with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Augmented Linear Model coefficient summary in tidy format."""
-    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     add_intercept = _resolve_intercept(add_intercept, with_intercept)
     if isinstance(y, str):
         y = pl.col(y)
@@ -3709,7 +3799,6 @@ def lasso_formula(
         Struct containing regression results.
     """
     add_intercept = _resolve_intercept(add_intercept, with_intercept)
-    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     return elastic_net_formula(
         formula, lambda_=lambda_, alpha=1.0, add_intercept=add_intercept
     )
@@ -4068,7 +4157,6 @@ def elastic_net_formula_summary(
 ) -> pl.Expr:
     """Elastic Net coefficient summary using R-style formula syntax."""
     add_intercept = _resolve_intercept(add_intercept, with_intercept)
-    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     response, x_exprs, _ = _parse_formula(formula)
     return elastic_net_summary(
         response, *x_exprs, lambda_=lambda_, alpha=alpha, add_intercept=add_intercept
@@ -4086,7 +4174,6 @@ def lasso_formula_summary(
     Shorthand for elastic_net_formula_summary(..., alpha=1.0).
     """
     add_intercept = _resolve_intercept(add_intercept, with_intercept)
-    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     return elastic_net_formula_summary(
         formula, lambda_=lambda_, alpha=1.0, add_intercept=add_intercept
     )
@@ -4098,7 +4185,6 @@ def logistic_formula_summary(
     with_intercept: bool | None = None,
 ) -> pl.Expr:
     """Logistic regression coefficient summary using R-style formula syntax."""
-    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     add_intercept = _resolve_intercept(add_intercept, with_intercept)
     response, x_exprs, _ = _parse_formula(formula)
     return logistic_summary(response, *x_exprs, add_intercept=add_intercept)
@@ -4122,7 +4208,6 @@ def alm_formula_summary(
     with_intercept: bool | None = None,
 ) -> pl.Expr:
     """ALM coefficient summary using R-style formula syntax."""
-    add_intercept = _resolve_intercept(add_intercept, with_intercept)
     add_intercept = _resolve_intercept(add_intercept, with_intercept)
     response, x_exprs, _ = _parse_formula(formula)
     return alm_summary(response, *x_exprs, distribution=distribution, add_intercept=add_intercept)

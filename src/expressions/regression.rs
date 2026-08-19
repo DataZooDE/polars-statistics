@@ -9,20 +9,22 @@ use serde::Deserialize;
 
 use anofox_regression::diagnostics::{
     check_binary_separation, check_count_sparsity, compute_leverage, condition_diagnostic,
-    cooks_distance, dffits, externally_studentized_residuals, generalized_vif,
-    high_leverage_points, high_vif_predictors, influential_cooks, influential_dffits,
-    residual_outliers, standardized_residuals, studentized_residuals, variance_inflation_factor,
-    ConditionSeverity, SeparationCheck, SeparationType,
+    cooks_distance, dffits, estimate_dispersion_deviance, estimate_dispersion_pearson,
+    externally_studentized_residuals, generalized_vif, high_leverage_points, high_vif_predictors,
+    influential_cooks, influential_dffits, pearson_chi_squared, residual_outliers,
+    standardized_deviance_residuals, standardized_pearson_residuals, standardized_residuals,
+    studentized_residuals, variance_inflation_factor, ConditionSeverity, SeparationCheck,
+    SeparationType,
 };
 use anofox_regression::solvers::{
     AidClassifier, AlmDistribution, AlmLoss, AlmRegressor, AnomalyType, BinomialRegressor,
     BlsRegressor, DemandDistribution, DemandType, ElasticNetRegressor, FittedRegressor,
-    HuberRegressor, InformationCriterion, IsotonicRegressor, LinkFunction, LmDynamicRegressor,
-    LogisticRegression, NegativeBinomialRegressor, OlsRegressor, Penalty, PlsRegressor,
-    PoissonRegressor, QuantileRegressor, Regressor, RidgeRegressor, RlsRegressor, TweedieRegressor,
-    WlsRegressor,
+    GammaRegressor, HuberRegressor, InformationCriterion, IsotonicRegressor, LinkFunction,
+    LmDynamicRegressor, LogisticRegression, NegativeBinomialRegressor, OlsRegressor, Penalty,
+    PlsRegressor, PoissonRegressor, QuantileRegressor, Regressor, RidgeRegressor, RlsRegressor,
+    TweedieRegressor, WlsRegressor,
 };
-use anofox_regression::{HcType, IntervalType, SolverType};
+use anofox_regression::{HcType, IntervalType, SolverType, TweedieFamily};
 
 /// Result type for build_xy_with_null_policy: (X_fit, y, valid_mask, X_pred)
 type XyNullPolicyResult = (Mat<f64>, Col<f64>, Vec<bool>, Mat<f64>);
@@ -274,6 +276,11 @@ fn chi_squared_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
         Field::new("n_observations".into(), DataType::UInt32),
     ];
     Ok(Field::new("chi_squared".into(), DataType::Struct(fields)))
+}
+
+fn dispersion_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
+    let fields = vec![Field::new("dispersion".into(), DataType::Float64)];
+    Ok(Field::new("dispersion".into(), DataType::Struct(fields)))
 }
 
 // ============================================================================
@@ -1894,6 +1901,15 @@ fn chi_squared_nan_output() -> PolarsResult<Series> {
     chi_squared_output(f64::NAN, 0, 0)
 }
 
+fn dispersion_output(value: f64) -> PolarsResult<Series> {
+    let s = Series::new("dispersion".into(), &[value]);
+    StructChunked::from_series("dispersion".into(), 1, [&s].into_iter()).map(|ca| ca.into_series())
+}
+
+fn dispersion_nan_output() -> PolarsResult<Series> {
+    dispersion_output(f64::NAN)
+}
+
 /// High-VIF predictors boolean mask.
 ///
 /// Input contract: `[threshold (f64), x_0, x_1, ...]`.
@@ -2181,8 +2197,14 @@ fn build_poisson_log(lambda: f64, with_intercept: bool) -> PoissonRegressor {
     b.build()
 }
 
-fn col_into_vec(c: &Col<f64>) -> Vec<f64> {
-    (0..c.nrows()).map(|i| c[i]).collect()
+fn build_gamma_log(lambda: f64, with_intercept: bool) -> GammaRegressor {
+    let mut b = GammaRegressor::builder()
+        .with_intercept(with_intercept)
+        .error_on_non_convergence(false);
+    if lambda > 0.0 {
+        b = b.lambda(lambda);
+    }
+    b.build()
 }
 
 /// Logistic Pearson residuals.
@@ -2196,7 +2218,7 @@ pub fn logistic_pearson_residuals_fit(inputs: &[Series]) -> PolarsResult<Series>
     let n = y.nrows();
     let model = build_binomial_logit(lambda, with_intercept);
     match model.fit(&x, &y) {
-        Ok(f) => residual_diag_output(col_into_vec(&f.pearson_residuals()), n),
+        Ok(f) => residual_diag_output(col_to_vec(&f.pearson_residuals()), n),
         Err(_) => residual_diag_nan_output(),
     }
 }
@@ -2217,7 +2239,7 @@ pub fn logistic_deviance_residuals_fit(inputs: &[Series]) -> PolarsResult<Series
     let n = y.nrows();
     let model = build_binomial_logit(lambda, with_intercept);
     match model.fit(&x, &y) {
-        Ok(f) => residual_diag_output(col_into_vec(&f.deviance_residuals()), n),
+        Ok(f) => residual_diag_output(col_to_vec(&f.deviance_residuals()), n),
         Err(_) => residual_diag_nan_output(),
     }
 }
@@ -2238,7 +2260,7 @@ pub fn logistic_working_residuals_fit(inputs: &[Series]) -> PolarsResult<Series>
     let n = y.nrows();
     let model = build_binomial_logit(lambda, with_intercept);
     match model.fit(&x, &y) {
-        Ok(f) => residual_diag_output(col_into_vec(&f.working_residuals()), n),
+        Ok(f) => residual_diag_output(col_to_vec(&f.working_residuals()), n),
         Err(_) => residual_diag_nan_output(),
     }
 }
@@ -2259,7 +2281,7 @@ pub fn poisson_pearson_residuals_fit(inputs: &[Series]) -> PolarsResult<Series> 
     let n = y.nrows();
     let model = build_poisson_log(lambda, with_intercept);
     match model.fit(&x, &y) {
-        Ok(f) => residual_diag_output(col_into_vec(&f.pearson_residuals()), n),
+        Ok(f) => residual_diag_output(col_to_vec(&f.pearson_residuals()), n),
         Err(_) => residual_diag_nan_output(),
     }
 }
@@ -2280,7 +2302,7 @@ pub fn poisson_deviance_residuals_fit(inputs: &[Series]) -> PolarsResult<Series>
     let n = y.nrows();
     let model = build_poisson_log(lambda, with_intercept);
     match model.fit(&x, &y) {
-        Ok(f) => residual_diag_output(col_into_vec(&f.deviance_residuals()), n),
+        Ok(f) => residual_diag_output(col_to_vec(&f.deviance_residuals()), n),
         Err(_) => residual_diag_nan_output(),
     }
 }
@@ -2301,7 +2323,7 @@ pub fn poisson_working_residuals_fit(inputs: &[Series]) -> PolarsResult<Series> 
     let n = y.nrows();
     let model = build_poisson_log(lambda, with_intercept);
     match model.fit(&x, &y) {
-        Ok(f) => residual_diag_output(col_into_vec(&f.working_residuals()), n),
+        Ok(f) => residual_diag_output(col_to_vec(&f.working_residuals()), n),
         Err(_) => residual_diag_nan_output(),
     }
 }
@@ -2309,6 +2331,202 @@ pub fn poisson_working_residuals_fit(inputs: &[Series]) -> PolarsResult<Series> 
 #[polars_expr(output_type_func=residual_diag_output_dtype)]
 fn pl_poisson_working_residuals(inputs: &[Series]) -> PolarsResult<Series> {
     poisson_working_residuals_fit(inputs)
+}
+
+// ============================================================================
+// Gamma GLM diagnostic expressions (REGR-05)
+//
+// All five share the same input contract as the Gamma fit expression:
+//   [y, lambda (f64), with_intercept (bool), x_0, ...]
+// The two standardized-residual expressions return per-row residuals
+// (residual_diag_output_dtype).  The three scalar expressions return a
+// one-row struct (dispersion_output_dtype for deviance/pearson dispersion;
+// chi_squared_output_dtype for the chi-squared stat).
+// ============================================================================
+
+/// Gamma GLM dispersion estimate via the deviance method: φ̂ = D / (n − p).
+///
+/// Input contract: `[y, lambda (f64), with_intercept (bool), x_0, ...]`.
+pub fn gamma_dispersion_deviance_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    if inputs.len() < 4 {
+        return dispersion_nan_output();
+    }
+    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
+    let n_features = inputs.len().saturating_sub(3);
+    let (x, y) = match build_xy_data(inputs, 0, 3) {
+        Ok(d) => d,
+        Err(_) => return dispersion_nan_output(),
+    };
+    let n = y.nrows();
+    let n_params = n_features + if with_intercept { 1 } else { 0 };
+    let model = build_gamma_log(lambda, with_intercept);
+    match model.fit(&x, &y) {
+        Ok(f) => {
+            let mu = f.inner().result().fitted_values.clone();
+            let y_slice: Vec<f64> = (0..n).map(|i| y[i]).collect();
+            let mu_slice: Vec<f64> = (0..n).map(|i| mu[i]).collect();
+            let family = TweedieFamily::gamma();
+            let phi = estimate_dispersion_deviance(&y_slice, &mu_slice, &family, n_params);
+            dispersion_output(phi)
+        }
+        Err(_) => dispersion_nan_output(),
+    }
+}
+
+#[polars_expr(output_type_func=dispersion_output_dtype)]
+fn pl_gamma_dispersion_deviance(inputs: &[Series]) -> PolarsResult<Series> {
+    gamma_dispersion_deviance_fit(inputs)
+}
+
+/// Gamma GLM dispersion estimate via Pearson's method: φ̂ = X² / (n − p).
+///
+/// Input contract: `[y, lambda (f64), with_intercept (bool), x_0, ...]`.
+pub fn gamma_dispersion_pearson_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    if inputs.len() < 4 {
+        return dispersion_nan_output();
+    }
+    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
+    let n_features = inputs.len().saturating_sub(3);
+    let (x, y) = match build_xy_data(inputs, 0, 3) {
+        Ok(d) => d,
+        Err(_) => return dispersion_nan_output(),
+    };
+    let n = y.nrows();
+    let n_params = n_features + if with_intercept { 1 } else { 0 };
+    let model = build_gamma_log(lambda, with_intercept);
+    match model.fit(&x, &y) {
+        Ok(f) => {
+            let mu = f.inner().result().fitted_values.clone();
+            let y_slice: Vec<f64> = (0..n).map(|i| y[i]).collect();
+            let mu_slice: Vec<f64> = (0..n).map(|i| mu[i]).collect();
+            let family = TweedieFamily::gamma();
+            let phi = estimate_dispersion_pearson(&y_slice, &mu_slice, &family, n_params);
+            dispersion_output(phi)
+        }
+        Err(_) => dispersion_nan_output(),
+    }
+}
+
+#[polars_expr(output_type_func=dispersion_output_dtype)]
+fn pl_gamma_dispersion_pearson(inputs: &[Series]) -> PolarsResult<Series> {
+    gamma_dispersion_pearson_fit(inputs)
+}
+
+/// Gamma GLM Pearson chi-squared goodness-of-fit statistic: Σ (y − μ)² / V(μ).
+///
+/// Returns a struct{chi_squared, df_resid, n_observations}.
+/// Input contract: `[y, lambda (f64), with_intercept (bool), x_0, ...]`.
+pub fn gamma_pearson_chi_squared_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    if inputs.len() < 4 {
+        return chi_squared_nan_output();
+    }
+    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
+    let n_features = inputs.len().saturating_sub(3);
+    let (x, y) = match build_xy_data(inputs, 0, 3) {
+        Ok(d) => d,
+        Err(_) => return chi_squared_nan_output(),
+    };
+    let n = y.nrows();
+    let n_params = n_features + if with_intercept { 1 } else { 0 };
+    let df_resid = n.saturating_sub(n_params);
+    let model = build_gamma_log(lambda, with_intercept);
+    match model.fit(&x, &y) {
+        Ok(f) => {
+            let mu = f.inner().result().fitted_values.clone();
+            let y_slice: Vec<f64> = (0..n).map(|i| y[i]).collect();
+            let mu_slice: Vec<f64> = (0..n).map(|i| mu[i]).collect();
+            let family = TweedieFamily::gamma();
+            let chi2 = pearson_chi_squared(&y_slice, &mu_slice, &family);
+            chi_squared_output(chi2, df_resid, n)
+        }
+        Err(_) => chi_squared_nan_output(),
+    }
+}
+
+#[polars_expr(output_type_func=chi_squared_output_dtype)]
+fn pl_gamma_pearson_chi_squared(inputs: &[Series]) -> PolarsResult<Series> {
+    gamma_pearson_chi_squared_fit(inputs)
+}
+
+/// Gamma GLM standardized Pearson residuals: r_P / sqrt(φ · (1 − h_ii)).
+///
+/// Fits a Gamma GLM internally to obtain μ̂ and leverage h_ii, then computes
+/// the Pearson-method dispersion estimate φ̂ before standardizing.
+/// Input contract: `[y, lambda (f64), with_intercept (bool), x_0, ...]`.
+pub fn gamma_standardized_pearson_residuals_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    if inputs.len() < 4 {
+        return residual_diag_nan_output();
+    }
+    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
+    let n_features = inputs.len().saturating_sub(3);
+    let (x, y) = match build_xy_data(inputs, 0, 3) {
+        Ok(d) => d,
+        Err(_) => return residual_diag_nan_output(),
+    };
+    let n = y.nrows();
+    let n_params = n_features + if with_intercept { 1 } else { 0 };
+    let model = build_gamma_log(lambda, with_intercept);
+    match model.fit(&x, &y) {
+        Ok(f) => {
+            let mu = f.inner().result().fitted_values.clone();
+            let y_slice: Vec<f64> = (0..n).map(|i| y[i]).collect();
+            let mu_slice: Vec<f64> = (0..n).map(|i| mu[i]).collect();
+            let family = TweedieFamily::gamma();
+            let dispersion = estimate_dispersion_pearson(&y_slice, &mu_slice, &family, n_params);
+            let leverage = compute_leverage(&x, with_intercept);
+            let resid = standardized_pearson_residuals(&y, &mu, &family, &leverage, dispersion);
+            residual_diag_output(col_to_vec(&resid), n)
+        }
+        Err(_) => residual_diag_nan_output(),
+    }
+}
+
+#[polars_expr(output_type_func=residual_diag_output_dtype)]
+fn pl_gamma_standardized_pearson_residuals(inputs: &[Series]) -> PolarsResult<Series> {
+    gamma_standardized_pearson_residuals_fit(inputs)
+}
+
+/// Gamma GLM standardized deviance residuals: r_D / sqrt(φ · (1 − h_ii)).
+///
+/// Fits a Gamma GLM internally to obtain μ̂ and leverage h_ii, then computes
+/// the deviance-method dispersion estimate φ̂ before standardizing.
+/// Input contract: `[y, lambda (f64), with_intercept (bool), x_0, ...]`.
+pub fn gamma_standardized_deviance_residuals_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    if inputs.len() < 4 {
+        return residual_diag_nan_output();
+    }
+    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
+    let n_features = inputs.len().saturating_sub(3);
+    let (x, y) = match build_xy_data(inputs, 0, 3) {
+        Ok(d) => d,
+        Err(_) => return residual_diag_nan_output(),
+    };
+    let n = y.nrows();
+    let n_params = n_features + if with_intercept { 1 } else { 0 };
+    let model = build_gamma_log(lambda, with_intercept);
+    match model.fit(&x, &y) {
+        Ok(f) => {
+            let mu = f.inner().result().fitted_values.clone();
+            let y_slice: Vec<f64> = (0..n).map(|i| y[i]).collect();
+            let mu_slice: Vec<f64> = (0..n).map(|i| mu[i]).collect();
+            let family = TweedieFamily::gamma();
+            let dispersion = estimate_dispersion_deviance(&y_slice, &mu_slice, &family, n_params);
+            let leverage = compute_leverage(&x, with_intercept);
+            let resid = standardized_deviance_residuals(&y, &mu, &family, &leverage, dispersion);
+            residual_diag_output(col_to_vec(&resid), n)
+        }
+        Err(_) => residual_diag_nan_output(),
+    }
+}
+
+#[polars_expr(output_type_func=residual_diag_output_dtype)]
+fn pl_gamma_standardized_deviance_residuals(inputs: &[Series]) -> PolarsResult<Series> {
+    gamma_standardized_deviance_residuals_fit(inputs)
 }
 
 /// Public Rust-callable variant. Same input contract as the `pl_negative_binomial` expression shim.

@@ -15,8 +15,21 @@ from polars_statistics._polars_statistics import (
     Quantile,
     Isotonic,
     Huber,
+    # Robust & sklearn-style solvers
+    TheilSen,
+    RANSAC,
+    BayesianRidge,
+    ARD,
+    # Streaming & Online
+    LARS,
+    PassiveAggressive,
+    MomentAccumulator,
+    # Smoothers
+    PSpline,
     PLS,
     # GLM models
+    Gamma,
+    GLMM,
     Logistic,
     LogisticRegression,
     Poisson,
@@ -57,6 +70,9 @@ from polars_statistics.exprs import (
     ttest_paired,
     brown_forsythe,
     yuen_test,
+    one_way_anova,
+    two_way_anova,
+    repeated_measures_anova,
     # Non-parametric tests
     mann_whitney_u,
     wilcoxon_signed_rank,
@@ -74,6 +90,7 @@ from polars_statistics.exprs import (
     mspe_adjusted,
     # Modern tests
     energy_distance,
+    energy_distance_nd,
     mmd_test,
     # TOST equivalence tests
     tost_t_test_one_sample,
@@ -147,6 +164,11 @@ from polars_statistics.exprs import (
     poisson_pearson_residuals,
     poisson_deviance_residuals,
     poisson_working_residuals,
+    gamma_dispersion_deviance,
+    gamma_dispersion_pearson,
+    gamma_pearson_chi_squared,
+    gamma_standardized_pearson_residuals,
+    gamma_standardized_deviance_residuals,
     # GLM expressions
     logistic,
     logistic_regression,
@@ -248,7 +270,20 @@ __all__ = [
     "Isotonic",
     "Huber",
     "PLS",
+    # Robust & sklearn-style solvers
+    "TheilSen",
+    "RANSAC",
+    "BayesianRidge",
+    "ARD",
+    # Streaming & Online
+    "LARS",
+    "PassiveAggressive",
+    "MomentAccumulator",
+    # Smoothers
+    "PSpline",
     # GLM Models
+    "Gamma",
+    "GLMM",
     "Logistic",
     "LogisticRegression",
     "Poisson",
@@ -286,6 +321,9 @@ __all__ = [
     "ttest_paired",
     "brown_forsythe",
     "yuen_test",
+    "one_way_anova",
+    "two_way_anova",
+    "repeated_measures_anova",
     # Non-parametric test expressions
     "mann_whitney_u",
     "wilcoxon_signed_rank",
@@ -303,6 +341,7 @@ __all__ = [
     "mspe_adjusted",
     # Modern test expressions
     "energy_distance",
+    "energy_distance_nd",
     "mmd_test",
     # TOST equivalence test expressions
     "tost_t_test_one_sample",
@@ -376,6 +415,11 @@ __all__ = [
     "poisson_pearson_residuals",
     "poisson_deviance_residuals",
     "poisson_working_residuals",
+    "gamma_dispersion_deviance",
+    "gamma_dispersion_pearson",
+    "gamma_pearson_chi_squared",
+    "gamma_standardized_pearson_residuals",
+    "gamma_standardized_deviance_residuals",
     # GLM expressions
     "logistic",
     "logistic_regression",

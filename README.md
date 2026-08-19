@@ -351,6 +351,39 @@ Every Polars expression has a `*_fit` Rust entry point in `polars_statistics::ex
 
 The input slice layout (which input is `y`, which are scalars, which are `x` columns) is documented above each function — same contract that the Polars plugin uses.
 
+## Examples
+
+Each example includes a complete, runnable script that shows the expected input DataFrame
+shape — so you can see exactly what columns and data types each method requires (addresses
+[issue #36](https://github.com/DataZooDE/polars-statistics/issues/36)).
+
+### Runnable examples
+
+| Example | Description |
+|---------|-------------|
+| [examples/01_ols_regression.py](examples/01_ols_regression.py) | OLS regression basics: fitting, coefficients, predictions, and R-style formulas |
+| [examples/02_grouped_regression.py](examples/02_grouped_regression.py) | Running regression per group with `group_by` and `over` |
+| [examples/03_glm_models.py](examples/03_glm_models.py) | Generalized Linear Models: logistic (binary), Poisson (counts) |
+| [examples/04_statistical_tests.py](examples/04_statistical_tests.py) | T-tests, Mann-Whitney U, Shapiro-Wilk, and other hypothesis tests |
+| [examples/05_demand_classification.py](examples/05_demand_classification.py) | AID (Automatic Identification of Demand) for demand pattern classification |
+| [examples/rust_wls.rs](examples/rust_wls.rs) | Rust API example: Weighted Least Squares via `wls_fit` |
+
+### Cookbook (docs/examples/)
+
+| Page | Description |
+|------|-------------|
+| [docs/examples/ab-testing.md](docs/examples/ab-testing.md) | A/B testing |
+| [docs/examples/advanced-correlation.md](docs/examples/advanced-correlation.md) | Advanced correlation |
+| [docs/examples/categorical-analysis.md](docs/examples/categorical-analysis.md) | Categorical analysis |
+| [docs/examples/equivalence-testing.md](docs/examples/equivalence-testing.md) | Equivalence testing (TOST) |
+| [docs/examples/forecast-comparison.md](docs/examples/forecast-comparison.md) | Forecast comparison |
+| [docs/examples/glm-models.md](docs/examples/glm-models.md) | GLM models |
+| [docs/examples/group-analysis.md](docs/examples/group-analysis.md) | Group analysis |
+| [docs/examples/hypothesis-testing.md](docs/examples/hypothesis-testing.md) | Hypothesis testing |
+| [docs/examples/regression-workflow.md](docs/examples/regression-workflow.md) | Regression workflow |
+| [docs/examples/regularized-regression.md](docs/examples/regularized-regression.md) | Regularized regression |
+| [docs/examples/special-models.md](docs/examples/special-models.md) | Special models |
+
 ## Documentation
 
 - **[API Reference](docs/api/README.md)** - Complete API documentation

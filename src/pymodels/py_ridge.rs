@@ -3,7 +3,9 @@
 use numpy::{PyArray1, PyReadonlyArray1, PyReadonlyArray2};
 use pyo3::prelude::*;
 
-use anofox_regression::solvers::{FittedRegressor, Regressor, RidgeRegressor};
+use anofox_regression::inference::compute_hc_inference;
+use anofox_regression::solvers::{FittedRegressor, FittedRidge, Regressor, RidgeRegressor};
+use anofox_regression::HcType;
 
 use crate::utils::{IntoNumpy, ToFaer};
 
@@ -22,6 +24,18 @@ use crate::utils::{IntoNumpy, ToFaer};
 ///     Whether to compute statistical inference.
 /// confidence_level : float, default 0.95
 ///     Confidence level for confidence intervals.
+///
+/// Examples
+/// --------
+/// >>> import numpy as np
+/// >>> from polars_statistics import Ridge
+/// >>> X = np.random.randn(60, 3)
+/// >>> y = X @ [1.0, -0.5, 0.2] + 0.3 * np.random.randn(60)
+/// >>> model = Ridge(lambda_=0.1).fit(X, y)
+/// >>> model.is_fitted()
+/// True
+/// >>> model.r_squared
+/// 0.9...
 #[pyclass(name = "Ridge")]
 pub struct PyRidge {
     lambda_: f64,
@@ -50,6 +64,19 @@ impl PyRidge {
         }
     }
 
+    /// Fit the Ridge regression model.
+    ///
+    /// Parameters
+    /// ----------
+    /// x : numpy.ndarray of shape (n_samples, n_features)
+    ///     Feature matrix. Must be float64.
+    /// y : numpy.ndarray of shape (n_samples,)
+    ///     Response vector.
+    ///
+    /// Returns
+    /// -------
+    /// self
+    ///     The fitted model (enables method chaining).
     fn fit<'py>(
         mut slf: PyRefMut<'py, Self>,
         x: PyReadonlyArray2<'py, f64>,
@@ -73,6 +100,17 @@ impl PyRidge {
         Ok(slf)
     }
 
+    /// Predict response values for new data.
+    ///
+    /// Parameters
+    /// ----------
+    /// x : numpy.ndarray of shape (n_samples, n_features)
+    ///     Feature matrix. Must be float64.
+    ///
+    /// Returns
+    /// -------
+    /// numpy.ndarray of shape (n_samples,)
+    ///     Predicted values.
     fn predict<'py>(
         &self,
         py: Python<'py>,
@@ -89,10 +127,12 @@ impl PyRidge {
         Ok(predictions.into_numpy(py))
     }
 
+    /// Whether the model has been fitted.
     fn is_fitted(&self) -> bool {
         self.fitted.is_some()
     }
 
+    /// Fitted slope coefficients (excludes intercept).
     #[getter]
     fn coefficients<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyArray1<f64>>> {
         let fitted = self
@@ -103,6 +143,7 @@ impl PyRidge {
         Ok(fitted.coefficients().into_numpy(py))
     }
 
+    /// Fitted intercept, or None when with_intercept=False.
     #[getter]
     fn intercept(&self) -> PyResult<Option<f64>> {
         let fitted = self
@@ -113,6 +154,7 @@ impl PyRidge {
         Ok(fitted.intercept())
     }
 
+    /// Coefficient of determination R².
     #[getter]
     fn r_squared(&self) -> PyResult<f64> {
         let fitted = self
@@ -123,6 +165,7 @@ impl PyRidge {
         Ok(fitted.r_squared())
     }
 
+    /// Adjusted R² accounting for number of predictors.
     #[getter]
     fn adj_r_squared(&self) -> PyResult<f64> {
         let fitted = self
@@ -133,8 +176,110 @@ impl PyRidge {
         Ok(fitted.result().adj_r_squared)
     }
 
+    /// The regularization strength lambda_ used at construction time.
     #[getter]
     fn lambda_value(&self) -> f64 {
         self.lambda_
+    }
+
+    /// Compute HC (heteroskedasticity-consistent) standard errors.
+    ///
+    /// Parameters
+    /// ----------
+    /// x : array-like of shape (n_samples, n_features)
+    ///     The feature matrix used to fit the model (without intercept column).
+    /// hc_type : str, default "hc1"
+    ///     HC variant: "hc0", "hc1", "hc2", or "hc3".
+    ///
+    /// Returns
+    /// -------
+    /// dict
+    ///     Dictionary with keys: std_errors, t_statistics, p_values,
+    ///     conf_interval_lower, conf_interval_upper, and optionally
+    ///     intercept_std_error, intercept_t_statistic, intercept_p_value.
+    #[pyo3(signature = (x, hc_type="hc1"))]
+    fn hc_inference<'py>(
+        &self,
+        py: Python<'py>,
+        x: PyReadonlyArray2<'py, f64>,
+        hc_type: &str,
+    ) -> PyResult<Bound<'py, pyo3::types::PyDict>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+        let hc = match hc_type {
+            "hc0" => HcType::HC0,
+            "hc2" => HcType::HC2,
+            "hc3" => HcType::HC3,
+            _ => HcType::HC1,
+        };
+        let x_mat = x.to_faer();
+        let result_data = fitted.result();
+        let residuals = result_data.residuals.clone();
+        let coef = result_data.coefficients.clone();
+        let intercept = fitted.intercept();
+        let aliased = vec![false; x_mat.ncols()];
+        let result = compute_hc_inference(
+            &x_mat,
+            &coef,
+            intercept,
+            &residuals,
+            &aliased,
+            true,
+            hc,
+            self.confidence_level,
+        )
+        .map_err(PyErr::new::<pyo3::exceptions::PyValueError, _>)?;
+        let dict = pyo3::types::PyDict::new(py);
+        dict.set_item("std_errors", result.std_errors.into_numpy(py))?;
+        dict.set_item("t_statistics", result.t_statistics.into_numpy(py))?;
+        dict.set_item("p_values", result.p_values.into_numpy(py))?;
+        dict.set_item(
+            "conf_interval_lower",
+            result.conf_interval_lower.into_numpy(py),
+        )?;
+        dict.set_item(
+            "conf_interval_upper",
+            result.conf_interval_upper.into_numpy(py),
+        )?;
+        if let Some(ref int_inf) = result.intercept {
+            dict.set_item("intercept_std_error", int_inf.std_error)?;
+            dict.set_item("intercept_t_statistic", int_inf.t_statistic)?;
+            dict.set_item("intercept_p_value", int_inf.p_value)?;
+        }
+        Ok(dict)
+    }
+
+    /// Fit Ridge from a :class:`MomentAccumulator` without materialising the
+    /// full design matrix.
+    ///
+    /// Mathematically equivalent to ``fit`` when the centered Gram matrix is
+    /// well-conditioned.  Per-row statistics (R², residuals, AIC, BIC) are
+    /// ``NaN`` in the result because individual rows are not retained.
+    ///
+    /// Parameters
+    /// ----------
+    /// acc : MomentAccumulator
+    ///     Populated accumulator.
+    ///
+    /// Returns
+    /// -------
+    /// self
+    fn fit_from_accumulator<'py>(
+        mut slf: PyRefMut<'py, Self>,
+        acc: &crate::pymodels::py_moment_accumulator::PyMomentAccumulator,
+    ) -> PyResult<PyRefMut<'py, Self>> {
+        let model = RidgeRegressor::builder()
+            .lambda(slf.lambda_)
+            .with_intercept(slf.with_intercept)
+            .compute_inference(slf.compute_inference)
+            .confidence_level(slf.confidence_level)
+            .build();
+        let fitted: FittedRidge = model
+            .fit_from_accumulator(&acc.inner)
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>(e.to_string()))?;
+        slf.fitted = Some(Box::new(fitted));
+        Ok(slf)
     }
 }

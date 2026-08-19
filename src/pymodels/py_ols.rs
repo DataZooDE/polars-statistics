@@ -487,4 +487,44 @@ impl PyOLS {
 
         Ok(summary)
     }
+
+    /// Fit OLS from a :class:`MomentAccumulator` without materialising the
+    /// full design matrix.
+    ///
+    /// Mathematically equivalent to ``fit`` when the centered Gram matrix is
+    /// well-conditioned.  Per-row statistics (R², residuals, AIC, BIC) are
+    /// ``NaN`` in the result because the individual rows are not retained.
+    ///
+    /// Parameters
+    /// ----------
+    /// acc : MomentAccumulator
+    ///     Populated accumulator.  Must have been built with the same number
+    ///     of features as the model is intended to receive.
+    ///
+    /// Returns
+    /// -------
+    /// self
+    fn fit_from_accumulator<'py>(
+        mut slf: PyRefMut<'py, Self>,
+        acc: &crate::pymodels::py_moment_accumulator::PyMomentAccumulator,
+    ) -> PyResult<PyRefMut<'py, Self>> {
+        let mut builder = OlsRegressor::builder()
+            .with_intercept(slf.with_intercept)
+            .compute_inference(slf.compute_inference)
+            .confidence_level(slf.confidence_level);
+        if let Some(ref solver_str) = slf.solve_method.clone() {
+            let solver = match solver_str.as_str() {
+                "svd" => SolverType::Svd,
+                "cholesky" => SolverType::Cholesky,
+                _ => SolverType::Qr,
+            };
+            builder = builder.solve_method(solver);
+        }
+        let model = builder.build();
+        let fitted = model
+            .fit_from_accumulator(&acc.inner)
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>(e.to_string()))?;
+        slf.fitted = Some(fitted);
+        Ok(slf)
+    }
 }

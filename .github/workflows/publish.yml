@@ -140,3 +140,7 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           verbose: true
+          # Tolerate files already present on the index (e.g. a partial or
+          # re-run publish) instead of hard-failing the whole job with a
+          # 400 "File already exists" — mirrors the TestPyPI step above.
+          skip-existing: true

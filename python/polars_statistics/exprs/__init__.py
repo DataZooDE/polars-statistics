@@ -5,6 +5,9 @@ from polars_statistics.exprs.parametric import (
     ttest_paired,
     brown_forsythe,
     yuen_test,
+    one_way_anova,
+    two_way_anova,
+    repeated_measures_anova,
 )
 from polars_statistics.exprs.nonparametric import (
     mann_whitney_u,
@@ -26,6 +29,7 @@ from polars_statistics.exprs.forecast import (
 )
 from polars_statistics.exprs.modern import (
     energy_distance,
+    energy_distance_nd,
     mmd_test,
 )
 from polars_statistics.exprs.tost import (
@@ -103,6 +107,11 @@ from polars_statistics.exprs.regression import (
     poisson_pearson_residuals,
     poisson_deviance_residuals,
     poisson_working_residuals,
+    gamma_dispersion_deviance,
+    gamma_dispersion_pearson,
+    gamma_pearson_chi_squared,
+    gamma_standardized_pearson_residuals,
+    gamma_standardized_deviance_residuals,
     # GLM
     logistic,
     logistic_regression,
@@ -192,6 +201,9 @@ __all__ = [
     "ttest_paired",
     "brown_forsythe",
     "yuen_test",
+    "one_way_anova",
+    "two_way_anova",
+    "repeated_measures_anova",
     # Non-parametric tests
     "mann_whitney_u",
     "wilcoxon_signed_rank",
@@ -209,6 +221,7 @@ __all__ = [
     "mspe_adjusted",
     # Modern distribution tests
     "energy_distance",
+    "energy_distance_nd",
     "mmd_test",
     # TOST equivalence tests
     "tost_t_test_one_sample",
@@ -282,6 +295,11 @@ __all__ = [
     "poisson_pearson_residuals",
     "poisson_deviance_residuals",
     "poisson_working_residuals",
+    "gamma_dispersion_deviance",
+    "gamma_dispersion_pearson",
+    "gamma_pearson_chi_squared",
+    "gamma_standardized_pearson_residuals",
+    "gamma_standardized_deviance_residuals",
     # GLM expressions
     "logistic",
     "logistic_regression",

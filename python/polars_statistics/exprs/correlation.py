@@ -375,48 +375,75 @@ def semi_partial_cor(
 
 
 def icc(
-    values: Union[pl.Expr, str],
-    icc_type: Literal["icc1", "icc2", "icc3", "icc2k", "icc3k"] = "icc1",
-    conf_level: float = 0.95,
+    *rater_cols: Union[pl.Expr, str],
+    icc_type: Literal["icc1", "icc2", "icc3", "icc1k", "icc2k", "icc3k"] = "icc2",
 ) -> pl.Expr:
     """
     Compute Intraclass Correlation Coefficient (ICC).
 
-    Note: This is a placeholder that requires proper matrix input handling.
-    ICC requires data organized as subjects x raters matrix.
+    Each positional argument is one rater column; rows are subjects.
+    A shared finite mask is applied across all rater columns so that
+    row alignment is preserved (rows where ANY column is non-finite are
+    excluded from all columns).
 
     Parameters
     ----------
-    values : pl.Expr or str
-        Values expression or column name.
-    icc_type : {"icc1", "icc2", "icc3", "icc2k", "icc3k"}, default "icc1"
+    *rater_cols : pl.Expr or str
+        One expression or column name per rater. Must supply at least 2 raters.
+        Rows are subjects; each column holds that rater's scores.
+    icc_type : {"icc1", "icc2", "icc3", "icc1k", "icc2k", "icc3k"}, default "icc2"
         Type of ICC to compute:
-        - "icc1": One-way random effects, single rater
-        - "icc2": Two-way random effects, single rater
-        - "icc3": Two-way mixed effects, single rater
+        - "icc1":  One-way random effects, single rater
+        - "icc2":  Two-way random effects, single rater (default)
+        - "icc3":  Two-way mixed effects, single rater
+        - "icc1k": One-way random effects, average of k raters
         - "icc2k": Two-way random effects, average of k raters
         - "icc3k": Two-way mixed effects, average of k raters
-    conf_level : float, default 0.95
-        Confidence level for the confidence interval.
 
     Returns
     -------
     pl.Expr
-        Expression returning struct{estimate, statistic, p_value,
-        ci_lower, ci_upper, n}.
-    """
-    if isinstance(values, str):
-        values = pl.col(values)
+        Expression returning struct{icc, f_value, df1, df2, p_value,
+        ci_lower, ci_upper, n_subjects, n_raters}.
 
-    values_clean = values.filter(values.is_finite())
+    Examples
+    --------
+    >>> import polars as pl
+    >>> import polars_statistics as ps
+    >>>
+    >>> df = pl.DataFrame({
+    ...     "rater1": [1.0, 2.0, 3.0, 4.0],
+    ...     "rater2": [1.1, 2.2, 2.9, 4.1],
+    ...     "rater3": [0.9, 1.9, 3.1, 3.9],
+    ... })
+    >>>
+    >>> df.select(ps.icc("rater1", "rater2", "rater3", icc_type="icc2"))
+    """
+    rater_exprs = [pl.col(c) if isinstance(c, str) else c for c in rater_cols]
+
+    if not rater_exprs:
+        # Zero raters: pass a dummy column so Rust can return the NaN error struct.
+        return register_plugin_function(
+            plugin_path=LIB,
+            function_name="pl_icc",
+            args=[
+                pl.lit(0, dtype=pl.UInt32),
+                pl.lit(icc_type, dtype=pl.String),
+            ],
+            returns_scalar=True,
+        )
+
+    # Build a shared finite mask so all columns lose the same rows (row alignment).
+    mask = pl.all_horizontal([col.is_finite() for col in rater_exprs])
+    clean_cols = [col.filter(mask) for col in rater_exprs]
 
     return register_plugin_function(
         plugin_path=LIB,
         function_name="pl_icc",
         args=[
-            values_clean,
+            pl.lit(len(rater_cols), dtype=pl.UInt32),
             pl.lit(icc_type, dtype=pl.String),
-            pl.lit(conf_level, dtype=pl.Float64),
+            *clean_cols,
         ],
         returns_scalar=True,
     )

@@ -137,6 +137,12 @@ ps.brown_forsythe(
 
 ---
 
+#### New in 0.6.0: `one_way_anova`, `two_way_anova`, `repeated_measures_anova`, `energy_distance_nd`
+
+See [Parametric Tests](api/tests/parametric.md) and [Forecast/Distribution Tests](api/tests/forecast.md).
+
+---
+
 #### `yuen_test`
 
 Yuen's test for trimmed means (robust to outliers).
@@ -1534,6 +1540,13 @@ predictions = model.predict(X_new)
 | `BLS` | `lower_bound`, `upper_bound`, `with_intercept` |
 | `Quantile` | `tau`, `with_intercept` |
 | `Isotonic` | `increasing` |
+| `MomentAccumulator` *(new 0.6.0)* | `n_features`, `with_intercept` |
+| `TheilSen` *(new 0.6.0)* | `with_intercept`, `max_iter`, `tol` |
+| `RANSAC` *(new 0.6.0)* | `min_samples`, `residual_threshold`, `max_iter`, `seed`, `with_intercept` |
+| `BayesianRidge` *(new 0.6.0)* | `max_iter`, `tol`, `alpha_1`, `alpha_2`, `lambda_1`, `lambda_2`, `with_intercept` |
+| `ARD` *(new 0.6.0)* | `max_iter`, `tol`, `threshold_lambda`, `with_intercept` |
+| `LARS` *(new 0.6.0)* | `n_nonzero_coefs`, `with_intercept` |
+| `PassiveAggressive` *(new 0.6.0)* | `C`, `epsilon`, `variant`, `max_iter`, `seed`, `with_intercept` |
 
 ---
 
@@ -1558,6 +1571,9 @@ probs = model.predict_proba(X_new)  # For classification models
 | `Tweedie` | `var_power`, `lambda_`, `with_intercept` |
 | `Probit` | `lambda_`, `with_intercept` |
 | `Cloglog` | `lambda_`, `with_intercept` |
+| `Gamma` *(new 0.6.0)* | `lambda_`, `with_intercept` |
+| `GLMM` *(new 0.6.0)* | `family`, `link`, `with_intercept`, `max_iter`, `tol` |
+| `PSpline` *(new 0.6.0)* | `n_knots`, `degree`, `lambda_`, `with_intercept` |
 
 ---
 

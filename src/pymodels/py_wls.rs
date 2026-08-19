@@ -20,6 +20,26 @@ use crate::utils::{IntoNumpy, ToFaer};
 ///     Whether to compute statistical inference.
 /// confidence_level : float, default 0.95
 ///     Confidence level for confidence intervals.
+///
+/// Notes
+/// -----
+/// ``hc_inference`` raises ``NotImplementedError`` for WLS because the
+/// weight-correct sandwich estimator requires access to the per-observation
+/// weights after fitting, which are not stored via the ``FittedRegressor``
+/// trait. See ``hc_inference`` for the workaround.
+///
+/// Examples
+/// --------
+/// >>> import numpy as np
+/// >>> from polars_statistics import WLS
+/// >>> X = np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [7.0, 8.0]])
+/// >>> y = np.array([2.0, 5.0, 8.0, 11.0])
+/// >>> w = np.array([1.0, 2.0, 1.0, 2.0])  # higher weight on rows 2 and 4
+/// >>> model = WLS().fit(X, y, w)
+/// >>> model.is_fitted()
+/// True
+/// >>> model.coefficients
+/// array([...])
 #[pyclass(name = "WLS")]
 pub struct PyWLS {
     with_intercept: bool,
@@ -76,6 +96,17 @@ impl PyWLS {
         Ok(slf)
     }
 
+    /// Predict response values for new data.
+    ///
+    /// Parameters
+    /// ----------
+    /// x : numpy.ndarray of shape (n_samples, n_features)
+    ///     Feature matrix. Must be float64.
+    ///
+    /// Returns
+    /// -------
+    /// numpy.ndarray of shape (n_samples,)
+    ///     Predicted values.
     fn predict<'py>(
         &self,
         py: Python<'py>,
@@ -92,10 +123,12 @@ impl PyWLS {
         Ok(predictions.into_numpy(py))
     }
 
+    /// Whether the model has been fitted.
     fn is_fitted(&self) -> bool {
         self.fitted.is_some()
     }
 
+    /// Fitted slope coefficients (excludes intercept).
     #[getter]
     fn coefficients<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyArray1<f64>>> {
         let fitted = self
@@ -106,6 +139,7 @@ impl PyWLS {
         Ok(fitted.coefficients().into_numpy(py))
     }
 
+    /// Fitted intercept, or None when with_intercept=False.
     #[getter]
     fn intercept(&self) -> PyResult<Option<f64>> {
         let fitted = self
@@ -116,6 +150,7 @@ impl PyWLS {
         Ok(fitted.intercept())
     }
 
+    /// Coefficient of determination R² (weighted).
     #[getter]
     fn r_squared(&self) -> PyResult<f64> {
         let fitted = self
@@ -124,5 +159,60 @@ impl PyWLS {
             .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
 
         Ok(fitted.r_squared())
+    }
+
+    /// Compute HC (heteroskedasticity-consistent) standard errors.
+    ///
+    /// **Not implemented for WLS.** Always raises ``NotImplementedError``.
+    ///
+    /// The weight-correct sandwich estimator ``(X'WX)⁻¹(X'diag(w·e²)X)(X'WX)⁻¹``
+    /// requires the stored observation weights, which are not accessible through
+    /// the ``FittedRegressor`` trait after fitting.
+    ///
+    /// Workaround: scale ``X`` and ``y`` by ``sqrt(w_i)``, fit ``OLS`` on the scaled
+    /// data, and call ``OLS.hc_inference`` on the result.
+    ///
+    /// Parameters
+    /// ----------
+    /// x : array-like of shape (n_samples, n_features)
+    ///     The feature matrix used to fit the model (without intercept column).
+    /// hc_type : str, default "hc1"
+    ///     HC variant: "hc0", "hc1", "hc2", or "hc3". (Ignored — always raises.)
+    ///
+    /// Raises
+    /// ------
+    /// NotImplementedError
+    ///     Always. WLS HC inference is not yet implemented.
+    #[pyo3(signature = (x, hc_type="hc1"))]
+    fn hc_inference<'py>(
+        &self,
+        _py: Python<'py>,
+        x: PyReadonlyArray2<'py, f64>,
+        hc_type: &str,
+    ) -> PyResult<Bound<'py, pyo3::types::PyDict>> {
+        // Check the model is fitted so the error is "not fitted" rather than
+        // "not implemented" when neither has happened.
+        if self.fitted.is_none() {
+            return Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
+                "Model not fitted",
+            ));
+        }
+        // CR-03: WLS HC inference requires the weight-aware sandwich
+        // (X'WX)^{-1}(X'diag(w·e²)X)(X'WX)^{-1}, but the fitted object is stored
+        // as Box<dyn FittedRegressor> which cannot be downcast to FittedWls to
+        // retrieve the weight vector.  Returning the unweighted OLS sandwich is
+        // silently wrong for heterogeneous weights — the primary use case of WLS.
+        // Raise NotImplementedError so callers are not misled.
+        //
+        // Workaround: scale X and y by sqrt(w_i), fit OLS on the scaled data,
+        // and call OLS.hc_inference on the result.
+        let _ = (x, hc_type);
+        Err(PyErr::new::<pyo3::exceptions::PyNotImplementedError, _>(
+            "WLS.hc_inference is not yet implemented: the weight-correct sandwich \
+             (X'WX)^{-1}(X'diag(w·e²)X)(X'WX)^{-1} requires the stored observation \
+             weights, which are not accessible through the FittedRegressor trait. \
+             Workaround: scale X and y by sqrt(w_i), fit OLS on the scaled data, \
+             and call OLS.hc_inference on the result.",
+        ))
     }
 }

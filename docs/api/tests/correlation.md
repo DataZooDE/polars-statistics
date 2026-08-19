@@ -223,12 +223,19 @@ ps.semi_partial_cor(
 
 Intraclass Correlation Coefficient (ICC) for reliability and agreement.
 
-Measures the consistency or agreement of measurements made by different raters or at different times. Essential for assessing inter-rater reliability and measurement consistency.
+Measures the consistency or agreement of measurements made by different raters or at
+different times. Essential for assessing inter-rater reliability and measurement
+consistency.
+
+> **Breaking change in 0.6.0:** The API now accepts a **matrix input** — pass one column
+> per rater, and the expression stacks them into a subjects × raters matrix internally.
+> The previous stub implementation returned all-NaN output regardless of input; this
+> version computes real ICC values validated against R's `irr::icc()`.
 
 ```python
 ps.icc(
-    values: Union[pl.Expr, str],
-    icc_type: str = "icc1",  # "icc1", "icc2", "icc3", "icc2k", "icc3k"
+    *rater_columns: Union[pl.Expr, str],  # One column per rater (subjects × raters)
+    icc_type: str = "icc1",               # "icc1", "icc2", "icc3", "icc2k", "icc3k"
     conf_level: float = 0.95,
 ) -> pl.Expr
 ```
@@ -252,6 +259,24 @@ ps.icc(
 | 0.50-0.75 | Moderate |
 | 0.75-0.90 | Good |
 | > 0.90 | Excellent |
+
+**Example:**
+```python
+import polars as pl
+import polars_statistics as ps
+
+# 10 subjects rated by 3 raters
+df = pl.DataFrame({
+    "rater1": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0],
+    "rater2": [1.2, 2.1, 3.3, 3.9, 5.1, 6.2, 7.0, 8.1, 9.2, 10.1],
+    "rater3": [0.9, 1.9, 3.1, 4.1, 4.8, 5.9, 7.2, 7.9, 9.1, 9.9],
+})
+
+# Two-way mixed ICC (same raters, raters are fixed)
+result = df.select(
+    ps.icc("rater1", "rater2", "rater3", icc_type="icc3").alias("reliability")
+)
+```
 
 ---
 

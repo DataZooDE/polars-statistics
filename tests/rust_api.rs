@@ -1321,16 +1321,33 @@ fn correlation_fits() {
         let _ = semi_partial_cor_fit(&inputs).expect("semi_partial_cor_fit failed");
     }
 
-    // icc_fit: values, icc_type, conf_level. This is currently a placeholder
-    // implementation in the crate (returns NaNs) but must still be reachable.
+    // icc_fit: n_raters (u32), icc_type (str), then one Series of subject scores
+    // per rater. Real matrix-input implementation (Phase 3, STAT-05) — replaced the
+    // former all-NaN placeholder. Must be reachable and return a finite ICC.
     {
-        let vals: Vec<f64> = (0..30).map(|i| i as f64).collect();
+        let r1: Vec<f64> = vec![9.0, 6.0, 8.0, 7.0, 10.0, 6.0];
+        let r2: Vec<f64> = vec![9.0, 6.0, 8.0, 7.0, 10.0, 6.0];
+        let r3: Vec<f64> = vec![8.0, 5.0, 8.0, 6.0, 9.0, 5.0];
         let inputs = vec![
-            series_f64("values", &vals),
-            scalar_str("icc_type", "icc1"),
-            scalar_f64("conf_level", 0.95),
+            scalar_u32("n_raters", 3),
+            scalar_str("icc_type", "icc2"),
+            series_f64("r1", &r1),
+            series_f64("r2", &r2),
+            series_f64("r3", &r3),
         ];
-        let _ = icc_fit(&inputs).expect("icc_fit failed");
+        let out = icc_fit(&inputs).expect("icc_fit failed");
+        let st = out.struct_().unwrap();
+        let icc = st
+            .field_by_name("icc")
+            .unwrap()
+            .f64()
+            .unwrap()
+            .get(0)
+            .expect("expected icc value");
+        assert!(
+            icc.is_finite(),
+            "real matrix-input ICC must return a finite value, got {icc}"
+        );
     }
 }
 
@@ -1840,6 +1857,457 @@ fn dynamic_model_fits() {
 }
 
 // =============================================================================
+// TEST-04: Statistics ANOVA/energy expression wrappers (06-04)
+//
+// Exercises one_way_anova_fit, two_way_anova_fit, repeated_measures_anova_fit,
+// and energy_distance_nd_fit — the four new statistics *_fit symbols added in
+// Phase 3 (STAT-02/03/04) that had zero rust_api coverage before 06-04.
+// =============================================================================
+
+#[test]
+fn anova_and_energy_fits() {
+    // -----------------------------------------------------------------------
+    // one_way_anova_fit
+    // Input: [group1_f64, group2_f64, ..., kind_str_scalar]
+    // One kind scalar at the end; at least 2 group series required.
+    // -----------------------------------------------------------------------
+    {
+        let g1: Vec<f64> = vec![1.0, 2.0, 3.0];
+        let g2: Vec<f64> = vec![4.0, 5.0, 6.0];
+        let g3: Vec<f64> = vec![7.0, 8.0, 9.0];
+        let inputs = vec![
+            series_f64("g1", &g1),
+            series_f64("g2", &g2),
+            series_f64("g3", &g3),
+            scalar_str("kind", "fisher"),
+        ];
+        let out = one_way_anova_fit(&inputs).expect("one_way_anova_fit failed");
+        let st = out.struct_().expect("expected struct series");
+        // Assert expected named fields are present and statistic is finite
+        let stat = st
+            .field_by_name("statistic")
+            .expect("missing field `statistic`")
+            .f64()
+            .unwrap()
+            .get(0)
+            .expect("expected statistic value");
+        assert!(
+            stat.is_finite() && stat > 0.0,
+            "one_way_anova statistic must be finite > 0, got {stat}"
+        );
+        let _df_between = st
+            .field_by_name("df_between")
+            .expect("missing field `df_between`");
+        let _df_within = st
+            .field_by_name("df_within")
+            .expect("missing field `df_within`");
+        let _p_value = st
+            .field_by_name("p_value")
+            .expect("missing field `p_value`");
+        let _ss_between = st
+            .field_by_name("ss_between")
+            .expect("missing field `ss_between`");
+        let _ss_within = st
+            .field_by_name("ss_within")
+            .expect("missing field `ss_within`");
+        let _ms_between = st
+            .field_by_name("ms_between")
+            .expect("missing field `ms_between`");
+        let _ms_within = st
+            .field_by_name("ms_within")
+            .expect("missing field `ms_within`");
+        let _eta_squared = st
+            .field_by_name("eta_squared")
+            .expect("missing field `eta_squared`");
+        let n_groups = st
+            .field_by_name("n_groups")
+            .expect("missing field `n_groups`")
+            .u32()
+            .unwrap()
+            .get(0)
+            .unwrap_or(0);
+        assert_eq!(n_groups, 3, "n_groups must equal 3");
+    }
+
+    // -----------------------------------------------------------------------
+    // two_way_anova_fit
+    // Input: [values_f64, factor_a_u32, factor_b_u32]
+    // -----------------------------------------------------------------------
+    {
+        // 2×2 balanced design, 3 replicates per cell (n=12)
+        let vals: Vec<f64> = vec![
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0,
+        ];
+        // factor_a: A0 for first 6, A1 for last 6
+        let fa: Vec<u32> = vec![0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1];
+        // factor_b: alternating B0/B1
+        let fb: Vec<u32> = vec![0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1];
+        let inputs = vec![
+            series_f64("v", &vals),
+            Series::new("fa".into(), &fa),
+            Series::new("fb".into(), &fb),
+        ];
+        let out = two_way_anova_fit(&inputs).expect("two_way_anova_fit failed");
+        let st = out.struct_().expect("expected struct series");
+        // Assert all expected schema fields are present
+        for field in [
+            "a_ss",
+            "a_df",
+            "a_ms",
+            "a_f",
+            "a_p_value",
+            "b_ss",
+            "b_df",
+            "b_ms",
+            "b_f",
+            "b_p_value",
+            "ab_ss",
+            "ab_df",
+            "ab_ms",
+            "ab_f",
+            "ab_p_value",
+            "residual_ss",
+            "residual_df",
+            "residual_ms",
+            "grand_mean",
+        ] {
+            let _ = st
+                .field_by_name(field)
+                .unwrap_or_else(|_| panic!("two_way_anova_fit: missing field `{field}`"));
+        }
+        let n = st
+            .field_by_name("n")
+            .expect("missing field `n`")
+            .u32()
+            .unwrap()
+            .get(0)
+            .unwrap_or(0);
+        assert_eq!(n, 12, "two_way_anova n must equal 12");
+        // a_f should be positive (there IS a factor_a effect on this data)
+        let a_f = st
+            .field_by_name("a_f")
+            .unwrap()
+            .f64()
+            .unwrap()
+            .get(0)
+            .unwrap_or(f64::NAN);
+        assert!(
+            a_f.is_finite() && a_f > 0.0,
+            "a_f must be finite > 0, got {a_f}"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // repeated_measures_anova_fit
+    // Input: [values_f64, subjects_u32, conditions_u32, compute_sphericity_bool]
+    // -----------------------------------------------------------------------
+    {
+        // 4 subjects × 3 conditions (balanced).  Slight within-subject jitter
+        // so error_ss > 0 and ws_f is finite (not inf).
+        // Condition means increase (signal), error is non-zero.
+        let vals: Vec<f64> = vec![
+            1.0, 2.1, 3.2, // subject 0
+            2.3, 3.1, 4.0, // subject 1
+            3.2, 4.3, 5.1, // subject 2
+            4.1, 5.2, 6.3, // subject 3
+        ];
+        let subjects: Vec<u32> = vec![0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3];
+        let conditions: Vec<u32> = vec![0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2];
+        let inputs = vec![
+            series_f64("y", &vals),
+            Series::new("s".into(), &subjects),
+            Series::new("c".into(), &conditions),
+            scalar_bool("compute_sphericity", true),
+        ];
+        let out = repeated_measures_anova_fit(&inputs).expect("repeated_measures_anova_fit failed");
+        let st = out.struct_().expect("expected struct series");
+        for field in [
+            "ws_f",
+            "ws_df",
+            "ws_ss",
+            "ws_ms",
+            "ws_p_value",
+            "error_df",
+            "error_ss",
+            "error_ms",
+            "mauchly_w",
+            "mauchly_p_value",
+            "gg_epsilon",
+            "gg_p_value",
+            "hf_epsilon",
+            "hf_p_value",
+            "grand_mean",
+        ] {
+            let _ = st
+                .field_by_name(field)
+                .unwrap_or_else(|_| panic!("repeated_measures_anova_fit: missing field `{field}`"));
+        }
+        let ws_f = st
+            .field_by_name("ws_f")
+            .unwrap()
+            .f64()
+            .unwrap()
+            .get(0)
+            .unwrap_or(f64::NAN);
+        assert!(
+            ws_f.is_finite() && ws_f > 0.0,
+            "repeated_measures_anova ws_f must be finite > 0, got {ws_f}"
+        );
+        let grand_mean = st
+            .field_by_name("grand_mean")
+            .unwrap()
+            .f64()
+            .unwrap()
+            .get(0)
+            .unwrap_or(f64::NAN);
+        assert!(
+            grand_mean.is_finite(),
+            "grand_mean must be finite, got {grand_mean}"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // energy_distance_nd_fit
+    // Input: [d_u32, n_perm_u32, seed_u64_nullable, x_cols[d]..., y_cols[d]...]
+    // -----------------------------------------------------------------------
+    {
+        // 2D samples: X near origin, Y shifted to (3, 3) — well separated
+        let d: u32 = 2;
+        let n: usize = 10;
+        let x1: Vec<f64> = (0..n).map(|i| (i as f64) * 0.1).collect();
+        let x2: Vec<f64> = (0..n).map(|i| (i as f64) * 0.05).collect();
+        let y1: Vec<f64> = (0..n).map(|i| 3.0 + (i as f64) * 0.1).collect();
+        let y2: Vec<f64> = (0..n).map(|i| 3.0 + (i as f64) * 0.05).collect();
+        let inputs = vec![
+            Series::new("d".into(), &[d]),
+            scalar_u32("n_perm", 99),
+            scalar_u64("seed", 42),
+            series_f64("x1", &x1),
+            series_f64("x2", &x2),
+            series_f64("y1", &y1),
+            series_f64("y2", &y2),
+        ];
+        let out = energy_distance_nd_fit(&inputs).expect("energy_distance_nd_fit failed");
+        let st = out.struct_().expect("expected struct series");
+        let stat = st
+            .field_by_name("statistic")
+            .expect("missing field `statistic`")
+            .f64()
+            .unwrap()
+            .get(0)
+            .unwrap_or(f64::NAN);
+        assert!(
+            stat.is_finite() && stat > 0.0,
+            "energy_distance_nd statistic must be finite > 0, got {stat}"
+        );
+        let _p_value = st
+            .field_by_name("p_value")
+            .expect("missing field `p_value`");
+    }
+}
+
+// =============================================================================
+// TEST-04: Gamma GLM diagnostic expression wrappers (06-04)
+//
+// Exercises the 5 gamma_*_fit wrappers:
+//   gamma_dispersion_deviance_fit, gamma_dispersion_pearson_fit,
+//   gamma_pearson_chi_squared_fit,
+//   gamma_standardized_pearson_residuals_fit,
+//   gamma_standardized_deviance_residuals_fit
+//
+// Input contract for all five: [y_f64, lambda_f64, with_intercept_bool, x_cols...]
+// =============================================================================
+
+#[test]
+fn gamma_diagnostic_fits() {
+    // Small Gamma-appropriate design: y > 0, two predictors.
+    // We use fixed "pseudo-random" values (deterministic seed-less sine pattern)
+    // that produce strictly-positive y with non-trivial residuals so dispersion > 0.
+    // y_i = exp(0.3 + 0.5*x1_i - 0.2*x2_i) * (1 + 0.3 * sin(i*1.7))
+    // The multiplicative jitter ensures the model does not fit perfectly and
+    // the deviance/Pearson dispersion estimates are finite and positive.
+    let n: usize = 40;
+    let x1: Vec<f64> = (0..n).map(|i| (i as f64 * 0.3).sin()).collect();
+    let x2: Vec<f64> = (0..n).map(|i| (i as f64 * 0.2).cos()).collect();
+    let y: Vec<f64> = x1
+        .iter()
+        .zip(x2.iter())
+        .enumerate()
+        .map(|(i, (&a, &b))| {
+            let mu = (0.3 + 0.5 * a - 0.2 * b).exp();
+            // Multiplicative noise: scale by 1 + 0.3 * sin(i * 1.7), clipped > 0
+            let noise = 1.0 + 0.3 * ((i as f64) * 1.7).sin();
+            mu * noise.max(0.1) // ensure strictly positive
+        })
+        .collect();
+
+    let lambda = 0.0_f64;
+    let with_intercept = true;
+
+    // -----------------------------------------------------------------------
+    // gamma_dispersion_deviance_fit
+    // Output: struct{ dispersion }
+    // -----------------------------------------------------------------------
+    {
+        let inputs = vec![
+            series_f64("y", &y),
+            scalar_f64("lambda", lambda),
+            scalar_bool("with_intercept", with_intercept),
+            series_f64("x1", &x1),
+            series_f64("x2", &x2),
+        ];
+        let out =
+            gamma_dispersion_deviance_fit(&inputs).expect("gamma_dispersion_deviance_fit failed");
+        let st = out.struct_().expect("expected struct series");
+        let disp = st
+            .field_by_name("dispersion")
+            .expect("missing field `dispersion`")
+            .f64()
+            .unwrap()
+            .get(0)
+            .unwrap_or(f64::NAN);
+        assert!(
+            disp.is_finite() && disp > 0.0,
+            "gamma_dispersion_deviance dispersion must be finite > 0, got {disp}"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // gamma_dispersion_pearson_fit
+    // Output: struct{ dispersion }
+    // -----------------------------------------------------------------------
+    {
+        let inputs = vec![
+            series_f64("y", &y),
+            scalar_f64("lambda", lambda),
+            scalar_bool("with_intercept", with_intercept),
+            series_f64("x1", &x1),
+            series_f64("x2", &x2),
+        ];
+        let out =
+            gamma_dispersion_pearson_fit(&inputs).expect("gamma_dispersion_pearson_fit failed");
+        let st = out.struct_().expect("expected struct series");
+        let disp = st
+            .field_by_name("dispersion")
+            .expect("missing field `dispersion`")
+            .f64()
+            .unwrap()
+            .get(0)
+            .unwrap_or(f64::NAN);
+        assert!(
+            disp.is_finite() && disp > 0.0,
+            "gamma_dispersion_pearson dispersion must be finite > 0, got {disp}"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // gamma_pearson_chi_squared_fit
+    // Output: struct{ chi_squared, df_resid, n_observations }
+    // -----------------------------------------------------------------------
+    {
+        let inputs = vec![
+            series_f64("y", &y),
+            scalar_f64("lambda", lambda),
+            scalar_bool("with_intercept", with_intercept),
+            series_f64("x1", &x1),
+            series_f64("x2", &x2),
+        ];
+        let out =
+            gamma_pearson_chi_squared_fit(&inputs).expect("gamma_pearson_chi_squared_fit failed");
+        let st = out.struct_().expect("expected struct series");
+        let chi2 = st
+            .field_by_name("chi_squared")
+            .expect("missing field `chi_squared`")
+            .f64()
+            .unwrap()
+            .get(0)
+            .unwrap_or(f64::NAN);
+        assert!(
+            chi2.is_finite() && chi2 > 0.0,
+            "gamma_pearson_chi_squared must be finite > 0, got {chi2}"
+        );
+        let df_resid = st
+            .field_by_name("df_resid")
+            .expect("missing field `df_resid`")
+            .u32()
+            .unwrap()
+            .get(0)
+            .unwrap_or(0);
+        assert!(df_resid > 0, "df_resid must be > 0, got {df_resid}");
+        let n_obs = st
+            .field_by_name("n_observations")
+            .expect("missing field `n_observations`")
+            .u32()
+            .unwrap()
+            .get(0)
+            .unwrap_or(0);
+        assert_eq!(n_obs as usize, n, "n_observations must equal input length");
+    }
+
+    // -----------------------------------------------------------------------
+    // gamma_standardized_pearson_residuals_fit
+    // Output: struct{ residuals (List<f64>), n_observations }
+    // -----------------------------------------------------------------------
+    {
+        let inputs = vec![
+            series_f64("y", &y),
+            scalar_f64("lambda", lambda),
+            scalar_bool("with_intercept", with_intercept),
+            series_f64("x1", &x1),
+            series_f64("x2", &x2),
+        ];
+        let out = gamma_standardized_pearson_residuals_fit(&inputs)
+            .expect("gamma_standardized_pearson_residuals_fit failed");
+        let st = out.struct_().expect("expected struct series");
+        let resid_series = st
+            .field_by_name("residuals")
+            .expect("missing field `residuals`");
+        // residuals field is a List<f64> — check it is non-empty
+        let resid_list = resid_series.list().expect("residuals must be List type");
+        let inner = resid_list
+            .get_as_series(0)
+            .expect("expected residuals list");
+        assert_eq!(inner.len(), n, "residuals length must equal n");
+        // All residuals must be finite
+        let vals: Vec<f64> = inner.f64().unwrap().into_no_null_iter().collect();
+        assert!(
+            vals.iter().all(|v| v.is_finite()),
+            "all gamma_standardized_pearson_residuals must be finite"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // gamma_standardized_deviance_residuals_fit
+    // Output: struct{ residuals (List<f64>), n_observations }
+    // -----------------------------------------------------------------------
+    {
+        let inputs = vec![
+            series_f64("y", &y),
+            scalar_f64("lambda", lambda),
+            scalar_bool("with_intercept", with_intercept),
+            series_f64("x1", &x1),
+            series_f64("x2", &x2),
+        ];
+        let out = gamma_standardized_deviance_residuals_fit(&inputs)
+            .expect("gamma_standardized_deviance_residuals_fit failed");
+        let st = out.struct_().expect("expected struct series");
+        let resid_series = st
+            .field_by_name("residuals")
+            .expect("missing field `residuals`");
+        let resid_list = resid_series.list().expect("residuals must be List type");
+        let inner = resid_list
+            .get_as_series(0)
+            .expect("expected residuals list");
+        assert_eq!(inner.len(), n, "residuals length must equal n");
+        let vals: Vec<f64> = inner.f64().unwrap().into_no_null_iter().collect();
+        assert!(
+            vals.iter().all(|v| v.is_finite()),
+            "all gamma_standardized_deviance_residuals must be finite"
+        );
+    }
+}
+
+// =============================================================================
 // Tail helper to silence unused-warning when assert_f64_finite_or_zero is
 // not used in some configurations.
 // =============================================================================
@@ -1848,4 +2316,194 @@ fn dynamic_model_fits() {
 fn _touch_unused() {
     let s = Series::new("x".into(), &[1.0_f64]);
     assert_f64_finite_or_zero(&s, "x");
+}
+
+// =============================================================================
+// Column-pivot correctness tests (DEP-04)
+//
+// These three tests exercise a differently-scaled two-feature design that forces
+// a non-trivial QR column pivot (column-norm ratio >= 100:1). The pre-0.5.13
+// solver scrambled coefficients on such designs; 0.5.13 adds an unpermute step.
+//
+// Design: x1 = (i+1)*0.1 (range 0.1..2.0, norm ~5), x2 = ((i%7)+1)*100 (range
+// 100..700, periodic, norm ~1800). Norm ratio ~360:1, Pearson r ~0.24 (not
+// collinear). Ground truth y = 1 + 2*x1 + 3*x2 recoverable uniquely.
+// =============================================================================
+
+#[test]
+fn ols_column_pivot_fix_differently_scaled() {
+    // y = 1 + 2*x1 + 3*x2. x1 in [0.1, 2.0], x2 in [100, 700] (periodic mod 7).
+    // Column-norm ratio ~360:1 with low correlation (r~0.24) forces a non-trivial
+    // QR pivot permutation. Pre-0.5.13 OLS returned scrambled coefficients here.
+    let n = 20usize;
+    let x1: Vec<f64> = (0..n).map(|i| (i as f64 + 1.0) * 0.1).collect();
+    let x2: Vec<f64> = (0..n).map(|i| ((i % 7) as f64 + 1.0) * 100.0).collect();
+    let y: Vec<f64> = x1
+        .iter()
+        .zip(x2.iter())
+        .map(|(&a, &b)| 1.0 + 2.0 * a + 3.0 * b)
+        .collect();
+
+    let inputs = vec![
+        series_f64("y", &y),
+        scalar_bool("with_intercept", true),
+        scalar_str_null("solve_method"),
+        series_f64("x1", &x1),
+        series_f64("x2", &x2),
+    ];
+    let out = ols_fit(&inputs).expect("ols_fit pivot test failed");
+    let st = out.struct_().unwrap();
+    let intercept = st
+        .field_by_name("intercept")
+        .unwrap()
+        .f64()
+        .unwrap()
+        .get(0)
+        .unwrap();
+    let coefs_inner = st
+        .field_by_name("coefficients")
+        .unwrap()
+        .list()
+        .unwrap()
+        .get_as_series(0)
+        .unwrap();
+    let c1 = coefs_inner.f64().unwrap().get(0).unwrap();
+    let c2 = coefs_inner
+        .f64()
+        .unwrap()
+        .get(1)
+        .expect("expected coefficient[1] (x2) from the OLS pivot fit");
+
+    assert!(
+        (intercept - 1.0).abs() < 1e-6,
+        "pivot OLS intercept: expected 1.0, got {intercept}"
+    );
+    assert!(
+        (c1 - 2.0).abs() < 1e-6,
+        "pivot OLS x1 coef: expected 2.0, got {c1}"
+    );
+    assert!(
+        (c2 - 3.0).abs() < 1e-6,
+        "pivot OLS x2 coef: expected 3.0, got {c2}"
+    );
+}
+
+#[test]
+fn wls_column_pivot_fix_differently_scaled() {
+    // Same differently-scaled design as the OLS pivot test; unit weights so
+    // WLS reduces to OLS. Verifies WLS also applies the 0.5.13 unpermute fix.
+    let n = 20usize;
+    let x1: Vec<f64> = (0..n).map(|i| (i as f64 + 1.0) * 0.1).collect();
+    let x2: Vec<f64> = (0..n).map(|i| ((i % 7) as f64 + 1.0) * 100.0).collect();
+    let y: Vec<f64> = x1
+        .iter()
+        .zip(x2.iter())
+        .map(|(&a, &b)| 1.0 + 2.0 * a + 3.0 * b)
+        .collect();
+    let w = vec![1.0_f64; n];
+
+    let inputs = vec![
+        series_f64("y", &y),
+        series_f64("w", &w),
+        scalar_bool("with_intercept", true),
+        scalar_str_null("solve_method"),
+        series_f64("x1", &x1),
+        series_f64("x2", &x2),
+    ];
+    let out = wls_fit(&inputs).expect("wls_fit pivot test failed");
+    let st = out.struct_().unwrap();
+    let intercept = st
+        .field_by_name("intercept")
+        .unwrap()
+        .f64()
+        .unwrap()
+        .get(0)
+        .unwrap();
+    let coefs_inner = st
+        .field_by_name("coefficients")
+        .unwrap()
+        .list()
+        .unwrap()
+        .get_as_series(0)
+        .unwrap();
+    let c1 = coefs_inner.f64().unwrap().get(0).unwrap();
+    let c2 = coefs_inner
+        .f64()
+        .unwrap()
+        .get(1)
+        .expect("expected coefficient[1] (x2) from the WLS pivot fit");
+
+    assert!(
+        (intercept - 1.0).abs() < 1e-6,
+        "pivot WLS intercept: expected 1.0, got {intercept}"
+    );
+    assert!(
+        (c1 - 2.0).abs() < 1e-6,
+        "pivot WLS x1 coef: expected 2.0, got {c1}"
+    );
+    assert!(
+        (c2 - 3.0).abs() < 1e-6,
+        "pivot WLS x2 coef: expected 3.0, got {c2}"
+    );
+}
+
+#[test]
+fn bls_column_pivot_fix_differently_scaled() {
+    // BLS uses QR with column pivoting in its `solve_passive_set` step; 0.5.13
+    // applies the same col_piv_qr unpermute fix as OLS/WLS. Bounds [-10, 10] are
+    // loose enough to not constrain the true solution (true coefficients 2.0 and
+    // 3.0 are both within bounds), so the active set is empty and BLS reduces to
+    // an unconstrained QR solve — exercising the pivot fix directly.
+    let n = 20usize;
+    let x1: Vec<f64> = (0..n).map(|i| (i as f64 + 1.0) * 0.1).collect();
+    let x2: Vec<f64> = (0..n).map(|i| ((i % 7) as f64 + 1.0) * 100.0).collect();
+    let y: Vec<f64> = x1
+        .iter()
+        .zip(x2.iter())
+        .map(|(&a, &b)| 1.0 + 2.0 * a + 3.0 * b)
+        .collect();
+
+    let inputs = vec![
+        series_f64("y", &y),
+        scalar_f64("lower_bound", -10.0),
+        scalar_f64("upper_bound", 10.0),
+        scalar_bool("with_intercept", true),
+        series_f64("x1", &x1),
+        series_f64("x2", &x2),
+    ];
+    let out = bls_fit(&inputs).expect("bls_fit pivot test failed");
+    let st = out.struct_().unwrap();
+    let intercept = st
+        .field_by_name("intercept")
+        .unwrap()
+        .f64()
+        .unwrap()
+        .get(0)
+        .unwrap();
+    let coefs_inner = st
+        .field_by_name("coefficients")
+        .unwrap()
+        .list()
+        .unwrap()
+        .get_as_series(0)
+        .unwrap();
+    let c1 = coefs_inner.f64().unwrap().get(0).unwrap();
+    let c2 = coefs_inner
+        .f64()
+        .unwrap()
+        .get(1)
+        .expect("expected coefficient[1] (x2) from the BLS pivot fit");
+
+    assert!(
+        (intercept - 1.0).abs() < 1e-6,
+        "pivot BLS intercept: expected 1.0, got {intercept}"
+    );
+    assert!(
+        (c1 - 2.0).abs() < 1e-6,
+        "pivot BLS x1 coef: expected 2.0, got {c1}"
+    );
+    assert!(
+        (c2 - 3.0).abs() < 1e-6,
+        "pivot BLS x2 coef: expected 3.0, got {c2}"
+    );
 }

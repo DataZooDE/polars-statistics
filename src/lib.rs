@@ -42,7 +42,23 @@ fn _polars_statistics(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<pymodels::PyIsotonic>()?;
     m.add_class::<pymodels::PyHuber>()?;
 
+    // Robust & Sklearn-Style Solvers
+    m.add_class::<pymodels::PyTheilSen>()?;
+    m.add_class::<pymodels::PyRANSAC>()?;
+    m.add_class::<pymodels::PyBayesianRidge>()?;
+    m.add_class::<pymodels::PyARD>()?;
+
+    // Streaming & Online
+    m.add_class::<pymodels::PyLARS>()?;
+    m.add_class::<pymodels::PyPassiveAggressive>()?;
+    m.add_class::<pymodels::PyMomentAccumulator>()?;
+
+    // Smoothers
+    m.add_class::<pymodels::PyPSpline>()?;
+
     // GLM Models
+    m.add_class::<pymodels::PyGamma>()?;
+    m.add_class::<pymodels::PyGLMM>()?;
     m.add_class::<pymodels::PyLogistic>()?;
     m.add_class::<pymodels::PyLogisticRegression>()?;
     m.add_class::<pymodels::PyPoisson>()?;

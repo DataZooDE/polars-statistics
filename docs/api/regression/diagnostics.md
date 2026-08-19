@@ -473,6 +473,113 @@ ps.pearson_chi_squared_poisson(
 
 ---
 
+## Gamma GLM Diagnostics
+
+Residual and dispersion diagnostics for Gamma GLM fits. Each function fits a Gamma GLM
+internally (log link, `lambda_=0.0` by default) and returns one value per row or a
+scalar summary.
+
+### `gamma_dispersion_deviance`
+
+Deviance-based dispersion estimate: `D / (n - p)`. For a well-specified Gamma model this
+should be close to 1.
+
+```python
+ps.gamma_dispersion_deviance(
+    y: Union[pl.Expr, str],      # Positive response
+    *x: Union[pl.Expr, str],
+    lambda_: float = 0.0,
+    with_intercept: bool = True,
+) -> pl.Expr
+```
+
+**Returns:** `Struct{dispersion: Float64, deviance: Float64, df_residual: Float64}`
+
+**Example:**
+```python
+df.select(ps.gamma_dispersion_deviance("y", "x1", "x2").alias("disp"))
+```
+
+---
+
+### `gamma_dispersion_pearson`
+
+Pearson-statistic-based dispersion estimate: `X² / (n - p)`.
+
+```python
+ps.gamma_dispersion_pearson(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    lambda_: float = 0.0,
+    with_intercept: bool = True,
+) -> pl.Expr
+```
+
+**Returns:** `Struct{dispersion: Float64, pearson_chi_squared: Float64, df_residual: Float64}`
+
+---
+
+### `gamma_pearson_chi_squared`
+
+`Σ pearson_residual²` from a Gamma GLM fit, plus residual degrees of freedom.
+
+```python
+ps.gamma_pearson_chi_squared(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    lambda_: float = 0.0,
+    with_intercept: bool = True,
+) -> pl.Expr
+```
+
+**Returns:** See [Chi-Squared Output](../outputs.md#chi-squared-output)
+
+---
+
+### `gamma_standardized_pearson_residuals`
+
+Standardized Pearson residuals for Gamma GLM: `(y - μ̂) / (μ̂ · sqrt(φ̂))`.
+
+```python
+ps.gamma_standardized_pearson_residuals(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    lambda_: float = 0.0,
+    with_intercept: bool = True,
+) -> pl.Expr
+```
+
+**Returns:** See [Residual Diagnostics Output](../outputs.md#residual-diagnostics-output)
+
+**Example:**
+```python
+df.select(ps.gamma_standardized_pearson_residuals("y", "x1", "x2").alias("r_p"))
+```
+
+---
+
+### `gamma_standardized_deviance_residuals`
+
+Standardized deviance residuals for Gamma GLM: `sign(y - μ̂) · sqrt(d_i / φ̂)`.
+
+```python
+ps.gamma_standardized_deviance_residuals(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    lambda_: float = 0.0,
+    with_intercept: bool = True,
+) -> pl.Expr
+```
+
+**Returns:** See [Residual Diagnostics Output](../outputs.md#residual-diagnostics-output)
+
+**Example:**
+```python
+df.select(ps.gamma_standardized_deviance_residuals("y", "x1", "x2").alias("r_d"))
+```
+
+---
+
 ## Diagnostic Workflow
 
 ```python
