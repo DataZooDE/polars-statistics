@@ -252,7 +252,7 @@ from polars_statistics.exprs import (
     lm_dynamic_predict,
 )
 
-__version__ = "0.5.0"
+__version__ = "0.6.0"
 
 # Library path for plugin registration
 LIB = Path(__file__).parent
