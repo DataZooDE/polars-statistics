@@ -142,6 +142,7 @@ None yet.
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260818-rj2 | Add Examples section to README linking runnable examples/ scripts and docs/examples cookbook (fixes #36) | 2026-08-18 | b5e8e16 | [260818-rj2-add-examples-section-to-readme-linking-r](./quick/260818-rj2-add-examples-section-to-readme-linking-r/) |
+| 260819-jkj | Fix stuck v0.6.0 PyPI release — PR #37 bumped Cargo.toml/pyproject.toml but missed python __version__ (still 0.5.0); bump it to 0.6.0. Publish still needs re-triggering (tag points at pre-fix commit) | 2026-08-19 | (pending) | [260819-jkj-fix-v0.6.0-pypi-release](./quick/260819-jkj-fix-v0.6.0-pypi-release/) |
 
 ## Deferred Items
 
