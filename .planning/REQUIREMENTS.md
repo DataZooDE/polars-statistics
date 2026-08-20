@@ -1,62 +1,55 @@
 # Requirements: polars-statistics
 
-**Defined:** 2026-08-11
+**Defined:** 2026-08-20
+**Milestone:** v0.7.0 — Ergonomics, Adoption & Documentation
 **Core Value:** Every public statistical capability in the backing `anofox-*` crates is exposed through the Polars/Python API — correctly, documented, and tested — and shipped to PyPI.
+
+> Milestone focus: v0.6.0 delivered full API parity. v0.7.0 makes that surface
+> best-in-class to adopt — type-safe, ergonomic to consume, clear on errors,
+> clean, and fully documented — shipped as 0.7.0 on PyPI. Requirements for the
+> completed v0.6.0 milestone are preserved in git history and
+> `.planning/milestones/v0.6.0-phases/`.
 
 ## v1 Requirements
 
-Requirements for this milestone (`anofox-*` upgrade + API parity + 0.6.0 release). Each maps to roadmap phases.
+Requirements for this milestone. Each maps to exactly one roadmap phase.
 
-### Dependency Upgrade
+### Type Safety
 
-- [x] **DEP-01**: `anofox-statistics` is bumped 0.4.1 → 0.4.2 in `Cargo.toml`/`Cargo.lock` and the workspace builds with the `python` feature
-- [x] **DEP-02**: `anofox-regression` is bumped 0.5.4 → 0.5.13 in `Cargo.toml`/`Cargo.lock` and the workspace builds
-- [x] **DEP-03**: Any breaking API changes introduced by the bumps are reconciled in the wrapper layer so it compiles and existing behavior is preserved
-- [x] **DEP-04**: All pre-existing tests (Rust + pytest) pass against the upgraded crates — no regressions from the bump
+- [ ] **TYPE-01**: Package ships a `py.typed` marker and `.pyi` stubs so IDEs and type checkers resolve every Rust-bound model/test class (OLS, Ridge, Logistic, GLMM, …) with accurate constructor, method, and getter signatures
+- [ ] **TYPE-02**: Type stubs cover the Python expression builders (`ps.ols(...)`, `ps.ttest_ind(...)`, …) and formula helpers with accurate signatures and return types
+- [ ] **TYPE-03**: A CI/type check verifies the stubs stay in sync with the runtime API so they cannot silently rot
 
-### API Audit
+### Result Ergonomics
 
-- [x] **AUDIT-01**: An authoritative, documented gap list enumerates every public `anofox-statistics` function not yet exposed via the Polars/Python API
-- [x] **AUDIT-02**: An authoritative, documented gap list enumerates every public `anofox-regression` capability not yet exposed via expressions or PyModel classes
+- [ ] **ERGO-01**: User can convert any result struct to a Python dict (e.g. `.to_dict()`) without manual `.struct.field()` extraction
+- [ ] **ERGO-02**: Fitted models and test results provide a readable `.summary()` and an informative `__repr__`
+- [ ] **ERGO-03**: A documented helper unnests result structs into flat DataFrame columns in one call
 
-### Statistics API Parity
+### Error Messages
 
-- [x] **STAT-01**: User can compute a one-way ANOVA via the Polars expression API
-- [x] **STAT-02**: User can compute a two-way ANOVA via the Polars expression API
-- [x] **STAT-03**: User can compute a repeated-measures ANOVA via the Polars expression API
-- [x] **STAT-04**: User can compute the energy distance test via the Polars expression API
-- [x] **STAT-05**: Every remaining unexposed `anofox-statistics` function identified in AUDIT-01 is callable via the Polars/Python API
+- [ ] **ERR-01**: Calling a method on an unfitted model raises an error that names the model and the required `.fit(...)` call
+- [ ] **ERR-02**: Shape mismatches and degenerate inputs (e.g. perfect separation, rank deficiency) raise actionable, contextual errors instead of panics or opaque failures
 
-### Regression API Parity
+### API Consistency
 
-- [x] **REGR-01**: User can fit a generalized linear mixed model (`GlmmRegressor`) via a PyModel class
-- [x] **REGR-02**: User can fit a penalized B-spline (P-spline) smoother via the API
-- [x] **REGR-03**: User can fit a Gamma GLM via the API
-- [x] **REGR-04**: User can obtain HC (heteroskedasticity-consistent) robust standard errors (`HcInference`/`HcType`) for regression fits
-- [x] **REGR-05**: User can compute regression diagnostics — Cook's distance, VIF, leverage, residual variants, and condition diagnostics — via the API
-- [x] **REGR-06**: Every remaining unexposed `anofox-regression` capability identified in AUDIT-02 is callable via expressions and/or PyModel classes
+- [ ] **API-01**: `with_intercept` is deprecated in favor of a single `add_intercept` path with a back-compatible `FutureWarning`, consistently across expressions and classes
+- [ ] **API-02**: sklearn-style `fit`/`predict`/`score` behaves consistently across the regressor classes (uniform signatures and return conventions)
 
 ### Documentation
 
-- [x] **DOCS-01**: Every newly exposed function/class has a Python docstring with signature, parameters, and a runnable example
-- [x] **DOCS-02**: The mkdocs API reference pages are updated to list all newly exposed API
-- [x] **DOCS-03**: Rust doc comments are added for all new public wrapper functions
-- [x] **DOCS-04**: The CHANGELOG / release notes document the new API and the 0.6.0 release
-
-### Testing
-
-- [x] **TEST-01**: Each newly exposed statistics function has a pytest test asserting correct output shape and values
-- [x] **TEST-02**: Each newly exposed regression capability has a pytest test asserting correct output shape and values
-- [x] **TEST-03**: New results are validated against R reference values where the crates provide them
-- [x] **TEST-04**: Rust-side tests cover the new expression wrappers and output-type schemas
-- [x] **TEST-05**: The full CI matrix (Python 3.9–3.12 × Linux/macOS/Windows, clippy/fmt/ruff) passes green
+- [ ] **DOCS-05**: Runnable cookbook + `examples/` scripts cover the robust/sparse regressors (TheilSen, RANSAC, BayesianRidge, ARD, LARS, PassiveAggressive) with real-world scenarios and output interpretation
+- [ ] **DOCS-06**: Runnable cookbook + examples cover the GLM/smoother/streaming models (Gamma, GLMM, PSpline, MomentAccumulator)
+- [ ] **DOCS-07**: A cookbook entry covers the new ANOVA functions (one-way, two-way, repeated-measures) with worked examples
+- [ ] **DOCS-08**: A model-selection decision matrix helps users choose among comparable models (use case, robustness, interpretability, speed, formula support)
+- [ ] **DOCS-09**: A migration guide documents the `icc` single-column→matrix contract change (old→new side by side) and the `with_intercept` deprecation timeline
+- [ ] **DOCS-10**: An sklearn-migration page maps common sklearn workflows to polars-statistics equivalents
+- [ ] **DOCS-11**: The README is refreshed with an adoption-focused quickstart and narrative (typed API, sklearn-compat, Polars-native advantages)
 
 ### Release
 
-- [x] **REL-01**: `polars-statistics` version is bumped 0.5.0 → 0.6.0 in both `Cargo.toml` and `pyproject.toml`
-- [x] **REL-02**: A 0.6.0 git tag and release notes are prepared
-- [ ] **REL-03**: Wheels (sdist + platform wheels) are built and published to production PyPI via the GitHub Actions pipeline
-- [ ] **REL-04**: The published 0.6.0 wheel installs and imports cleanly as a post-release smoke check
+- [ ] **REL-05**: `polars-statistics` is bumped 0.6.0 → 0.7.0 across all version sources (`Cargo.toml`, `pyproject.toml`, `python/polars_statistics/__init__.py` `__version__`) and they stay aligned
+- [ ] **REL-06**: 0.7.0 is published to production PyPI via the GitHub Actions OIDC pipeline and passes a post-release install/import smoke check
 
 ## v2 Requirements
 
@@ -70,52 +63,23 @@ Deferred to future releases.
 
 | Feature | Reason |
 |---------|--------|
-| New statistical methods not in the `anofox-*` crates | This milestone is exposure/parity, not novel algorithm work |
-| `anofox-forecast` integration | Separate crate, not requested for this milestone |
+| New statistical methods not in the `anofox-*` crates | This milestone is adoption/polish, not novel algorithm work |
+| Removing the deprecated `with_intercept` kwarg | Kept back-compatible this milestone (warning only); removal is a future major-version concern |
+| `anofox-forecast` integration | Separate crate, deferred (FCST-01) |
 | FFI / numpy↔faer architecture changes | Existing bridge is sound and stays as-is |
-| Reworking already-exposed API beyond bump requirements | Out of scope; avoids churn on working surface |
+| Breaking changes to already-exposed API | v0.7.0 is additive under semver; no breaking changes |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DEP-01 | Phase 1 | Complete |
-| DEP-02 | Phase 1 | Complete |
-| DEP-03 | Phase 1 | Complete |
-| DEP-04 | Phase 1 | Complete |
-| AUDIT-01 | Phase 2 | Complete |
-| AUDIT-02 | Phase 2 | Complete |
-| STAT-01 | Phase 3 | Complete |
-| STAT-02 | Phase 3 | Complete |
-| STAT-03 | Phase 3 | Complete |
-| STAT-04 | Phase 3 | Complete |
-| STAT-05 | Phase 3 | Complete |
-| REGR-01 | Phase 4 | Complete |
-| REGR-02 | Phase 4 | Complete |
-| REGR-03 | Phase 4 | Complete |
-| REGR-04 | Phase 4 | Complete |
-| REGR-05 | Phase 4 | Complete |
-| REGR-06 | Phase 4 | Complete |
-| DOCS-01 | Phase 5 | Complete |
-| DOCS-02 | Phase 5 | Complete |
-| DOCS-03 | Phase 5 | Complete |
-| DOCS-04 | Phase 5 | Complete |
-| TEST-01 | Phase 6 | Complete |
-| TEST-02 | Phase 6 | Complete |
-| TEST-03 | Phase 6 | Complete |
-| TEST-04 | Phase 6 | Complete |
-| TEST-05 | Phase 6 | Complete |
-| REL-01 | Phase 7 | Complete |
-| REL-02 | Phase 7 | Complete |
-| REL-03 | Phase 7 | In progress (GH Actions publish.yml running for v0.6.0 release) |
-| REL-04 | Phase 7 | Pending |
+| _(populated by roadmapper)_ | | |
 
 **Coverage:**
 
-- v1 requirements: 28 total
-- Mapped to phases: 28
-- Unmapped: 0 ✓
+- v1 requirements: 19 total
+- Mapped to phases: _(pending roadmap)_
+- Unmapped: _(pending roadmap)_
 
 ---
-*Requirements defined: 2026-08-11*
-*Last updated: 2026-08-11 after roadmap creation (traceability populated)*
+*Requirements defined: 2026-08-20*
