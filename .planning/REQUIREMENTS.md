@@ -73,13 +73,31 @@ Deferred to future releases.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| _(populated by roadmapper)_ | | |
+| TYPE-01 | Phase 8 | Pending |
+| TYPE-02 | Phase 8 | Pending |
+| TYPE-03 | Phase 8 | Pending |
+| ERGO-01 | Phase 9 | Pending |
+| ERGO-02 | Phase 9 | Pending |
+| ERGO-03 | Phase 9 | Pending |
+| ERR-01 | Phase 10 | Pending |
+| ERR-02 | Phase 10 | Pending |
+| API-01 | Phase 10 | Pending |
+| API-02 | Phase 10 | Pending |
+| DOCS-05 | Phase 11 | Pending |
+| DOCS-06 | Phase 11 | Pending |
+| DOCS-07 | Phase 11 | Pending |
+| DOCS-08 | Phase 11 | Pending |
+| DOCS-09 | Phase 11 | Pending |
+| DOCS-10 | Phase 11 | Pending |
+| DOCS-11 | Phase 11 | Pending |
+| REL-05 | Phase 12 | Pending |
+| REL-06 | Phase 12 | Pending |
 
 **Coverage:**
 
 - v1 requirements: 19 total
-- Mapped to phases: _(pending roadmap)_
-- Unmapped: _(pending roadmap)_
+- Mapped to phases: 19
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-08-20*
