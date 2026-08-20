@@ -1,19 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-current_phase: 7
-current_phase_name: Release 0.6.0
+milestone: v0.7.0
+milestone_name: Ergonomics, Adoption & Documentation
 status: planning
-stopped_at: context exhaustion at 76% (2026-08-17)
-last_updated: "2026-08-17T14:55:46.862Z"
-last_activity: 2026-08-12
-last_activity_desc: Phase 3 complete, transitioned to Phase 4
+last_updated: "2026-08-20T08:03:41.451Z"
+last_activity: 2026-08-20
 progress:
-  total_phases: 6
-  completed_phases: 6
-  total_plans: 22
-  completed_plans: 22
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -27,12 +24,10 @@ See: .planning/PROJECT.md (updated 2026-08-11)
 
 ## Current Position
 
-Phase: 7 — Release 0.6.0
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-08-18 — Completed quick task 260818-rj2: add Examples section to README (fixes #36)
-
-Progress: [████████░░] 86% (6/7 phases complete)
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-08-20 — Milestone v0.7.0 started
 
 ## Performance Metrics
 
