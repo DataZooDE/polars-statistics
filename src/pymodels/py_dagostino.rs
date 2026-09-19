@@ -83,7 +83,7 @@ impl PyDAgostino {
         self.fitted
             .as_ref()
             .map(|r| r.statistic)
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_test_err("DAgostino"))
     }
 
     /// Get the p-value.
@@ -92,7 +92,7 @@ impl PyDAgostino {
         self.fitted
             .as_ref()
             .map(|r| r.p_value)
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_test_err("DAgostino"))
     }
 
     /// Get a formatted summary of the test results.
@@ -100,7 +100,7 @@ impl PyDAgostino {
         let result = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_test_err("DAgostino"))?;
 
         let significance = if result.p_value < 0.05 {
             "Reject H0 (data is NOT normally distributed) at alpha=0.05"

@@ -37,22 +37,26 @@ pub struct PyBLS {
 #[pymethods]
 impl PyBLS {
     #[new]
-    #[pyo3(signature = (lower_bound=None, upper_bound=None, with_intercept=true, max_iter=1000, tol=1e-6))]
+    #[pyo3(signature = (lower_bound=None, upper_bound=None, add_intercept=None, with_intercept=None, max_iter=1000, tol=1e-6))]
     fn new(
+        py: Python<'_>,
         lower_bound: Option<f64>,
         upper_bound: Option<f64>,
-        with_intercept: bool,
+        add_intercept: Option<bool>,
+        with_intercept: Option<bool>,
         max_iter: usize,
         tol: f64,
-    ) -> Self {
-        Self {
+    ) -> PyResult<Self> {
+        let with_intercept =
+            crate::pymodels::errors::resolve_intercept(py, add_intercept, with_intercept, true)?;
+        Ok(Self {
             lower_bound,
             upper_bound,
             with_intercept,
             max_iter,
             tol,
             fitted: None,
-        }
+        })
     }
 
     /// Create a Non-Negative Least Squares model (coefficients >= 0).
@@ -74,6 +78,7 @@ impl PyBLS {
         x: PyReadonlyArray2<'py, f64>,
         y: PyReadonlyArray1<'py, f64>,
     ) -> PyResult<PyRefMut<'py, Self>> {
+        crate::pymodels::errors::validate_xy("BLS", &x, &y)?;
         let x_mat = x.to_faer();
         let y_col = y.to_faer();
 
@@ -107,12 +112,30 @@ impl PyBLS {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("BLS"))?;
 
         let x_mat = x.to_faer();
         let predictions = fitted.predict(&x_mat);
 
         Ok(predictions.into_numpy(py))
+    }
+
+    /// R² (coefficient of determination) of the prediction on ``(X, y)``.
+    ///
+    /// Defined as ``1 - SS_res / SS_tot``; ``1.0`` is a perfect fit. Consistent
+    /// with :meth:`sklearn.base.RegressorMixin.score`.
+    fn score<'py>(
+        &self,
+        x: PyReadonlyArray2<'py, f64>,
+        y: PyReadonlyArray1<'py, f64>,
+    ) -> PyResult<f64> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("BLS"))?;
+        let x_mat = x.to_faer();
+        let y_col = y.to_faer();
+        Ok(fitted.score(&x_mat, &y_col))
     }
 
     fn is_fitted(&self) -> bool {
@@ -124,7 +147,7 @@ impl PyBLS {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("BLS"))?;
 
         Ok(fitted.coefficients().into_numpy(py))
     }
@@ -134,7 +157,7 @@ impl PyBLS {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("BLS"))?;
 
         Ok(fitted.intercept())
     }
@@ -144,7 +167,7 @@ impl PyBLS {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("BLS"))?;
 
         Ok(fitted.r_squared())
     }

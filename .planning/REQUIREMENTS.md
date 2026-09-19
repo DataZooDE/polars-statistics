@@ -28,13 +28,13 @@ Requirements for this milestone. Each maps to exactly one roadmap phase.
 
 ### Error Messages
 
-- [ ] **ERR-01**: Calling a method on an unfitted model raises an error that names the model and the required `.fit(...)` call
-- [ ] **ERR-02**: Shape mismatches and degenerate inputs (e.g. perfect separation, rank deficiency) raise actionable, contextual errors instead of panics or opaque failures
+- [x] **ERR-01**: Calling a method on an unfitted model raises an error that names the model and the required `.fit(...)` call
+- [x] **ERR-02**: Shape mismatches and degenerate inputs (e.g. perfect separation, rank deficiency) raise actionable, contextual errors instead of panics or opaque failures
 
 ### API Consistency
 
-- [ ] **API-01**: `with_intercept` is deprecated in favor of a single `add_intercept` path with a back-compatible `FutureWarning`, consistently across expressions and classes
-- [ ] **API-02**: sklearn-style `fit`/`predict`/`score` behaves consistently across the regressor classes (uniform signatures and return conventions)
+- [x] **API-01**: `with_intercept` is deprecated in favor of a single `add_intercept` path with a back-compatible `FutureWarning`, consistently across expressions and classes
+- [x] **API-02**: sklearn-style `fit`/`predict`/`score` behaves consistently across the regressor classes (uniform signatures and return conventions)
 
 ### Documentation
 
@@ -79,10 +79,10 @@ Deferred to future releases.
 | ERGO-01 | Phase 9 | Complete |
 | ERGO-02 | Phase 9 | Complete |
 | ERGO-03 | Phase 9 | Complete |
-| ERR-01 | Phase 10 | Pending |
-| ERR-02 | Phase 10 | Pending |
-| API-01 | Phase 10 | Pending |
-| API-02 | Phase 10 | Pending |
+| ERR-01 | Phase 10 | Complete |
+| ERR-02 | Phase 10 | Complete |
+| API-01 | Phase 10 | Complete |
+| API-02 | Phase 10 | Complete |
 | DOCS-05 | Phase 11 | Pending |
 | DOCS-06 | Phase 11 | Pending |
 | DOCS-07 | Phase 11 | Pending |

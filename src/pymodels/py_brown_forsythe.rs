@@ -83,7 +83,7 @@ impl PyBrownForsythe {
         self.fitted
             .as_ref()
             .map(|r| r.statistic)
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_test_err("BrownForsythe"))
     }
 
     /// Get the p-value.
@@ -92,7 +92,7 @@ impl PyBrownForsythe {
         self.fitted
             .as_ref()
             .map(|r| r.p_value)
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_test_err("BrownForsythe"))
     }
 
     /// Get a formatted summary of the test results.
@@ -100,7 +100,7 @@ impl PyBrownForsythe {
         let result = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_test_err("BrownForsythe"))?;
 
         let significance = if result.p_value < 0.05 {
             "Reject H0 (variances are unequal) at alpha=0.05"

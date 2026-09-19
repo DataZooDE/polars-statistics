@@ -35,15 +35,24 @@ pub struct PyProbit {
 #[pymethods]
 impl PyProbit {
     #[new]
-    #[pyo3(signature = (with_intercept=true, max_iter=100, tol=1e-6, lambda_=0.0))]
-    fn new(with_intercept: bool, max_iter: usize, tol: f64, lambda_: f64) -> Self {
-        Self {
+    #[pyo3(signature = (add_intercept=None, with_intercept=None, max_iter=100, tol=1e-6, lambda_=0.0))]
+    fn new(
+        py: Python<'_>,
+        add_intercept: Option<bool>,
+        with_intercept: Option<bool>,
+        max_iter: usize,
+        tol: f64,
+        lambda_: f64,
+    ) -> PyResult<Self> {
+        let with_intercept =
+            crate::pymodels::errors::resolve_intercept(py, add_intercept, with_intercept, true)?;
+        Ok(Self {
             with_intercept,
             max_iter,
             tol,
             lambda_,
             fitted: None,
-        }
+        })
     }
 
     fn fit<'py>(
@@ -51,6 +60,7 @@ impl PyProbit {
         x: PyReadonlyArray2<'py, f64>,
         y: PyReadonlyArray1<'py, f64>,
     ) -> PyResult<PyRefMut<'py, Self>> {
+        crate::pymodels::errors::validate_xy("Probit", &x, &y)?;
         let x_mat = x.to_faer();
         let y_col = y.to_faer();
 
@@ -77,7 +87,7 @@ impl PyProbit {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Probit"))?;
 
         let x_mat = x.to_faer();
         let predictions = fitted.predict(&x_mat);
@@ -90,6 +100,49 @@ impl PyProbit {
         Ok(PyArray1::from_vec(py, binary))
     }
 
+    /// Mean classification accuracy on ``(X, y)`` using ``threshold``.
+    ///
+    /// Predicts class labels (``P(y=1|x) >= threshold``) and returns the
+    /// fraction that match ``y``. Consistent with
+    /// :meth:`sklearn.base.ClassifierMixin.score` (accuracy for classifiers).
+    #[pyo3(signature = (x, y, threshold=0.5))]
+    fn score<'py>(
+        &self,
+        x: PyReadonlyArray2<'py, f64>,
+        y: PyReadonlyArray1<'py, f64>,
+        threshold: f64,
+    ) -> PyResult<f64> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Probit"))?;
+        let x_mat = x.to_faer();
+        let y_arr = y.as_array();
+        let probabilities = fitted.predict_probability(&x_mat);
+        let n = probabilities.nrows();
+        if n != y_arr.len() {
+            return Err(crate::pymodels::errors::x_y_row_mismatch_err(
+                "Probit",
+                n,
+                y_arr.len(),
+            ));
+        }
+        if n == 0 {
+            return Err(crate::pymodels::errors::empty_input_err("Probit"));
+        }
+        let correct = (0..n)
+            .filter(|&i| {
+                let label = if probabilities[i] >= threshold {
+                    1.0
+                } else {
+                    0.0
+                };
+                (label - y_arr[i]).abs() < 0.5
+            })
+            .count();
+        Ok(correct as f64 / n as f64)
+    }
+
     fn predict_proba<'py>(
         &self,
         py: Python<'py>,
@@ -98,7 +151,7 @@ impl PyProbit {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Probit"))?;
 
         let x_mat = x.to_faer();
         let predictions = fitted.predict(&x_mat);
@@ -115,7 +168,7 @@ impl PyProbit {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Probit"))?;
 
         Ok(fitted.coefficients().into_numpy(py))
     }
@@ -125,7 +178,7 @@ impl PyProbit {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Probit"))?;
 
         Ok(fitted.intercept())
     }
@@ -135,7 +188,7 @@ impl PyProbit {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Probit"))?;
 
         Ok(fitted
             .result()
@@ -149,7 +202,7 @@ impl PyProbit {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Probit"))?;
 
         Ok(fitted
             .result()
@@ -163,7 +216,7 @@ impl PyProbit {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Probit"))?;
 
         Ok(Some(fitted.result().aic))
     }
@@ -173,7 +226,7 @@ impl PyProbit {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Probit"))?;
 
         Ok(Some(fitted.result().bic))
     }

@@ -60,16 +60,21 @@ pub struct PyLmDynamic {
 #[pymethods]
 impl PyLmDynamic {
     #[new]
-    #[pyo3(signature = (ic="aicc", distribution="normal", lowess_span=Some(0.3), max_models=Some(64), with_intercept=true, confidence_level=0.95))]
+    #[pyo3(signature = (ic="aicc", distribution="normal", lowess_span=Some(0.3), max_models=Some(64), add_intercept=None, with_intercept=None, confidence_level=0.95))]
+    #[allow(clippy::too_many_arguments)]
     fn new(
+        py: Python<'_>,
         ic: &str,
         distribution: &str,
         lowess_span: Option<f64>,
         max_models: Option<usize>,
-        with_intercept: bool,
+        add_intercept: Option<bool>,
+        with_intercept: Option<bool>,
         confidence_level: f64,
-    ) -> Self {
-        Self {
+    ) -> PyResult<Self> {
+        let with_intercept =
+            crate::pymodels::errors::resolve_intercept(py, add_intercept, with_intercept, true)?;
+        Ok(Self {
             ic: ic.to_string(),
             distribution: distribution.to_string(),
             lowess_span,
@@ -77,7 +82,7 @@ impl PyLmDynamic {
             with_intercept,
             confidence_level,
             fitted: None,
-        }
+        })
     }
 
     /// Fit the dynamic linear model.
@@ -93,6 +98,7 @@ impl PyLmDynamic {
         x: PyReadonlyArray2<'py, f64>,
         y: PyReadonlyArray1<'py, f64>,
     ) -> PyResult<PyRefMut<'py, Self>> {
+        crate::pymodels::errors::validate_xy("LmDynamic", &x, &y)?;
         let x_mat = x.to_faer();
         let y_col = y.to_faer();
 
@@ -144,12 +150,30 @@ impl PyLmDynamic {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("LmDynamic"))?;
 
         let x_mat = x.to_faer();
         let predictions = fitted.predict(&x_mat);
 
         Ok(predictions.into_numpy(py))
+    }
+
+    /// R² (coefficient of determination) of the prediction on ``(X, y)``.
+    ///
+    /// Defined as ``1 - SS_res / SS_tot``; ``1.0`` is a perfect fit. Consistent
+    /// with :meth:`sklearn.base.RegressorMixin.score`.
+    fn score<'py>(
+        &self,
+        x: PyReadonlyArray2<'py, f64>,
+        y: PyReadonlyArray1<'py, f64>,
+    ) -> PyResult<f64> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("LmDynamic"))?;
+        let x_mat = x.to_faer();
+        let y_col = y.to_faer();
+        Ok(fitted.score(&x_mat, &y_col))
     }
 
     fn is_fitted(&self) -> bool {
@@ -162,7 +186,7 @@ impl PyLmDynamic {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("LmDynamic"))?;
 
         Ok((&fitted.result().coefficients).into_numpy(py))
     }
@@ -173,7 +197,7 @@ impl PyLmDynamic {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("LmDynamic"))?;
 
         Ok(fitted.result().intercept)
     }
@@ -186,7 +210,7 @@ impl PyLmDynamic {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("LmDynamic"))?;
 
         let dyn_coef = fitted.dynamic_coefficients();
         let n = dyn_coef.nrows();
@@ -210,7 +234,7 @@ impl PyLmDynamic {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("LmDynamic"))?;
 
         let weights = fitted.model_weights();
         let n = weights.nrows();
@@ -236,7 +260,7 @@ impl PyLmDynamic {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("LmDynamic"))?;
 
         match fitted.smoothed_weights() {
             Some(weights) => {
@@ -263,7 +287,7 @@ impl PyLmDynamic {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("LmDynamic"))?;
 
         let ic = fitted.pointwise_ic();
         let n = ic.nrows();
@@ -297,7 +321,7 @@ impl PyLmDynamic {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("LmDynamic"))?;
 
         Ok(fitted.coefficient_at(obs_index, coef_index))
     }
@@ -321,7 +345,7 @@ impl PyLmDynamic {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("LmDynamic"))?;
 
         match fitted.coefficients_at(obs_index) {
             Some(coefs) => Ok(Some(coefs.into_numpy(py))),
@@ -334,7 +358,7 @@ impl PyLmDynamic {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("LmDynamic"))?;
 
         Ok(fitted.result().r_squared)
     }
@@ -344,7 +368,7 @@ impl PyLmDynamic {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("LmDynamic"))?;
 
         Ok(fitted.result().adj_r_squared)
     }
@@ -354,7 +378,7 @@ impl PyLmDynamic {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("LmDynamic"))?;
 
         Ok(fitted.result().mse)
     }
@@ -364,7 +388,7 @@ impl PyLmDynamic {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("LmDynamic"))?;
 
         Ok(fitted.result().rmse)
     }
@@ -374,7 +398,7 @@ impl PyLmDynamic {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("LmDynamic"))?;
 
         Ok(fitted.result().n_observations)
     }
@@ -384,7 +408,7 @@ impl PyLmDynamic {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("LmDynamic"))?;
 
         Ok((&fitted.result().fitted_values).into_numpy(py))
     }
@@ -394,7 +418,7 @@ impl PyLmDynamic {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("LmDynamic"))?;
 
         Ok((&fitted.result().residuals).into_numpy(py))
     }

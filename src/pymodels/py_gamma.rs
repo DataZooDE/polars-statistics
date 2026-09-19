@@ -48,15 +48,24 @@ pub struct PyGamma {
 #[pymethods]
 impl PyGamma {
     #[new]
-    #[pyo3(signature = (with_intercept=true, max_iter=25, tol=1e-8, lambda_=0.0))]
-    fn new(with_intercept: bool, max_iter: usize, tol: f64, lambda_: f64) -> Self {
-        Self {
+    #[pyo3(signature = (add_intercept=None, with_intercept=None, max_iter=25, tol=1e-8, lambda_=0.0))]
+    fn new(
+        py: Python<'_>,
+        add_intercept: Option<bool>,
+        with_intercept: Option<bool>,
+        max_iter: usize,
+        tol: f64,
+        lambda_: f64,
+    ) -> PyResult<Self> {
+        let with_intercept =
+            crate::pymodels::errors::resolve_intercept(py, add_intercept, with_intercept, true)?;
+        Ok(Self {
             with_intercept,
             max_iter,
             tol,
             lambda_,
             fitted: None,
-        }
+        })
     }
 
     /// Fit the Gamma GLM to training data.
@@ -77,6 +86,7 @@ impl PyGamma {
         x: PyReadonlyArray2<'py, f64>,
         y: PyReadonlyArray1<'py, f64>,
     ) -> PyResult<PyRefMut<'py, Self>> {
+        crate::pymodels::errors::validate_xy("Gamma", &x, &y)?;
         let x_mat = x.to_faer();
         let y_col = y.to_faer();
 
@@ -114,7 +124,7 @@ impl PyGamma {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Gamma"))?;
 
         let x_mat = x.to_faer();
         let predictions = fitted.predict(&x_mat);
@@ -143,7 +153,7 @@ impl PyGamma {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Gamma"))?;
 
         let x_mat = x.to_faer();
         Ok(fitted.predict_eta(&x_mat).into_numpy(py))
@@ -160,7 +170,7 @@ impl PyGamma {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Gamma"))?;
 
         Ok(fitted.coefficients().into_numpy(py))
     }
@@ -171,7 +181,7 @@ impl PyGamma {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Gamma"))?;
 
         Ok(fitted.intercept())
     }
@@ -182,7 +192,7 @@ impl PyGamma {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Gamma"))?;
 
         Ok(fitted
             .result()
@@ -197,7 +207,7 @@ impl PyGamma {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Gamma"))?;
 
         Ok(fitted
             .result()
@@ -212,7 +222,7 @@ impl PyGamma {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Gamma"))?;
 
         Ok(Some(fitted.result().aic))
     }
@@ -223,7 +233,7 @@ impl PyGamma {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Gamma"))?;
 
         Ok(Some(fitted.result().bic))
     }
@@ -237,7 +247,7 @@ impl PyGamma {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Gamma"))?;
 
         Ok(fitted.converged())
     }

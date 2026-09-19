@@ -57,16 +57,21 @@ pub struct PyTheilSen {
 #[pymethods]
 impl PyTheilSen {
     #[new]
-    #[pyo3(signature = (with_intercept=true, max_subpopulation=10000, n_subsamples=None, max_iter=300, tol=1e-3, random_state=0))]
+    #[pyo3(signature = (add_intercept=None, with_intercept=None, max_subpopulation=10000, n_subsamples=None, max_iter=300, tol=1e-3, random_state=0))]
+    #[allow(clippy::too_many_arguments)]
     fn new(
-        with_intercept: bool,
+        py: Python<'_>,
+        add_intercept: Option<bool>,
+        with_intercept: Option<bool>,
         max_subpopulation: usize,
         n_subsamples: Option<usize>,
         max_iter: usize,
         tol: f64,
         random_state: u64,
-    ) -> Self {
-        Self {
+    ) -> PyResult<Self> {
+        let with_intercept =
+            crate::pymodels::errors::resolve_intercept(py, add_intercept, with_intercept, true)?;
+        Ok(Self {
             with_intercept,
             max_subpopulation,
             n_subsamples,
@@ -74,7 +79,7 @@ impl PyTheilSen {
             tol,
             random_state,
             fitted: None,
-        }
+        })
     }
 
     /// Fit the Theil-Sen regression model.
@@ -95,6 +100,7 @@ impl PyTheilSen {
         x: PyReadonlyArray2<'py, f64>,
         y: PyReadonlyArray1<'py, f64>,
     ) -> PyResult<PyRefMut<'py, Self>> {
+        crate::pymodels::errors::validate_xy("TheilSen", &x, &y)?;
         let x_mat = x.to_faer();
         let y_col = y.to_faer();
 
@@ -136,10 +142,28 @@ impl PyTheilSen {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("TheilSen"))?;
 
         let x_mat = x.to_faer();
         Ok(fitted.predict(&x_mat).into_numpy(py))
+    }
+
+    /// R² (coefficient of determination) of the prediction on ``(X, y)``.
+    ///
+    /// Defined as ``1 - SS_res / SS_tot``; ``1.0`` is a perfect fit. Consistent
+    /// with :meth:`sklearn.base.RegressorMixin.score`.
+    fn score<'py>(
+        &self,
+        x: PyReadonlyArray2<'py, f64>,
+        y: PyReadonlyArray1<'py, f64>,
+    ) -> PyResult<f64> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("TheilSen"))?;
+        let x_mat = x.to_faer();
+        let y_col = y.to_faer();
+        Ok(fitted.score(&x_mat, &y_col))
     }
 
     /// Whether the model has been fitted.
@@ -153,7 +177,7 @@ impl PyTheilSen {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("TheilSen"))?;
 
         Ok(fitted.coefficients().into_numpy(py))
     }
@@ -164,7 +188,7 @@ impl PyTheilSen {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("TheilSen"))?;
 
         Ok(fitted.intercept())
     }
@@ -175,7 +199,7 @@ impl PyTheilSen {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("TheilSen"))?;
 
         Ok(fitted.result().r_squared)
     }
@@ -186,7 +210,7 @@ impl PyTheilSen {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("TheilSen"))?;
 
         Ok(fitted.result().mse)
     }
@@ -197,7 +221,7 @@ impl PyTheilSen {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("TheilSen"))?;
 
         Ok(fitted.result().rmse)
     }
@@ -208,7 +232,7 @@ impl PyTheilSen {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("TheilSen"))?;
 
         Ok((&fitted.result().residuals).into_numpy(py))
     }
@@ -219,7 +243,7 @@ impl PyTheilSen {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("TheilSen"))?;
 
         Ok(fitted.result().n_observations)
     }

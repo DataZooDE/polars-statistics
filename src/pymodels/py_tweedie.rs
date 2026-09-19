@@ -47,16 +47,21 @@ pub struct PyTweedie {
 #[pymethods]
 impl PyTweedie {
     #[new]
-    #[pyo3(signature = (var_power=1.5, link_power=None, with_intercept=true, max_iter=100, tol=1e-6, lambda_=0.0))]
+    #[pyo3(signature = (var_power=1.5, link_power=None, add_intercept=None, with_intercept=None, max_iter=100, tol=1e-6, lambda_=0.0))]
+    #[allow(clippy::too_many_arguments)]
     fn new(
+        py: Python<'_>,
         var_power: f64,
         link_power: Option<f64>,
-        with_intercept: bool,
+        add_intercept: Option<bool>,
+        with_intercept: Option<bool>,
         max_iter: usize,
         tol: f64,
         lambda_: f64,
-    ) -> Self {
-        Self {
+    ) -> PyResult<Self> {
+        let with_intercept =
+            crate::pymodels::errors::resolve_intercept(py, add_intercept, with_intercept, true)?;
+        Ok(Self {
             var_power,
             link_power,
             with_intercept,
@@ -64,7 +69,7 @@ impl PyTweedie {
             tol,
             lambda_,
             fitted: None,
-        }
+        })
     }
 
     /// Create a Gaussian (Normal) Tweedie model (var_power=0).
@@ -117,6 +122,7 @@ impl PyTweedie {
         x: PyReadonlyArray2<'py, f64>,
         y: PyReadonlyArray1<'py, f64>,
     ) -> PyResult<PyRefMut<'py, Self>> {
+        crate::pymodels::errors::validate_xy("Tweedie", &x, &y)?;
         let x_mat = x.to_faer();
         let y_col = y.to_faer();
 
@@ -149,7 +155,7 @@ impl PyTweedie {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Tweedie"))?;
 
         let x_mat = x.to_faer();
         let predictions = fitted.predict(&x_mat);
@@ -166,7 +172,7 @@ impl PyTweedie {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Tweedie"))?;
 
         Ok(fitted.coefficients().into_numpy(py))
     }
@@ -176,7 +182,7 @@ impl PyTweedie {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Tweedie"))?;
 
         Ok(fitted.intercept())
     }
@@ -186,7 +192,7 @@ impl PyTweedie {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Tweedie"))?;
 
         Ok(fitted
             .result()
@@ -200,7 +206,7 @@ impl PyTweedie {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Tweedie"))?;
 
         Ok(fitted
             .result()
@@ -214,7 +220,7 @@ impl PyTweedie {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Tweedie"))?;
 
         Ok(Some(fitted.result().aic))
     }
@@ -224,7 +230,7 @@ impl PyTweedie {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Tweedie"))?;
 
         Ok(Some(fitted.result().bic))
     }

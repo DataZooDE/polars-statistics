@@ -32,8 +32,8 @@ def _resolve_intercept(
         )
     if with_intercept is not None:
         warnings.warn(
-            "Parameter 'with_intercept' is deprecated and will be removed in v0.6.0. "
-            "Use 'add_intercept' instead.",
+            "Parameter 'with_intercept' is deprecated and will be removed in a "
+            "future release. Use 'add_intercept' instead.",
             FutureWarning,
             stacklevel=3,
         )

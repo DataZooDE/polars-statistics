@@ -162,12 +162,53 @@ impl PyIsotonic {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Isotonic"))?;
 
         let x_col = x.to_faer();
         let predictions = fitted.predict_1d(&x_col);
 
         Ok(predictions.into_numpy(py))
+    }
+
+    /// R² (coefficient of determination) of the prediction on ``(x, y)``.
+    ///
+    /// Isotonic regression is single-feature, so ``x`` is 1-D (matching
+    /// :meth:`predict`). Defined as ``1 - SS_res / SS_tot`` for consistency with
+    /// the other regressor classes.
+    fn score<'py>(
+        &self,
+        x: PyReadonlyArray1<'py, f64>,
+        y: PyReadonlyArray1<'py, f64>,
+    ) -> PyResult<f64> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Isotonic"))?;
+        let x_col = x.to_faer();
+        let y_col = y.to_faer();
+        let n = y_col.nrows();
+        if n == 0 {
+            return Err(crate::pymodels::errors::empty_input_err("Isotonic"));
+        }
+        if x_col.nrows() != n {
+            return Err(crate::pymodels::errors::x_y_row_mismatch_err(
+                "Isotonic",
+                x_col.nrows(),
+                n,
+            ));
+        }
+        let preds = fitted.predict_1d(&x_col);
+        let y_mean: f64 = y_col.iter().sum::<f64>() / n as f64;
+        let tss: f64 = y_col.iter().map(|&yi| (yi - y_mean).powi(2)).sum();
+        let rss: f64 = y_col
+            .iter()
+            .zip(preds.iter())
+            .map(|(&yi, &pi)| (yi - pi).powi(2))
+            .sum();
+        if tss == 0.0 {
+            return Ok(if rss == 0.0 { 1.0 } else { 0.0 });
+        }
+        Ok(1.0 - rss / tss)
     }
 
     /// Predict using 2D array (uses first column only).
@@ -179,7 +220,7 @@ impl PyIsotonic {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Isotonic"))?;
 
         let x_mat = x.to_faer();
         let predictions = fitted.predict(&x_mat);
@@ -198,7 +239,7 @@ impl PyIsotonic {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Isotonic"))?;
 
         Ok(fitted.is_increasing())
     }
@@ -209,7 +250,7 @@ impl PyIsotonic {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Isotonic"))?;
 
         Ok(fitted.x_thresholds().into_numpy(py))
     }
@@ -220,7 +261,7 @@ impl PyIsotonic {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Isotonic"))?;
 
         Ok(fitted.y_values().into_numpy(py))
     }
@@ -231,7 +272,7 @@ impl PyIsotonic {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Isotonic"))?;
 
         Ok(fitted.fitted_values().into_numpy(py))
     }
@@ -242,7 +283,7 @@ impl PyIsotonic {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Isotonic"))?;
 
         Ok(fitted.result().r_squared)
     }
@@ -253,7 +294,7 @@ impl PyIsotonic {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Isotonic"))?;
 
         Ok((&fitted.result().residuals).into_numpy(py))
     }
@@ -264,7 +305,7 @@ impl PyIsotonic {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Isotonic"))?;
 
         Ok(fitted.result().n_observations)
     }
@@ -274,7 +315,7 @@ impl PyIsotonic {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Isotonic"))?;
 
         let result = fitted.result();
         let direction = if fitted.is_increasing() {

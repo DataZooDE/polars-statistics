@@ -3,6 +3,9 @@
 // Shared result-ergonomics helpers (to_dict / __repr__ / summary).
 pub(crate) mod ergonomics;
 
+// Shared contextual error constructors (not-fitted / shape validation).
+pub(crate) mod errors;
+
 // Regression models
 mod py_aid;
 mod py_alm;

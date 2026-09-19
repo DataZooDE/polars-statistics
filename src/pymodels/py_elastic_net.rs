@@ -37,16 +37,26 @@ pub struct PyElasticNet {
 #[pymethods]
 impl PyElasticNet {
     #[new]
-    #[pyo3(signature = (lambda_=1.0, alpha=0.5, with_intercept=true, max_iter=1000, tol=1e-4))]
-    fn new(lambda_: f64, alpha: f64, with_intercept: bool, max_iter: usize, tol: f64) -> Self {
-        Self {
+    #[pyo3(signature = (lambda_=1.0, alpha=0.5, add_intercept=None, with_intercept=None, max_iter=1000, tol=1e-4))]
+    fn new(
+        py: Python<'_>,
+        lambda_: f64,
+        alpha: f64,
+        add_intercept: Option<bool>,
+        with_intercept: Option<bool>,
+        max_iter: usize,
+        tol: f64,
+    ) -> PyResult<Self> {
+        let with_intercept =
+            crate::pymodels::errors::resolve_intercept(py, add_intercept, with_intercept, true)?;
+        Ok(Self {
             lambda_,
             alpha,
             with_intercept,
             max_iter,
             tol,
             fitted: None,
-        }
+        })
     }
 
     fn fit<'py>(
@@ -54,6 +64,7 @@ impl PyElasticNet {
         x: PyReadonlyArray2<'py, f64>,
         y: PyReadonlyArray1<'py, f64>,
     ) -> PyResult<PyRefMut<'py, Self>> {
+        crate::pymodels::errors::validate_xy("ElasticNet", &x, &y)?;
         let x_mat = x.to_faer();
         let y_col = y.to_faer();
 
@@ -81,12 +92,30 @@ impl PyElasticNet {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("ElasticNet"))?;
 
         let x_mat = x.to_faer();
         let predictions = fitted.predict(&x_mat);
 
         Ok(predictions.into_numpy(py))
+    }
+
+    /// R² (coefficient of determination) of the prediction on ``(X, y)``.
+    ///
+    /// Defined as ``1 - SS_res / SS_tot``; ``1.0`` is a perfect fit. Consistent
+    /// with :meth:`sklearn.base.RegressorMixin.score`.
+    fn score<'py>(
+        &self,
+        x: PyReadonlyArray2<'py, f64>,
+        y: PyReadonlyArray1<'py, f64>,
+    ) -> PyResult<f64> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("ElasticNet"))?;
+        let x_mat = x.to_faer();
+        let y_col = y.to_faer();
+        Ok(fitted.score(&x_mat, &y_col))
     }
 
     fn is_fitted(&self) -> bool {
@@ -98,7 +127,7 @@ impl PyElasticNet {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("ElasticNet"))?;
 
         Ok(fitted.coefficients().into_numpy(py))
     }
@@ -108,7 +137,7 @@ impl PyElasticNet {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("ElasticNet"))?;
 
         Ok(fitted.intercept())
     }
@@ -118,7 +147,7 @@ impl PyElasticNet {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("ElasticNet"))?;
 
         Ok(fitted.r_squared())
     }

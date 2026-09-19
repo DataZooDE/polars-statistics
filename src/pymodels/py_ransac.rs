@@ -60,17 +60,22 @@ pub struct PyRANSAC {
 #[pymethods]
 impl PyRANSAC {
     #[new]
-    #[pyo3(signature = (with_intercept=true, min_samples=None, residual_threshold=None, max_trials=100, stop_probability=0.99, stop_n_inliers=None, random_state=0))]
+    #[pyo3(signature = (add_intercept=None, with_intercept=None, min_samples=None, residual_threshold=None, max_trials=100, stop_probability=0.99, stop_n_inliers=None, random_state=0))]
+    #[allow(clippy::too_many_arguments)]
     fn new(
-        with_intercept: bool,
+        py: Python<'_>,
+        add_intercept: Option<bool>,
+        with_intercept: Option<bool>,
         min_samples: Option<usize>,
         residual_threshold: Option<f64>,
         max_trials: usize,
         stop_probability: f64,
         stop_n_inliers: Option<usize>,
         random_state: u64,
-    ) -> Self {
-        Self {
+    ) -> PyResult<Self> {
+        let with_intercept =
+            crate::pymodels::errors::resolve_intercept(py, add_intercept, with_intercept, true)?;
+        Ok(Self {
             with_intercept,
             min_samples,
             residual_threshold,
@@ -79,7 +84,7 @@ impl PyRANSAC {
             stop_n_inliers,
             random_state,
             fitted: None,
-        }
+        })
     }
 
     /// Fit the RANSAC regression model.
@@ -90,6 +95,7 @@ impl PyRANSAC {
         x: PyReadonlyArray2<'py, f64>,
         y: PyReadonlyArray1<'py, f64>,
     ) -> PyResult<PyRefMut<'py, Self>> {
+        crate::pymodels::errors::validate_xy("RANSAC", &x, &y)?;
         let x_mat = x.to_faer();
         let y_col = y.to_faer();
 
@@ -136,10 +142,28 @@ impl PyRANSAC {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("RANSAC"))?;
 
         let x_mat = x.to_faer();
         Ok(fitted.predict(&x_mat).into_numpy(py))
+    }
+
+    /// R² (coefficient of determination) of the prediction on ``(X, y)``.
+    ///
+    /// Defined as ``1 - SS_res / SS_tot``; ``1.0`` is a perfect fit. Consistent
+    /// with :meth:`sklearn.base.RegressorMixin.score`.
+    fn score<'py>(
+        &self,
+        x: PyReadonlyArray2<'py, f64>,
+        y: PyReadonlyArray1<'py, f64>,
+    ) -> PyResult<f64> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("RANSAC"))?;
+        let x_mat = x.to_faer();
+        let y_col = y.to_faer();
+        Ok(fitted.score(&x_mat, &y_col))
     }
 
     /// Whether the model has been fitted.
@@ -153,7 +177,7 @@ impl PyRANSAC {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("RANSAC"))?;
 
         Ok(fitted.coefficients().into_numpy(py))
     }
@@ -164,7 +188,7 @@ impl PyRANSAC {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("RANSAC"))?;
 
         Ok(fitted.intercept())
     }
@@ -175,7 +199,7 @@ impl PyRANSAC {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("RANSAC"))?;
 
         Ok(fitted.result().r_squared)
     }
@@ -186,7 +210,7 @@ impl PyRANSAC {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("RANSAC"))?;
 
         Ok((&fitted.result().residuals).into_numpy(py))
     }
@@ -197,7 +221,7 @@ impl PyRANSAC {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("RANSAC"))?;
 
         Ok(PyArray1::from_slice(py, fitted.inlier_mask()))
     }
@@ -208,7 +232,7 @@ impl PyRANSAC {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("RANSAC"))?;
 
         Ok(fitted.n_inliers())
     }
@@ -219,7 +243,7 @@ impl PyRANSAC {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("RANSAC"))?;
 
         Ok(fitted.n_trials())
     }
@@ -230,7 +254,7 @@ impl PyRANSAC {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("RANSAC"))?;
 
         Ok(fitted.residual_threshold())
     }
@@ -241,7 +265,7 @@ impl PyRANSAC {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("RANSAC"))?;
 
         Ok(fitted.result().n_observations)
     }
