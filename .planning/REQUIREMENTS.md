@@ -48,7 +48,7 @@ Requirements for this milestone. Each maps to exactly one roadmap phase.
 
 ### Release
 
-- [ ] **REL-05**: `polars-statistics` is bumped 0.6.0 → 0.7.0 across all version sources (`Cargo.toml`, `pyproject.toml`, `python/polars_statistics/__init__.py` `__version__`) and they stay aligned
+- [x] **REL-05**: `polars-statistics` is bumped 0.6.0 → 0.7.0 across all version sources (`Cargo.toml`, `pyproject.toml`, `python/polars_statistics/__init__.py` `__version__`) and they stay aligned
 - [ ] **REL-06**: 0.7.0 is published to production PyPI via the GitHub Actions OIDC pipeline and passes a post-release install/import smoke check
 
 ## v2 Requirements
@@ -90,7 +90,7 @@ Deferred to future releases.
 | DOCS-09 | Phase 11 | Complete |
 | DOCS-10 | Phase 11 | Complete |
 | DOCS-11 | Phase 11 | Complete |
-| REL-05 | Phase 12 | Pending |
+| REL-05 | Phase 12 | Complete |
 | REL-06 | Phase 12 | Pending |
 
 **Coverage:**
