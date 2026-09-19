@@ -100,6 +100,7 @@ jobs:
           mypy --python-version 3.12 --ignore-missing-imports /tmp/type_smoke.py
           mypy --python-version 3.12 --ignore-missing-imports \
             python/polars_statistics/exprs python/polars_statistics/formula \
+            python/polars_statistics/results.py \
             python/polars_statistics/_polars_statistics.pyi
 
   test-python:
