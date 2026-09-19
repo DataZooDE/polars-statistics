@@ -93,8 +93,12 @@ jobs:
           e: pl.Expr = ps.ols("y", "x1", "x2")
           t: pl.Expr = ps.ttest_ind("a", "b")
           PY
-          mypy --python-version 3.10 --ignore-missing-imports /tmp/type_smoke.py
-          mypy --python-version 3.10 --ignore-missing-imports \
+          # Target 3.12 to match the runner + numpy's PEP 695 stubs (older
+          # targets make mypy reject numpy's `type` statements before it ever
+          # reaches our files). Our stubs are plain 3.9-compatible content, and
+          # the pytest drift guard already covers the full 3.9-3.12 matrix.
+          mypy --python-version 3.12 --ignore-missing-imports /tmp/type_smoke.py
+          mypy --python-version 3.12 --ignore-missing-imports \
             python/polars_statistics/exprs python/polars_statistics/formula \
             python/polars_statistics/_polars_statistics.pyi
 
