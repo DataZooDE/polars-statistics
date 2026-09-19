@@ -230,7 +230,9 @@ consistency.
 > **Breaking change in 0.6.0:** The API now accepts a **matrix input** — pass one column
 > per rater, and the expression stacks them into a subjects × raters matrix internally.
 > The previous stub implementation returned all-NaN output regardless of input; this
-> version computes real ICC values validated against R's `irr::icc()`.
+> version computes real ICC values validated against R's `irr::icc()`. See the
+> [Migration Guide](../../migration.md#icc-single-column-matrix-input) for an
+> old-vs-new side-by-side and how to pivot long-format data.
 
 ```python
 ps.icc(
