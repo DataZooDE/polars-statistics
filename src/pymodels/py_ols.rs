@@ -51,20 +51,24 @@ pub struct PyOLS {
 impl PyOLS {
     /// Create a new OLS model.
     #[new]
-    #[pyo3(signature = (with_intercept=true, compute_inference=true, confidence_level=0.95, solve_method=None))]
+    #[pyo3(signature = (add_intercept=None, with_intercept=None, compute_inference=true, confidence_level=0.95, solve_method=None))]
     fn new(
-        with_intercept: bool,
+        py: Python<'_>,
+        add_intercept: Option<bool>,
+        with_intercept: Option<bool>,
         compute_inference: bool,
         confidence_level: f64,
         solve_method: Option<String>,
-    ) -> Self {
-        Self {
+    ) -> PyResult<Self> {
+        let with_intercept =
+            crate::pymodels::errors::resolve_intercept(py, add_intercept, with_intercept, true)?;
+        Ok(Self {
             with_intercept,
             compute_inference,
             confidence_level,
             solve_method,
             fitted: None,
-        }
+        })
     }
 
     /// Fit the model to the data.
@@ -85,6 +89,7 @@ impl PyOLS {
         x: PyReadonlyArray2<'py, f64>,
         y: PyReadonlyArray1<'py, f64>,
     ) -> PyResult<PyRefMut<'py, Self>> {
+        crate::pymodels::errors::validate_xy("OLS", &x, &y)?;
         let x_mat = x.to_faer();
         let y_col = y.to_faer();
 
@@ -129,12 +134,30 @@ impl PyOLS {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("OLS"))?;
 
         let x_mat = x.to_faer();
         let predictions = fitted.predict(&x_mat);
 
         Ok(predictions.into_numpy(py))
+    }
+
+    /// R² (coefficient of determination) of the prediction on ``(X, y)``.
+    ///
+    /// Defined as ``1 - SS_res / SS_tot``; ``1.0`` is a perfect fit. Consistent
+    /// with :meth:`sklearn.base.RegressorMixin.score`.
+    fn score<'py>(
+        &self,
+        x: PyReadonlyArray2<'py, f64>,
+        y: PyReadonlyArray1<'py, f64>,
+    ) -> PyResult<f64> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("OLS"))?;
+        let x_mat = x.to_faer();
+        let y_col = y.to_faer();
+        Ok(fitted.score(&x_mat, &y_col))
     }
 
     /// Check if the model has been fitted.
@@ -148,7 +171,7 @@ impl PyOLS {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("OLS"))?;
 
         Ok(fitted.coefficients().into_numpy(py))
     }
@@ -159,7 +182,7 @@ impl PyOLS {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("OLS"))?;
 
         Ok(fitted.intercept())
     }
@@ -170,7 +193,7 @@ impl PyOLS {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("OLS"))?;
 
         Ok(fitted.r_squared())
     }
@@ -181,7 +204,7 @@ impl PyOLS {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("OLS"))?;
 
         Ok(fitted.result().adj_r_squared)
     }
@@ -192,7 +215,7 @@ impl PyOLS {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("OLS"))?;
 
         Ok(fitted.result().rmse)
     }
@@ -203,7 +226,7 @@ impl PyOLS {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("OLS"))?;
 
         Ok(fitted.result().mse)
     }
@@ -214,7 +237,7 @@ impl PyOLS {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("OLS"))?;
 
         Ok(fitted.result().f_statistic)
     }
@@ -225,7 +248,7 @@ impl PyOLS {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("OLS"))?;
 
         Ok(fitted.result().f_pvalue)
     }
@@ -236,7 +259,7 @@ impl PyOLS {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("OLS"))?;
 
         Ok(fitted.result().aic)
     }
@@ -247,7 +270,7 @@ impl PyOLS {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("OLS"))?;
 
         Ok(fitted.result().bic)
     }
@@ -258,7 +281,7 @@ impl PyOLS {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("OLS"))?;
 
         Ok(fitted.result().log_likelihood)
     }
@@ -269,7 +292,7 @@ impl PyOLS {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("OLS"))?;
 
         Ok(fitted
             .result()
@@ -284,7 +307,7 @@ impl PyOLS {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("OLS"))?;
 
         Ok(fitted
             .result()
@@ -299,7 +322,7 @@ impl PyOLS {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("OLS"))?;
 
         Ok(fitted
             .result()
@@ -314,7 +337,7 @@ impl PyOLS {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("OLS"))?;
 
         Ok((&fitted.result().residuals).into_numpy(py))
     }
@@ -325,7 +348,7 @@ impl PyOLS {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("OLS"))?;
 
         Ok((&fitted.result().fitted_values).into_numpy(py))
     }
@@ -336,7 +359,7 @@ impl PyOLS {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("OLS"))?;
 
         Ok(fitted.result().n_observations)
     }
@@ -347,7 +370,7 @@ impl PyOLS {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("OLS"))?;
 
         Ok(fitted.result().n_parameters)
     }
@@ -377,7 +400,7 @@ impl PyOLS {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("OLS"))?;
 
         let hc = match hc_type {
             "hc0" => HcType::HC0,
@@ -416,7 +439,7 @@ impl PyOLS {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("OLS"))?;
 
         let result = fitted.result();
         let mut summary = String::new();

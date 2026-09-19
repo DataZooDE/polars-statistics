@@ -131,21 +131,25 @@ pub struct PyALM {
 #[pymethods]
 impl PyALM {
     #[new]
-    #[pyo3(signature = (distribution="normal", link=None, loss="likelihood", role_trim=None, with_intercept=true, compute_inference=true, confidence_level=0.95, max_iter=100, tol=1e-8, extra_parameter=None))]
+    #[pyo3(signature = (distribution="normal", link=None, loss="likelihood", role_trim=None, add_intercept=None, with_intercept=None, compute_inference=true, confidence_level=0.95, max_iter=100, tol=1e-8, extra_parameter=None))]
     #[allow(clippy::too_many_arguments)]
     fn new(
+        py: Python<'_>,
         distribution: &str,
         link: Option<&str>,
         loss: &str,
         role_trim: Option<f64>,
-        with_intercept: bool,
+        add_intercept: Option<bool>,
+        with_intercept: Option<bool>,
         compute_inference: bool,
         confidence_level: f64,
         max_iter: usize,
         tol: f64,
         extra_parameter: Option<f64>,
-    ) -> Self {
-        Self {
+    ) -> PyResult<Self> {
+        let with_intercept =
+            crate::pymodels::errors::resolve_intercept(py, add_intercept, with_intercept, true)?;
+        Ok(Self {
             distribution: distribution.to_string(),
             link: link.map(|s| s.to_string()),
             loss: loss.to_string(),
@@ -157,18 +161,25 @@ impl PyALM {
             tol,
             extra_parameter,
             fitted: None,
-        }
+        })
     }
 
     /// Create a Normal (Gaussian) ALM.
     #[staticmethod]
-    #[pyo3(signature = (with_intercept=true, compute_inference=true))]
-    fn normal(with_intercept: bool, compute_inference: bool) -> Self {
+    #[pyo3(signature = (add_intercept=None, with_intercept=None, compute_inference=true))]
+    fn normal(
+        py: Python<'_>,
+        add_intercept: Option<bool>,
+        with_intercept: Option<bool>,
+        compute_inference: bool,
+    ) -> PyResult<Self> {
         Self::new(
+            py,
             "normal",
             None,
             "likelihood",
             None,
+            add_intercept,
             with_intercept,
             compute_inference,
             0.95,
@@ -180,13 +191,20 @@ impl PyALM {
 
     /// Create a Laplace ALM.
     #[staticmethod]
-    #[pyo3(signature = (with_intercept=true, compute_inference=true))]
-    fn laplace(with_intercept: bool, compute_inference: bool) -> Self {
+    #[pyo3(signature = (add_intercept=None, with_intercept=None, compute_inference=true))]
+    fn laplace(
+        py: Python<'_>,
+        add_intercept: Option<bool>,
+        with_intercept: Option<bool>,
+        compute_inference: bool,
+    ) -> PyResult<Self> {
         Self::new(
+            py,
             "laplace",
             None,
             "likelihood",
             None,
+            add_intercept,
             with_intercept,
             compute_inference,
             0.95,
@@ -198,13 +216,21 @@ impl PyALM {
 
     /// Create a Student-t ALM.
     #[staticmethod]
-    #[pyo3(signature = (df=5.0, with_intercept=true, compute_inference=true))]
-    fn student_t(df: f64, with_intercept: bool, compute_inference: bool) -> Self {
+    #[pyo3(signature = (df=5.0, add_intercept=None, with_intercept=None, compute_inference=true))]
+    fn student_t(
+        py: Python<'_>,
+        df: f64,
+        add_intercept: Option<bool>,
+        with_intercept: Option<bool>,
+        compute_inference: bool,
+    ) -> PyResult<Self> {
         Self::new(
+            py,
             "student_t",
             None,
             "likelihood",
             None,
+            add_intercept,
             with_intercept,
             compute_inference,
             0.95,
@@ -216,13 +242,20 @@ impl PyALM {
 
     /// Create a Gamma ALM (for positive continuous data).
     #[staticmethod]
-    #[pyo3(signature = (with_intercept=true, compute_inference=true))]
-    fn gamma(with_intercept: bool, compute_inference: bool) -> Self {
+    #[pyo3(signature = (add_intercept=None, with_intercept=None, compute_inference=true))]
+    fn gamma(
+        py: Python<'_>,
+        add_intercept: Option<bool>,
+        with_intercept: Option<bool>,
+        compute_inference: bool,
+    ) -> PyResult<Self> {
         Self::new(
+            py,
             "gamma",
             Some("log"),
             "likelihood",
             None,
+            add_intercept,
             with_intercept,
             compute_inference,
             0.95,
@@ -234,13 +267,20 @@ impl PyALM {
 
     /// Create a Beta ALM (for data in (0,1)).
     #[staticmethod]
-    #[pyo3(signature = (with_intercept=true, compute_inference=true))]
-    fn beta(with_intercept: bool, compute_inference: bool) -> Self {
+    #[pyo3(signature = (add_intercept=None, with_intercept=None, compute_inference=true))]
+    fn beta(
+        py: Python<'_>,
+        add_intercept: Option<bool>,
+        with_intercept: Option<bool>,
+        compute_inference: bool,
+    ) -> PyResult<Self> {
         Self::new(
+            py,
             "beta",
             Some("logit"),
             "likelihood",
             None,
+            add_intercept,
             with_intercept,
             compute_inference,
             0.95,
@@ -252,13 +292,20 @@ impl PyALM {
 
     /// Create a Poisson ALM (for count data).
     #[staticmethod]
-    #[pyo3(signature = (with_intercept=true, compute_inference=true))]
-    fn poisson(with_intercept: bool, compute_inference: bool) -> Self {
+    #[pyo3(signature = (add_intercept=None, with_intercept=None, compute_inference=true))]
+    fn poisson(
+        py: Python<'_>,
+        add_intercept: Option<bool>,
+        with_intercept: Option<bool>,
+        compute_inference: bool,
+    ) -> PyResult<Self> {
         Self::new(
+            py,
             "poisson",
             Some("log"),
             "likelihood",
             None,
+            add_intercept,
             with_intercept,
             compute_inference,
             0.95,
@@ -281,6 +328,7 @@ impl PyALM {
         x: PyReadonlyArray2<'py, f64>,
         y: PyReadonlyArray1<'py, f64>,
     ) -> PyResult<PyRefMut<'py, Self>> {
+        crate::pymodels::errors::validate_xy("ALM", &x, &y)?;
         let x_mat = x.to_faer();
         let y_col = y.to_faer();
 
@@ -334,12 +382,30 @@ impl PyALM {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("ALM"))?;
 
         let x_mat = x.to_faer();
         let predictions = fitted.predict(&x_mat);
 
         Ok(predictions.into_numpy(py))
+    }
+
+    /// R² (coefficient of determination) of the prediction on ``(X, y)``.
+    ///
+    /// Defined as ``1 - SS_res / SS_tot``; ``1.0`` is a perfect fit. Consistent
+    /// with :meth:`sklearn.base.RegressorMixin.score`.
+    fn score<'py>(
+        &self,
+        x: PyReadonlyArray2<'py, f64>,
+        y: PyReadonlyArray1<'py, f64>,
+    ) -> PyResult<f64> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("ALM"))?;
+        let x_mat = x.to_faer();
+        let y_col = y.to_faer();
+        Ok(fitted.score(&x_mat, &y_col))
     }
 
     fn is_fitted(&self) -> bool {
@@ -351,7 +417,7 @@ impl PyALM {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("ALM"))?;
 
         Ok(fitted.coefficients().into_numpy(py))
     }
@@ -361,7 +427,7 @@ impl PyALM {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("ALM"))?;
 
         Ok(fitted.intercept())
     }
@@ -371,7 +437,7 @@ impl PyALM {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("ALM"))?;
 
         Ok(fitted
             .result()
@@ -385,7 +451,7 @@ impl PyALM {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("ALM"))?;
 
         Ok(fitted
             .result()
@@ -399,7 +465,7 @@ impl PyALM {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("ALM"))?;
 
         Ok(fitted.result().aic)
     }
@@ -409,7 +475,7 @@ impl PyALM {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("ALM"))?;
 
         Ok(fitted.result().bic)
     }
@@ -419,7 +485,7 @@ impl PyALM {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("ALM"))?;
 
         Ok(fitted.scale())
     }
@@ -439,7 +505,7 @@ impl PyALM {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("ALM"))?;
 
         Ok((&fitted.result().residuals).into_numpy(py))
     }
@@ -449,7 +515,7 @@ impl PyALM {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("ALM"))?;
 
         Ok((&fitted.result().fitted_values).into_numpy(py))
     }
@@ -459,7 +525,7 @@ impl PyALM {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("ALM"))?;
 
         Ok(fitted.result().n_observations)
     }

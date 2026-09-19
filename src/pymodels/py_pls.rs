@@ -35,15 +35,24 @@ pub struct PyPls {
 #[pymethods]
 impl PyPls {
     #[new]
-    #[pyo3(signature = (n_components=2, with_intercept=true, tol=1e-6, scale=true))]
-    fn new(n_components: usize, with_intercept: bool, tol: f64, scale: bool) -> Self {
-        Self {
+    #[pyo3(signature = (n_components=2, add_intercept=None, with_intercept=None, tol=1e-6, scale=true))]
+    fn new(
+        py: Python<'_>,
+        n_components: usize,
+        add_intercept: Option<bool>,
+        with_intercept: Option<bool>,
+        tol: f64,
+        scale: bool,
+    ) -> PyResult<Self> {
+        let with_intercept =
+            crate::pymodels::errors::resolve_intercept(py, add_intercept, with_intercept, true)?;
+        Ok(Self {
             n_components,
             with_intercept,
             tol,
             scale,
             fitted: None,
-        }
+        })
     }
 
     fn fit<'py>(
@@ -51,6 +60,7 @@ impl PyPls {
         x: PyReadonlyArray2<'py, f64>,
         y: PyReadonlyArray1<'py, f64>,
     ) -> PyResult<PyRefMut<'py, Self>> {
+        crate::pymodels::errors::validate_xy("PLS", &x, &y)?;
         let x_mat = x.to_faer();
         let y_col = y.to_faer();
 
@@ -77,9 +87,27 @@ impl PyPls {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("PLS"))?;
         let x_mat = x.to_faer();
         Ok(fitted.predict(&x_mat).into_numpy(py))
+    }
+
+    /// R² (coefficient of determination) of the prediction on ``(X, y)``.
+    ///
+    /// Defined as ``1 - SS_res / SS_tot``; ``1.0`` is a perfect fit. Consistent
+    /// with :meth:`sklearn.base.RegressorMixin.score`.
+    fn score<'py>(
+        &self,
+        x: PyReadonlyArray2<'py, f64>,
+        y: PyReadonlyArray1<'py, f64>,
+    ) -> PyResult<f64> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("PLS"))?;
+        let x_mat = x.to_faer();
+        let y_col = y.to_faer();
+        Ok(fitted.score(&x_mat, &y_col))
     }
 
     /// Project `X` onto the latent component space.
@@ -91,7 +119,7 @@ impl PyPls {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("PLS"))?;
         let x_mat = x.to_faer();
         let scores = fitted.transform(&x_mat);
         Ok((&scores).into_numpy(py))
@@ -106,7 +134,7 @@ impl PyPls {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("PLS"))?;
         let coefs = &fitted.result().coefficients;
         Ok(coefs.into_numpy(py))
     }
@@ -116,7 +144,7 @@ impl PyPls {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("PLS"))?;
         Ok(fitted.result().intercept)
     }
 
@@ -125,7 +153,7 @@ impl PyPls {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("PLS"))?;
         Ok(fitted.n_components())
     }
 
@@ -138,7 +166,7 @@ impl PyPls {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("PLS"))?;
         let evr = fitted.explained_variance_ratio();
         Ok((&evr).into_numpy(py))
     }
@@ -148,7 +176,7 @@ impl PyPls {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("PLS"))?;
         Ok(fitted.result().r_squared)
     }
 
@@ -157,7 +185,7 @@ impl PyPls {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("PLS"))?;
         Ok(fitted.result().n_observations)
     }
     /// Informative repr: class name plus key state; never panics if unfitted.

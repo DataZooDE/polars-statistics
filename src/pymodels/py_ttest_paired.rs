@@ -121,7 +121,7 @@ impl PyTTestPaired {
         self.fitted
             .as_ref()
             .map(|r| r.statistic)
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_test_err("TTestPaired"))
     }
 
     /// Get the p-value.
@@ -130,7 +130,7 @@ impl PyTTestPaired {
         self.fitted
             .as_ref()
             .map(|r| r.p_value)
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_test_err("TTestPaired"))
     }
 
     /// Get the degrees of freedom.
@@ -139,7 +139,7 @@ impl PyTTestPaired {
         self.fitted
             .as_ref()
             .map(|r| r.df)
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_test_err("TTestPaired"))
     }
 
     /// Get the mean of the first sample.
@@ -148,7 +148,7 @@ impl PyTTestPaired {
         self.fitted
             .as_ref()
             .map(|r| r.mean_x)
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_test_err("TTestPaired"))
     }
 
     /// Get the mean of the second sample.
@@ -157,7 +157,7 @@ impl PyTTestPaired {
         self.fitted
             .as_ref()
             .map(|r| r.mean_y)
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_test_err("TTestPaired"))
     }
 
     /// Get the null hypothesis value.
@@ -166,7 +166,7 @@ impl PyTTestPaired {
         self.fitted
             .as_ref()
             .map(|r| r.null_value)
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_test_err("TTestPaired"))
     }
 
     /// Get the confidence interval as a numpy array [lower, upper].
@@ -175,7 +175,7 @@ impl PyTTestPaired {
         let result = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_test_err("TTestPaired"))?;
 
         match &result.conf_int {
             Some(ci) => Ok(Some(PyArray1::from_vec(py, vec![ci.lower, ci.upper]))),
@@ -188,7 +188,7 @@ impl PyTTestPaired {
         let result = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_test_err("TTestPaired"))?;
 
         let alt_str = match self.alternative {
             Alternative::TwoSided => "two-sided",

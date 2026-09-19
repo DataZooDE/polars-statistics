@@ -88,19 +88,23 @@ impl PyPassiveAggressive {
 #[pymethods]
 impl PyPassiveAggressive {
     #[new]
-    #[pyo3(signature = (c=1.0, epsilon=0.1, with_intercept=true, max_iter=1000, tol=1e-3, shuffle=true, loss="epsilon_insensitive", random_state=0))]
+    #[pyo3(signature = (c=1.0, epsilon=0.1, add_intercept=None, with_intercept=None, max_iter=1000, tol=1e-3, shuffle=true, loss="epsilon_insensitive", random_state=0))]
     #[allow(clippy::too_many_arguments)]
     fn new(
+        py: Python<'_>,
         c: f64,
         epsilon: f64,
-        with_intercept: bool,
+        add_intercept: Option<bool>,
+        with_intercept: Option<bool>,
         max_iter: usize,
         tol: f64,
         shuffle: bool,
         loss: &str,
         random_state: u64,
-    ) -> Self {
-        Self {
+    ) -> PyResult<Self> {
+        let with_intercept =
+            crate::pymodels::errors::resolve_intercept(py, add_intercept, with_intercept, true)?;
+        Ok(Self {
             c,
             epsilon,
             with_intercept,
@@ -111,7 +115,7 @@ impl PyPassiveAggressive {
             random_state,
             fitted: None,
             state: None,
-        }
+        })
     }
 
     /// Fit the model on the full training set.
@@ -131,6 +135,7 @@ impl PyPassiveAggressive {
         x: PyReadonlyArray2<'py, f64>,
         y: PyReadonlyArray1<'py, f64>,
     ) -> PyResult<PyRefMut<'py, Self>> {
+        crate::pymodels::errors::validate_xy("PassiveAggressive", &x, &y)?;
         let x_mat = x.to_faer();
         let y_col = y.to_faer();
         let model = slf.build_model();
@@ -232,9 +237,27 @@ impl PyPassiveAggressive {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("PassiveAggressive"))?;
         let x_mat = x.to_faer();
         Ok(fitted.predict(&x_mat).into_numpy(py))
+    }
+
+    /// R² (coefficient of determination) of the prediction on ``(X, y)``.
+    ///
+    /// Defined as ``1 - SS_res / SS_tot``; ``1.0`` is a perfect fit. Consistent
+    /// with :meth:`sklearn.base.RegressorMixin.score`.
+    fn score<'py>(
+        &self,
+        x: PyReadonlyArray2<'py, f64>,
+        y: PyReadonlyArray1<'py, f64>,
+    ) -> PyResult<f64> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("PassiveAggressive"))?;
+        let x_mat = x.to_faer();
+        let y_col = y.to_faer();
+        Ok(fitted.score(&x_mat, &y_col))
     }
 
     /// Whether the model has been fitted (either via ``fit`` or ``partial_fit``).
@@ -248,7 +271,7 @@ impl PyPassiveAggressive {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("PassiveAggressive"))?;
         Ok(fitted.n_iter())
     }
 
@@ -258,7 +281,7 @@ impl PyPassiveAggressive {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("PassiveAggressive"))?;
         Ok(fitted.coefficients().into_numpy(py))
     }
 
@@ -268,7 +291,7 @@ impl PyPassiveAggressive {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("PassiveAggressive"))?;
         Ok(fitted.intercept())
     }
 
@@ -278,7 +301,7 @@ impl PyPassiveAggressive {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("PassiveAggressive"))?;
         Ok(fitted.result().r_squared)
     }
 
@@ -288,7 +311,7 @@ impl PyPassiveAggressive {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("PassiveAggressive"))?;
         Ok(fitted.result().n_observations)
     }
     /// Informative repr: class name plus key state; never panics if unfitted.

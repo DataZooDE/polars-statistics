@@ -57,9 +57,18 @@ pub struct PyGLMM {
 impl PyGLMM {
     /// Construct a Gaussian GLMM (REML by default).
     #[staticmethod]
-    #[pyo3(signature = (with_intercept=true, reml=true, max_iter=100, tol=1e-8))]
-    fn gaussian(with_intercept: bool, reml: bool, max_iter: usize, tol: f64) -> Self {
-        Self {
+    #[pyo3(signature = (add_intercept=None, with_intercept=None, reml=true, max_iter=100, tol=1e-8))]
+    fn gaussian(
+        py: Python<'_>,
+        add_intercept: Option<bool>,
+        with_intercept: Option<bool>,
+        reml: bool,
+        max_iter: usize,
+        tol: f64,
+    ) -> PyResult<Self> {
+        let with_intercept =
+            crate::pymodels::errors::resolve_intercept(py, add_intercept, with_intercept, true)?;
+        Ok(Self {
             family: "gaussian".into(),
             with_intercept,
             random_intercept: true,
@@ -68,14 +77,23 @@ impl PyGLMM {
             max_iter,
             tol,
             fitted: None,
-        }
+        })
     }
 
     /// Construct a Poisson GLMM.
     #[staticmethod]
-    #[pyo3(signature = (with_intercept=true, reml=false, max_iter=100, tol=1e-8))]
-    fn poisson(with_intercept: bool, reml: bool, max_iter: usize, tol: f64) -> Self {
-        Self {
+    #[pyo3(signature = (add_intercept=None, with_intercept=None, reml=false, max_iter=100, tol=1e-8))]
+    fn poisson(
+        py: Python<'_>,
+        add_intercept: Option<bool>,
+        with_intercept: Option<bool>,
+        reml: bool,
+        max_iter: usize,
+        tol: f64,
+    ) -> PyResult<Self> {
+        let with_intercept =
+            crate::pymodels::errors::resolve_intercept(py, add_intercept, with_intercept, true)?;
+        Ok(Self {
             family: "poisson".into(),
             with_intercept,
             random_intercept: true,
@@ -84,14 +102,23 @@ impl PyGLMM {
             max_iter,
             tol,
             fitted: None,
-        }
+        })
     }
 
     /// Construct a Binomial (logistic) GLMM.
     #[staticmethod]
-    #[pyo3(signature = (with_intercept=true, reml=false, max_iter=100, tol=1e-8))]
-    fn binomial(with_intercept: bool, reml: bool, max_iter: usize, tol: f64) -> Self {
-        Self {
+    #[pyo3(signature = (add_intercept=None, with_intercept=None, reml=false, max_iter=100, tol=1e-8))]
+    fn binomial(
+        py: Python<'_>,
+        add_intercept: Option<bool>,
+        with_intercept: Option<bool>,
+        reml: bool,
+        max_iter: usize,
+        tol: f64,
+    ) -> PyResult<Self> {
+        let with_intercept =
+            crate::pymodels::errors::resolve_intercept(py, add_intercept, with_intercept, true)?;
+        Ok(Self {
             family: "binomial".into(),
             with_intercept,
             random_intercept: true,
@@ -100,7 +127,7 @@ impl PyGLMM {
             max_iter,
             tol,
             fitted: None,
-        }
+        })
     }
 
     /// Fit the GLMM with a single grouping factor.
@@ -125,6 +152,7 @@ impl PyGLMM {
         y: PyReadonlyArray1<'py, f64>,
         group: Vec<u64>,
     ) -> PyResult<PyRefMut<'py, Self>> {
+        crate::pymodels::errors::validate_xy("GLMM", &x, &y)?;
         let x_mat = x.to_faer();
         let y_col = y.to_faer();
         let n_rows = x_mat.nrows();
@@ -241,7 +269,7 @@ impl PyGLMM {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("GLMM"))?;
         let x_mat = x.to_faer();
         Ok(fitted.predict_fixed(&x_mat).into_numpy(py))
     }
@@ -259,7 +287,7 @@ impl PyGLMM {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("GLMM"))?;
         fitted
             .factors()
             .iter()
@@ -284,7 +312,7 @@ impl PyGLMM {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("GLMM"))?;
         Ok(PyArray1::from_slice(py, fitted.fixed_effects()))
     }
 
@@ -294,7 +322,7 @@ impl PyGLMM {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("GLMM"))?;
         Ok(PyArray1::from_slice(py, fitted.std_errors()))
     }
 
@@ -304,7 +332,7 @@ impl PyGLMM {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("GLMM"))?;
         Ok(fitted.intercept())
     }
 
@@ -314,7 +342,7 @@ impl PyGLMM {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("GLMM"))?;
         Ok(PyArray1::from_slice(py, fitted.slopes()))
     }
 
@@ -324,7 +352,7 @@ impl PyGLMM {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("GLMM"))?;
         Ok(PyArray1::from_slice(py, fitted.random_effects()))
     }
 
@@ -334,7 +362,7 @@ impl PyGLMM {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("GLMM"))?;
         Ok(PyArray1::from_slice(py, &fitted.random_sd()))
     }
 
@@ -344,7 +372,7 @@ impl PyGLMM {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("GLMM"))?;
         Ok(fitted.theta())
     }
 
@@ -354,7 +382,7 @@ impl PyGLMM {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("GLMM"))?;
         Ok(fitted.sigma())
     }
 
@@ -364,7 +392,7 @@ impl PyGLMM {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("GLMM"))?;
         Ok(fitted.deviance())
     }
 
@@ -374,7 +402,7 @@ impl PyGLMM {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("GLMM"))?;
         Ok(fitted.log_likelihood())
     }
 
@@ -384,7 +412,7 @@ impl PyGLMM {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("GLMM"))?;
         Ok(fitted.n_groups())
     }
 
@@ -394,7 +422,7 @@ impl PyGLMM {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("GLMM"))?;
         Ok(fitted.converged())
     }
 
@@ -404,7 +432,7 @@ impl PyGLMM {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("GLMM"))?;
         Ok(fitted.iterations())
     }
     /// Informative repr: class name plus key state; never panics if unfitted.

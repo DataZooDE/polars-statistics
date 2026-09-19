@@ -37,16 +37,21 @@ pub struct PyPoisson {
 #[pymethods]
 impl PyPoisson {
     #[new]
-    #[pyo3(signature = (with_intercept=true, compute_inference=true, confidence_level=0.95, max_iter=25, tol=1e-8, lambda_=0.0))]
+    #[pyo3(signature = (add_intercept=None, with_intercept=None, compute_inference=true, confidence_level=0.95, max_iter=25, tol=1e-8, lambda_=0.0))]
+    #[allow(clippy::too_many_arguments)]
     fn new(
-        with_intercept: bool,
+        py: Python<'_>,
+        add_intercept: Option<bool>,
+        with_intercept: Option<bool>,
         compute_inference: bool,
         confidence_level: f64,
         max_iter: usize,
         tol: f64,
         lambda_: f64,
-    ) -> Self {
-        Self {
+    ) -> PyResult<Self> {
+        let with_intercept =
+            crate::pymodels::errors::resolve_intercept(py, add_intercept, with_intercept, true)?;
+        Ok(Self {
             with_intercept,
             compute_inference,
             confidence_level,
@@ -54,7 +59,7 @@ impl PyPoisson {
             tol,
             lambda_,
             fitted: None,
-        }
+        })
     }
 
     /// Fit the Poisson regression model.
@@ -70,6 +75,7 @@ impl PyPoisson {
         x: PyReadonlyArray2<'py, f64>,
         y: PyReadonlyArray1<'py, f64>,
     ) -> PyResult<PyRefMut<'py, Self>> {
+        crate::pymodels::errors::validate_xy("Poisson", &x, &y)?;
         let x_mat = x.to_faer();
         let y_col = y.to_faer();
 
@@ -109,7 +115,7 @@ impl PyPoisson {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Poisson"))?;
 
         let x_mat = x.to_faer();
         let counts = fitted.predict_count(&x_mat);
@@ -126,7 +132,7 @@ impl PyPoisson {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Poisson"))?;
 
         let x_mat = x.to_faer();
         let linear = fitted.predict_linear(&x_mat);
@@ -143,7 +149,7 @@ impl PyPoisson {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Poisson"))?;
 
         Ok(fitted.coefficients().into_numpy(py))
     }
@@ -153,7 +159,7 @@ impl PyPoisson {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Poisson"))?;
 
         Ok(fitted.intercept())
     }
@@ -163,7 +169,7 @@ impl PyPoisson {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Poisson"))?;
 
         Ok(fitted
             .result()
@@ -177,7 +183,7 @@ impl PyPoisson {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Poisson"))?;
 
         Ok(fitted
             .result()
@@ -191,7 +197,7 @@ impl PyPoisson {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Poisson"))?;
 
         Ok(fitted.result().aic)
     }
@@ -201,7 +207,7 @@ impl PyPoisson {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Poisson"))?;
 
         Ok(fitted.result().bic)
     }
@@ -212,7 +218,7 @@ impl PyPoisson {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Poisson"))?;
 
         Ok(fitted.deviance_residuals().into_numpy(py))
     }
@@ -223,7 +229,7 @@ impl PyPoisson {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Poisson"))?;
 
         Ok(fitted.pearson_residuals().into_numpy(py))
     }

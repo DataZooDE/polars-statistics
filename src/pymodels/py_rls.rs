@@ -29,13 +29,20 @@ pub struct PyRLS {
 #[pymethods]
 impl PyRLS {
     #[new]
-    #[pyo3(signature = (forgetting_factor=1.0, with_intercept=true))]
-    fn new(forgetting_factor: f64, with_intercept: bool) -> Self {
-        Self {
+    #[pyo3(signature = (forgetting_factor=1.0, add_intercept=None, with_intercept=None))]
+    fn new(
+        py: Python<'_>,
+        forgetting_factor: f64,
+        add_intercept: Option<bool>,
+        with_intercept: Option<bool>,
+    ) -> PyResult<Self> {
+        let with_intercept =
+            crate::pymodels::errors::resolve_intercept(py, add_intercept, with_intercept, true)?;
+        Ok(Self {
             forgetting_factor,
             with_intercept,
             fitted: None,
-        }
+        })
     }
 
     fn fit<'py>(
@@ -43,6 +50,7 @@ impl PyRLS {
         x: PyReadonlyArray2<'py, f64>,
         y: PyReadonlyArray1<'py, f64>,
     ) -> PyResult<PyRefMut<'py, Self>> {
+        crate::pymodels::errors::validate_xy("RLS", &x, &y)?;
         let x_mat = x.to_faer();
         let y_col = y.to_faer();
 
@@ -67,12 +75,30 @@ impl PyRLS {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("RLS"))?;
 
         let x_mat = x.to_faer();
         let predictions = fitted.predict(&x_mat);
 
         Ok(predictions.into_numpy(py))
+    }
+
+    /// R² (coefficient of determination) of the prediction on ``(X, y)``.
+    ///
+    /// Defined as ``1 - SS_res / SS_tot``; ``1.0`` is a perfect fit. Consistent
+    /// with :meth:`sklearn.base.RegressorMixin.score`.
+    fn score<'py>(
+        &self,
+        x: PyReadonlyArray2<'py, f64>,
+        y: PyReadonlyArray1<'py, f64>,
+    ) -> PyResult<f64> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("RLS"))?;
+        let x_mat = x.to_faer();
+        let y_col = y.to_faer();
+        Ok(fitted.score(&x_mat, &y_col))
     }
 
     fn is_fitted(&self) -> bool {
@@ -84,7 +110,7 @@ impl PyRLS {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("RLS"))?;
 
         Ok(fitted.coefficients().into_numpy(py))
     }
@@ -94,7 +120,7 @@ impl PyRLS {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("RLS"))?;
 
         Ok(fitted.intercept())
     }
@@ -104,7 +130,7 @@ impl PyRLS {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("RLS"))?;
 
         Ok(fitted.r_squared())
     }

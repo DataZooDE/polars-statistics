@@ -37,16 +37,21 @@ pub struct PyLogistic {
 #[pymethods]
 impl PyLogistic {
     #[new]
-    #[pyo3(signature = (with_intercept=true, compute_inference=true, confidence_level=0.95, max_iter=25, tol=1e-8, lambda_=0.0))]
+    #[pyo3(signature = (add_intercept=None, with_intercept=None, compute_inference=true, confidence_level=0.95, max_iter=25, tol=1e-8, lambda_=0.0))]
+    #[allow(clippy::too_many_arguments)]
     fn new(
-        with_intercept: bool,
+        py: Python<'_>,
+        add_intercept: Option<bool>,
+        with_intercept: Option<bool>,
         compute_inference: bool,
         confidence_level: f64,
         max_iter: usize,
         tol: f64,
         lambda_: f64,
-    ) -> Self {
-        Self {
+    ) -> PyResult<Self> {
+        let with_intercept =
+            crate::pymodels::errors::resolve_intercept(py, add_intercept, with_intercept, true)?;
+        Ok(Self {
             with_intercept,
             compute_inference,
             confidence_level,
@@ -54,7 +59,7 @@ impl PyLogistic {
             tol,
             lambda_,
             fitted: None,
-        }
+        })
     }
 
     /// Fit the logistic regression model.
@@ -70,6 +75,7 @@ impl PyLogistic {
         x: PyReadonlyArray2<'py, f64>,
         y: PyReadonlyArray1<'py, f64>,
     ) -> PyResult<PyRefMut<'py, Self>> {
+        crate::pymodels::errors::validate_xy("Logistic", &x, &y)?;
         let x_mat = x.to_faer();
         let y_col = y.to_faer();
 
@@ -109,7 +115,7 @@ impl PyLogistic {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Logistic"))?;
 
         let x_mat = x.to_faer();
         let probabilities = fitted.predict_probability(&x_mat);
@@ -140,7 +146,7 @@ impl PyLogistic {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Logistic"))?;
 
         let x_mat = x.to_faer();
         let probabilities = fitted.predict_probability(&x_mat);
@@ -160,6 +166,49 @@ impl PyLogistic {
         Ok(numpy::PyArray1::from_vec(py, labels))
     }
 
+    /// Mean classification accuracy on ``(X, y)`` using ``threshold``.
+    ///
+    /// Predicts class labels (``P(y=1|x) >= threshold``) and returns the
+    /// fraction that match ``y``. Consistent with
+    /// :meth:`sklearn.base.ClassifierMixin.score` (accuracy for classifiers).
+    #[pyo3(signature = (x, y, threshold=0.5))]
+    fn score<'py>(
+        &self,
+        x: PyReadonlyArray2<'py, f64>,
+        y: PyReadonlyArray1<'py, f64>,
+        threshold: f64,
+    ) -> PyResult<f64> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Logistic"))?;
+        let x_mat = x.to_faer();
+        let y_arr = y.as_array();
+        let probabilities = fitted.predict_probability(&x_mat);
+        let n = probabilities.nrows();
+        if n != y_arr.len() {
+            return Err(crate::pymodels::errors::x_y_row_mismatch_err(
+                "Logistic",
+                n,
+                y_arr.len(),
+            ));
+        }
+        if n == 0 {
+            return Err(crate::pymodels::errors::empty_input_err("Logistic"));
+        }
+        let correct = (0..n)
+            .filter(|&i| {
+                let label = if probabilities[i] >= threshold {
+                    1.0
+                } else {
+                    0.0
+                };
+                (label - y_arr[i]).abs() < 0.5
+            })
+            .count();
+        Ok(correct as f64 / n as f64)
+    }
+
     /// Get linear predictor values.
     fn predict_linear<'py>(
         &self,
@@ -169,7 +218,7 @@ impl PyLogistic {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Logistic"))?;
 
         let x_mat = x.to_faer();
         let linear = fitted.predict_linear(&x_mat);
@@ -186,7 +235,7 @@ impl PyLogistic {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Logistic"))?;
 
         Ok(fitted.coefficients().into_numpy(py))
     }
@@ -196,7 +245,7 @@ impl PyLogistic {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Logistic"))?;
 
         Ok(fitted.intercept())
     }
@@ -206,7 +255,7 @@ impl PyLogistic {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Logistic"))?;
 
         Ok(fitted
             .result()
@@ -220,7 +269,7 @@ impl PyLogistic {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Logistic"))?;
 
         Ok(fitted
             .result()
@@ -234,7 +283,7 @@ impl PyLogistic {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Logistic"))?;
 
         Ok(fitted.result().aic)
     }
@@ -244,7 +293,7 @@ impl PyLogistic {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Logistic"))?;
 
         Ok(fitted.result().bic)
     }
@@ -255,7 +304,7 @@ impl PyLogistic {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Logistic"))?;
 
         Ok(fitted.deviance_residuals().into_numpy(py))
     }
@@ -266,7 +315,7 @@ impl PyLogistic {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Logistic"))?;
 
         Ok(fitted.pearson_residuals().into_numpy(py))
     }

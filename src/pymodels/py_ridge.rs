@@ -48,20 +48,24 @@ pub struct PyRidge {
 #[pymethods]
 impl PyRidge {
     #[new]
-    #[pyo3(signature = (lambda_=1.0, with_intercept=true, compute_inference=true, confidence_level=0.95))]
+    #[pyo3(signature = (lambda_=1.0, add_intercept=None, with_intercept=None, compute_inference=true, confidence_level=0.95))]
     fn new(
+        py: Python<'_>,
         lambda_: f64,
-        with_intercept: bool,
+        add_intercept: Option<bool>,
+        with_intercept: Option<bool>,
         compute_inference: bool,
         confidence_level: f64,
-    ) -> Self {
-        Self {
+    ) -> PyResult<Self> {
+        let with_intercept =
+            crate::pymodels::errors::resolve_intercept(py, add_intercept, with_intercept, true)?;
+        Ok(Self {
             lambda_,
             with_intercept,
             compute_inference,
             confidence_level,
             fitted: None,
-        }
+        })
     }
 
     /// Fit the Ridge regression model.
@@ -82,6 +86,7 @@ impl PyRidge {
         x: PyReadonlyArray2<'py, f64>,
         y: PyReadonlyArray1<'py, f64>,
     ) -> PyResult<PyRefMut<'py, Self>> {
+        crate::pymodels::errors::validate_xy("Ridge", &x, &y)?;
         let x_mat = x.to_faer();
         let y_col = y.to_faer();
 
@@ -119,12 +124,30 @@ impl PyRidge {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Ridge"))?;
 
         let x_mat = x.to_faer();
         let predictions = fitted.predict(&x_mat);
 
         Ok(predictions.into_numpy(py))
+    }
+
+    /// R² (coefficient of determination) of the prediction on ``(X, y)``.
+    ///
+    /// Defined as ``1 - SS_res / SS_tot``; ``1.0`` is a perfect fit. Consistent
+    /// with :meth:`sklearn.base.RegressorMixin.score`.
+    fn score<'py>(
+        &self,
+        x: PyReadonlyArray2<'py, f64>,
+        y: PyReadonlyArray1<'py, f64>,
+    ) -> PyResult<f64> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Ridge"))?;
+        let x_mat = x.to_faer();
+        let y_col = y.to_faer();
+        Ok(fitted.score(&x_mat, &y_col))
     }
 
     /// Whether the model has been fitted.
@@ -138,7 +161,7 @@ impl PyRidge {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Ridge"))?;
 
         Ok(fitted.coefficients().into_numpy(py))
     }
@@ -149,7 +172,7 @@ impl PyRidge {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Ridge"))?;
 
         Ok(fitted.intercept())
     }
@@ -160,7 +183,7 @@ impl PyRidge {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Ridge"))?;
 
         Ok(fitted.r_squared())
     }
@@ -171,7 +194,7 @@ impl PyRidge {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Ridge"))?;
 
         Ok(fitted.result().adj_r_squared)
     }
@@ -207,7 +230,7 @@ impl PyRidge {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Ridge"))?;
         let hc = match hc_type {
             "hc0" => HcType::HC0,
             "hc2" => HcType::HC2,

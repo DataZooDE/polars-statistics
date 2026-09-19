@@ -134,7 +134,7 @@ impl PyMannWhitneyU {
         self.fitted
             .as_ref()
             .map(|r| r.statistic)
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_test_err("MannWhitneyU"))
     }
 
     /// Get the p-value.
@@ -143,7 +143,7 @@ impl PyMannWhitneyU {
         self.fitted
             .as_ref()
             .map(|r| r.p_value)
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_test_err("MannWhitneyU"))
     }
 
     /// Get the Hodges-Lehmann estimator (location shift estimate).
@@ -152,7 +152,7 @@ impl PyMannWhitneyU {
         self.fitted
             .as_ref()
             .map(|r| r.estimate)
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_test_err("MannWhitneyU"))
     }
 
     /// Get the null hypothesis value.
@@ -161,7 +161,7 @@ impl PyMannWhitneyU {
         self.fitted
             .as_ref()
             .map(|r| r.null_value)
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_test_err("MannWhitneyU"))
     }
 
     /// Get the confidence interval as a numpy array [lower, upper].
@@ -170,7 +170,7 @@ impl PyMannWhitneyU {
         let result = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_test_err("MannWhitneyU"))?;
 
         match &result.conf_int {
             Some(ci) => Ok(Some(PyArray1::from_vec(py, vec![ci.lower, ci.upper]))),
@@ -183,7 +183,7 @@ impl PyMannWhitneyU {
         let result = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_test_err("MannWhitneyU"))?;
 
         let alt_str = match self.alternative {
             Alternative::TwoSided => "two-sided",

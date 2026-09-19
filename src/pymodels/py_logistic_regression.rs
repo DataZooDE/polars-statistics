@@ -59,7 +59,7 @@ impl PyLogisticRegression {
         penalty="l2".to_string(),
         C=1.0,
         threshold=0.5,
-        with_intercept=true,
+        add_intercept=None, with_intercept=None,
         max_iter=100,
         tol=1e-8,
         compute_inference=true,
@@ -67,16 +67,20 @@ impl PyLogisticRegression {
     ))]
     #[allow(clippy::too_many_arguments, non_snake_case)]
     fn new(
+        py: Python<'_>,
         penalty: String,
         C: f64,
         threshold: f64,
-        with_intercept: bool,
+        add_intercept: Option<bool>,
+        with_intercept: Option<bool>,
         max_iter: usize,
         tol: f64,
         compute_inference: bool,
         confidence_level: f64,
-    ) -> Self {
-        Self {
+    ) -> PyResult<Self> {
+        let with_intercept =
+            crate::pymodels::errors::resolve_intercept(py, add_intercept, with_intercept, true)?;
+        Ok(Self {
             penalty,
             c: C,
             threshold,
@@ -86,7 +90,7 @@ impl PyLogisticRegression {
             compute_inference,
             confidence_level,
             fitted: None,
-        }
+        })
     }
 
     fn fit<'py>(
@@ -94,6 +98,7 @@ impl PyLogisticRegression {
         x: PyReadonlyArray2<'py, f64>,
         y: PyReadonlyArray1<'py, f64>,
     ) -> PyResult<PyRefMut<'py, Self>> {
+        crate::pymodels::errors::validate_xy("LogisticRegression", &x, &y)?;
         let x_mat = x.to_faer();
         let y_col = y.to_faer();
         let penalty = parse_penalty(&slf.penalty, slf.c)?;
@@ -125,7 +130,7 @@ impl PyLogisticRegression {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("LogisticRegression"))?;
         let x_mat = x.to_faer();
         Ok(fitted.predict(&x_mat).into_numpy(py))
     }
@@ -139,7 +144,7 @@ impl PyLogisticRegression {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("LogisticRegression"))?;
         let x_mat = x.to_faer();
         Ok(fitted.predict_proba(&x_mat).into_numpy(py))
     }
@@ -153,7 +158,7 @@ impl PyLogisticRegression {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("LogisticRegression"))?;
         let x_mat = x.to_faer();
         Ok(fitted.decision_function(&x_mat).into_numpy(py))
     }
@@ -167,7 +172,7 @@ impl PyLogisticRegression {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("LogisticRegression"))?;
         let x_mat = x.to_faer();
         let y_col = y.to_faer();
         Ok(fitted.score(&x_mat, &y_col))
@@ -182,7 +187,7 @@ impl PyLogisticRegression {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("LogisticRegression"))?;
         Ok(fitted.coefficients().into_numpy(py))
     }
 
@@ -191,7 +196,7 @@ impl PyLogisticRegression {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("LogisticRegression"))?;
         Ok(fitted.intercept())
     }
 
@@ -200,7 +205,7 @@ impl PyLogisticRegression {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("LogisticRegression"))?;
         Ok(fitted.n_iter())
     }
     /// Informative repr: class name plus key state; never panics if unfitted.

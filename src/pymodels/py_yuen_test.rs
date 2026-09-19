@@ -122,7 +122,7 @@ impl PyYuenTest {
         self.fitted
             .as_ref()
             .map(|r| r.statistic)
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_test_err("YuenTest"))
     }
 
     /// Get the p-value.
@@ -131,7 +131,7 @@ impl PyYuenTest {
         self.fitted
             .as_ref()
             .map(|r| r.p_value)
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_test_err("YuenTest"))
     }
 
     /// Get the degrees of freedom.
@@ -140,7 +140,7 @@ impl PyYuenTest {
         self.fitted
             .as_ref()
             .map(|r| r.df)
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_test_err("YuenTest"))
     }
 
     /// Get the difference in trimmed means.
@@ -149,7 +149,7 @@ impl PyYuenTest {
         self.fitted
             .as_ref()
             .map(|r| r.diff)
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_test_err("YuenTest"))
     }
 
     /// Get the trimmed mean of the first sample.
@@ -158,7 +158,7 @@ impl PyYuenTest {
         self.fitted
             .as_ref()
             .map(|r| r.trimmed_mean_x)
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_test_err("YuenTest"))
     }
 
     /// Get the trimmed mean of the second sample.
@@ -167,7 +167,7 @@ impl PyYuenTest {
         self.fitted
             .as_ref()
             .map(|r| r.trimmed_mean_y)
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_test_err("YuenTest"))
     }
 
     /// Get the confidence interval as a numpy array [lower, upper].
@@ -176,7 +176,7 @@ impl PyYuenTest {
         let result = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_test_err("YuenTest"))?;
 
         match &result.conf_int {
             Some(ci) => Ok(Some(PyArray1::from_vec(py, vec![ci.lower, ci.upper]))),
@@ -189,7 +189,7 @@ impl PyYuenTest {
         let result = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_test_err("YuenTest"))?;
 
         let alt_str = match self.alternative {
             Alternative::TwoSided => "two-sided",

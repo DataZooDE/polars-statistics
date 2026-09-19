@@ -51,15 +51,24 @@ pub struct PyQuantile {
 impl PyQuantile {
     /// Create a new Quantile regression model.
     #[new]
-    #[pyo3(signature = (tau=0.5, with_intercept=true, max_iterations=100, tolerance=1e-6))]
-    fn new(tau: f64, with_intercept: bool, max_iterations: usize, tolerance: f64) -> Self {
-        Self {
+    #[pyo3(signature = (tau=0.5, add_intercept=None, with_intercept=None, max_iterations=100, tolerance=1e-6))]
+    fn new(
+        py: Python<'_>,
+        tau: f64,
+        add_intercept: Option<bool>,
+        with_intercept: Option<bool>,
+        max_iterations: usize,
+        tolerance: f64,
+    ) -> PyResult<Self> {
+        let with_intercept =
+            crate::pymodels::errors::resolve_intercept(py, add_intercept, with_intercept, true)?;
+        Ok(Self {
             tau,
             with_intercept,
             max_iterations,
             tolerance,
             fitted: None,
-        }
+        })
     }
 
     /// Fit the model to the data.
@@ -80,6 +89,7 @@ impl PyQuantile {
         x: PyReadonlyArray2<'py, f64>,
         y: PyReadonlyArray1<'py, f64>,
     ) -> PyResult<PyRefMut<'py, Self>> {
+        crate::pymodels::errors::validate_xy("Quantile", &x, &y)?;
         let x_mat = x.to_faer();
         let y_col = y.to_faer();
 
@@ -117,12 +127,30 @@ impl PyQuantile {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Quantile"))?;
 
         let x_mat = x.to_faer();
         let predictions = fitted.predict(&x_mat);
 
         Ok(predictions.into_numpy(py))
+    }
+
+    /// R² (coefficient of determination) of the prediction on ``(X, y)``.
+    ///
+    /// Defined as ``1 - SS_res / SS_tot``; ``1.0`` is a perfect fit. Consistent
+    /// with :meth:`sklearn.base.RegressorMixin.score`.
+    fn score<'py>(
+        &self,
+        x: PyReadonlyArray2<'py, f64>,
+        y: PyReadonlyArray1<'py, f64>,
+    ) -> PyResult<f64> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Quantile"))?;
+        let x_mat = x.to_faer();
+        let y_col = y.to_faer();
+        Ok(fitted.score(&x_mat, &y_col))
     }
 
     /// Check if the model has been fitted.
@@ -142,7 +170,7 @@ impl PyQuantile {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Quantile"))?;
 
         Ok(fitted.coefficients().into_numpy(py))
     }
@@ -153,7 +181,7 @@ impl PyQuantile {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Quantile"))?;
 
         Ok(fitted.intercept())
     }
@@ -164,7 +192,7 @@ impl PyQuantile {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Quantile"))?;
 
         Ok(fitted.pseudo_r_squared())
     }
@@ -175,7 +203,7 @@ impl PyQuantile {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Quantile"))?;
 
         Ok(fitted.check_loss())
     }
@@ -186,7 +214,7 @@ impl PyQuantile {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Quantile"))?;
 
         Ok((&fitted.result().residuals).into_numpy(py))
     }
@@ -197,7 +225,7 @@ impl PyQuantile {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Quantile"))?;
 
         Ok((&fitted.result().fitted_values).into_numpy(py))
     }
@@ -208,7 +236,7 @@ impl PyQuantile {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Quantile"))?;
 
         Ok(fitted.result().n_observations)
     }
@@ -218,7 +246,7 @@ impl PyQuantile {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Quantile"))?;
 
         let result = fitted.result();
         let mut summary = String::new();

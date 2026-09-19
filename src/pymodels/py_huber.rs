@@ -39,16 +39,26 @@ pub struct PyHuber {
 #[pymethods]
 impl PyHuber {
     #[new]
-    #[pyo3(signature = (epsilon=1.35, alpha=0.0001, with_intercept=true, max_iter=100, tol=1e-5))]
-    fn new(epsilon: f64, alpha: f64, with_intercept: bool, max_iter: usize, tol: f64) -> Self {
-        Self {
+    #[pyo3(signature = (epsilon=1.35, alpha=0.0001, add_intercept=None, with_intercept=None, max_iter=100, tol=1e-5))]
+    fn new(
+        py: Python<'_>,
+        epsilon: f64,
+        alpha: f64,
+        add_intercept: Option<bool>,
+        with_intercept: Option<bool>,
+        max_iter: usize,
+        tol: f64,
+    ) -> PyResult<Self> {
+        let with_intercept =
+            crate::pymodels::errors::resolve_intercept(py, add_intercept, with_intercept, true)?;
+        Ok(Self {
             epsilon,
             alpha,
             with_intercept,
             max_iter,
             tol,
             fitted: None,
-        }
+        })
     }
 
     /// Fit the Huber regression model.
@@ -57,6 +67,7 @@ impl PyHuber {
         x: PyReadonlyArray2<'py, f64>,
         y: PyReadonlyArray1<'py, f64>,
     ) -> PyResult<PyRefMut<'py, Self>> {
+        crate::pymodels::errors::validate_xy("Huber", &x, &y)?;
         let x_mat = x.to_faer();
         let y_col = y.to_faer();
 
@@ -85,10 +96,28 @@ impl PyHuber {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Huber"))?;
 
         let x_mat = x.to_faer();
         Ok(fitted.predict(&x_mat).into_numpy(py))
+    }
+
+    /// R² (coefficient of determination) of the prediction on ``(X, y)``.
+    ///
+    /// Defined as ``1 - SS_res / SS_tot``; ``1.0`` is a perfect fit. Consistent
+    /// with :meth:`sklearn.base.RegressorMixin.score`.
+    fn score<'py>(
+        &self,
+        x: PyReadonlyArray2<'py, f64>,
+        y: PyReadonlyArray1<'py, f64>,
+    ) -> PyResult<f64> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Huber"))?;
+        let x_mat = x.to_faer();
+        let y_col = y.to_faer();
+        Ok(fitted.score(&x_mat, &y_col))
     }
 
     fn is_fitted(&self) -> bool {
@@ -100,7 +129,7 @@ impl PyHuber {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Huber"))?;
 
         Ok(fitted.coefficients().into_numpy(py))
     }
@@ -110,7 +139,7 @@ impl PyHuber {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Huber"))?;
 
         Ok(fitted.intercept())
     }
@@ -121,7 +150,7 @@ impl PyHuber {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Huber"))?;
 
         Ok(fitted.scale())
     }
@@ -132,7 +161,7 @@ impl PyHuber {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Huber"))?;
 
         Ok(fitted.epsilon())
     }
@@ -143,7 +172,7 @@ impl PyHuber {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Huber"))?;
 
         Ok(PyArray1::from_slice(py, fitted.outliers()))
     }
@@ -154,7 +183,7 @@ impl PyHuber {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Huber"))?;
 
         Ok(fitted.n_outliers())
     }
@@ -164,7 +193,7 @@ impl PyHuber {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Huber"))?;
 
         Ok(fitted.result().r_squared)
     }
@@ -174,7 +203,7 @@ impl PyHuber {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Huber"))?;
 
         Ok(fitted.result().mse)
     }
@@ -184,7 +213,7 @@ impl PyHuber {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Huber"))?;
 
         Ok(fitted.result().rmse)
     }
@@ -194,7 +223,7 @@ impl PyHuber {
         let fitted = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Model not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Huber"))?;
 
         Ok(fitted.result().n_observations)
     }

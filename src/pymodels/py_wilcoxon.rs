@@ -140,7 +140,7 @@ impl PyWilcoxonSignedRank {
         self.fitted
             .as_ref()
             .map(|r| r.statistic)
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_test_err("WilcoxonSignedRank"))
     }
 
     /// Get the p-value.
@@ -149,7 +149,7 @@ impl PyWilcoxonSignedRank {
         self.fitted
             .as_ref()
             .map(|r| r.p_value)
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_test_err("WilcoxonSignedRank"))
     }
 
     /// Get the pseudomedian estimate.
@@ -158,7 +158,7 @@ impl PyWilcoxonSignedRank {
         self.fitted
             .as_ref()
             .map(|r| r.estimate)
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_test_err("WilcoxonSignedRank"))
     }
 
     /// Get the null hypothesis value.
@@ -167,7 +167,7 @@ impl PyWilcoxonSignedRank {
         self.fitted
             .as_ref()
             .map(|r| r.null_value)
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_test_err("WilcoxonSignedRank"))
     }
 
     /// Get the confidence interval as a numpy array [lower, upper].
@@ -176,7 +176,7 @@ impl PyWilcoxonSignedRank {
         let result = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_test_err("WilcoxonSignedRank"))?;
 
         match &result.conf_int {
             Some(ci) => Ok(Some(PyArray1::from_vec(py, vec![ci.lower, ci.upper]))),
@@ -189,7 +189,7 @@ impl PyWilcoxonSignedRank {
         let result = self
             .fitted
             .as_ref()
-            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("Test not fitted"))?;
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_test_err("WilcoxonSignedRank"))?;
 
         let alt_str = match self.alternative {
             Alternative::TwoSided => "two-sided",
