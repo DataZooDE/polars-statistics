@@ -46,11 +46,18 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Getting Started: getting-started.md
+  - Guides:
+      - Model Selection: model-selection.md
+      - Coming from scikit-learn: sklearn-migration.md
+      - Migration Guide: migration.md
   - Examples:
       - Hypothesis Testing: examples/hypothesis-testing.md
+      - Analysis of Variance (ANOVA): examples/anova.md
       - Regression Workflow: examples/regression-workflow.md
       - Regularized & Specialized Models: examples/regularized-regression.md
+      - Robust & Sparse Regression: examples/robust-regression.md
       - Generalized Linear Models: examples/glm-models.md
+      - GLMs, Smoothers & Streaming: examples/glm-smoothers-streaming.md
       - Group-wise Analysis: examples/group-analysis.md
       - A/B Testing: examples/ab-testing.md
       - Equivalence Testing (TOST): examples/equivalence-testing.md

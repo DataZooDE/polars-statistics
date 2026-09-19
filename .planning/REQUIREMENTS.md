@@ -38,13 +38,13 @@ Requirements for this milestone. Each maps to exactly one roadmap phase.
 
 ### Documentation
 
-- [ ] **DOCS-05**: Runnable cookbook + `examples/` scripts cover the robust/sparse regressors (TheilSen, RANSAC, BayesianRidge, ARD, LARS, PassiveAggressive) with real-world scenarios and output interpretation
-- [ ] **DOCS-06**: Runnable cookbook + examples cover the GLM/smoother/streaming models (Gamma, GLMM, PSpline, MomentAccumulator)
-- [ ] **DOCS-07**: A cookbook entry covers the new ANOVA functions (one-way, two-way, repeated-measures) with worked examples
-- [ ] **DOCS-08**: A model-selection decision matrix helps users choose among comparable models (use case, robustness, interpretability, speed, formula support)
-- [ ] **DOCS-09**: A migration guide documents the `icc` single-column→matrix contract change (old→new side by side) and the `with_intercept` deprecation timeline
-- [ ] **DOCS-10**: An sklearn-migration page maps common sklearn workflows to polars-statistics equivalents
-- [ ] **DOCS-11**: The README is refreshed with an adoption-focused quickstart and narrative (typed API, sklearn-compat, Polars-native advantages)
+- [x] **DOCS-05**: Runnable cookbook + `examples/` scripts cover the robust/sparse regressors (TheilSen, RANSAC, BayesianRidge, ARD, LARS, PassiveAggressive) with real-world scenarios and output interpretation
+- [x] **DOCS-06**: Runnable cookbook + examples cover the GLM/smoother/streaming models (Gamma, GLMM, PSpline, MomentAccumulator)
+- [x] **DOCS-07**: A cookbook entry covers the new ANOVA functions (one-way, two-way, repeated-measures) with worked examples
+- [x] **DOCS-08**: A model-selection decision matrix helps users choose among comparable models (use case, robustness, interpretability, speed, formula support)
+- [x] **DOCS-09**: A migration guide documents the `icc` single-column→matrix contract change (old→new side by side) and the `with_intercept` deprecation timeline
+- [x] **DOCS-10**: An sklearn-migration page maps common sklearn workflows to polars-statistics equivalents
+- [x] **DOCS-11**: The README is refreshed with an adoption-focused quickstart and narrative (typed API, sklearn-compat, Polars-native advantages)
 
 ### Release
 
@@ -83,13 +83,13 @@ Deferred to future releases.
 | ERR-02 | Phase 10 | Complete |
 | API-01 | Phase 10 | Complete |
 | API-02 | Phase 10 | Complete |
-| DOCS-05 | Phase 11 | Pending |
-| DOCS-06 | Phase 11 | Pending |
-| DOCS-07 | Phase 11 | Pending |
-| DOCS-08 | Phase 11 | Pending |
-| DOCS-09 | Phase 11 | Pending |
-| DOCS-10 | Phase 11 | Pending |
-| DOCS-11 | Phase 11 | Pending |
+| DOCS-05 | Phase 11 | Complete |
+| DOCS-06 | Phase 11 | Complete |
+| DOCS-07 | Phase 11 | Complete |
+| DOCS-08 | Phase 11 | Complete |
+| DOCS-09 | Phase 11 | Complete |
+| DOCS-10 | Phase 11 | Complete |
+| DOCS-11 | Phase 11 | Complete |
 | REL-05 | Phase 12 | Pending |
 | REL-06 | Phase 12 | Pending |
 
