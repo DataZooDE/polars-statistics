@@ -87,6 +87,20 @@ impl PyStationaryBootstrap {
         PyArray2::from_vec2(py, &samples)
             .map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>(e.to_string()))
     }
+    /// Informative repr: class name plus key state; never panics if unfitted.
+    fn __repr__(slf: &Bound<'_, Self>) -> PyResult<String> {
+        crate::pymodels::ergonomics::repr(slf.as_any())
+    }
+
+    /// Return the results as a plain Python ``dict`` (``{"fitted": False}`` if unfitted).
+    fn to_dict<'py>(slf: &Bound<'py, Self>) -> PyResult<Bound<'py, pyo3::types::PyDict>> {
+        crate::pymodels::ergonomics::to_dict(slf.as_any())
+    }
+
+    /// Readable multi-line summary of the results.
+    fn summary(slf: &Bound<'_, Self>) -> PyResult<String> {
+        crate::pymodels::ergonomics::generic_summary(slf.as_any())
+    }
 }
 
 /// Circular Block Bootstrap for time series data.
@@ -169,5 +183,19 @@ impl PyCircularBlockBootstrap {
 
         PyArray2::from_vec2(py, &samples)
             .map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>(e.to_string()))
+    }
+    /// Informative repr: class name plus key state; never panics if unfitted.
+    fn __repr__(slf: &Bound<'_, Self>) -> PyResult<String> {
+        crate::pymodels::ergonomics::repr(slf.as_any())
+    }
+
+    /// Return the results as a plain Python ``dict`` (``{"fitted": False}`` if unfitted).
+    fn to_dict<'py>(slf: &Bound<'py, Self>) -> PyResult<Bound<'py, pyo3::types::PyDict>> {
+        crate::pymodels::ergonomics::to_dict(slf.as_any())
+    }
+
+    /// Readable multi-line summary of the results.
+    fn summary(slf: &Bound<'_, Self>) -> PyResult<String> {
+        crate::pymodels::ergonomics::generic_summary(slf.as_any())
     }
 }

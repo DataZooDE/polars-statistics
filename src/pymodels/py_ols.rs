@@ -527,4 +527,14 @@ impl PyOLS {
         slf.fitted = Some(fitted);
         Ok(slf)
     }
+
+    /// Informative repr, e.g. ``OLS(fitted=True, r_squared=0.9820, ...)``.
+    fn __repr__(slf: &Bound<'_, Self>) -> PyResult<String> {
+        crate::pymodels::ergonomics::repr(slf.as_any())
+    }
+
+    /// Return the regression results as a plain Python ``dict``.
+    fn to_dict<'py>(slf: &Bound<'py, Self>) -> PyResult<Bound<'py, pyo3::types::PyDict>> {
+        crate::pymodels::ergonomics::to_dict(slf.as_any())
+    }
 }

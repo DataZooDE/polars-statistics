@@ -1,5 +1,8 @@
 //! Python-facing model wrappers using PyO3.
 
+// Shared result-ergonomics helpers (to_dict / __repr__ / summary).
+pub(crate) mod ergonomics;
+
 // Regression models
 mod py_aid;
 mod py_alm;

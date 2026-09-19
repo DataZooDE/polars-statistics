@@ -26,6 +26,7 @@ RUST_TO_PY = {
     "Bound<'py, PyArray1<bool>>": "numpy.ndarray",
     "Option<Bound<'py, PyArray1<f64>>>": "numpy.ndarray | None",
     "Bound<'py, PyDict>": "dict",
+    "Bound<'py, pyo3::types::PyDict>": "dict",
     "Vec<Bound<'py, PyDict>>": "list[dict]",
     "PyAidResult": '"AidResult"',
 }

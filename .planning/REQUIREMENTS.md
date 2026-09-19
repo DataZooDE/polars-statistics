@@ -22,9 +22,9 @@ Requirements for this milestone. Each maps to exactly one roadmap phase.
 
 ### Result Ergonomics
 
-- [ ] **ERGO-01**: User can convert any result struct to a Python dict (e.g. `.to_dict()`) without manual `.struct.field()` extraction
-- [ ] **ERGO-02**: Fitted models and test results provide a readable `.summary()` and an informative `__repr__`
-- [ ] **ERGO-03**: A documented helper unnests result structs into flat DataFrame columns in one call
+- [x] **ERGO-01**: User can convert any result struct to a Python dict (e.g. `.to_dict()`) without manual `.struct.field()` extraction
+- [x] **ERGO-02**: Fitted models and test results provide a readable `.summary()` and an informative `__repr__`
+- [x] **ERGO-03**: A documented helper unnests result structs into flat DataFrame columns in one call
 
 ### Error Messages
 
@@ -76,9 +76,9 @@ Deferred to future releases.
 | TYPE-01 | Phase 8 | Complete |
 | TYPE-02 | Phase 8 | Complete |
 | TYPE-03 | Phase 8 | Complete |
-| ERGO-01 | Phase 9 | Pending |
-| ERGO-02 | Phase 9 | Pending |
-| ERGO-03 | Phase 9 | Pending |
+| ERGO-01 | Phase 9 | Complete |
+| ERGO-02 | Phase 9 | Complete |
+| ERGO-03 | Phase 9 | Complete |
 | ERR-01 | Phase 10 | Pending |
 | ERR-02 | Phase 10 | Pending |
 | API-01 | Phase 10 | Pending |

@@ -119,4 +119,13 @@ impl PyDAgostino {
             result.statistic, result.p_value, result.n1, significance
         ))
     }
+    /// Informative repr: class name plus key state; never panics if unfitted.
+    fn __repr__(slf: &Bound<'_, Self>) -> PyResult<String> {
+        crate::pymodels::ergonomics::repr(slf.as_any())
+    }
+
+    /// Return the results as a plain Python ``dict`` (``{"fitted": False}`` if unfitted).
+    fn to_dict<'py>(slf: &Bound<'py, Self>) -> PyResult<Bound<'py, pyo3::types::PyDict>> {
+        crate::pymodels::ergonomics::to_dict(slf.as_any())
+    }
 }
