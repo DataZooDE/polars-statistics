@@ -8,19 +8,17 @@
 
 > **Note:** This extension is in early stage development. APIs may change and some features are experimental.
 
-High-performance statistical testing and regression for [Polars](https://pola.rs/) DataFrames, powered by Rust.
+High-performance statistical hypothesis testing and regression for [Polars](https://pola.rs/) DataFrames, powered by Rust — with results **validated against R**.
 
-Usable from **Python** (as a Polars plugin) and from **Rust** (as an rlib that other Rust crates depend on directly — see [Use from Rust](#use-from-rust)).
+Usable from **Python** (as a Polars plugin *and* an sklearn-style class API) and from **Rust** (as an rlib that other Rust crates depend on directly — see [Use from Rust](#use-from-rust)).
 
-## Features
+## Why polars-statistics?
 
-- **Native Polars Expressions**: Full support for `group_by`, `over`, and lazy evaluation
-- **Statistical Tests**: Parametric, non-parametric, distributional, and forecast comparison tests
-- **Regression Models**: OLS, Ridge, Elastic Net, WLS, Quantile, Isotonic, Huber (M-estimator), PLS, GLMs, ALM (25 distributions)
-- **Diagnostics**: VIF, leverage, Cook's distance, DFFITS, influence masks, standardized / studentized / externally-studentized residuals, GLM Pearson / deviance / working residuals, Pearson χ², condition number, quasi-separation detection
-- **Formula Syntax**: R-style formulas with polynomial and interaction effects
-- **Hybrid crate**: `cdylib` (Python wheel) and `rlib` (Rust dependency) from the same source
-- **High Performance**: Rust-powered with zero-copy data transfer
+- **Polars-native.** Everything is a Polars expression, so `group_by`, `over`, and lazy evaluation just work — fit **one model per group** across millions of groups in a single pipeline, no Python loop.
+- **sklearn-compatible.** Every model class follows the familiar `fit` / `predict` / `score` contract (regressors → R², classifiers → accuracy). Porting from scikit-learn is mostly a rename — see the [sklearn migration guide](docs/sklearn-migration.md).
+- **Ergonomic results.** No manual `.struct.field(...)` archaeology: call `.to_dict()`, `.summary()`, or the `ps.unnest(df)` helper and get flat, readable output.
+- **Typed API.** Ships `py.typed` and full `.pyi` stubs, so your editor autocompletes every constructor, method, and getter with accurate signatures.
+- **Validated against R.** Where the backing `anofox-*` crates supply references, results are checked against R (`stats::lm`, `irr::icc`, …) — with real inference (std errors, t-stats, p-values, CIs) that many libraries omit.
 
 ## Installation
 
@@ -30,29 +28,40 @@ pip install polars-statistics
 
 ## Quick Start
 
-All functions work as Polars expressions, integrating with `group_by` and `over`:
+**Fit one model per group as a lazy Polars expression** — the thing that sets
+polars-statistics apart:
 
 ```python
 import polars as pl
 import polars_statistics as ps
 
 df = pl.DataFrame({
-    "group": ["A"] * 50 + ["B"] * 50,
-    "y": [...],
-    "x1": [...],
-    "x2": [...],
+    "region": ["north"] * 50 + ["south"] * 50,
+    "sales":  [...],
+    "spend":  [...],
+    "price":  [...],
 })
 
-# Run OLS regression per group
-result = df.group_by("group").agg(
-    ps.ols("y", "x1", "x2").alias("model")
+# One OLS per region, computed in parallel across groups.
+models = df.group_by("region").agg(
+    ps.ols("sales", "spend", "price").alias("model")
 )
 
-# Extract results from struct
-result.with_columns(
-    pl.col("model").struct.field("r_squared"),
-    pl.col("model").struct.field("coefficients"),
-)
+# Flatten the result struct into plain columns in one call.
+ps.unnest(models, "model")   # region, intercept, coefficients, r_squared, ...
+```
+
+**Or use the sklearn-style class API** for a train / predict / score loop:
+
+```python
+from polars_statistics import OLS
+
+model = OLS().fit(X_train, y_train)   # X: 2-D array, y: 1-D array
+model.predict(X_test)                 # -> numpy array
+model.score(X_test, y_test)           # -> R^2
+
+model.to_dict()          # every statistic as a plain dict
+print(model.summary())   # readable text summary
 ```
 
 ## Statistical Tests
@@ -366,6 +375,9 @@ shape — so you can see exactly what columns and data types each method require
 | [examples/03_glm_models.py](examples/03_glm_models.py) | Generalized Linear Models: logistic (binary), Poisson (counts) |
 | [examples/04_statistical_tests.py](examples/04_statistical_tests.py) | T-tests, Mann-Whitney U, Shapiro-Wilk, and other hypothesis tests |
 | [examples/05_demand_classification.py](examples/05_demand_classification.py) | AID (Automatic Identification of Demand) for demand pattern classification |
+| [examples/06_robust_regression.py](examples/06_robust_regression.py) | Robust & sparse regressors: TheilSen, RANSAC, BayesianRidge, ARD, LARS, PassiveAggressive |
+| [examples/07_glm_smoothers_streaming.py](examples/07_glm_smoothers_streaming.py) | Gamma GLM, GLMM random effects, PSpline smoother, MomentAccumulator streaming |
+| [examples/08_anova.py](examples/08_anova.py) | One-way, two-way, and repeated-measures ANOVA |
 | [examples/rust_wls.rs](examples/rust_wls.rs) | Rust API example: Weighted Least Squares via `wls_fit` |
 
 ### Cookbook (docs/examples/)
@@ -374,14 +386,17 @@ shape — so you can see exactly what columns and data types each method require
 |------|-------------|
 | [docs/examples/ab-testing.md](docs/examples/ab-testing.md) | A/B testing |
 | [docs/examples/advanced-correlation.md](docs/examples/advanced-correlation.md) | Advanced correlation |
+| [docs/examples/anova.md](docs/examples/anova.md) | ANOVA: one-way, two-way, repeated-measures |
 | [docs/examples/categorical-analysis.md](docs/examples/categorical-analysis.md) | Categorical analysis |
 | [docs/examples/equivalence-testing.md](docs/examples/equivalence-testing.md) | Equivalence testing (TOST) |
 | [docs/examples/forecast-comparison.md](docs/examples/forecast-comparison.md) | Forecast comparison |
 | [docs/examples/glm-models.md](docs/examples/glm-models.md) | GLM models |
+| [docs/examples/glm-smoothers-streaming.md](docs/examples/glm-smoothers-streaming.md) | Gamma, GLMM, PSpline, MomentAccumulator |
 | [docs/examples/group-analysis.md](docs/examples/group-analysis.md) | Group analysis |
 | [docs/examples/hypothesis-testing.md](docs/examples/hypothesis-testing.md) | Hypothesis testing |
 | [docs/examples/regression-workflow.md](docs/examples/regression-workflow.md) | Regression workflow |
 | [docs/examples/regularized-regression.md](docs/examples/regularized-regression.md) | Regularized regression |
+| [docs/examples/robust-regression.md](docs/examples/robust-regression.md) | Robust & sparse regression |
 | [docs/examples/special-models.md](docs/examples/special-models.md) | Special models |
 
 ## Documentation
@@ -391,6 +406,12 @@ shape — so you can see exactly what columns and data types each method require
   - [Regression Models](docs/api/regression/) - Linear, GLM, ALM, dynamic
   - [Model Classes](docs/api/classes/) - Python classes for direct access
   - [Output Structures](docs/api/outputs.md) - Return type definitions
+
+**Guides:**
+
+- **[Model Selection](docs/model-selection.md)** - decision matrix for choosing among comparable models
+- **[sklearn Migration](docs/sklearn-migration.md)** - map scikit-learn workflows to polars-statistics
+- **[Migration Guide](docs/migration.md)** - `icc` matrix contract and `with_intercept` → `add_intercept`
 
 For the legacy monolithic reference, see [docs/API_REFERENCE.md](docs/API_REFERENCE.md).
 
