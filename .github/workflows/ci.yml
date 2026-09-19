@@ -30,6 +30,74 @@ jobs:
       - name: Clippy
         run: cargo clippy --all-targets -- -D warnings
 
+  type-check:
+    name: Type Stubs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+
+      - name: Create virtual environment
+        run: python -m venv .venv
+
+      - name: Install dependencies
+        run: |
+          source .venv/bin/activate
+          python -m pip install --upgrade pip
+          pip install maturin numpy polars pytest scipy statsmodels 'mypy==1.11.2'
+
+      - name: Build and install
+        run: |
+          source .venv/bin/activate
+          maturin develop --release
+
+      # TYPE-03: fail if the checked-in stubs drift from the runtime API.
+      - name: Verify stubs are in sync with runtime API
+        run: |
+          source .venv/bin/activate
+          pytest tests/test_type_stubs.py -v
+
+      # TYPE-03: fail if regenerating the stubs would produce a different file.
+      - name: Verify generated stubs are up to date
+        run: |
+          source .venv/bin/activate
+          python scripts/gen_stubs.py
+          git diff --exit-code python/polars_statistics/_polars_statistics.pyi
+
+      # TYPE-01/02: the public API type-checks clean under mypy.
+      - name: mypy public API smoke check
+        run: |
+          source .venv/bin/activate
+          cat > /tmp/type_smoke.py <<'PY'
+          import numpy as np
+          import polars as pl
+          import polars_statistics as ps
+          from polars_statistics import OLS
+
+          m = OLS(with_intercept=True)
+          m.fit(np.zeros((3, 1)), np.zeros(3))
+          coefs: np.ndarray = m.coefficients
+          r2: float = m.r_squared
+          summary: str = m.summary()
+
+          e: pl.Expr = ps.ols("y", "x1", "x2")
+          t: pl.Expr = ps.ttest_ind("a", "b")
+          PY
+          mypy --python-version 3.10 --ignore-missing-imports /tmp/type_smoke.py
+          mypy --python-version 3.10 --ignore-missing-imports \
+            python/polars_statistics/exprs python/polars_statistics/formula \
+            python/polars_statistics/_polars_statistics.pyi
+
   test-python:
     name: Python Tests (${{ matrix.python-version }}, ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
