@@ -16,9 +16,9 @@ Requirements for this milestone. Each maps to exactly one roadmap phase.
 
 ### Type Safety
 
-- [ ] **TYPE-01**: Package ships a `py.typed` marker and `.pyi` stubs so IDEs and type checkers resolve every Rust-bound model/test class (OLS, Ridge, Logistic, GLMM, …) with accurate constructor, method, and getter signatures
-- [ ] **TYPE-02**: Type stubs cover the Python expression builders (`ps.ols(...)`, `ps.ttest_ind(...)`, …) and formula helpers with accurate signatures and return types
-- [ ] **TYPE-03**: A CI/type check verifies the stubs stay in sync with the runtime API so they cannot silently rot
+- [x] **TYPE-01**: Package ships a `py.typed` marker and `.pyi` stubs so IDEs and type checkers resolve every Rust-bound model/test class (OLS, Ridge, Logistic, GLMM, …) with accurate constructor, method, and getter signatures
+- [x] **TYPE-02**: Type stubs cover the Python expression builders (`ps.ols(...)`, `ps.ttest_ind(...)`, …) and formula helpers with accurate signatures and return types
+- [x] **TYPE-03**: A CI/type check verifies the stubs stay in sync with the runtime API so they cannot silently rot
 
 ### Result Ergonomics
 
@@ -73,9 +73,9 @@ Deferred to future releases.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TYPE-01 | Phase 8 | Pending |
-| TYPE-02 | Phase 8 | Pending |
-| TYPE-03 | Phase 8 | Pending |
+| TYPE-01 | Phase 8 | Complete |
+| TYPE-02 | Phase 8 | Complete |
+| TYPE-03 | Phase 8 | Complete |
 | ERGO-01 | Phase 9 | Pending |
 | ERGO-02 | Phase 9 | Pending |
 | ERGO-03 | Phase 9 | Pending |
