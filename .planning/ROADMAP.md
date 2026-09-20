@@ -83,7 +83,8 @@ real API, bundled into the wheel, and shipped as 0.8.0 on PyPI.
   1. A root `.claude-plugin/marketplace.json` lists the `polars-statistics` plugin (name, source path, description, keywords) in the anofox-forecast marketplace format
   2. `plugins/polars-statistics/.claude-plugin/plugin.json` declares name, description, version, author, homepage, repository, and license
   3. The plugin installs in Claude Code with valid JSON, resolvable skill directory paths, and is discoverable via the marketplace
-**Plans**: TBD
+**Plans**: 1 plan
+- [ ] 13-01-PLAN.md — Create both manifests (marketplace.json + plugin.json) and the skills/ tree so the plugin shell installs and resolves end-to-end
 
 ### Phase 14: Skill Cheat-Sheet Authoring
 **Goal**: All five capability-family cheat-sheets exist as `SKILL.md` files that a Claude agent can read to apply the full polars-statistics API — each covering its surface with accurate signatures and runnable examples, correct pinned frontmatter, and a consistent structure.
@@ -146,7 +147,7 @@ Phases execute in numeric order: 13 → 14 → 15 → 16 → 17
 | 10. Errors & API Consistency | v0.7.0 | 1/1 | Complete | 2026-09-20 |
 | 11. Documentation & Adoption | v0.7.0 | 1/1 | Complete | 2026-09-20 |
 | 12. Release 0.7.0 | v0.7.0 | 1/1 | Complete | 2026-09-20 |
-| 13. Plugin & Marketplace Scaffolding | v0.8.0 | 0/TBD | Not started | - |
+| 13. Plugin & Marketplace Scaffolding | v0.8.0 | 0/1 | Planned | - |
 | 14. Skill Cheat-Sheet Authoring | v0.8.0 | 0/TBD | Not started | - |
 | 15. Accuracy Verification Pass | v0.8.0 | 0/TBD | Not started | - |
 | 16. Wheel Bundling | v0.8.0 | 0/TBD | Not started | - |
