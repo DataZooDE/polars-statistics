@@ -1,16 +1,20 @@
 ---
-gsd_state_version: 1.0
+gsd_state_version: "1.0"
 milestone: v0.7.0
-milestone_name: Ergonomics, Adoption & Documentation
+milestone_name: Ergonomics, Adoption & Documentation (In Progress)
+current_phase_name: 8–12
 status: complete
-last_updated: "2026-09-20T12:00:00.000Z"
+stopped_at: Completed 13-plugin-marketplace-scaffolding/13-01-PLAN.md
+last_updated: "2026-09-20T21:17:08.115Z"
 last_activity: 2026-09-20
+last_activity_desc: Phase 12 shipped 0.7.0 to production PyPI (all 19 requirements met)
+state_head: 3bccc03d12dd3f198af592093c45fd599c9c8f87
 progress:
   total_phases: 5
-  completed_phases: 5
+  completed_phases: 0
   total_plans: 5
   completed_plans: 5
-  percent: 100
+  percent: 0
 ---
 
 # Project State
@@ -76,6 +80,7 @@ Last activity: 2026-09-20 — Phase 12 shipped 0.7.0 to production PyPI (all 19 
 | Phase 06 P02 | 10 | 2 tasks | 2 files |
 | Phase 06 P03 | 20 | 3 tasks | 10 files |
 | Phase 06 P04 | 15 | 2 tasks | 1 files |
+| Phase 13-plugin-marketplace-scaffolding P01 | 2min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -122,6 +127,7 @@ Recent decisions affecting current work:
 - [Phase ?]: two_way_anova: validated vs statsmodels anova_lm with 15% tolerance
 - [Phase ?]: icc: validated against Shrout & Fleiss (1979) ICC(2,1)=0.71 published value
 - [Phase ?]: rust_api.rs: jittered data required for RM-ANOVA (ws_f=inf on exact monotone design) and Gamma diagnostics (dispersion=0 on exact exponential design)
+- [Phase ?]: Mirrored pyfda/fdars layout: source path is plugin root; both manifests carry version 0.8.0
 
 ### Pending Todos
 
@@ -149,6 +155,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-17T14:55:46.852Z
-Stopped at: Phase 7 — v0.6.0 tag + GitHub Release published; publish.yml running (REL-03 in progress). REL-04 smoke check pending workflow completion (~25min) + PyPI propagation.
+Last session: 2026-09-20T21:17:08.101Z
+Stopped at: Completed 13-plugin-marketplace-scaffolding/13-01-PLAN.md
 Resume file: None
