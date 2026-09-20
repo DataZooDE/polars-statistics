@@ -59,20 +59,18 @@ v0.6.0 surface — shipped as 0.7.0 on PyPI.
 - ✓ Full API documentation for the new surface — Phase 5 (Python docstrings w/ runnable examples, mkdocs reference pages, Rust /// comments, CHANGELOG 0.6.0 with known limitations)
 - ✓ Value + shape tests for all new API, validated vs scipy/statsmodels/analytic references — Phase 6 (602 pytest + 17 rust_api green; ICC(3,1)=0.715 vs Shrout&Fleiss, GLMM slope vs truth, Gamma vs statsmodels, fit_from_accumulator==batch; full OS/py matrix delegated to GH Actions)
 - ✓ Bumped `polars-statistics` 0.5.0 → 0.6.0 and published to production PyPI — Phase 7 + quick task 260819-jkj (0.6.0 live on PyPI; publish had failed on a stale 0.5.0-named wheel because the version bump had only reached Cargo.lock — closed by aligning Cargo.toml/pyproject.toml/`__version__`, re-pointing the tag, and re-running the OIDC pipeline)
+- ✓ Type stubs (`.pyi`) + `py.typed` marker for all Rust-bound classes and expression builders, with a CI drift guard — Phase 8 / v0.7.0 (608 pytest green; stubs verified shipped in the wheel)
+- ✓ Ergonomic results — `.to_dict()`/`.summary()`/`__repr__` on every model & test class plus `unnest`/`struct_to_dict` helpers for the expression Struct surface — Phase 9 / v0.7.0 (642 pytest green)
+- ✓ Contextual, actionable errors — not-fitted names the model + `.fit(...)`; shape/rank-deficient inputs raise clear `ValueError`s — Phase 10 / v0.7.0
+- ✓ API consistency — `with_intercept`→`add_intercept` deprecation (back-compat `FutureWarning`) and uniform sklearn-style `fit`/`predict`/`score` — Phase 10 / v0.7.0 (671 pytest green)
+- ✓ Documentation & adoption — cookbook + runnable examples for the robust/sparse, GLM/smoother/streaming, and ANOVA families; model-selection matrix; migration guide; sklearn-migration guide; adoption-focused README — Phase 11 / v0.7.0 (`mkdocs build --strict` green)
+- ✓ Shipped `polars-statistics` 0.7.0 to production PyPI via the OIDC pipeline — Phase 12 / v0.7.0 (all version sources aligned; publish run green; clean-venv smoke check confirms 0.7.0 + typed API + ergonomics + errors live)
 
 ### Active
 
-<!-- This milestone (v0.7.0). Hypotheses until shipped & validated. -->
+<!-- Next milestone. Hypotheses until shipped & validated. -->
 
-- [ ] Package ships type stubs (`.pyi`) and a `py.typed` marker so IDEs and type checkers see all Rust-bound classes and expressions
-- [ ] Results are ergonomic to consume — friendly `.to_dict()`/`.summary()`/repr and struct-unnest helpers replace manual `.struct.field()` boilerplate
-- [ ] Errors are contextual and actionable (not-fitted names the model + next call; shape mismatch and separation are caught with guidance)
-- [ ] API is clean — `with_intercept`→`add_intercept` deprecation resolved (back-compat warning) and sklearn-style `fit/predict/score` consistent across regressors
-- [ ] Every v0.6.0 model and the new ANOVA functions have runnable cookbook + `examples/` coverage
-- [ ] A model-selection decision matrix helps users choose between comparable models
-- [ ] A migration guide documents the icc contract change and the deprecation timeline
-- [ ] An sklearn-migration page + refreshed README present the adoption story
-- [ ] `polars-statistics` 0.7.0 is published to production PyPI via the existing OIDC pipeline
+- _(none — v0.7.0 shipped; next milestone not yet started)_
 
 ### Out of Scope
 
@@ -105,9 +103,9 @@ v0.6.0 surface — shipped as 0.7.0 on PyPI.
 | Expose all unexposed functions (full API parity) | User chose completeness over a targeted subset | ✓ Done — Phases 3+4 (all statistics + regression gaps exposed) |
 | Production PyPI publish (v0.6.0) | User wanted a real release, not TestPyPI/prepare-only | ✓ Done — 0.6.0 live on PyPI |
 | Target release version 0.6.0 | New API surface was additive → minor bump under semver | ✓ Done |
-| v0.7.0 milestone = ergonomics + adoption + docs (not new algorithms) | v0.6.0 delivered full capability parity; the remaining friction is typing, result ergonomics, errors, and docs coverage | — Pending |
-| Target release version 0.7.0 (additive, no breaking changes) | Stubs/helpers/docs are additive; `with_intercept` deprecation stays back-compatible (warning, not removal) → minor bump | — Pending |
-| Align GSD milestone label to package version (v0.7.0) | STATE previously carried placeholder `v1.0`, diverging from the real 0.x package version | — Pending |
+| v0.7.0 milestone = ergonomics + adoption + docs (not new algorithms) | v0.6.0 delivered full capability parity; the remaining friction is typing, result ergonomics, errors, and docs coverage | ✓ Done — shipped 0.7.0 |
+| Target release version 0.7.0 (additive, no breaking changes) | Stubs/helpers/docs are additive; `with_intercept` deprecation stays back-compatible (warning, not removal) → minor bump | ✓ Done — 0.7.0 live on PyPI, no breaking changes |
+| Align GSD milestone label to package version (v0.7.0) | STATE previously carried placeholder `v1.0`, diverging from the real 0.x package version | ✓ Done |
 
 ## Evolution
 
@@ -127,4 +125,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-08-20 — started milestone v0.7.0 (Ergonomics, Adoption & Documentation)*
+*Last updated: 2026-09-20 — milestone v0.7.0 complete (Ergonomics, Adoption & Documentation); 0.7.0 shipped to PyPI*

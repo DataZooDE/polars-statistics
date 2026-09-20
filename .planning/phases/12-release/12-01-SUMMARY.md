@@ -1,8 +1,8 @@
 ---
 phase: 12
 slug: release
-status: in-progress
-requirements: REL-05 (complete), REL-06 (pending publish confirmation)
+status: complete
+requirements: REL-05 (complete), REL-06 (complete)
 ---
 
 # Phase 12 Summary — Release 0.7.0
@@ -20,14 +20,18 @@ Finalized CHANGELOG `[0.7.0] - 2026-09-20` summarizing the milestone (type stubs
 result ergonomics, contextual errors, API consistency, docs) and added the
 `v0.6.0...v0.7.0` compare link. No test hardcodes the version.
 
-## REL-06 — publish (pending explicit confirmation)
+## REL-06 — publish (complete)
 
-Once the bump PR merges to `main`, the release is triggered by tagging `v0.7.0`
-at the merged commit and creating the GitHub release, which fires `publish.yml`
-(Trusted Publishing via OIDC). **This step is gated on explicit user
-confirmation** because production PyPI upload is irreversible (0.7.0 filenames
-can never be reused).
+Tagged `v0.7.0` at `9a93c1a` and created the GitHub release, which fired
+`publish.yml` (Trusted Publishing via OIDC). Publish run `35508433341` succeeded:
+sdist + all 5 platform wheels built and **published to production PyPI**.
+PyPI latest is now `0.7.0`.
 
-Post-publish smoke check: confirm the workflow run succeeds, PyPI latest = 0.7.0,
-and `pip install polars-statistics==0.7.0` imports cleanly with
-`__version__ == "0.7.0"`.
+Post-publish smoke check (clean venv, installed from PyPI) — all green:
+
+- `polars_statistics.__version__ == "0.7.0"`
+- `py.typed` + `_polars_statistics.pyi` shipped in the wheel (Phase 8)
+- `repr(OLS(...))` informative; `.to_dict()` works; `unnest`/`struct_to_dict`
+  present (Phase 9)
+- `.score()` returns R² (Phase 10)
+- `with_intercept` emits `FutureWarning` (Phase 10)
