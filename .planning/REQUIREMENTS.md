@@ -66,30 +66,30 @@ Deferred to future releases.
 
 ## Traceability
 
-Populated during roadmap creation.
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PLUG-01 | — | Pending |
-| PLUG-02 | — | Pending |
-| PLUG-03 | — | Pending |
-| SKILL-01 | — | Pending |
-| SKILL-02 | — | Pending |
-| SKILL-03 | — | Pending |
-| SKILL-04 | — | Pending |
-| SKILL-05 | — | Pending |
-| SKILL-06 | — | Pending |
-| VERIFY-01 | — | Pending |
-| VERIFY-02 | — | Pending |
-| PKG-01 | — | Pending |
-| REL-07 | — | Pending |
-| REL-08 | — | Pending |
+| PLUG-01 | Phase 13 | Pending |
+| PLUG-02 | Phase 13 | Pending |
+| PLUG-03 | Phase 13 | Pending |
+| SKILL-01 | Phase 14 | Pending |
+| SKILL-02 | Phase 14 | Pending |
+| SKILL-03 | Phase 14 | Pending |
+| SKILL-04 | Phase 14 | Pending |
+| SKILL-05 | Phase 14 | Pending |
+| SKILL-06 | Phase 14 | Pending |
+| VERIFY-01 | Phase 15 | Pending |
+| VERIFY-02 | Phase 15 | Pending |
+| PKG-01 | Phase 16 | Pending |
+| REL-07 | Phase 17 | Pending |
+| REL-08 | Phase 17 | Pending |
 
 **Coverage:**
 
 - v1 requirements: 14 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 14 ⚠️
+- Mapped to phases: 14 ✓
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-09-20*
+</content>
+</invoke>

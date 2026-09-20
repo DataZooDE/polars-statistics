@@ -4,19 +4,24 @@
 
 - ✅ **v0.6.0 API Parity & Release** - Phases 1-7 (shipped 2026-08-19)
 - ✅ **v0.7.0 Ergonomics, Adoption & Documentation** - Phases 8-12 (shipped 2026-09-20)
+- 🚧 **v0.8.0 Claude Code Skills Plugin** - Phases 13-17 (in progress)
 - 📋 **v2.0 Forecast Integration** - deferred (FCST-01, not yet planned)
 
 ## Overview
 
-v0.6.0 delivered full API parity with the backing `anofox-*` crates and shipped to
-production PyPI. v0.7.0 shifts from capability to **adoption**: it makes that surface
-best-in-class to pick up and use. The work moves code-first, docs-second, release-last.
-First the API is made type-safe (stubs + `py.typed` + a CI drift guard), then results
-become ergonomic to consume (dict/summary/repr + unnest helper), then errors are made
-contextual and the API is cleaned up (deprecation + uniform sklearn-style `fit/predict/score`).
-Only once those user-visible changes exist are they documented in a single adoption-focused
-documentation phase (cookbook, decision matrix, migration guide, sklearn page, README), and
-finally 0.7.0 is bumped across all version sources and published to PyPI.
+v0.6.0 delivered full API parity with the backing `anofox-*` crates; v0.7.0 made that
+surface best-in-class for humans (typed, ergonomic, documented). v0.8.0 shifts the audience
+from the human reader to the **AI agent**: it packages the existing v0.7.0 surface as
+installable Claude Code skills — a plugin + marketplace mirroring `anofox-forecast` — so
+Claude can discover and apply polars-statistics correctly from accurate, version-pinned
+cheat-sheets. The work moves scaffolding-first, content-second, verify-third, package-fourth,
+release-last: first the plugin/marketplace shell is stood up and installs cleanly, then the
+five capability-family `SKILL.md` cheat-sheets are authored (with examples checked live as
+they are written), then a dedicated accuracy pass runs every example against the real API and
+audits each skill's auto-surfacing description, then the skill files are bundled into the wheel
+via maturin package data, and finally 0.8.0 is bumped across all version sources and published
+to production PyPI via the existing OIDC pipeline. This milestone adds documentation/tooling,
+not statistical capability.
 
 ## Phases
 
@@ -26,7 +31,7 @@ finally 0.7.0 is bumped across all version sources and published to PyPI.
 - Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
 
 Decimal phases appear between their surrounding integers in numeric order.
-Phase numbering is continuous across milestones — v0.7.0 continues from Phase 8.
+Phase numbering is continuous across milestones — v0.8.0 continues from Phase 13.
 
 <details>
 <summary>✅ v0.6.0 API Parity & Release (Phases 1-7) — SHIPPED 2026-08-19</summary>
@@ -43,77 +48,89 @@ Full v0.6.0 phase detail is preserved in git history and `.planning/milestones/v
 
 </details>
 
-### 🚧 v0.7.0 Ergonomics, Adoption & Documentation (In Progress)
+<details>
+<summary>✅ v0.7.0 Ergonomics, Adoption & Documentation (Phases 8-12) — SHIPPED 2026-09-20</summary>
 
-**Milestone Goal:** Make polars-statistics best-in-class to adopt and use — type-safe,
-ergonomic results, clear errors, a clean API, and complete docs for the full v0.6.0
-surface — shipped as 0.7.0 on PyPI.
+- [x] **Phase 8: Type Safety** - Ship `.pyi` stubs + `py.typed` for all Rust-bound classes, expressions, and formula helpers, with a CI drift guard (completed 2026-09-20)
+- [x] **Phase 9: Result Ergonomics** - Friendly result access: `.to_dict()`, `.summary()`/`__repr__`, and a one-call struct-unnest helper (completed 2026-09-20)
+- [x] **Phase 10: Errors & API Consistency** - Contextual errors plus `with_intercept`→`add_intercept` deprecation and uniform sklearn-style `fit/predict/score` (completed 2026-09-20)
+- [x] **Phase 11: Documentation & Adoption** - Cookbook + examples, decision matrix, migration guide, sklearn page, refreshed README (completed 2026-09-20)
+- [x] **Phase 12: Release 0.7.0** - Bump 0.6.0→0.7.0 across all version sources and publish to production PyPI (completed 2026-09-20)
 
-- [x] **Phase 8: Type Safety** - Ship `.pyi` stubs + `py.typed` for all Rust-bound classes, expressions, and formula helpers, with a CI drift guard
-- [x] **Phase 9: Result Ergonomics** - Friendly result access: `.to_dict()`, `.summary()`/`__repr__`, and a one-call struct-unnest helper
-- [x] **Phase 10: Errors & API Consistency** - Contextual errors (not-fitted, shape/separation) plus `with_intercept`→`add_intercept` deprecation and uniform sklearn-style `fit/predict/score`
-- [x] **Phase 11: Documentation & Adoption** - Cookbook + examples for the new models/ANOVA, decision matrix, migration guide, sklearn-migration page, and refreshed README
-- [x] **Phase 12: Release 0.7.0** - Bump 0.6.0→0.7.0 across all version sources and publish to production PyPI via the OIDC pipeline
+Full v0.7.0 phase detail is preserved in git history and `.planning/milestones/v0.7.0-phases/`.
+
+</details>
+
+### 🚧 v0.8.0 Claude Code Skills Plugin (In Progress)
+
+**Milestone Goal:** Package the full polars-statistics API as installable Claude Code skills —
+a plugin + marketplace mirroring `anofox-forecast` — with content verified accurate against the
+real API, bundled into the wheel, and shipped as 0.8.0 on PyPI.
+
+- [ ] **Phase 13: Plugin & Marketplace Scaffolding** - Stand up the `.claude-plugin/marketplace.json` + `plugins/polars-statistics/.claude-plugin/plugin.json` shell that installs cleanly in Claude Code
+- [ ] **Phase 14: Skill Cheat-Sheet Authoring** - Author the five capability-family `SKILL.md` cheat-sheets with correct frontmatter and consistent structure, examples checked live while writing
+- [ ] **Phase 15: Accuracy Verification Pass** - Run every skill example against the real API and audit each skill's description so Claude auto-surfaces the right one
+- [ ] **Phase 16: Wheel Bundling** - Bundle the skill files into the built wheel via maturin package data so they ship on `pip install`
+- [ ] **Phase 17: Release 0.8.0** - Bump 0.7.0→0.8.0 across every version source and publish to production PyPI via the OIDC pipeline
 
 ## Phase Details
 
-### Phase 8: Type Safety
-**Goal**: The whole public surface is statically typed — IDEs and type checkers resolve every Rust-bound class, expression builder, and formula helper with accurate signatures, and the stubs cannot silently rot.
-**Depends on**: Phase 7 (v0.6.0 surface complete)
-**Requirements**: TYPE-01, TYPE-02, TYPE-03
+### Phase 13: Plugin & Marketplace Scaffolding
+**Goal**: A valid, discoverable Claude Code plugin shell for polars-statistics exists and installs cleanly — the marketplace lists it and the plugin manifest declares its identity — mirroring the anofox-forecast layout.
+**Depends on**: Phase 12 (v0.7.0 surface complete and shipped)
+**Requirements**: PLUG-01, PLUG-02, PLUG-03
 **Success Criteria** (what must be TRUE):
-  1. Installing the package exposes a `py.typed` marker and `.pyi` stubs so a type checker (mypy/pyright) resolves every Rust-bound model/test class with accurate constructor, method, and getter signatures
-  2. Autocomplete and type checking work for the Python expression builders (`ps.ols(...)`, `ps.ttest_ind(...)`, …) and formula helpers with accurate argument and return types
-  3. A CI check fails when a stub drifts out of sync with the runtime API, so stubs stay accurate over time
+  1. A root `.claude-plugin/marketplace.json` lists the `polars-statistics` plugin (name, source path, description, keywords) in the anofox-forecast marketplace format
+  2. `plugins/polars-statistics/.claude-plugin/plugin.json` declares name, description, version, author, homepage, repository, and license
+  3. The plugin installs in Claude Code with valid JSON, resolvable skill directory paths, and is discoverable via the marketplace
 **Plans**: TBD
 
-### Phase 9: Result Ergonomics
-**Goal**: Consuming a result no longer requires manual `.struct.field()` boilerplate — every result is inspectable, dict-convertible, and flattenable in one call.
-**Depends on**: Phase 8
-**Requirements**: ERGO-01, ERGO-02, ERGO-03
+### Phase 14: Skill Cheat-Sheet Authoring
+**Goal**: All five capability-family cheat-sheets exist as `SKILL.md` files that a Claude agent can read to apply the full polars-statistics API — each covering its surface with accurate signatures and runnable examples, correct pinned frontmatter, and a consistent structure.
+**Depends on**: Phase 13 (skills live inside the plugin's `skills/` tree)
+**Requirements**: SKILL-01, SKILL-02, SKILL-03, SKILL-04, SKILL-05, SKILL-06
 **Success Criteria** (what must be TRUE):
-  1. User can call `.to_dict()` on any result struct and get a plain Python dict without manual `.struct.field()` extraction
-  2. User can call `.summary()` on a fitted model or test result and read a formatted summary, and printing the object shows an informative `__repr__`
-  3. User can unnest a result struct into flat DataFrame columns with a single documented helper call
+  1. `polars-statistics-hypothesis-tests/SKILL.md` covers the expression-API tests (parametric, nonparametric, distributional, correlation, categorical, modern MMD/energy, TOST/equivalence) with signatures and worked examples
+  2. `polars-statistics-anova/SKILL.md` covers one-way, two-way, and repeated-measures ANOVA plus ICC with worked examples
+  3. `polars-statistics-regression/SKILL.md` covers the 40+ PyModel classes, the regression expressions, and the R-style formula parser
+  4. `polars-statistics-results/SKILL.md` covers `to_dict()`/`summary()`/`__repr__`, unnest/struct helpers, contextual errors, and the typed `.pyi` API; and `polars-statistics-getting-started/SKILL.md` covers install, the model-selection matrix, and sklearn migration
+  5. Every `SKILL.md` carries correct frontmatter (`name`, `description`, `version` pinned to the package version, `user-invocable: false`) and a consistent cheat-sheet structure
 **Plans**: TBD
 
-### Phase 10: Errors & API Consistency
-**Goal**: Failures are self-explanatory and the API is uniform — misuse produces actionable guidance, the intercept option has one canonical name (with a back-compatible warning), and every regressor follows the same sklearn-style contract.
-**Depends on**: Phase 9
-**Requirements**: ERR-01, ERR-02, API-01, API-02
+### Phase 15: Accuracy Verification Pass
+**Goal**: The skills are trustworthy for an agent — every code example provably runs against the real API and every skill's description routes Claude to the right cheat-sheet for a task.
+**Depends on**: Phase 14 (verifies the authored content)
+**Requirements**: VERIFY-01, VERIFY-02
 **Success Criteria** (what must be TRUE):
-  1. Calling a method on an unfitted model raises an error that names the model and points to the required `.fit(...)` call
-  2. Shape mismatches and degenerate inputs (perfect separation, rank deficiency) raise actionable, contextual errors instead of panics or opaque failures
-  3. Passing `with_intercept` still works but emits a `FutureWarning` steering the user to `add_intercept`, consistently across expressions and classes
-  4. `fit`/`predict`/`score` have uniform signatures and return conventions across the regressor classes
+  1. Every code example in every skill has been executed against the shipped API, with signatures, kwargs, and return shapes confirmed against the real surface (not invented)
+  2. Each skill's `description` accurately reflects its covered surface, so a task prompt auto-surfaces the correct skill
+  3. Any signature, kwarg, or return-shape drift found during verification is corrected in the skill content before the phase closes
 **Plans**: TBD
 
-### Phase 11: Documentation & Adoption
-**Goal**: A new user can discover, choose, migrate to, and correctly use the full v0.6.0 surface — every new model and ANOVA function has runnable examples, comparable models have a decision matrix, breaking/deprecated changes have a migration guide, and the sklearn story and README tell the adoption narrative.
-**Depends on**: Phase 10 (documents the deprecation from API-01 and the sklearn-style contract from API-02)
-**Requirements**: DOCS-05, DOCS-06, DOCS-07, DOCS-08, DOCS-09, DOCS-10, DOCS-11
+### Phase 16: Wheel Bundling
+**Goal**: The skill files travel with the package — after installing the wheel, the plugin and all skills are present on disk.
+**Depends on**: Phase 15 (verified skills are the artifacts being bundled)
+**Requirements**: PKG-01
 **Success Criteria** (what must be TRUE):
-  1. Runnable cookbook + `examples/` scripts cover the robust/sparse regressors (TheilSen, RANSAC, BayesianRidge, ARD, LARS, PassiveAggressive) with real-world scenarios and output interpretation
-  2. Runnable cookbook + examples cover the GLM/smoother/streaming models (Gamma, GLMM, PSpline, MomentAccumulator) and the new ANOVA functions (one-way, two-way, repeated-measures)
-  3. A model-selection decision matrix helps users choose among comparable models across use case, robustness, interpretability, speed, and formula support
-  4. A migration guide documents the `icc` single-column→matrix contract change (old→new side by side) and the `with_intercept` deprecation timeline
-  5. An sklearn-migration page maps common sklearn workflows to polars-statistics equivalents, and the README quickstart/narrative presents the typed, sklearn-compatible, Polars-native adoption story
+  1. maturin package-data configuration includes the plugin and skill files so they are packaged into the built wheel
+  2. After `pip install polars-statistics` (from the built wheel), the marketplace, `plugin.json`, and every `SKILL.md` are present in the installed package
+  3. The bundled-skills packaging does not break the existing wheel build or CI gates
 **Plans**: TBD
 
-### Phase 12: Release 0.7.0
-**Goal**: polars-statistics 0.7.0 — carrying all the ergonomics, error, API, and documentation work — is built, published to production PyPI via the existing OIDC pipeline, and confirmed installable.
-**Depends on**: Phase 11 (release captures all prior milestone work)
-**Requirements**: REL-05, REL-06
+### Phase 17: Release 0.8.0
+**Goal**: polars-statistics 0.8.0 — carrying the plugin, the five verified skills, and the wheel bundling — is built, published to production PyPI via the existing OIDC pipeline, and confirmed installable with skills present.
+**Depends on**: Phase 16 (release ships the bundled skills)
+**Requirements**: REL-07, REL-08
 **Success Criteria** (what must be TRUE):
-  1. Version reads 0.7.0 in `Cargo.toml`, `pyproject.toml`, and `python/polars_statistics/__init__.py` `__version__`, and all three stay aligned (the v0.6.0 stuck-release failure mode from misaligned version sources does not recur)
+  1. Version reads 0.8.0 across all sources — `Cargo.toml`, `pyproject.toml`, `python/polars_statistics/__init__.py` `__version__`, `plugin.json`, and every `SKILL.md` version field — all aligned (the v0.6.0 stuck-release misaligned-version failure mode does not recur)
   2. sdist and platform wheels are built and published to production PyPI via the GitHub Actions OIDC pipeline (no hardcoded tokens)
-  3. The published 0.7.0 wheel installs and imports cleanly as a post-release smoke check
+  3. A post-release smoke check confirms the published 0.8.0 installs, imports cleanly, and has the skill files present in the installed package
 **Plans**: TBD
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 8 → 9 → 10 → 11 → 12
+Phases execute in numeric order: 13 → 14 → 15 → 16 → 17
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -129,3 +146,10 @@ Phases execute in numeric order: 8 → 9 → 10 → 11 → 12
 | 10. Errors & API Consistency | v0.7.0 | 1/1 | Complete | 2026-09-20 |
 | 11. Documentation & Adoption | v0.7.0 | 1/1 | Complete | 2026-09-20 |
 | 12. Release 0.7.0 | v0.7.0 | 1/1 | Complete | 2026-09-20 |
+| 13. Plugin & Marketplace Scaffolding | v0.8.0 | 0/TBD | Not started | - |
+| 14. Skill Cheat-Sheet Authoring | v0.8.0 | 0/TBD | Not started | - |
+| 15. Accuracy Verification Pass | v0.8.0 | 0/TBD | Not started | - |
+| 16. Wheel Bundling | v0.8.0 | 0/TBD | Not started | - |
+| 17. Release 0.8.0 | v0.8.0 | 0/TBD | Not started | - |
+</content>
+</invoke>

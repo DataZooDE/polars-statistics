@@ -6,7 +6,7 @@ status: planning
 last_updated: "2026-09-20T19:16:10.771Z"
 last_activity: 2026-09-20
 progress:
-  total_phases: 0
+  total_phases: 5
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -20,14 +20,26 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-20)
 
 **Core value:** Every public statistical capability in the backing `anofox-*` crates is exposed through the Polars/Python API — correctly, documented, tested, and shipped to PyPI.
-**Current focus:** v0.7.0 shipped — milestone complete
+**Current focus:** v0.8.0 — package the API as Claude Code skills (plugin + marketplace), bundle into the wheel, ship 0.8.0.
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 13 — Plugin & Marketplace Scaffolding (not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-09-20 — Milestone v0.8.0 started
+Status: Roadmap created (Phases 13-17), ready to plan Phase 13
+Last activity: 2026-09-20 — v0.8.0 roadmap created (5 phases, 14/14 requirements mapped)
+
+## Milestone Roadmap (v0.8.0)
+
+Execution order: 13 → 14 → 15 → 16 → 17
+
+| Phase | Name | Requirements |
+|-------|------|--------------|
+| 13 | Plugin & Marketplace Scaffolding | PLUG-01, PLUG-02, PLUG-03 |
+| 14 | Skill Cheat-Sheet Authoring | SKILL-01..06 |
+| 15 | Accuracy Verification Pass | VERIFY-01, VERIFY-02 |
+| 16 | Wheel Bundling | PKG-01 |
+| 17 | Release 0.8.0 | REL-07, REL-08 |
 
 ## Performance Metrics
 
@@ -84,44 +96,29 @@ Last activity: 2026-09-20 — Milestone v0.8.0 started
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
-- Milestone: Bump both anofox crates (not statistics only) — regression 0.5.13 carries a correctness fix + major new API.
-- Milestone: Expose all unexposed functions (full API parity) over a targeted subset.
-- Milestone: Target 0.6.0 and publish to production PyPI this milestone.
-- Roadmap: Layered (sequential technical-stage) phase structure — dep bump first, release last, audit before parity.
-- [Phase ?]: Scoped cargo update (-p flags) prevents polars/pyo3 version churn from unrelated dep bumps
-- [Phase ?]: No wrapper source reconciliation needed for anofox 0.5.4->0.5.13 bump — all call-site symbols stable
-- [Phase ?]: Fixed rank-deficient test design (x2=100*x1) to periodic modular x2=((i%7)+1)*100 — maintains >=100:1 norm ratio with full rank
-- [Phase ?]: Pre-existing .venv used for maturin develop + pytest — no new venv creation needed
-- [Phase ?]: ICC stub classified as exposed-but-stubbed — icc_fit returns all-NaN with TODO; Phase 3 must implement real matrix-input ICC
-- [Phase ?]: LOWESS confirmed internal-only — lowess_smooth_weights not in solvers/mod.rs pub use list; not a user-facing gap
-- [Phase ?]: FactorSummary classified HIGH priority user output (FittedGlmm::factors()) — not internal despite naming
-- [Phase ?]: one_way_anova uses separate-group-Series input (kruskal_wallis pattern) with kind literal as last arg
-- [Phase ?]: Factor/subject/condition encoding uses rank(dense)-1 for per-column 0-indexed codes (Categorical.to_physical shares global catalog)
-- [Phase ?]: Reuse stats_output_dtype for energy_distance_nd — no new output_dtype needed
-- [Phase ?]: icc() crate-root import confirmed; anofox_statistics::icc re-exported at root, not correlation::icc
-- [Phase ?]: Zero-rater guard: Python builder short-circuits before pl.all_horizontal([]) when no rater columns passed
-- [Phase ?]: Used GammaRegressor::builder() pattern mirroring PyTweedie as the exact structural analog; predict_eta exposed as method not getter since it requires x input
-- [Phase ?]: GLMM fit(x,y,group) accepts Vec<u64> for portability across 32/64-bit wheel targets; converts to Vec<usize> inside wrapper
-- [Phase ?]: PSpline ncols guard runs after to_faer() to reuse faer matrix API, matching existing py_isotonic.rs pattern
-- [Phase ?]: FactorSummary exposed as Python list[dict] (not a separate PyClass) per RESEARCH FactorSummary exposure strategy
-- [Phase ?]: dispersion_output_dtype uses single-field struct (not bare Float64) for consistency with all other diagnostic output types
-- [Phase ?]: compute_hc_inference arg order: actual crate signature differs from RESEARCH.md draft — corrected to (x, coef, intercept, residuals, aliased, with_intercept, hc_type, confidence_level) with no df param
-- [Phase ?]: Registrations added in Tasks 1/2 not deferred to Task 3 to keep clippy -D warnings clean throughout
-- [Phase ?]: fit_intercept (BayesianRidge/ARD) vs with_intercept (TheilSen/RANSAC) preserved per RESEARCH anti-pattern note
-- [Phase ?]: fit_from_accumulator confirmed as exact method name in anofox-regression OLS/Ridge solvers (resolves Research Open Question 1)
-- [Phase ?]: build_model helper on PyPassiveAggressive placed in plain impl block (not #[pymethods]) to prevent PyO3 from wrapping non-Python type
-- [Phase ?]: PyMomentAccumulator.inner field marked pub(crate) for cross-module access in OLS/Ridge fit_from_accumulator methods
-- [Phase ?]: check_docs_build.py uses structural nav-reference fallback when mkdocs not importable (all 39 nav files verified)
-- [Phase ?]: CHANGELOG 0.6.0 section seeded with full API listing; plan 05-04 will finalize
-- [Phase ?]: TheilSen/RANSAC/BayesianRidge/ARD needed class examples and getter docs; LARS/PA only needed is_fitted(); Ridge/WLS needed full doc lift
-- [Phase ?]: check_rust_docs.py uses line-walk not regex to handle #[pyo3] attrs between /// and fn hc_inference
-- [Phase ?]: energy_distance_nd placed in forecast.md Modern Distribution Tests (alongside energy_distance)
-- [Phase ?]: icc updated to matrix-input contract with Breaking Change note in correlation.md
-- [Phase ?]: Breaking Changes section added for icc matrix-input contract change (user-visible API change)
-- [Phase ?]: [0.6.0] footer link uses HEAD since Phase 7 handles the actual release tag
-- [Phase ?]: two_way_anova: validated vs statsmodels anova_lm with 15% tolerance
-- [Phase ?]: icc: validated against Shrout & Fleiss (1979) ICC(2,1)=0.71 published value
-- [Phase ?]: rust_api.rs: jittered data required for RM-ANOVA (ws_f=inf on exact monotone design) and Gamma diagnostics (dispersion=0 on exact exponential design)
+- Milestone (v0.8.0): Package the full API as Claude Code skills — a plugin + marketplace mirroring anofox-forecast.
+- Milestone (v0.8.0): 5 skills grouped by capability family (hypothesis-tests, anova, regression, results, getting-started).
+- Milestone (v0.8.0): Plugin/marketplace layout mirrors anofox-forecast — root `.claude-plugin/marketplace.json` + `plugins/polars-statistics/` with `plugin.json` and `skills/`; `user-invocable: false` auto-surfaced skills.
+- Milestone (v0.8.0): Bundle skills into the wheel (maturin package data) + publish 0.8.0 to PyPI; additive → minor bump.
+- Roadmap (v0.8.0): Sequential technical-stage phases — scaffolding first (13), author skills (14), dedicated accuracy pass (15), wheel bundling (16), release last (17). Mirrors prior milestones' "release-last" pattern.
+- Roadmap (v0.8.0): SKILL-01..06 grouped into a single authoring phase (14) since the five cheat-sheets share frontmatter/structure conventions and benefit from being written together with live example checks.
+- Roadmap (v0.8.0): VERIFY-01/02 kept as a dedicated phase (15) so "every example runs" is a gate, not an afterthought inside authoring.
+
+<details>
+<summary>Prior-milestone decisions (v0.6.0 / v0.7.0) — reference</summary>
+
+- Scoped cargo update (-p flags) prevents polars/pyo3 version churn from unrelated dep bumps
+- No wrapper source reconciliation needed for anofox 0.5.4->0.5.13 bump — all call-site symbols stable
+- ICC stub classified as exposed-but-stubbed; Phase 3 implemented real matrix-input ICC (validated vs Shrout & Fleiss ICC(2,1)=0.71)
+- one_way_anova uses separate-group-Series input; factor/subject/condition encoding uses rank(dense)-1 per-column 0-indexed codes
+- Reuse stats_output_dtype for energy_distance_nd; icc re-exported at crate root
+- GammaRegressor::builder() pattern mirrors PyTweedie; GLMM fit(x,y,group) accepts Vec<u64> for 32/64-bit portability
+- FactorSummary exposed as Python list[dict]; dispersion_output_dtype single-field struct for consistency
+- fit_from_accumulator confirmed exact method name in OLS/Ridge solvers
+- icc matrix-input contract change documented as Breaking Change (correlation.md)
+- v0.6.0 stuck-release root cause: version bump reached only Cargo.lock; fixed by aligning Cargo.toml/pyproject.toml/`__version__` + re-pointing tag — carried into REL-07 as a hard requirement (all version sources aligned)
+
+</details>
 
 ### Pending Todos
 
@@ -129,15 +126,15 @@ None yet.
 
 ### Blockers/Concerns
 
-- ✓ Resolved (Phase 1): dep bump landed, DEP-04 green (Rust 15 + pytest 457 passing), and the column-pivot correctness fix is confirmed active via 3 new tests. New API can now be wrapped in Phases 3–4.
 - None currently open.
+- Note for Phase 14/15: examples must be verified against the *shipped* v0.7.0 surface (soon 0.8.0) — signatures live in `python/polars_statistics/` (exprs/*.py, regression.py, results.py, _polars_statistics.pyi). Do not invent kwargs.
 
 ### Quick Tasks Completed
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260818-rj2 | Add Examples section to README linking runnable examples/ scripts and docs/examples cookbook (fixes #36) | 2026-08-18 | b5e8e16 | [260818-rj2-add-examples-section-to-readme-linking-r](./quick/260818-rj2-add-examples-section-to-readme-linking-r/) |
-| 260819-jkj | Fix stuck v0.6.0 PyPI release — PR #37 bumped Cargo.toml/pyproject.toml but missed python __version__ (still 0.5.0); bump it to 0.6.0. Publish still needs re-triggering (tag points at pre-fix commit) | 2026-08-19 | (pending) | [260819-jkj-fix-v0.6.0-pypi-release](./quick/260819-jkj-fix-v0.6.0-pypi-release/) |
+| 260819-jkj | Fix stuck v0.6.0 PyPI release — bumped python __version__ to 0.6.0, re-triggered publish | 2026-08-19 | (pending) | [260819-jkj-fix-v0.6.0-pypi-release](./quick/260819-jkj-fix-v0.6.0-pypi-release/) |
 
 ## Deferred Items
 
@@ -149,6 +146,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-17T14:55:46.852Z
-Stopped at: Phase 7 — v0.6.0 tag + GitHub Release published; publish.yml running (REL-03 in progress). REL-04 smoke check pending workflow completion (~25min) + PyPI propagation.
+Last session: 2026-09-20 — v0.8.0 roadmap created (Phases 13-17).
+Stopped at: Roadmap complete, 14/14 requirements mapped. Next: `/gsd-plan-phase 13`.
 Resume file: None
+</content>
