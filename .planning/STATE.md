@@ -1,16 +1,16 @@
 ---
-gsd_state_version: 1.0
-milestone: v0.7.0
-milestone_name: Ergonomics, Adoption & Documentation
-status: complete
-last_updated: "2026-09-20T12:00:00.000Z"
+gsd_state_version: "1.0"
+milestone: v0.8.0
+milestone_name: Claude Code Skills Plugin
+status: planning
+last_updated: "2026-09-20T19:16:10.771Z"
 last_activity: 2026-09-20
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 5
-  completed_plans: 5
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -24,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 
 ## Current Position
 
-Phase: All phases complete (8–12)
+Phase: Not started (defining requirements)
 Plan: —
-Status: Milestone v0.7.0 complete — 0.7.0 live on PyPI
-Last activity: 2026-09-20 — Phase 12 shipped 0.7.0 to production PyPI (all 19 requirements met)
+Status: Defining requirements
+Last activity: 2026-09-20 — Milestone v0.8.0 started
 
 ## Performance Metrics
 

@@ -8,11 +8,12 @@ Users write `df.group_by(...).agg(ps.ols("y", "x1", "x2"))` or
 `from polars_statistics import OLS` and get R-validated statistics with zero-copy
 numpy↔faer data transfer. It is distributed as a PyPI wheel for Python 3.9+.
 
-As of v0.6.0 the library exposes full parity with the backing `anofox-*` crates —
-every public statistical capability is reachable, documented, tested, and shipped
-on PyPI. This milestone (v0.7.0) shifts from capability to **adoption**: making the
-existing surface type-safe, ergonomic to consume, clear on errors, and thoroughly
-documented so the library is best-in-class to pick up and use.
+As of v0.7.0 the library exposes full parity with the backing `anofox-*` crates —
+every public statistical capability is reachable, type-safe, ergonomic, documented,
+tested, and shipped on PyPI. This milestone (v0.8.0) shifts from the human reader to
+the **AI agent**: packaging the entire API surface as installable Claude Code skills
+(a plugin + marketplace mirroring `anofox-forecast`) so Claude can discover and apply
+polars-statistics correctly from accurate, version-pinned cheat-sheets.
 
 ## Core Value
 
@@ -20,22 +21,23 @@ Every public statistical capability in the backing `anofox-*` crates is exposed
 through the Polars/Python API — correctly (post-bugfix), documented, and tested —
 and shipped to users via PyPI.
 
-## Current Milestone: v0.7.0 Ergonomics, Adoption & Documentation
+## Current Milestone: v0.8.0 Claude Code Skills Plugin
 
-**Goal:** Make polars-statistics best-in-class to adopt and use — type-safe,
-ergonomic results, clear errors, a clean API, and complete docs for the full
-v0.6.0 surface — shipped as 0.7.0 on PyPI.
+**Goal:** Package the full polars-statistics API as installable Claude Code skills —
+a plugin + marketplace mirroring `anofox-forecast` — bundled into the wheel and
+shipped as 0.8.0 on PyPI.
 
 **Target features:**
-- Type stubs (`.pyi`) + `py.typed` marker for all Rust-bound classes & expressions
-- Friendlier result access — `.to_dict()`/`.summary()`/repr + struct-unnest helpers
-- Contextual error messages (not-fitted, shape mismatch, separation)
-- Deprecation cleanup (`with_intercept`→`add_intercept`) + consistent sklearn-style `fit/predict/score`
-- Cookbook + runnable examples for the 10 new v0.6.0 models and the new ANOVA functions
-- Model-selection decision matrix
-- Migration guide (icc contract change + deprecation timeline)
-- sklearn-migration page + README adoption narrative
-- Publish 0.7.0 to production PyPI via the existing OIDC pipeline
+- Claude Code plugin scaffolding: root `.claude-plugin/marketplace.json` + `plugins/polars-statistics/.claude-plugin/plugin.json`
+- 5 skills (`skills/<name>/SKILL.md` cheat-sheets), version-pinned, `user-invocable: false`, each with accurate signatures + runnable examples:
+  - `polars-statistics-hypothesis-tests` — parametric, nonparametric, distributional, correlation, categorical, modern (MMD/energy), TOST
+  - `polars-statistics-anova` — one/two-way + repeated-measures ANOVA, ICC
+  - `polars-statistics-regression` — 40+ PyModels + regression expressions + R-style formula parser
+  - `polars-statistics-results` — `to_dict()`/`summary()`/`repr`, unnest/struct helpers, contextual errors, type stubs
+  - `polars-statistics-getting-started` — install, model-selection matrix, sklearn migration
+- Content verified against the real API surface (signatures/examples must run, not be invented)
+- Bundle the skill files into the wheel (maturin package data)
+- Bump 0.7.0 → 0.8.0 and publish to production PyPI via the existing OIDC pipeline
 
 ## Requirements
 
@@ -68,9 +70,13 @@ v0.6.0 surface — shipped as 0.7.0 on PyPI.
 
 ### Active
 
-<!-- Next milestone. Hypotheses until shipped & validated. -->
+<!-- Milestone v0.8.0. Hypotheses until shipped & validated. -->
 
-- _(none — v0.7.0 shipped; next milestone not yet started)_
+- [ ] Claude Code plugin + marketplace scaffolding (`.claude-plugin/marketplace.json`, `plugins/polars-statistics/.claude-plugin/plugin.json`)
+- [ ] 5 version-pinned `SKILL.md` cheat-sheets covering the full API (hypothesis-tests, anova, regression, results, getting-started)
+- [ ] Skill content verified accurate against the real API (runnable examples, correct signatures)
+- [ ] Skills bundled into the PyPI wheel (maturin package data)
+- [ ] Bumped 0.7.0 → 0.8.0 and published to production PyPI
 
 ### Out of Scope
 
@@ -78,6 +84,7 @@ v0.6.0 surface — shipped as 0.7.0 on PyPI.
 - `anofox-forecast` integration — separate crate, not requested
 - Changes to the FFI architecture or the numpy↔faer transfer strategy — the existing bridge stays
 - Reworking already-exposed API surface beyond what the version bump requires
+- New API/behavior in v0.8.0 — this milestone packages the *existing* v0.7.0 surface as Claude Code skills; it adds documentation/tooling, not statistical capability
 
 ## Context
 
@@ -106,6 +113,10 @@ v0.6.0 surface — shipped as 0.7.0 on PyPI.
 | v0.7.0 milestone = ergonomics + adoption + docs (not new algorithms) | v0.6.0 delivered full capability parity; the remaining friction is typing, result ergonomics, errors, and docs coverage | ✓ Done — shipped 0.7.0 |
 | Target release version 0.7.0 (additive, no breaking changes) | Stubs/helpers/docs are additive; `with_intercept` deprecation stays back-compatible (warning, not removal) → minor bump | ✓ Done — 0.7.0 live on PyPI, no breaking changes |
 | Align GSD milestone label to package version (v0.7.0) | STATE previously carried placeholder `v1.0`, diverging from the real 0.x package version | ✓ Done |
+| v0.8.0 milestone = package the API as Claude Code skills | User wants an installable plugin mirroring `anofox-forecast` so Claude can apply the library from accurate cheat-sheets | — Pending |
+| 5 skills grouped by capability family | Mirrors anofox-forecast's granularity; coherent cheat-sheets over many tiny files or few giant ones | — Pending |
+| Plugin + marketplace layout mirrors `anofox-forecast` | Root `.claude-plugin/marketplace.json` + `plugins/polars-statistics/` with `plugin.json` and `skills/`; `user-invocable: false` auto-surfaced skills | — Pending |
+| Bundle skills into the wheel + publish 0.8.0 to PyPI | User chose wheel bundling (maturin package data) over repo-only; additive → minor bump under semver | — Pending |
 
 ## Evolution
 
@@ -125,4 +136,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-20 — milestone v0.7.0 complete (Ergonomics, Adoption & Documentation); 0.7.0 shipped to PyPI*
+*Last updated: 2026-09-20 — milestone v0.8.0 started (Claude Code Skills Plugin)*
