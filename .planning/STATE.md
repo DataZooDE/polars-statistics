@@ -2,32 +2,32 @@
 gsd_state_version: 1.0
 milestone: v0.7.0
 milestone_name: Ergonomics, Adoption & Documentation
-status: planning
-last_updated: "2026-08-20T08:03:41.451Z"
-last_activity: 2026-08-20
+status: complete
+last_updated: "2026-09-20T12:00:00.000Z"
+last_activity: 2026-09-20
 progress:
-  total_phases: 0
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  total_phases: 5
+  completed_phases: 5
+  total_plans: 5
+  completed_plans: 5
+  percent: 100
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-08-11)
+See: .planning/PROJECT.md (updated 2026-09-20)
 
 **Core value:** Every public statistical capability in the backing `anofox-*` crates is exposed through the Polars/Python API — correctly, documented, tested, and shipped to PyPI.
-**Current focus:** Phase 7 — Release 0.6.0
+**Current focus:** v0.7.0 shipped — milestone complete
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: All phases complete (8–12)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-08-20 — Milestone v0.7.0 started
+Status: Milestone v0.7.0 complete — 0.7.0 live on PyPI
+Last activity: 2026-09-20 — Phase 12 shipped 0.7.0 to production PyPI (all 19 requirements met)
 
 ## Performance Metrics
 

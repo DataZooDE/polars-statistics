@@ -3,7 +3,7 @@
 ## Milestones
 
 - ✅ **v0.6.0 API Parity & Release** - Phases 1-7 (shipped 2026-08-19)
-- 🚧 **v0.7.0 Ergonomics, Adoption & Documentation** - Phases 8-12 (in progress)
+- ✅ **v0.7.0 Ergonomics, Adoption & Documentation** - Phases 8-12 (shipped 2026-09-20)
 - 📋 **v2.0 Forecast Integration** - deferred (FCST-01, not yet planned)
 
 ## Overview
@@ -49,11 +49,11 @@ Full v0.6.0 phase detail is preserved in git history and `.planning/milestones/v
 ergonomic results, clear errors, a clean API, and complete docs for the full v0.6.0
 surface — shipped as 0.7.0 on PyPI.
 
-- [ ] **Phase 8: Type Safety** - Ship `.pyi` stubs + `py.typed` for all Rust-bound classes, expressions, and formula helpers, with a CI drift guard
-- [ ] **Phase 9: Result Ergonomics** - Friendly result access: `.to_dict()`, `.summary()`/`__repr__`, and a one-call struct-unnest helper
-- [ ] **Phase 10: Errors & API Consistency** - Contextual errors (not-fitted, shape/separation) plus `with_intercept`→`add_intercept` deprecation and uniform sklearn-style `fit/predict/score`
-- [ ] **Phase 11: Documentation & Adoption** - Cookbook + examples for the new models/ANOVA, decision matrix, migration guide, sklearn-migration page, and refreshed README
-- [ ] **Phase 12: Release 0.7.0** - Bump 0.6.0→0.7.0 across all version sources and publish to production PyPI via the OIDC pipeline
+- [x] **Phase 8: Type Safety** - Ship `.pyi` stubs + `py.typed` for all Rust-bound classes, expressions, and formula helpers, with a CI drift guard
+- [x] **Phase 9: Result Ergonomics** - Friendly result access: `.to_dict()`, `.summary()`/`__repr__`, and a one-call struct-unnest helper
+- [x] **Phase 10: Errors & API Consistency** - Contextual errors (not-fitted, shape/separation) plus `with_intercept`→`add_intercept` deprecation and uniform sklearn-style `fit/predict/score`
+- [x] **Phase 11: Documentation & Adoption** - Cookbook + examples for the new models/ANOVA, decision matrix, migration guide, sklearn-migration page, and refreshed README
+- [x] **Phase 12: Release 0.7.0** - Bump 0.6.0→0.7.0 across all version sources and publish to production PyPI via the OIDC pipeline
 
 ## Phase Details
 
@@ -124,8 +124,8 @@ Phases execute in numeric order: 8 → 9 → 10 → 11 → 12
 | 5. Documentation | v0.6.0 | 4/4 | Complete | 2026-08-12 |
 | 6. Testing & Validation | v0.6.0 | 5/5 | Complete | 2026-08-12 |
 | 7. Release 0.6.0 | v0.6.0 | 3/3 | Complete | 2026-08-19 |
-| 8. Type Safety | v0.7.0 | 0/TBD | Not started | - |
-| 9. Result Ergonomics | v0.7.0 | 0/TBD | Not started | - |
-| 10. Errors & API Consistency | v0.7.0 | 0/TBD | Not started | - |
-| 11. Documentation & Adoption | v0.7.0 | 0/TBD | Not started | - |
-| 12. Release 0.7.0 | v0.7.0 | 0/TBD | Not started | - |
+| 8. Type Safety | v0.7.0 | 1/1 | Complete | 2026-09-20 |
+| 9. Result Ergonomics | v0.7.0 | 1/1 | Complete | 2026-09-20 |
+| 10. Errors & API Consistency | v0.7.0 | 1/1 | Complete | 2026-09-20 |
+| 11. Documentation & Adoption | v0.7.0 | 1/1 | Complete | 2026-09-20 |
+| 12. Release 0.7.0 | v0.7.0 | 1/1 | Complete | 2026-09-20 |
