@@ -2,13 +2,18 @@
 gsd_state_version: "1.0"
 milestone: v0.8.0
 milestone_name: Claude Code Skills Plugin
-status: planning
-last_updated: "2026-09-20T19:16:10.771Z"
+current_phase: 13
+current_phase_name: Plugin & Marketplace Scaffolding
+status: executing
+stopped_at: "Roadmap complete, 14/14 requirements mapped. Next: `/gsd-plan-phase 13`."
+last_updated: "2026-09-20T21:13:00.295Z"
 last_activity: 2026-09-20
+last_activity_desc: Phase 13 execution started
+state_head: 24443197b7910d6ac211680f2e39b17cc69a831f
 progress:
   total_phases: 5
   completed_phases: 0
-  total_plans: 0
+  total_plans: 1
   completed_plans: 0
   percent: 0
 ---
@@ -20,14 +25,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-20)
 
 **Core value:** Every public statistical capability in the backing `anofox-*` crates is exposed through the Polars/Python API — correctly, documented, tested, and shipped to PyPI.
-**Current focus:** v0.8.0 — package the API as Claude Code skills (plugin + marketplace), bundle into the wheel, ship 0.8.0.
+**Current focus:** Phase 13 — Plugin & Marketplace Scaffolding
 
 ## Current Position
 
-Phase: 13 — Plugin & Marketplace Scaffolding (not started)
-Plan: —
-Status: Roadmap created (Phases 13-17), ready to plan Phase 13
-Last activity: 2026-09-20 — v0.8.0 roadmap created (5 phases, 14/14 requirements mapped)
+Phase: 13 (Plugin & Marketplace Scaffolding) — EXECUTING
+Plan: 1 of 1
+Status: Executing Phase 13
+Last activity: 2026-09-20 — Phase 13 execution started
 
 ## Milestone Roadmap (v0.8.0)
 
