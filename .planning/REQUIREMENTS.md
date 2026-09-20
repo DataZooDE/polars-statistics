@@ -1,55 +1,49 @@
 # Requirements: polars-statistics
 
-**Defined:** 2026-08-20
-**Milestone:** v0.7.0 — Ergonomics, Adoption & Documentation
+**Defined:** 2026-09-20
+**Milestone:** v0.8.0 — Claude Code Skills Plugin
 **Core Value:** Every public statistical capability in the backing `anofox-*` crates is exposed through the Polars/Python API — correctly, documented, and tested — and shipped to PyPI.
 
-> Milestone focus: v0.6.0 delivered full API parity. v0.7.0 makes that surface
-> best-in-class to adopt — type-safe, ergonomic to consume, clear on errors,
-> clean, and fully documented — shipped as 0.7.0 on PyPI. Requirements for the
-> completed v0.6.0 milestone are preserved in git history and
-> `.planning/milestones/v0.6.0-phases/`.
+> Milestone focus: v0.6.0 delivered full API parity; v0.7.0 made that surface
+> best-in-class for humans (typed, ergonomic, documented). v0.8.0 packages the
+> existing v0.7.0 surface as installable **Claude Code skills** — a plugin +
+> marketplace mirroring `anofox-forecast` — bundled into the wheel and shipped as
+> 0.8.0 on PyPI. This milestone adds documentation/tooling, not statistical
+> capability. Requirements for completed milestones are preserved in git history
+> and `.planning/milestones/`.
 
 ## v1 Requirements
 
 Requirements for this milestone. Each maps to exactly one roadmap phase.
 
-### Type Safety
+### Plugin Scaffolding
 
-- [x] **TYPE-01**: Package ships a `py.typed` marker and `.pyi` stubs so IDEs and type checkers resolve every Rust-bound model/test class (OLS, Ridge, Logistic, GLMM, …) with accurate constructor, method, and getter signatures
-- [x] **TYPE-02**: Type stubs cover the Python expression builders (`ps.ols(...)`, `ps.ttest_ind(...)`, …) and formula helpers with accurate signatures and return types
-- [x] **TYPE-03**: A CI/type check verifies the stubs stay in sync with the runtime API so they cannot silently rot
+- [ ] **PLUG-01**: Root `.claude-plugin/marketplace.json` lists the `polars-statistics` plugin (name, source path, description, keywords), mirroring the anofox-forecast marketplace format
+- [ ] **PLUG-02**: `plugins/polars-statistics/.claude-plugin/plugin.json` manifest declares name, description, version, author, homepage, repository, and license
+- [ ] **PLUG-03**: The plugin installs cleanly in Claude Code — valid JSON, resolvable skill paths, and discoverable via the marketplace
 
-### Result Ergonomics
+### Skills
 
-- [x] **ERGO-01**: User can convert any result struct to a Python dict (e.g. `.to_dict()`) without manual `.struct.field()` extraction
-- [x] **ERGO-02**: Fitted models and test results provide a readable `.summary()` and an informative `__repr__`
-- [x] **ERGO-03**: A documented helper unnests result structs into flat DataFrame columns in one call
+- [ ] **SKILL-01**: `polars-statistics-hypothesis-tests/SKILL.md` covers the expression-API tests — parametric, nonparametric, distributional, correlation, categorical, modern (MMD/energy), and TOST/equivalence — with accurate signatures and runnable examples
+- [ ] **SKILL-02**: `polars-statistics-anova/SKILL.md` covers one-way, two-way, and repeated-measures ANOVA plus ICC, with worked examples
+- [ ] **SKILL-03**: `polars-statistics-regression/SKILL.md` covers the 40+ PyModel classes, the regression expressions, and the R-style formula parser
+- [ ] **SKILL-04**: `polars-statistics-results/SKILL.md` covers result ergonomics — `to_dict()`/`summary()`/`__repr__`, unnest/struct helpers, contextual errors, and the typed (`.pyi`) API
+- [ ] **SKILL-05**: `polars-statistics-getting-started/SKILL.md` covers install, the model-selection decision matrix, and sklearn migration
+- [ ] **SKILL-06**: Every `SKILL.md` carries correct frontmatter (`name`, `description`, `version` pinned to the package version, `user-invocable: false`) and a consistent cheat-sheet structure
 
-### Error Messages
+### Accuracy
 
-- [x] **ERR-01**: Calling a method on an unfitted model raises an error that names the model and the required `.fit(...)` call
-- [x] **ERR-02**: Shape mismatches and degenerate inputs (e.g. perfect separation, rank deficiency) raise actionable, contextual errors instead of panics or opaque failures
+- [ ] **VERIFY-01**: Every code example in every skill runs against the shipped 0.8.0 API — signatures, kwargs, and return shapes verified against the real surface, not invented
+- [ ] **VERIFY-02**: Each skill's `description` accurately reflects its covered surface so Claude auto-surfaces the right skill for a given task
 
-### API Consistency
+### Packaging
 
-- [x] **API-01**: `with_intercept` is deprecated in favor of a single `add_intercept` path with a back-compatible `FutureWarning`, consistently across expressions and classes
-- [x] **API-02**: sklearn-style `fit`/`predict`/`score` behaves consistently across the regressor classes (uniform signatures and return conventions)
-
-### Documentation
-
-- [x] **DOCS-05**: Runnable cookbook + `examples/` scripts cover the robust/sparse regressors (TheilSen, RANSAC, BayesianRidge, ARD, LARS, PassiveAggressive) with real-world scenarios and output interpretation
-- [x] **DOCS-06**: Runnable cookbook + examples cover the GLM/smoother/streaming models (Gamma, GLMM, PSpline, MomentAccumulator)
-- [x] **DOCS-07**: A cookbook entry covers the new ANOVA functions (one-way, two-way, repeated-measures) with worked examples
-- [x] **DOCS-08**: A model-selection decision matrix helps users choose among comparable models (use case, robustness, interpretability, speed, formula support)
-- [x] **DOCS-09**: A migration guide documents the `icc` single-column→matrix contract change (old→new side by side) and the `with_intercept` deprecation timeline
-- [x] **DOCS-10**: An sklearn-migration page maps common sklearn workflows to polars-statistics equivalents
-- [x] **DOCS-11**: The README is refreshed with an adoption-focused quickstart and narrative (typed API, sklearn-compat, Polars-native advantages)
+- [ ] **PKG-01**: Skill files are bundled into the built wheel via maturin package data and are present after `pip install polars-statistics`
 
 ### Release
 
-- [x] **REL-05**: `polars-statistics` is bumped 0.6.0 → 0.7.0 across all version sources (`Cargo.toml`, `pyproject.toml`, `python/polars_statistics/__init__.py` `__version__`) and they stay aligned
-- [x] **REL-06**: 0.7.0 is published to production PyPI via the GitHub Actions OIDC pipeline and passes a post-release install/import smoke check
+- [ ] **REL-07**: `polars-statistics` is bumped 0.7.0 → 0.8.0 across all version sources (`Cargo.toml`, `pyproject.toml`, `python/polars_statistics/__init__.py` `__version__`) plus the `plugin.json` and every `SKILL.md` version field, all aligned
+- [ ] **REL-08**: 0.8.0 is published to production PyPI via the GitHub Actions OIDC pipeline and passes a post-release smoke check confirming import + skills present in the installed package
 
 ## v2 Requirements
 
@@ -63,41 +57,39 @@ Deferred to future releases.
 
 | Feature | Reason |
 |---------|--------|
-| New statistical methods not in the `anofox-*` crates | This milestone is adoption/polish, not novel algorithm work |
-| Removing the deprecated `with_intercept` kwarg | Kept back-compatible this milestone (warning only); removal is a future major-version concern |
-| `anofox-forecast` integration | Separate crate, deferred (FCST-01) |
+| New statistical methods / new API in v0.8.0 | This milestone packages the existing v0.7.0 surface as skills; no new algorithm or API work |
+| Slash-command / `user-invocable: true` skills | Skills are auto-surfaced reference cheat-sheets, mirroring anofox-forecast (`user-invocable: false`) |
+| Standalone skills repo | Skills live in this repo under `plugins/polars-statistics/`, mirroring anofox-forecast's monorepo layout |
+| `anofox-forecast` crate integration | Separate crate, deferred (FCST-01); this milestone only mirrors its *plugin layout* |
 | FFI / numpy↔faer architecture changes | Existing bridge is sound and stays as-is |
-| Breaking changes to already-exposed API | v0.7.0 is additive under semver; no breaking changes |
+| Breaking changes to already-exposed API | v0.8.0 is additive under semver; no breaking changes |
 
 ## Traceability
 
+Populated during roadmap creation.
+
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TYPE-01 | Phase 8 | Complete |
-| TYPE-02 | Phase 8 | Complete |
-| TYPE-03 | Phase 8 | Complete |
-| ERGO-01 | Phase 9 | Complete |
-| ERGO-02 | Phase 9 | Complete |
-| ERGO-03 | Phase 9 | Complete |
-| ERR-01 | Phase 10 | Complete |
-| ERR-02 | Phase 10 | Complete |
-| API-01 | Phase 10 | Complete |
-| API-02 | Phase 10 | Complete |
-| DOCS-05 | Phase 11 | Complete |
-| DOCS-06 | Phase 11 | Complete |
-| DOCS-07 | Phase 11 | Complete |
-| DOCS-08 | Phase 11 | Complete |
-| DOCS-09 | Phase 11 | Complete |
-| DOCS-10 | Phase 11 | Complete |
-| DOCS-11 | Phase 11 | Complete |
-| REL-05 | Phase 12 | Complete |
-| REL-06 | Phase 12 | Complete |
+| PLUG-01 | — | Pending |
+| PLUG-02 | — | Pending |
+| PLUG-03 | — | Pending |
+| SKILL-01 | — | Pending |
+| SKILL-02 | — | Pending |
+| SKILL-03 | — | Pending |
+| SKILL-04 | — | Pending |
+| SKILL-05 | — | Pending |
+| SKILL-06 | — | Pending |
+| VERIFY-01 | — | Pending |
+| VERIFY-02 | — | Pending |
+| PKG-01 | — | Pending |
+| REL-07 | — | Pending |
+| REL-08 | — | Pending |
 
 **Coverage:**
 
-- v1 requirements: 19 total
-- Mapped to phases: 19
-- Unmapped: 0
+- v1 requirements: 14 total
+- Mapped to phases: 0 (pending roadmap)
+- Unmapped: 14 ⚠️
 
 ---
-*Requirements defined: 2026-08-20*
+*Requirements defined: 2026-09-20*
