@@ -5,6 +5,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-09-20
+
+Ergonomics, adoption & documentation release. Additive and backward-compatible —
+no breaking changes. Focuses on making the full v0.6.0 API surface best-in-class
+to adopt and use: type-safe, ergonomic to consume, clear on errors, and thoroughly
+documented.
+
+### Added
+
+- **Type safety** — the package now ships a `py.typed` marker and `.pyi` type
+  stubs for every Rust-bound model and test class, so IDEs and type checkers
+  (mypy/pyright) resolve accurate constructor, method, and getter signatures. The
+  Polars expression builders and formula helpers are fully annotated. A CI drift
+  guard keeps the stubs in sync with the runtime API.
+- **Result ergonomics** — every model/test class gains `.to_dict()`, `.summary()`,
+  and an informative `__repr__`. New package-level helpers
+  `polars_statistics.unnest(df, column=...)` and
+  `polars_statistics.struct_to_dict(df, column=...)` flatten expression Struct
+  results without manual `.struct.field()` extraction.
+- **sklearn-style `score()`** — added uniformly across regressors (returns R²) and
+  binary classifiers (returns mean accuracy), alongside consistent `fit`/`predict`.
+- **`add_intercept`** — a canonical intercept keyword on the regression
+  expressions and model constructors (see Deprecated).
+- **Documentation** — new cookbook pages for robust/sparse regression
+  (TheilSen, RANSAC, BayesianRidge, ARD, LARS, PassiveAggressive), GLM/smoother/
+  streaming models (Gamma, GLMM, PSpline, MomentAccumulator), and the ANOVA
+  family; a model-selection decision matrix; a migration guide; an
+  sklearn-migration guide; and an adoption-focused README refresh.
+
+### Changed
+
+- **Contextual errors** — calling a method on an unfitted model now raises an
+  error naming the model and the required `.fit(...)` call (type unchanged:
+  `RuntimeError`). Regressor `fit` paths validate input shapes up front and raise
+  actionable `ValueError`s for empty input, row mismatches, and rank-deficient
+  designs, instead of opaque failures or panics.
+
+### Deprecated
+
+- **`with_intercept`** is deprecated in favor of `add_intercept` across the
+  regression expressions and model constructors. `with_intercept` still works and
+  emits a `FutureWarning`; removal is not scheduled for this release. Passing both
+  keywords raises. (Classes that use `fit_intercept` — BayesianRidge, ARD, LARS —
+  are unchanged.)
+
 ## [0.6.0] - 2026-08-17
 
 ### Added
@@ -317,6 +362,7 @@ because the new kwargs default to `None` / `"likelihood"`.
   - SIMD-optimized linear algebra via faer
   - Automatic parallelization for group operations
 
+[0.7.0]: https://github.com/DataZooDE/polars-statistics/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/DataZooDE/polars-statistics/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/DataZooDE/polars-statistics/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/DataZooDE/polars-statistics/compare/v0.3.0...v0.4.0
