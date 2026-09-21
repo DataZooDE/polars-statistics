@@ -68,7 +68,7 @@ ps.one_way_anova(*groups, kind="fisher")
 | `ms_between` | f64 | Between-groups mean square (**NaN for Welch**) |
 | `ms_within` | f64 | Within-groups mean square (**NaN for Welch**) |
 | `eta_squared` | f64 | Effect size (**NaN for Welch**) |
-| `n_groups` | f64 | Number of groups |
+| `n_groups` | u32 | Number of groups |
 
 > **Welch note:** `kind="welch"` only populates `statistic`, `df_between`, `df_within`,
 > `p_value`, and `n_groups`. The SS/MS/eta_squared fields are `NaN` by design — Welch's
