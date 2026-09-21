@@ -71,7 +71,7 @@
     {
       "number": "14",
       "name": "Skill Cheat-Sheet Authoring",
-      "status": "pending"
+      "status": "in_progress"
     },
     {
       "number": "15",
@@ -94,5 +94,5 @@
     "label": "Advance to the next step",
     "reason": "Phase 14 of 5 · 0% · executing"
   },
-  "updated_at": "2026-09-21T18:43:23.613Z"
+  "updated_at": "2026-09-21T18:56:24.964Z"
 }
