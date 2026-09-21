@@ -18,9 +18,9 @@ Requirements for this milestone. Each maps to exactly one roadmap phase.
 
 ### Plugin Scaffolding
 
-- [ ] **PLUG-01**: Root `.claude-plugin/marketplace.json` lists the `polars-statistics` plugin (name, source path, description, keywords), mirroring the anofox-forecast marketplace format
-- [ ] **PLUG-02**: `plugins/polars-statistics/.claude-plugin/plugin.json` manifest declares name, description, version, author, homepage, repository, and license
-- [ ] **PLUG-03**: The plugin installs cleanly in Claude Code — valid JSON, resolvable skill paths, and discoverable via the marketplace
+- [x] **PLUG-01**: Root `.claude-plugin/marketplace.json` lists the `polars-statistics` plugin (name, source path, description, keywords), mirroring the anofox-forecast marketplace format
+- [x] **PLUG-02**: `plugins/polars-statistics/.claude-plugin/plugin.json` manifest declares name, description, version, author, homepage, repository, and license
+- [x] **PLUG-03**: The plugin installs cleanly in Claude Code — valid JSON, resolvable skill paths, and discoverable via the marketplace
 
 ### Skills
 
@@ -68,9 +68,9 @@ Deferred to future releases.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PLUG-01 | Phase 13 | Pending |
-| PLUG-02 | Phase 13 | Pending |
-| PLUG-03 | Phase 13 | Pending |
+| PLUG-01 | Phase 13 | Complete |
+| PLUG-02 | Phase 13 | Complete |
+| PLUG-03 | Phase 13 | Complete |
 | SKILL-01 | Phase 14 | Pending |
 | SKILL-02 | Phase 14 | Pending |
 | SKILL-03 | Phase 14 | Pending |

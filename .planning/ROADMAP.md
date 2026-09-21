@@ -67,7 +67,7 @@ Full v0.7.0 phase detail is preserved in git history and `.planning/milestones/v
 a plugin + marketplace mirroring `anofox-forecast` — with content verified accurate against the
 real API, bundled into the wheel, and shipped as 0.8.0 on PyPI.
 
-- [ ] **Phase 13: Plugin & Marketplace Scaffolding** - Stand up the `.claude-plugin/marketplace.json` + `plugins/polars-statistics/.claude-plugin/plugin.json` shell that installs cleanly in Claude Code
+- [x] **Phase 13: Plugin & Marketplace Scaffolding** - Stand up the `.claude-plugin/marketplace.json` + `plugins/polars-statistics/.claude-plugin/plugin.json` shell that installs cleanly in Claude Code (completed 2026-09-21)
 - [ ] **Phase 14: Skill Cheat-Sheet Authoring** - Author the five capability-family `SKILL.md` cheat-sheets with correct frontmatter and consistent structure, examples checked live while writing
 - [ ] **Phase 15: Accuracy Verification Pass** - Run every skill example against the real API and audit each skill's description so Claude auto-surfaces the right one
 - [ ] **Phase 16: Wheel Bundling** - Bundle the skill files into the built wheel via maturin package data so they ship on `pip install`
@@ -76,56 +76,72 @@ real API, bundled into the wheel, and shipped as 0.8.0 on PyPI.
 ## Phase Details
 
 ### Phase 13: Plugin & Marketplace Scaffolding
+
 **Goal**: A valid, discoverable Claude Code plugin shell for polars-statistics exists and installs cleanly — the marketplace lists it and the plugin manifest declares its identity — mirroring the anofox-forecast layout.
 **Depends on**: Phase 12 (v0.7.0 surface complete and shipped)
 **Requirements**: PLUG-01, PLUG-02, PLUG-03
 **Success Criteria** (what must be TRUE):
+
   1. A root `.claude-plugin/marketplace.json` lists the `polars-statistics` plugin (name, source path, description, keywords) in the anofox-forecast marketplace format
   2. `plugins/polars-statistics/.claude-plugin/plugin.json` declares name, description, version, author, homepage, repository, and license
   3. The plugin installs in Claude Code with valid JSON, resolvable skill directory paths, and is discoverable via the marketplace
+
 **Plans**: 1 plan
-- [ ] 13-01-PLAN.md — Create both manifests (marketplace.json + plugin.json) and the skills/ tree so the plugin shell installs and resolves end-to-end
+
+- [x] 13-01-PLAN.md — Create both manifests (marketplace.json + plugin.json) and the skills/ tree so the plugin shell installs and resolves end-to-end
 
 ### Phase 14: Skill Cheat-Sheet Authoring
+
 **Goal**: All five capability-family cheat-sheets exist as `SKILL.md` files that a Claude agent can read to apply the full polars-statistics API — each covering its surface with accurate signatures and runnable examples, correct pinned frontmatter, and a consistent structure.
 **Depends on**: Phase 13 (skills live inside the plugin's `skills/` tree)
 **Requirements**: SKILL-01, SKILL-02, SKILL-03, SKILL-04, SKILL-05, SKILL-06
 **Success Criteria** (what must be TRUE):
+
   1. `polars-statistics-hypothesis-tests/SKILL.md` covers the expression-API tests (parametric, nonparametric, distributional, correlation, categorical, modern MMD/energy, TOST/equivalence) with signatures and worked examples
   2. `polars-statistics-anova/SKILL.md` covers one-way, two-way, and repeated-measures ANOVA plus ICC with worked examples
   3. `polars-statistics-regression/SKILL.md` covers the 40+ PyModel classes, the regression expressions, and the R-style formula parser
   4. `polars-statistics-results/SKILL.md` covers `to_dict()`/`summary()`/`__repr__`, unnest/struct helpers, contextual errors, and the typed `.pyi` API; and `polars-statistics-getting-started/SKILL.md` covers install, the model-selection matrix, and sklearn migration
   5. Every `SKILL.md` carries correct frontmatter (`name`, `description`, `version` pinned to the package version, `user-invocable: false`) and a consistent cheat-sheet structure
+
 **Plans**: TBD
 
 ### Phase 15: Accuracy Verification Pass
+
 **Goal**: The skills are trustworthy for an agent — every code example provably runs against the real API and every skill's description routes Claude to the right cheat-sheet for a task.
 **Depends on**: Phase 14 (verifies the authored content)
 **Requirements**: VERIFY-01, VERIFY-02
 **Success Criteria** (what must be TRUE):
+
   1. Every code example in every skill has been executed against the shipped API, with signatures, kwargs, and return shapes confirmed against the real surface (not invented)
   2. Each skill's `description` accurately reflects its covered surface, so a task prompt auto-surfaces the correct skill
   3. Any signature, kwarg, or return-shape drift found during verification is corrected in the skill content before the phase closes
+
 **Plans**: TBD
 
 ### Phase 16: Wheel Bundling
+
 **Goal**: The skill files travel with the package — after installing the wheel, the plugin and all skills are present on disk.
 **Depends on**: Phase 15 (verified skills are the artifacts being bundled)
 **Requirements**: PKG-01
 **Success Criteria** (what must be TRUE):
+
   1. maturin package-data configuration includes the plugin and skill files so they are packaged into the built wheel
   2. After `pip install polars-statistics` (from the built wheel), the marketplace, `plugin.json`, and every `SKILL.md` are present in the installed package
   3. The bundled-skills packaging does not break the existing wheel build or CI gates
+
 **Plans**: TBD
 
 ### Phase 17: Release 0.8.0
+
 **Goal**: polars-statistics 0.8.0 — carrying the plugin, the five verified skills, and the wheel bundling — is built, published to production PyPI via the existing OIDC pipeline, and confirmed installable with skills present.
 **Depends on**: Phase 16 (release ships the bundled skills)
 **Requirements**: REL-07, REL-08
 **Success Criteria** (what must be TRUE):
+
   1. Version reads 0.8.0 across all sources — `Cargo.toml`, `pyproject.toml`, `python/polars_statistics/__init__.py` `__version__`, `plugin.json`, and every `SKILL.md` version field — all aligned (the v0.6.0 stuck-release misaligned-version failure mode does not recur)
   2. sdist and platform wheels are built and published to production PyPI via the GitHub Actions OIDC pipeline (no hardcoded tokens)
   3. A post-release smoke check confirms the published 0.8.0 installs, imports cleanly, and has the skill files present in the installed package
+
 **Plans**: TBD
 
 ## Progress
@@ -147,7 +163,7 @@ Phases execute in numeric order: 13 → 14 → 15 → 16 → 17
 | 10. Errors & API Consistency | v0.7.0 | 1/1 | Complete | 2026-09-20 |
 | 11. Documentation & Adoption | v0.7.0 | 1/1 | Complete | 2026-09-20 |
 | 12. Release 0.7.0 | v0.7.0 | 1/1 | Complete | 2026-09-20 |
-| 13. Plugin & Marketplace Scaffolding | v0.8.0 | 0/1 | Planned | - |
+| 13. Plugin & Marketplace Scaffolding | v0.8.0 | 1/1 | Complete    | 2026-09-21 |
 | 14. Skill Cheat-Sheet Authoring | v0.8.0 | 0/TBD | Not started | - |
 | 15. Accuracy Verification Pass | v0.8.0 | 0/TBD | Not started | - |
 | 16. Wheel Bundling | v0.8.0 | 0/TBD | Not started | - |
