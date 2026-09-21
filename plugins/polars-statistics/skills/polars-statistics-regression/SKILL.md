@@ -360,6 +360,9 @@ Tweedie(
   .gaussian(with_intercept: bool = True, max_iter: int = 100, tol: float = 1e-6, lambda_: float = 0.0) -> Tweedie
   .gamma(with_intercept: bool = True, ...) -> Tweedie
   .inverse_gaussian(with_intercept: bool = True, ...) -> Tweedie
+  # NOTE: Tweedie factory methods (.gaussian, .gamma, .inverse_gaussian) accept only
+  # with_intercept= (not add_intercept=) — they have not yet been migrated to the new
+  # parameter name. Use Tweedie().gaussian(with_intercept=True) not add_intercept=.
   .predict(x) -> np.ndarray
   .coefficients, .intercept, .aic, .bic, .p_values, .std_errors, .var_power_value
 
@@ -623,6 +626,8 @@ ps.isotonic_predict(y, x, increasing=True, null_policy="drop", name=None)   # si
 ps.logistic_predict(y, *x, lambda_=0.0, add_intercept=True, interval=None, level=0.95, null_policy="drop", name=None)
 ps.poisson_predict(y, *x, lambda_=0.0, add_intercept=True, interval=None, level=0.95, null_policy="drop", name=None)
 ps.negative_binomial_predict(y, *x, lambda_=0.0, add_intercept=True, interval=None, level=0.95, null_policy="drop", name=None)
+# Note: negative_binomial_predict does not expose theta= (unlike negative_binomial fit which
+# accepts theta=). The predict variant estimates theta internally from the data.
 ps.tweedie_predict(y, *x, var_power=1.5, lambda_=0.0, add_intercept=True, interval=None, level=0.95, null_policy="drop", name=None)
 ps.probit_predict(y, *x, lambda_=0.0, add_intercept=True, interval=None, level=0.95, null_policy="drop", name=None)
 ps.cloglog_predict(y, *x, lambda_=0.0, add_intercept=True, interval=None, level=0.95, null_policy="drop", name=None)
