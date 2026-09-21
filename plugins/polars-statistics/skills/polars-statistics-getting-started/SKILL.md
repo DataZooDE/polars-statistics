@@ -60,7 +60,7 @@ import polars as pl
 **Version check:**
 
 ```python
-print(ps.__version__)  # "0.8.0"
+print(ps.__version__)  # "0.8.0" once released (current build may still report "0.7.0"; see Gotchas)
 ```
 
 ---

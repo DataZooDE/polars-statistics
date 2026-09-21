@@ -85,8 +85,11 @@ anova does not. No description change needed — routing resolves correctly.
 
 **Known ambiguity — ICC:** ICC is documented in both `polars-statistics-anova` (via
 `ps.icc()` expression) and `polars-statistics-hypothesis-tests` (Group D correlation
-section). Both descriptions mention ICC. Either skill provides correct usage; the anova
-skill is the primary home for the expression form. No description change needed.
+section). Only the anova description names "intraclass correlation coefficient (ICC)"
+explicitly; the hypothesis-tests description covers it under the broader "correlation
+tests" phrasing. Either skill provides correct usage; the anova skill is the primary home
+for the expression form, and its explicit ICC mention makes it the correct routing target.
+No description change needed.
 
 **No mis-routes detected** — all 23 test prompts resolve to the correct skill based on the
 current `description` fields. No description refinements required.

@@ -141,9 +141,12 @@ def classify_block(block: dict) -> tuple[str, str]:
         else:
             return "empty_reason", "(empty reason — required non-empty)"
 
-    # Detect bare marker without the trailing ' -- '
-    if re.match(r'^# verify:\s*skip\s*$', first):
-        return "empty_reason", "(no reason text — use '# verify: skip -- <reason>')"
+    # Any other skip directive is malformed: it names a skip but does not provide
+    # a proper `-- <reason>`. Catch every variant (bare `# verify: skip`, a trailing
+    # `--` with no space/reason, `# verify:skip`, etc.) and report it as an error so
+    # a one-character typo can never silently promote a block to runnable (CR-01).
+    if re.match(r'^#\s*verify:\s*skip\b', first):
+        return "empty_reason", "(malformed skip marker — use '# verify: skip -- <reason>')"
 
     return "runnable", ""
 

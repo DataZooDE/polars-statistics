@@ -84,8 +84,8 @@ Final harness result: **92 blocks total — 49 PASS, 0 FAIL, 43 SKIP**
 | Skill | Blocks | PASS | FAIL | SKIP | Fixes Applied |
 |-------|--------|------|------|------|---------------|
 | polars-statistics-results | 11 | 9 | 0 | 2 | 3 self-contained examples, 2 signature skip markers |
-| polars-statistics-anova | 16 | 8 | 0 | 8 | 4 signature skip markers, 4 self-contained examples, pivot gotcha fix |
-| polars-statistics-getting-started | 12 | 9 | 0 | 3 | 3 self-contained examples, 2 sklearn-migration skip markers |
+| polars-statistics-anova | 13 | 9 | 0 | 4 | 4 signature skip markers, self-contained examples, pivot gotcha fix |
+| polars-statistics-getting-started | 11 | 9 | 0 | 2 | self-contained examples, sklearn-migration skip markers |
 | polars-statistics-hypothesis-tests | 32 | 13 | 0 | 19 | 10 signature/reference skip markers, 10 PyModel-reference skip markers, 3 self-contained gotcha examples |
 | polars-statistics-regression | 25 | 9 | 0 | 16 | 16 skip markers (PyModel class refs + expression API refs + formula refs + diagnostics ref) |
 
