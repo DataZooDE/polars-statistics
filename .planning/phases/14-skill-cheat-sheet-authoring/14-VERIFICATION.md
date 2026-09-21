@@ -24,7 +24,7 @@ covered_files:
   - plugins/polars-statistics/skills/polars-statistics-hypothesis-tests/SKILL.md
   - plugins/polars-statistics/skills/polars-statistics-regression/SKILL.md
   - plugins/polars-statistics/skills/polars-statistics-results/SKILL.md
-covered_digest: "v1:sha256:367d2dfbacf8b3645f2682c92c92787251f48c3184025a44d0d5a003c34faeb5"
+covered_digest: "v1:sha256:03dc0432ff2f142f27bbcb0116c1a36c76b0894e2c3bef11dee5939ccca66f35"
 behavior_unverified: 0
 overrides_applied: 0
 advisory:
