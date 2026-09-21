@@ -34,6 +34,7 @@ Route here when the task involves:
 Every PyModel class shares this interface (exceptions noted per class):
 
 ```python
+# verify: skip -- PyModel reference (indented method chaining with unicode R² and type annotations is illustrative, not valid Python)
 Model(hyperparams...)
   .fit(x, y)          -> Model  (chainable; x: np.ndarray shape (n,p), y: shape (n,))
   .predict(x)         -> np.ndarray
@@ -50,6 +51,7 @@ Guard against unfitted access: accessing `.coefficients`, `.r_squared`, etc. on 
 ### Group 1 — Linear Models
 
 ```python
+# verify: skip -- PyModel class reference (constructor type annotations and indented method chaining are illustrative, not valid Python)
 OLS(
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,   # deprecated — use add_intercept=
@@ -127,6 +129,7 @@ BLS(
 ### Group 2 — Robust & Sklearn-style Solvers
 
 ```python
+# verify: skip -- PyModel class reference (constructor type annotations and indented method chaining are illustrative, not valid Python)
 Quantile(
     tau: float = 0.5,                     # quantile to fit (0 < tau < 1)
     add_intercept: bool | None = None,
@@ -229,6 +232,7 @@ ARD(
 ### Group 3 — Streaming & Online
 
 ```python
+# verify: skip -- PyModel class reference (constructor type annotations and indented method chaining are illustrative, not valid Python)
 LARS(
     method: str = "lar",                  # "lar" | "lasso"
     fit_intercept: bool = True,
@@ -268,6 +272,7 @@ MomentAccumulator(n_features: int)
 ### Group 4 — Smoothers
 
 ```python
+# verify: skip -- PyModel class reference (constructor type annotations and indented method chaining are illustrative, not valid Python)
 PSpline(
     n_basis: int = 0,                     # 0 = auto-select
     penalty_order: int = 2,
@@ -283,6 +288,7 @@ PSpline(
 ### Group 5 — GLM Models
 
 ```python
+# verify: skip -- PyModel class reference (constructor type annotations and indented method chaining are illustrative, not valid Python)
 Logistic(
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,   # deprecated
@@ -410,6 +416,7 @@ Gamma(
 ### Group 6 — Mixed & Augmented Models
 
 ```python
+# verify: skip -- PyModel class reference (indented builder methods with type annotations are illustrative, not valid Python)
 GLMM()
   # No constructor params — configure via builder methods:
   .gaussian(
@@ -465,6 +472,7 @@ ALM(
 ### Group 7 — Dynamic & Demand Models
 
 ```python
+# verify: skip -- PyModel class reference (constructor type annotations and indented method chaining are illustrative, not valid Python)
 LmDynamic(
     ic: str = "aicc",                     # "aic" | "aicc" | "bic"
     distribution: str = "normal",
@@ -511,6 +519,7 @@ AidResult
 ### Group 8 — Bootstrap
 
 ```python
+# verify: skip -- PyModel class reference (constructor type annotations and indented method chaining are illustrative, not valid Python)
 StationaryBootstrap(
     expected_block_length: float,         # expected block length (e.g. 10.0)
     seed: int | None = None,
@@ -533,6 +542,7 @@ CircularBlockBootstrap(
 All fit expressions return a Polars Struct containing regression results. Use inside `group_by(...).agg(...)` for per-group fitting, or `.select(...)` for whole-frame.
 
 ```python
+# verify: skip -- expression API reference (y, *x are column-name placeholders, not runnable Python; ps not imported)
 # Linear
 ps.ols(y, *x, add_intercept=None, with_intercept=None, solve_method=None)
 ps.ridge(y, *x, lambda_=1.0, add_intercept=None, with_intercept=None, solve_method=None)
@@ -573,6 +583,7 @@ ps.aid_anomalies(y, intermittent_threshold=0.3)
 All `*_summary` variants return `List[Struct]` with fields: `{term, estimate, std_error, statistic, p_value}`. Tidy: `.explode(col).unnest(col)`.
 
 ```python
+# verify: skip -- expression API reference (y, *x are column-name placeholders, not runnable Python; ps not imported)
 ps.ols_summary(y, *x, add_intercept=None, with_intercept=None, solve_method=None, hc_type=None)
 # hc_type: "hc0" | "hc1" | "hc2" | "hc3" | None (homoskedastic)
 
@@ -611,6 +622,7 @@ All `*_predict` variants return per-row struct: `{<prefix>_prediction, <prefix>_
 | `name` | str\|None | None | output prefix (default = model name) |
 
 ```python
+# verify: skip -- expression API reference (y, *x are column-name placeholders, not runnable Python; ps not imported)
 ps.ols_predict(y, *x, add_intercept=True, solve_method=None, interval=None, level=0.95, null_policy="drop", name=None)
 ps.ridge_predict(y, *x, lambda_=1.0, add_intercept=True, solve_method=None, interval=None, level=0.95, null_policy="drop", name=None)
 ps.elastic_net_predict(y, *x, lambda_=1.0, alpha=0.5, add_intercept=True, interval=None, level=0.95, null_policy="drop", name=None)
@@ -650,6 +662,7 @@ All formula expressions parse R-style formula strings and construct the correspo
 **Formula fit variants:**
 
 ```python
+# verify: skip -- formula expression reference (formula: str uses type annotation syntax, not runnable Python)
 ps.ols_formula(formula: str, add_intercept=None, with_intercept=None, solve_method=None)
 ps.ridge_formula(formula: str, lambda_=1.0, add_intercept=None, with_intercept=None, solve_method=None)
 ps.elastic_net_formula(formula: str, lambda_=1.0, alpha=0.5, add_intercept=None, with_intercept=None)
@@ -671,6 +684,7 @@ ps.alm_formula(formula: str, distribution="normal", add_intercept=None, with_int
 **Formula summary variants** (return `List[Struct{term,estimate,std_error,statistic,p_value}]`):
 
 ```python
+# verify: skip -- formula expression reference (formula: str uses type annotation syntax, not runnable Python)
 ps.ols_formula_summary(formula: str, add_intercept=None, with_intercept=None, solve_method=None, hc_type=None)
 ps.ridge_formula_summary(formula: str, lambda_=1.0, add_intercept=None, with_intercept=None, solve_method=None)
 ps.elastic_net_formula_summary(formula: str, lambda_=1.0, alpha=0.5, add_intercept=None, with_intercept=None)
@@ -683,6 +697,7 @@ ps.alm_formula_summary(formula: str, distribution="normal", add_intercept=None, 
 **Formula predict variants** (same `interval`/`level`/`null_policy`/`name` kwargs as base predict):
 
 ```python
+# verify: skip -- formula expression reference (formula: str uses type annotation syntax, not runnable Python)
 ps.ols_formula_predict(formula: str, add_intercept=True, solve_method=None, interval=None, level=0.95, null_policy="drop", name=None)
 ps.ridge_formula_predict(formula: str, lambda_=1.0, add_intercept=True, solve_method=None, interval=None, level=0.95, null_policy="drop", name=None)
 ps.elastic_net_formula_predict(formula: str, lambda_=1.0, alpha=0.5, add_intercept=True, interval=None, level=0.95, null_policy="drop", name=None)
@@ -697,6 +712,7 @@ ps.alm_formula_predict(formula: str, distribution="normal", add_intercept=True, 
 ### Regression Expressions — Diagnostics
 
 ```python
+# verify: skip -- diagnostics expression reference (group_sizes: list[int] uses type annotation syntax; ps and x not in scope)
 # Structural / multicollinearity:
 ps.condition_number(*x, add_intercept=None, with_intercept=None)
 ps.vif(*x)

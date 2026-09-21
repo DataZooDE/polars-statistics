@@ -45,6 +45,7 @@ in **See also** at the bottom.
 ### `ps.unnest` — flatten a result Struct into flat columns
 
 ```python
+# verify: skip -- function signature reference (not runnable Python; type annotations in call context)
 ps.unnest(
     df: pl.DataFrame,
     column: str | None = None,
@@ -77,6 +78,7 @@ ps.unnest(
 ### `ps.struct_to_dict` — convert a result Struct into a Python dict
 
 ```python
+# verify: skip -- function signature reference (not runnable Python; type annotations in call context)
 ps.struct_to_dict(
     df: pl.DataFrame,
     column: str | None = None,
@@ -109,17 +111,27 @@ When you need only a single field, or when working in a lazy pipeline, the nativ
 struct API is more efficient than the helper functions:
 
 ```python
+import polars as pl
+import polars_statistics as ps
+
+df = pl.DataFrame({
+    "a": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+    "b": [2.0, 2.5, 3.5, 4.5, 5.5, 7.0],
+})
+
 # Access one field from a whole-frame result:
-df.select(ps.ttest_ind("a", "b").alias("t"))["t"].struct.field("p_value")
+p_val = df.select(ps.ttest_ind("a", "b").alias("t"))["t"].struct.field("p_value")
 
 # Unnest all fields using native Polars (no alias needed if single struct column):
-df.select(ps.ttest_ind("a", "b").alias("t")).unnest("t")
+flat = df.select(ps.ttest_ind("a", "b").alias("t")).unnest("t")
+assert "statistic" in flat.columns and "p_value" in flat.columns
 
 # Inline field extraction inside a select/with_columns:
-df.select(ps.ttest_ind("a", "b").alias("t")).with_columns(
+r = df.select(ps.ttest_ind("a", "b").alias("t")).with_columns(
     pl.col("t").struct.field("statistic").alias("t_stat"),
     pl.col("t").struct.field("p_value").alias("p"),
 )
+assert "t_stat" in r.columns and "p" in r.columns
 ```
 
 **Per-group aggregation — explode + unnest pattern:**
@@ -128,6 +140,17 @@ When `group_by().agg()` produces a `List[Struct]` column (e.g. from `ols_summary
 pattern is `.explode(col).unnest(col)`:
 
 ```python
+import polars as pl
+import polars_statistics as ps
+import numpy as np
+
+rng = np.random.default_rng(1)
+df = pl.DataFrame({
+    "group": ["A"] * 30 + ["B"] * 30,
+    "y":     rng.normal(5, 1, 60).tolist(),
+    "x":     rng.normal(2, 0.5, 60).tolist(),
+})
+
 # ols_summary returns List[Struct{term, estimate, std_error, statistic, p_value}]
 coef_df = (
     df.group_by("group")
@@ -136,6 +159,7 @@ coef_df = (
     .unnest("coef")
 )
 # Result columns: group, term, estimate, std_error, statistic, p_value
+assert set(["group", "term", "estimate", "std_error", "statistic", "p_value"]).issubset(coef_df.columns)
 ```
 
 ---
@@ -163,6 +187,10 @@ is conditional:
 ```python
 from polars_statistics import OLS
 import numpy as np
+
+rng = np.random.default_rng(42)
+X = rng.standard_normal((50, 2))
+y = X[:, 0] * 2.0 + X[:, 1] * -1.0 + rng.standard_normal(50) * 0.3
 
 m = OLS(add_intercept=True)
 # m.r_squared  # would raise PyRuntimeError — not yet fitted

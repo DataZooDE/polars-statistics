@@ -75,12 +75,14 @@ Best for: group-level statistics inside a DataFrame pipeline, lazy evaluation, `
 ```python
 import polars as pl
 import polars_statistics as ps
+import numpy as np
 
+rng = np.random.default_rng(0)
 df = pl.DataFrame({
     "group": ["A"] * 30 + ["B"] * 30,
-    "y":  [1.2, 0.8, 1.5, ...],   # 60 values
-    "x1": [2.1, 1.9, 2.3, ...],
-    "x2": [0.5, 0.3, 0.7, ...],
+    "y":  rng.normal(1.0, 0.5, 60).tolist(),
+    "x1": rng.normal(2.0, 0.3, 60).tolist(),
+    "x2": rng.normal(0.5, 0.2, 60).tolist(),
 })
 
 # Whole-frame test (no group_by)
@@ -100,11 +102,19 @@ df.with_columns(
 Expression results are **Polars Struct columns**. Unpack them with:
 
 ```python
+import polars as pl
+import polars_statistics as ps
+
+df_ab = pl.DataFrame({
+    "a": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+    "b": [2.0, 2.5, 3.5, 4.5, 5.5, 7.0],
+})
+
 # Access one field
-df.select(ps.ttest_ind("a", "b").alias("t"))["t"].struct.field("p_value")
+df_ab.select(ps.ttest_ind("a", "b").alias("t"))["t"].struct.field("p_value")
 
 # Unnest all fields using the results helper
-result = df.select(ps.ttest_ind("a", "b").alias("t"))
+result = df_ab.select(ps.ttest_ind("a", "b").alias("t"))
 ps.unnest(result, "t")   # returns DataFrame with columns: statistic, p_value
 ```
 
@@ -118,7 +128,15 @@ from polars_statistics import OLS
 import polars as pl
 import numpy as np
 
-df = pl.read_csv("data.csv")
+rng = np.random.default_rng(42)
+df = pl.DataFrame({
+    "x1": rng.normal(0, 1, 80).tolist(),
+    "x2": rng.normal(0, 1, 80).tolist(),
+})
+# y = 1.5*x1 - 0.8*x2 + noise (simulates data.csv)
+y_arr = df["x1"].to_numpy() * 1.5 - df["x2"].to_numpy() * 0.8 + rng.normal(0, 0.3, 80)
+df = df.with_columns(pl.Series("y", y_arr))
+
 X = df.select("x1", "x2").to_numpy()   # shape (n, p), float64
 y = df["y"].to_numpy()                  # shape (n,)
 
@@ -179,6 +197,7 @@ Every PyModel class shares this interface:
 ### sklearn Migration
 
 ```python
+# verify: skip -- sklearn migration reference table (illustrative comment-annotated import; sklearn not installed)
 # sklearn import                       polars-statistics equivalent
 # ─────────────────────────────────────────────────────────────────
 from sklearn.linear_model import (
@@ -301,6 +320,7 @@ df.select(ps.ols_formula("y ~ poly(x1, 2)"))
 ### Example 5: sklearn-style Ridge migration
 
 ```python
+# verify: skip -- sklearn migration example (sklearn not installed in test environment; polars-statistics Ridge API shown in other examples)
 import numpy as np
 
 # Before (sklearn)

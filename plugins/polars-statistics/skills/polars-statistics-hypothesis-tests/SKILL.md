@@ -51,6 +51,7 @@ Route here when the user asks to:
 All Group A functions return `struct{statistic: f64, p_value: f64}` unless noted.
 
 ```python
+# verify: skip -- function signature reference (not runnable Python; type annotations in call context)
 ps.ttest_ind(x, y, alternative="two-sided", equal_var=False, mu=0.0, conf_level=0.95)
 ps.ttest_paired(x, y, alternative="two-sided", mu=0.0, conf_level=0.95)
 ps.brown_forsythe(x, y)
@@ -81,6 +82,7 @@ ps.yuen_test(x, y, trim=0.2, alternative="two-sided", conf_level=0.95)
 ### Group B — Non-parametric Tests (`exprs/nonparametric.py`)
 
 ```python
+# verify: skip -- function signature reference (not runnable Python; type annotations in call context)
 ps.mann_whitney_u(x, y, alternative="two-sided", continuity_correction=True, exact=False, conf_level=None, mu=None)
 ps.wilcoxon_signed_rank(x, y, alternative="two-sided", continuity_correction=True, exact=False, conf_level=None, mu=None)
 ps.kruskal_wallis(*groups)
@@ -112,6 +114,7 @@ ps.brunner_munzel(x, y, alternative="two-sided", alpha=None)
 ### Group C — Distributional Tests (`exprs/distributional.py`)
 
 ```python
+# verify: skip -- function signature reference (not runnable Python; type annotations in call context)
 ps.shapiro_wilk(x)
 ps.dagostino(x)
 ```
@@ -127,6 +130,7 @@ ps.dagostino(x)
 ### Group D — Correlation Tests (`exprs/correlation.py`)
 
 ```python
+# verify: skip -- function signature reference (not runnable Python; covariates: list uses type annotation syntax)
 ps.pearson(x, y, conf_level=0.95)
 ps.spearman(x, y, conf_level=0.95)
 ps.kendall(x, y, variant="b")
@@ -173,8 +177,20 @@ Pass each rater as a separate positional column argument. Rows represent subject
 Do NOT pass a single matrix column — that gives silently wrong results.
 
 ```python
+import polars as pl
+import polars_statistics as ps
+import numpy as np
+
+rng = np.random.default_rng(11)
+n_subjects = 20
+df_icc_ref = pl.DataFrame({
+    "rater1": rng.normal(5, 1, n_subjects).tolist(),
+    "rater2": (rng.normal(5, 1, n_subjects) + rng.normal(0, 0.3, n_subjects)).tolist(),
+    "rater3": (rng.normal(5, 1, n_subjects) + rng.normal(0, 0.3, n_subjects)).tolist(),
+})
+
 # Correct: three separate rater columns (rows = subjects)
-df.select(ps.icc("rater1", "rater2", "rater3", icc_type="icc2"))
+df_icc_ref.select(ps.icc("rater1", "rater2", "rater3", icc_type="icc2"))
 
 # Wrong: single matrix column — silently incorrect, no error raised
 # df.select(ps.icc("ratings_matrix_column"))  # DO NOT DO THIS
@@ -195,6 +211,7 @@ These functions take scalar integer values, not column references. Call them in
 `pl.select(...)` or standalone — no DataFrame row context:
 
 ```python
+# verify: skip -- function signature reference (not runnable Python; successes: int, a: int etc. use type annotation syntax)
 ps.binom_test(successes: int, n: int, p0=0.5, alternative="two-sided")
 ps.prop_test_one(successes: int, n: int, p0=0.5, alternative="two-sided")
 ps.prop_test_two(successes1: int, n1: int, successes2: int, n2: int, alternative="two-sided", correction=False)
@@ -213,6 +230,7 @@ These functions accept a flattened contingency table stored in a Polars column c
 along with dimension parameters:
 
 ```python
+# verify: skip -- function signature reference (not runnable Python; type annotations in call context)
 ps.chisq_test(data, n_rows=2, n_cols=2, correction=False)
 ps.g_test(data, n_rows=2, n_cols=2)
 ps.cohen_kappa(data, n_categories=2, weighted=False)
@@ -226,6 +244,7 @@ row-by-row into a UInt32 column. For a 2x2 table `[[a, b], [c, d]]` pass four ro
 #### Goodness-of-fit
 
 ```python
+# verify: skip -- function signature reference (not runnable Python; type annotations in call context)
 ps.chisq_goodness_of_fit(observed, expected=None)
 ```
 
@@ -249,6 +268,7 @@ Pass an explicit `expected` column for non-uniform expected frequencies.
 ### Group F — Modern Tests (`exprs/modern.py`)
 
 ```python
+# verify: skip -- function signature reference (not runnable Python; x_cols: list, y_cols: list use type annotation syntax)
 ps.energy_distance(x, y, n_permutations=999, seed=None)
 ps.energy_distance_nd(x_cols: list, y_cols: list, n_permutations=999, seed=None)
 ps.mmd_test(x, y, n_permutations=999, seed=None)
@@ -277,6 +297,7 @@ ps.mmd_test(x, y, n_permutations=999, seed=None)
 ### Group G — TOST Equivalence Tests (`exprs/tost.py`)
 
 ```python
+# verify: skip -- function signature reference (not runnable Python; successes: int, n: int use type annotation syntax)
 ps.tost_t_test_one_sample(x, mu=0.0, bounds_type="symmetric", delta=0.5, lower=-0.5, upper=0.5, alpha=0.05)
 ps.tost_t_test_two_sample(x, y, bounds_type="symmetric", delta=0.5, lower=-0.5, upper=0.5, alpha=0.05, pooled=False)
 ps.tost_t_test_paired(x, y, bounds_type="symmetric", delta=0.5, lower=-0.5, upper=0.5, alpha=0.05)
@@ -333,6 +354,7 @@ from polars_statistics import (
 
 **TTestInd**
 ```python
+# verify: skip -- PyModel reference (indented method chaining is illustrative syntax, not valid Python)
 TTestInd(alternative="two-sided", equal_var=False, mu=0.0, conf_level=0.95)
   .fit(x, y) -> TTestInd
   .statistic, .p_value, .df, .conf_int, .mean_x, .mean_y, .null_value
@@ -343,6 +365,7 @@ TTestInd(alternative="two-sided", equal_var=False, mu=0.0, conf_level=0.95)
 
 **TTestPaired**
 ```python
+# verify: skip -- PyModel reference (indented method chaining is illustrative syntax, not valid Python)
 TTestPaired(alternative="two-sided", mu=0.0, conf_level=0.95)
   .fit(x, y) -> TTestPaired
   .statistic, .p_value, .df, .conf_int, .mean_x, .mean_y, .null_value
@@ -353,6 +376,7 @@ TTestPaired(alternative="two-sided", mu=0.0, conf_level=0.95)
 
 **BrownForsythe**
 ```python
+# verify: skip -- PyModel reference (indented method chaining is illustrative syntax, not valid Python)
 BrownForsythe()
   .fit(x, y) -> BrownForsythe
   .statistic, .p_value
@@ -363,6 +387,7 @@ BrownForsythe()
 
 **YuenTest**
 ```python
+# verify: skip -- PyModel reference (indented method chaining is illustrative syntax, not valid Python)
 YuenTest(trim=0.2, alternative="two-sided", conf_level=0.95)
   .fit(x, y) -> YuenTest
   .statistic, .p_value, .df, .diff, .trimmed_mean_x, .trimmed_mean_y, .conf_int
@@ -373,6 +398,7 @@ YuenTest(trim=0.2, alternative="two-sided", conf_level=0.95)
 
 **MannWhitneyU**
 ```python
+# verify: skip -- PyModel reference (indented method chaining is illustrative syntax, not valid Python)
 MannWhitneyU(alternative="two-sided", continuity_correction=True, exact=False, conf_level=None, mu=None)
   .fit(x, y) -> MannWhitneyU
   .statistic, .p_value, .estimate, .conf_int, .null_value
@@ -383,6 +409,7 @@ MannWhitneyU(alternative="two-sided", continuity_correction=True, exact=False, c
 
 **WilcoxonSignedRank**
 ```python
+# verify: skip -- PyModel reference (indented method chaining is illustrative syntax, not valid Python)
 WilcoxonSignedRank(alternative="two-sided", continuity_correction=True, exact=False, conf_level=None, mu=None)
   .fit(x, y) -> WilcoxonSignedRank
   .statistic, .p_value, .estimate, .conf_int, .null_value
@@ -393,6 +420,7 @@ WilcoxonSignedRank(alternative="two-sided", continuity_correction=True, exact=Fa
 
 **KruskalWallis**
 ```python
+# verify: skip -- PyModel reference (indented method chaining is illustrative syntax, not valid Python)
 KruskalWallis()
   .fit(*groups) -> KruskalWallis    # varargs: one numpy array per group
   .statistic, .p_value
@@ -403,6 +431,7 @@ KruskalWallis()
 
 **BrunnerMunzel**
 ```python
+# verify: skip -- PyModel reference (indented method chaining is illustrative syntax, not valid Python)
 BrunnerMunzel(alternative="two-sided", alpha=None)
   .fit(x, y) -> BrunnerMunzel
   .statistic, .p_value, .df, .estimate, .conf_int
@@ -413,6 +442,7 @@ BrunnerMunzel(alternative="two-sided", alpha=None)
 
 **ShapiroWilk**
 ```python
+# verify: skip -- PyModel reference (indented method chaining is illustrative syntax, not valid Python)
 ShapiroWilk()
   .fit(x) -> ShapiroWilk    # single array argument, not two
   .statistic, .p_value
@@ -423,6 +453,7 @@ ShapiroWilk()
 
 **DAgostino**
 ```python
+# verify: skip -- PyModel reference (indented method chaining is illustrative syntax, not valid Python)
 DAgostino()
   .fit(x) -> DAgostino      # single array argument
   .statistic, .p_value
@@ -623,8 +654,20 @@ correspond to subjects. A single column containing a matrix (List or Array dtype
 wrong results without raising an error.
 
 ```python
+import polars as pl
+import polars_statistics as ps
+import numpy as np
+
+rng = np.random.default_rng(22)
+n = 15
+df_raters = pl.DataFrame({
+    "rater1": rng.normal(5, 1, n).tolist(),
+    "rater2": (rng.normal(5, 1, n) + rng.normal(0, 0.3, n)).tolist(),
+    "rater3": (rng.normal(5, 1, n) + rng.normal(0, 0.3, n)).tolist(),
+})
+
 # Correct
-df.select(ps.icc("rater1", "rater2", "rater3"))
+df_raters.select(ps.icc("rater1", "rater2", "rater3"))
 
 # Wrong (no error, incorrect answer)
 # df.select(ps.icc("ratings_matrix_column"))
@@ -636,6 +679,17 @@ df.select(ps.icc("rater1", "rater2", "rater3"))
 not accept a value column plus a group-label column (long format).
 
 ```python
+import polars as pl
+import polars_statistics as ps
+import numpy as np
+
+rng = np.random.default_rng(33)
+df_wide = pl.DataFrame({
+    "ctrl": rng.normal(0, 1, 25).tolist(),
+    "treat_a": rng.normal(0.5, 1, 25).tolist(),
+    "treat_b": rng.normal(1.0, 1, 25).tolist(),
+})
+
 # Correct: separate columns per group
 df_wide.select(ps.kruskal_wallis("ctrl", "treat_a", "treat_b"))
 
@@ -672,6 +726,18 @@ After `df.group_by(...).agg(ps.ttest_ind("a","b").alias("t"))`, pass the column 
 explicitly to `ps.unnest()`:
 
 ```python
+import polars as pl
+import polars_statistics as ps
+import numpy as np
+
+rng = np.random.default_rng(44)
+df_ab = pl.DataFrame({
+    "a": rng.normal(0.0, 1.0, 30).tolist(),
+    "b": rng.normal(0.5, 1.0, 30).tolist(),
+    "cohort": ["X"] * 15 + ["Y"] * 15,
+})
+result = df_ab.group_by("cohort").agg(ps.ttest_ind("a", "b").alias("t"))
+
 ps.unnest(result, "t")   # correct
 # ps.unnest(result)      # raises ValueError when multiple Struct columns are present
 ```

@@ -47,6 +47,7 @@ Also route here for questions about **format gotchas**: wide vs. long input for
 ### one_way_anova
 
 ```python
+# verify: skip -- function signature reference (not runnable Python; no DataFrame context)
 ps.one_way_anova(*groups, kind="fisher")
 ```
 
@@ -79,6 +80,7 @@ ps.one_way_anova(*groups, kind="fisher")
 ### two_way_anova
 
 ```python
+# verify: skip -- function signature reference (not runnable Python; no DataFrame context)
 ps.two_way_anova(value, factor_a, factor_b)
 ```
 
@@ -104,6 +106,7 @@ ps.two_way_anova(value, factor_a, factor_b)
 ### repeated_measures_anova
 
 ```python
+# verify: skip -- function signature reference (not runnable Python; no DataFrame context)
 ps.repeated_measures_anova(value, subject, condition, compute_sphericity=True)
 ```
 
@@ -145,6 +148,7 @@ ps.repeated_measures_anova(value, subject, condition, compute_sphericity=True)
 ### icc
 
 ```python
+# verify: skip -- function signature reference (not runnable Python; no DataFrame context)
 ps.icc(*rater_cols, icc_type="icc2")
 ```
 
@@ -345,8 +349,19 @@ as intended because each Polars group only contains one treatment group's values
 **Correct approach — wide format, direct call:**
 
 ```python
-# Pivot long to wide first, then call:
-df_wide = df_long.pivot(on="treatment", values="score", index=None, aggregate_function="first")
+import polars as pl
+import polars_statistics as ps
+
+# Pivot long to wide first (add row index as key — required by Polars pivot), then call:
+df_long = pl.DataFrame({
+    "treatment": ["control", "drug_a", "drug_b"] * 10,
+    "score": [50.0, 55.0, 60.0] * 10,
+})
+df_wide = (
+    df_long.with_row_index("row_id")
+    .pivot(on="treatment", values="score", index="row_id", aggregate_function="first")
+    .drop("row_id")
+)
 df_wide.select(ps.one_way_anova("control", "drug_a", "drug_b"))
 ```
 
@@ -367,8 +382,18 @@ similar constructions as the sole argument.
 **Correct — one column per rater:**
 
 ```python
-df.select(ps.icc("rater1", "rater2", "rater3"))          # 3 raters, n rows = n subjects
-df.select(ps.icc("r1", "r2", icc_type="icc1"))           # 2 raters, one-way random model
+import polars as pl
+import polars_statistics as ps
+
+rater_df = pl.DataFrame({
+    "rater1": [5.0, 6.0, 7.0, 8.0, 6.0],
+    "rater2": [5.5, 6.5, 6.5, 8.5, 6.5],
+    "r1":     [5.0, 6.0, 7.0, 8.0, 6.0],
+    "r2":     [5.5, 6.5, 6.5, 8.5, 6.5],
+    "rater3": [5.0, 6.0, 7.0, 8.0, 7.0],
+})
+rater_df.select(ps.icc("rater1", "rater2", "rater3"))          # 3 raters, n rows = n subjects
+rater_df.select(ps.icc("r1", "r2", icc_type="icc1"))           # 2 raters, one-way random model
 ```
 
 This is a breaking change from an older matrix-input contract. Code written before v0.7.0
@@ -391,11 +416,24 @@ codes are not guaranteed to be contiguous 0-based integers per group.
 **Correct — raw string or integer columns:**
 
 ```python
+import polars as pl
+import polars_statistics as ps
+
 # Pass the original string column directly -- no cast, no encoding:
-df.select(ps.two_way_anova("outcome", "factor_a", "factor_b"))
+df_twoway = pl.DataFrame({
+    "outcome":  [68., 72., 70., 74., 78., 76., 80., 84., 82., 86., 90., 88.],
+    "factor_a": ["A", "A", "A", "A", "A", "A", "B", "B", "B", "B", "B", "B"],
+    "factor_b": ["X", "X", "X", "Y", "Y", "Y", "X", "X", "X", "Y", "Y", "Y"],
+})
+df_twoway.select(ps.two_way_anova("outcome", "factor_a", "factor_b"))
 
 # Subject and condition in repeated measures also stay raw:
-df.select(ps.repeated_measures_anova("score", "subject_id", "condition"))
+df_rm = pl.DataFrame({
+    "score":      [10., 12., 14., 15., 18., 20.],
+    "subject_id": ["s1", "s2", "s1", "s2", "s1", "s2"],
+    "condition":  ["t1", "t1", "t2", "t2", "t3", "t3"],
+})
+df_rm.select(ps.repeated_measures_anova("score", "subject_id", "condition"))
 ```
 
 ### Gotcha 4: Welch ANOVA does not compute SS or eta_squared
@@ -414,6 +452,13 @@ If any subject is missing any condition (unbalanced design), the expression retu
 all-NaN struct without raising an exception. Always verify balance before calling:
 
 ```python
+import polars as pl
+
+df = pl.DataFrame({
+    "subject":   ["s1", "s2", "s3", "s1", "s2", "s3", "s1", "s2", "s3"],
+    "condition": ["t1", "t1", "t1", "t2", "t2", "t2", "t3", "t3", "t3"],
+    "score":     [10., 12., 11., 14., 15., 13., 18., 20., 17.],
+})
 counts = df.group_by("subject").agg(pl.col("condition").n_unique().alias("n_cond"))
 assert counts["n_cond"].n_unique() == 1, "Unbalanced design -- fill or drop missing cells"
 ```
