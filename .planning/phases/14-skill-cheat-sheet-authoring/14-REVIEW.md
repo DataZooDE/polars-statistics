@@ -14,7 +14,9 @@ findings:
   warning: 3
   info: 1
   total: 8
-status: issues_found
+status: resolved
+# All 8 findings (4 CRITICAL + 3 WARNING + 1 INFO) fixed against source and spot-checked;
+# see 14-REVIEW-FIX.md. Commits e97852d, 1381353, 47b9300, 4dcbf6c, f101aa6.
 ---
 
 # Phase 14: Code Review Report
