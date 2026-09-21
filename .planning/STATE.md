@@ -4,18 +4,18 @@ milestone: v0.8.0
 milestone_name: Claude Code Skills Plugin
 current_phase: 14
 current_phase_name: Skill Cheat-Sheet Authoring
-current_plan: 3
+current_plan: 4
 status: executing
-stopped_at: Completed 14-01-PLAN.md (getting-started SKILL.md authored)
-last_updated: "2026-09-21T18:43:36.467Z"
+stopped_at: Completed 14-02-PLAN.md
+last_updated: "2026-09-21T18:56:36.095Z"
 last_activity: 2026-09-21
 last_activity_desc: Phase 13 complete, transitioned to Phase 14
-state_head: 9e76f28ffecfd181a83644ede9250eed04049fac
+state_head: b01ecc3a42c9b6b5184be8a8a9c0b2b80bdf71a9
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 6
-  completed_plans: 2
+  completed_plans: 3
   percent: 0
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 ## Current Position
 
 Phase: 14 — Skill Cheat-Sheet Authoring
-Current Plan: 3
+Current Plan: 4
 Total Plans in Phase: 5
 Status: Ready to execute
 Last activity: 2026-09-21 — 14-01 complete (getting-started SKILL.md authored)
@@ -97,6 +97,7 @@ Execution order: 13 → 14 → 15 → 16 → 17
 | Phase 06 P03 | 20 | 3 tasks | 10 files |
 | Phase 06 P04 | 15 | 2 tasks | 1 files |
 | Phase 14 P01 | 4 | 1 tasks | 1 files |
+| Phase 14 P02 | 9min | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -131,6 +132,7 @@ Recent decisions affecting current work:
 
 - [Phase 14]: 14-01: Frontmatter contract locked — four fields only (name, description, version 0.8.0, user-invocable false); Wave-2 plans copy verbatim
 - [Phase 14]: 14-01: Section structure locked — Overview / When-to-use / API-Reference / Worked-Examples / Gotchas / See-also for all five SKILL.md files
+- [Phase 14]: Forecast functions excluded from hypothesis-tests skill; ICC gotcha documented inline under Group D; categorical split into scalar-arg vs contingency-table-column subgroups
 
 ### Pending Todos
 
@@ -158,7 +160,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-21T18:43:36.447Z
-Stopped at: Completed 14-01-PLAN.md (getting-started SKILL.md authored)
+Last session: 2026-09-21T18:56:36.074Z
+Stopped at: Completed 14-02-PLAN.md
 Resume file: None
 </content>

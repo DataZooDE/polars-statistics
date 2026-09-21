@@ -103,10 +103,10 @@ real API, bundled into the wheel, and shipped as 0.8.0 on PyPI.
   4. `polars-statistics-results/SKILL.md` covers `to_dict()`/`summary()`/`__repr__`, unnest/struct helpers, contextual errors, and the typed `.pyi` API; and `polars-statistics-getting-started/SKILL.md` covers install, the model-selection matrix, and sklearn migration
   5. Every `SKILL.md` carries correct frontmatter (`name`, `description`, `version` pinned to the package version, `user-invocable: false`) and a consistent cheat-sheet structure
 
-**Plans**: 1/5 plans executed
+**Plans**: 2/5 plans executed
 
 - [x] 14-01-PLAN.md — getting-started SKILL.md (tracer: proves frontmatter + structure + spot-check)
-- [ ] 14-02-PLAN.md — hypothesis-tests SKILL.md (parametric/nonparametric/distributional/correlation/categorical/modern/TOST)
+- [x] 14-02-PLAN.md — hypothesis-tests SKILL.md (parametric/nonparametric/distributional/correlation/categorical/modern/TOST)
 - [ ] 14-03-PLAN.md — anova SKILL.md (one-way/two-way/repeated-measures ANOVA + ICC)
 - [ ] 14-04-PLAN.md — regression SKILL.md (PyModel families, regression expressions, formula parser)
 - [ ] 14-05-PLAN.md — results SKILL.md (struct helpers, PyModel methods, error taxonomy, .pyi)
@@ -170,7 +170,7 @@ Phases execute in numeric order: 13 → 14 → 15 → 16 → 17
 | 11. Documentation & Adoption | v0.7.0 | 1/1 | Complete | 2026-09-20 |
 | 12. Release 0.7.0 | v0.7.0 | 1/1 | Complete | 2026-09-20 |
 | 13. Plugin & Marketplace Scaffolding | v0.8.0 | 1/1 | Complete    | 2026-09-21 |
-| 14. Skill Cheat-Sheet Authoring | v0.8.0 | 1/5 | In Progress|  |
+| 14. Skill Cheat-Sheet Authoring | v0.8.0 | 2/5 | In Progress|  |
 | 15. Accuracy Verification Pass | v0.8.0 | 0/TBD | Not started | - |
 | 16. Wheel Bundling | v0.8.0 | 0/TBD | Not started | - |
 | 17. Release 0.8.0 | v0.8.0 | 0/TBD | Not started | - |

@@ -24,7 +24,7 @@ Requirements for this milestone. Each maps to exactly one roadmap phase.
 
 ### Skills
 
-- [ ] **SKILL-01**: `polars-statistics-hypothesis-tests/SKILL.md` covers the expression-API tests — parametric, nonparametric, distributional, correlation, categorical, modern (MMD/energy), and TOST/equivalence — with accurate signatures and runnable examples
+- [x] **SKILL-01**: `polars-statistics-hypothesis-tests/SKILL.md` covers the expression-API tests — parametric, nonparametric, distributional, correlation, categorical, modern (MMD/energy), and TOST/equivalence — with accurate signatures and runnable examples
 - [ ] **SKILL-02**: `polars-statistics-anova/SKILL.md` covers one-way, two-way, and repeated-measures ANOVA plus ICC, with worked examples
 - [ ] **SKILL-03**: `polars-statistics-regression/SKILL.md` covers the 40+ PyModel classes, the regression expressions, and the R-style formula parser
 - [ ] **SKILL-04**: `polars-statistics-results/SKILL.md` covers result ergonomics — `to_dict()`/`summary()`/`__repr__`, unnest/struct helpers, contextual errors, and the typed (`.pyi`) API
@@ -71,7 +71,7 @@ Deferred to future releases.
 | PLUG-01 | Phase 13 | Complete |
 | PLUG-02 | Phase 13 | Complete |
 | PLUG-03 | Phase 13 | Complete |
-| SKILL-01 | Phase 14 | Pending |
+| SKILL-01 | Phase 14 | Complete |
 | SKILL-02 | Phase 14 | Pending |
 | SKILL-03 | Phase 14 | Pending |
 | SKILL-04 | Phase 14 | Pending |
