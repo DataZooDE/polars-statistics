@@ -186,7 +186,7 @@ if m.is_fitted():                 # safe guard
 | `kruskal_wallis`, `brunner_munzel` | `statistic`, `p_value` |
 | `shapiro_wilk`, `dagostino` | `statistic`, `p_value` |
 | `pearson`, `spearman`, `kendall` | `estimate`, `statistic`, `p_value`, `ci_lower`, `ci_upper`, `n` |
-| `distance_cor` | `estimate`, `statistic`, `p_value`, `n` |
+| `distance_cor` | `estimate`, `statistic`, `p_value`, `ci_lower`, `ci_upper`, `n` |
 | `icc` | `icc`, `f_value`, `df1`, `df2`, `p_value`, `ci_lower`, `ci_upper`, `n_subjects`, `n_raters` |
 | `binom_test`, `prop_test_one`, `prop_test_two` | `estimate`, `statistic`, `p_value`, `ci_lower`, `ci_upper`, `n` |
 | `chisq_test`, `g_test`, `mcnemar_test` | `statistic`, `p_value`, `df`, `n` |

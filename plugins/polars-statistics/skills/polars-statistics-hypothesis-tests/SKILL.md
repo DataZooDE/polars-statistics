@@ -164,8 +164,8 @@ ps.icc(*rater_cols, icc_type="icc2")
 |----------|--------|
 | `pearson`, `spearman` | `estimate`, `statistic`, `p_value`, `ci_lower`, `ci_upper`, `n` |
 | `kendall` | `estimate`, `statistic`, `p_value`, `ci_lower`, `ci_upper`, `n` |
-| `distance_cor` | `estimate`, `statistic`, `p_value`, `n` |
-| `partial_cor`, `semi_partial_cor` | `estimate`, `statistic`, `p_value`, `n` |
+| `distance_cor` | `estimate`, `statistic`, `p_value`, `ci_lower`, `ci_upper`, `n` |
+| `partial_cor`, `semi_partial_cor` | `estimate`, `statistic`, `p_value`, `ci_lower`, `ci_upper`, `n` |
 | `icc` | `icc`, `f_value`, `df1`, `df2`, `p_value`, `ci_lower`, `ci_upper`, `n_subjects`, `n_raters` |
 
 **ICC gotcha — separate rater columns required:**
