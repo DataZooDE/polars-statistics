@@ -76,7 +76,7 @@
     {
       "number": "15",
       "name": "Accuracy Verification Pass",
-      "status": "pending"
+      "status": "complete"
     },
     {
       "number": "16",
@@ -91,8 +91,8 @@
   ],
   "next": {
     "command": "/gsd:progress --next",
-    "label": "Advance to the next step",
-    "reason": "Phase 15 of 5 · 40% · executing"
+    "label": "Advance to the next step (plan phase 16)",
+    "reason": "Phase 16 of 5 — needs a plan"
   },
-  "updated_at": "2026-09-21T19:39:44.337Z"
+  "updated_at": "2026-09-21T20:12:15.787Z"
 }

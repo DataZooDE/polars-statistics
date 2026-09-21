@@ -33,8 +33,8 @@ Requirements for this milestone. Each maps to exactly one roadmap phase.
 
 ### Accuracy
 
-- [ ] **VERIFY-01**: Every code example in every skill runs against the shipped 0.8.0 API — signatures, kwargs, and return shapes verified against the real surface, not invented
-- [ ] **VERIFY-02**: Each skill's `description` accurately reflects its covered surface so Claude auto-surfaces the right skill for a given task
+- [x] **VERIFY-01**: Every code example in every skill runs against the shipped 0.8.0 API — signatures, kwargs, and return shapes verified against the real surface, not invented
+- [x] **VERIFY-02**: Each skill's `description` accurately reflects its covered surface so Claude auto-surfaces the right skill for a given task
 
 ### Packaging
 
@@ -77,8 +77,8 @@ Deferred to future releases.
 | SKILL-04 | Phase 14 | Complete |
 | SKILL-05 | Phase 14 | Complete |
 | SKILL-06 | Phase 14 | Complete |
-| VERIFY-01 | Phase 15 | Pending |
-| VERIFY-02 | Phase 15 | Pending |
+| VERIFY-01 | Phase 15 | Complete |
+| VERIFY-02 | Phase 15 | Complete |
 | PKG-01 | Phase 16 | Pending |
 | REL-07 | Phase 17 | Pending |
 | REL-08 | Phase 17 | Pending |
