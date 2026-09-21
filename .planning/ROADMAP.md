@@ -107,9 +107,9 @@ real API, bundled into the wheel, and shipped as 0.8.0 on PyPI.
 
 - [x] 14-01-PLAN.md — getting-started SKILL.md (tracer: proves frontmatter + structure + spot-check)
 - [x] 14-02-PLAN.md — hypothesis-tests SKILL.md (parametric/nonparametric/distributional/correlation/categorical/modern/TOST)
-- [ ] 14-03-PLAN.md — anova SKILL.md (one-way/two-way/repeated-measures ANOVA + ICC)
-- [ ] 14-04-PLAN.md — regression SKILL.md (PyModel families, regression expressions, formula parser)
-- [ ] 14-05-PLAN.md — results SKILL.md (struct helpers, PyModel methods, error taxonomy, .pyi)
+- [x] 14-03-PLAN.md — anova SKILL.md (one-way/two-way/repeated-measures ANOVA + ICC)
+- [x] 14-04-PLAN.md — regression SKILL.md (PyModel families, regression expressions, formula parser)
+- [x] 14-05-PLAN.md — results SKILL.md (struct helpers, PyModel methods, error taxonomy, .pyi)
 
 ### Phase 15: Accuracy Verification Pass
 
