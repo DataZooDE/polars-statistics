@@ -234,7 +234,15 @@ Pass an explicit `expected` column for non-uniform expected frequencies.
 
 **`alternative` parameter values** (where applicable): `"two-sided"`, `"less"`, `"greater"`
 
-**Output struct fields:** `statistic`, `p_value` for all Group E test functions.
+**Output struct fields:**
+
+| Function | Fields |
+|----------|--------|
+| `binom_test`, `prop_test_one`, `prop_test_two` | `estimate`, `statistic`, `p_value`, `ci_lower`, `ci_upper`, `n` |
+| `chisq_test`, `g_test`, `mcnemar_test` | `statistic`, `p_value`, `df`, `n` |
+| `fisher_exact` | `statistic` (odds ratio), `p_value` |
+| `mcnemar_exact` | `statistic`, `p_value` |
+| `phi_coefficient`, `cramers_v`, `cohen_kappa`, `contingency_coef` | `estimate`, `statistic`, `p_value` |
 
 ---
 
@@ -535,7 +543,7 @@ import polars_statistics as ps
 # 2x2 contingency table flattened row-major: [[10, 20], [30, 40]]
 df = pl.DataFrame({"counts": [10, 20, 30, 40]})
 result = df.select(ps.chisq_test("counts", n_rows=2, n_cols=2).alias("chi"))
-print(result.unnest("chi"))  # statistic, p_value
+print(result.unnest("chi"))  # statistic, p_value, df, n
 
 # Fisher's exact test for small cell counts (scalar API, no DataFrame needed)
 result_fe = pl.select(ps.fisher_exact(10, 2, 3, 15, alternative="two-sided").alias("fe"))
