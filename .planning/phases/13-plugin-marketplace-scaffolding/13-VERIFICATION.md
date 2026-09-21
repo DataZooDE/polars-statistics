@@ -7,7 +7,6 @@ status: passed
 score: 3/3 must-haves verified
 covered_files:
   - .claude-plugin/marketplace.json
-  - .planning/REQUIREMENTS.md
   - .planning/phases/13-plugin-marketplace-scaffolding/13-01-PLAN.md
   - .planning/phases/13-plugin-marketplace-scaffolding/13-01-SUMMARY.md
   - .planning/phases/13-plugin-marketplace-scaffolding/13-REVIEW.md
@@ -19,7 +18,7 @@ covered_files:
   - plugins/polars-statistics/skills/polars-statistics-hypothesis-tests/SKILL.md
   - plugins/polars-statistics/skills/polars-statistics-regression/SKILL.md
   - plugins/polars-statistics/skills/polars-statistics-results/SKILL.md
-covered_digest: "v1:sha256:33138249e1c1d0e09b14982078335c095a61fd14804ea3383d7db61f1f38abd3"
+covered_digest: "v1:sha256:4d2aa3ee7e39f9ed4885f22e27db40938d073a5d5e1baa4b449ba0b45e92a2b0"
 # digest reconciled post-completion (2026-09-21): phase.complete updated
 # .planning/REQUIREMENTS.md (a covered tracking file) to mark PLUG-01/02/03 done,
 # changing the fingerprint. Verified deliverables (manifests, skills tree) unchanged.

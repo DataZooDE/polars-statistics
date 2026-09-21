@@ -4,8 +4,6 @@ verified: 2026-09-21T20:00:00Z
 status: passed
 score: 5/5 must-haves verified
 covered_files:
-  - .planning/REQUIREMENTS.md
-  - .planning/ROADMAP.md
   - .planning/phases/14-skill-cheat-sheet-authoring/14-01-PLAN.md
   - .planning/phases/14-skill-cheat-sheet-authoring/14-01-SUMMARY.md
   - .planning/phases/14-skill-cheat-sheet-authoring/14-02-PLAN.md
@@ -24,7 +22,7 @@ covered_files:
   - plugins/polars-statistics/skills/polars-statistics-hypothesis-tests/SKILL.md
   - plugins/polars-statistics/skills/polars-statistics-regression/SKILL.md
   - plugins/polars-statistics/skills/polars-statistics-results/SKILL.md
-covered_digest: "null"
+covered_digest: "v1:sha256:335cc3348995b0f841f892efbe9cfd6e67a0367d18f72c06dd7e271bfeb88a44"
 behavior_unverified: 0
 overrides_applied: 0
 advisory:
