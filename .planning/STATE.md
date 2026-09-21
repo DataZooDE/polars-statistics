@@ -4,18 +4,18 @@ milestone: v0.8.0
 milestone_name: Claude Code Skills Plugin
 current_phase: 14
 current_phase_name: Skill Cheat-Sheet Authoring
-status: planning
+status: executing
 stopped_at: Phase 13 complete, ready to plan Phase 14
-last_updated: "2026-09-21T10:55:22.859Z"
+last_updated: "2026-09-21T18:37:27.730Z"
 last_activity: 2026-09-21
-last_activity_desc: Phase 13 complete, transitioned to Phase 14
-state_head: 2fd2be80f4518a21af56c7e34d37e1c02407ac15
+last_activity_desc: Phase 14 execution started
+state_head: c9eb378d7935b5a1a4f4c7aa973a2f359f7a9598
 progress:
   total_phases: 5
   completed_phases: 1
-  total_plans: 1
+  total_plans: 6
   completed_plans: 1
-  percent: 20
+  percent: 17
 ---
 
 # Project State
@@ -25,14 +25,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-20)
 
 **Core value:** Every public statistical capability in the backing `anofox-*` crates is exposed through the Polars/Python API — correctly, documented, tested, and shipped to PyPI.
-**Current focus:** Phase 13 — Plugin & Marketplace Scaffolding
+**Current focus:** Phase 14 — Skill Cheat-Sheet Authoring
 
 ## Current Position
 
-Phase: 14 — Skill Cheat-Sheet Authoring
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-09-21 — Phase 13 complete, transitioned to Phase 14
+Phase: 14 (Skill Cheat-Sheet Authoring) — EXECUTING
+Plan: 1 of 5
+Status: Executing Phase 14
+Last activity: 2026-09-21 — Phase 14 execution started
 
 ## Milestone Roadmap (v0.8.0)
 
