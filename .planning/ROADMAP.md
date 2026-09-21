@@ -122,7 +122,8 @@ real API, bundled into the wheel, and shipped as 0.8.0 on PyPI.
   2. Each skill's `description` accurately reflects its covered surface, so a task prompt auto-surfaces the correct skill
   3. Any signature, kwarg, or return-shape drift found during verification is corrected in the skill content before the phase closes
 
-**Plans**: TBD
+**Plans**: 1 plan
+- [ ] 15-01-PLAN.md — Build reusable harness executing every skill example against the live API + fix drift in-place (VERIFY-01); document representative task-prompt→skill routing mapping and refine descriptions (VERIFY-02)
 
 ### Phase 16: Wheel Bundling
 
