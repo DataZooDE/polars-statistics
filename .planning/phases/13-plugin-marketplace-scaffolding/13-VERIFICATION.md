@@ -18,7 +18,7 @@ covered_files:
   - plugins/polars-statistics/skills/polars-statistics-hypothesis-tests/SKILL.md
   - plugins/polars-statistics/skills/polars-statistics-regression/SKILL.md
   - plugins/polars-statistics/skills/polars-statistics-results/SKILL.md
-covered_digest: "v1:sha256:4d2aa3ee7e39f9ed4885f22e27db40938d073a5d5e1baa4b449ba0b45e92a2b0"
+covered_digest: "v1:sha256:658e700b462d334abce6d16c70976a6a313400911d7e4eb3faf3f5d4776edf7d"
 # digest reconciled post-completion (2026-09-21): phase.complete updated
 # .planning/REQUIREMENTS.md (a covered tracking file) to mark PLUG-01/02/03 done,
 # changing the fingerprint. Verified deliverables (manifests, skills tree) unchanged.
