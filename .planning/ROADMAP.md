@@ -68,7 +68,7 @@ a plugin + marketplace mirroring `anofox-forecast` — with content verified acc
 real API, bundled into the wheel, and shipped as 0.8.0 on PyPI.
 
 - [x] **Phase 13: Plugin & Marketplace Scaffolding** - Stand up the `.claude-plugin/marketplace.json` + `plugins/polars-statistics/.claude-plugin/plugin.json` shell that installs cleanly in Claude Code (completed 2026-09-21)
-- [ ] **Phase 14: Skill Cheat-Sheet Authoring** - Author the five capability-family `SKILL.md` cheat-sheets with correct frontmatter and consistent structure, examples checked live while writing
+- [x] **Phase 14: Skill Cheat-Sheet Authoring** - Author the five capability-family `SKILL.md` cheat-sheets with correct frontmatter and consistent structure, examples checked live while writing (completed 2026-09-21)
 - [ ] **Phase 15: Accuracy Verification Pass** - Run every skill example against the real API and audit each skill's description so Claude auto-surfaces the right one
 - [ ] **Phase 16: Wheel Bundling** - Bundle the skill files into the built wheel via maturin package data so they ship on `pip install`
 - [ ] **Phase 17: Release 0.8.0** - Bump 0.7.0→0.8.0 across every version source and publish to production PyPI via the OIDC pipeline
@@ -170,7 +170,7 @@ Phases execute in numeric order: 13 → 14 → 15 → 16 → 17
 | 11. Documentation & Adoption | v0.7.0 | 1/1 | Complete | 2026-09-20 |
 | 12. Release 0.7.0 | v0.7.0 | 1/1 | Complete | 2026-09-20 |
 | 13. Plugin & Marketplace Scaffolding | v0.8.0 | 1/1 | Complete    | 2026-09-21 |
-| 14. Skill Cheat-Sheet Authoring | v0.8.0 | 2/5 | In Progress|  |
+| 14. Skill Cheat-Sheet Authoring | v0.8.0 | 5/5 | Complete    | 2026-09-21 |
 | 15. Accuracy Verification Pass | v0.8.0 | 0/TBD | Not started | - |
 | 16. Wheel Bundling | v0.8.0 | 0/TBD | Not started | - |
 | 17. Release 0.8.0 | v0.8.0 | 0/TBD | Not started | - |
