@@ -4,18 +4,19 @@ milestone: v0.8.0
 milestone_name: Claude Code Skills Plugin
 current_phase: 14
 current_phase_name: Skill Cheat-Sheet Authoring
+current_plan: 3
 status: executing
-stopped_at: Phase 13 complete, ready to plan Phase 14
-last_updated: "2026-09-21T18:37:27.730Z"
+stopped_at: Completed 14-01-PLAN.md (getting-started SKILL.md authored)
+last_updated: "2026-09-21T18:43:36.467Z"
 last_activity: 2026-09-21
-last_activity_desc: Phase 14 execution started
-state_head: c9eb378d7935b5a1a4f4c7aa973a2f359f7a9598
+last_activity_desc: Phase 13 complete, transitioned to Phase 14
+state_head: 9e76f28ffecfd181a83644ede9250eed04049fac
 progress:
   total_phases: 5
-  completed_phases: 1
+  completed_phases: 0
   total_plans: 6
-  completed_plans: 1
-  percent: 17
+  completed_plans: 2
+  percent: 0
 ---
 
 # Project State
@@ -25,14 +26,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-20)
 
 **Core value:** Every public statistical capability in the backing `anofox-*` crates is exposed through the Polars/Python API — correctly, documented, tested, and shipped to PyPI.
-**Current focus:** Phase 14 — Skill Cheat-Sheet Authoring
+**Current focus:** Phase 13 — Plugin & Marketplace Scaffolding
 
 ## Current Position
 
-Phase: 14 (Skill Cheat-Sheet Authoring) — EXECUTING
-Plan: 1 of 5
-Status: Executing Phase 14
-Last activity: 2026-09-21 — Phase 14 execution started
+Phase: 14 — Skill Cheat-Sheet Authoring
+Current Plan: 3
+Total Plans in Phase: 5
+Status: Ready to execute
+Last activity: 2026-09-21 — 14-01 complete (getting-started SKILL.md authored)
 
 ## Milestone Roadmap (v0.8.0)
 
@@ -94,6 +96,7 @@ Execution order: 13 → 14 → 15 → 16 → 17
 | Phase 06 P02 | 10 | 2 tasks | 2 files |
 | Phase 06 P03 | 20 | 3 tasks | 10 files |
 | Phase 06 P04 | 15 | 2 tasks | 1 files |
+| Phase 14 P01 | 4 | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -126,6 +129,9 @@ Recent decisions affecting current work:
 
 </details>
 
+- [Phase 14]: 14-01: Frontmatter contract locked — four fields only (name, description, version 0.8.0, user-invocable false); Wave-2 plans copy verbatim
+- [Phase 14]: 14-01: Section structure locked — Overview / When-to-use / API-Reference / Worked-Examples / Gotchas / See-also for all five SKILL.md files
+
 ### Pending Todos
 
 None yet.
@@ -152,7 +158,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-20 — v0.8.0 roadmap created (Phases 13-17).
-Stopped at: Phase 13 complete, ready to plan Phase 14
+Last session: 2026-09-21T18:43:36.447Z
+Stopped at: Completed 14-01-PLAN.md (getting-started SKILL.md authored)
 Resume file: None
 </content>

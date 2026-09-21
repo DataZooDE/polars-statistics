@@ -28,8 +28,8 @@ Requirements for this milestone. Each maps to exactly one roadmap phase.
 - [ ] **SKILL-02**: `polars-statistics-anova/SKILL.md` covers one-way, two-way, and repeated-measures ANOVA plus ICC, with worked examples
 - [ ] **SKILL-03**: `polars-statistics-regression/SKILL.md` covers the 40+ PyModel classes, the regression expressions, and the R-style formula parser
 - [ ] **SKILL-04**: `polars-statistics-results/SKILL.md` covers result ergonomics — `to_dict()`/`summary()`/`__repr__`, unnest/struct helpers, contextual errors, and the typed (`.pyi`) API
-- [ ] **SKILL-05**: `polars-statistics-getting-started/SKILL.md` covers install, the model-selection decision matrix, and sklearn migration
-- [ ] **SKILL-06**: Every `SKILL.md` carries correct frontmatter (`name`, `description`, `version` pinned to the package version, `user-invocable: false`) and a consistent cheat-sheet structure
+- [x] **SKILL-05**: `polars-statistics-getting-started/SKILL.md` covers install, the model-selection decision matrix, and sklearn migration
+- [x] **SKILL-06**: Every `SKILL.md` carries correct frontmatter (`name`, `description`, `version` pinned to the package version, `user-invocable: false`) and a consistent cheat-sheet structure
 
 ### Accuracy
 
@@ -75,8 +75,8 @@ Deferred to future releases.
 | SKILL-02 | Phase 14 | Pending |
 | SKILL-03 | Phase 14 | Pending |
 | SKILL-04 | Phase 14 | Pending |
-| SKILL-05 | Phase 14 | Pending |
-| SKILL-06 | Phase 14 | Pending |
+| SKILL-05 | Phase 14 | Complete |
+| SKILL-06 | Phase 14 | Complete |
 | VERIFY-01 | Phase 15 | Pending |
 | VERIFY-02 | Phase 15 | Pending |
 | PKG-01 | Phase 16 | Pending |
