@@ -186,10 +186,11 @@ if m.is_fitted():                 # safe guard
 | `kruskal_wallis`, `brunner_munzel` | `statistic`, `p_value` |
 | `shapiro_wilk`, `dagostino` | `statistic`, `p_value` |
 | `pearson`, `spearman`, `kendall` | `estimate`, `statistic`, `p_value`, `ci_lower`, `ci_upper`, `n` |
-| `distance_cor` | `statistic`, `p_value` |
+| `distance_cor` | `estimate`, `statistic`, `p_value`, `n` |
 | `icc` | `icc`, `f_value`, `df1`, `df2`, `p_value`, `ci_lower`, `ci_upper`, `n_subjects`, `n_raters` |
-| `binom_test`, `prop_test_one`, `prop_test_two` | `statistic`, `p_value` |
-| `chisq_test`, `fisher_exact`, `mcnemar_test` | `statistic`, `p_value` |
+| `binom_test`, `prop_test_one`, `prop_test_two` | `estimate`, `statistic`, `p_value`, `ci_lower`, `ci_upper`, `n` |
+| `chisq_test`, `g_test`, `mcnemar_test` | `statistic`, `p_value`, `df`, `n` |
+| `fisher_exact` | `statistic` (odds ratio), `p_value` |
 | `mmd_test`, `energy_distance` | `statistic`, `p_value` |
 | TOST functions | `estimate`, `ci_lower`, `ci_upper`, `bound_lower`, `bound_upper`, `tost_p_value`, `equivalent`, `alpha`, `n` |
 | `one_way_anova` | `statistic`, `df_between`, `df_within`, `p_value`, `ss_between`, `ss_within`, `ms_between`, `ms_within`, `eta_squared`, `n_groups` |
