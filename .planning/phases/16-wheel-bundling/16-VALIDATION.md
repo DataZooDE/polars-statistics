@@ -37,8 +37,8 @@ created: "2026-09-21"
 
 | Task | Requirement | Test Type | Automated Command | Status |
 |------|-------------|-----------|-------------------|--------|
-| copy plugin into python-source | PKG-01 | smoke | `test -f python/polars_statistics/_plugin/marketplace.json && test $(ls python/polars_statistics/_plugin/plugins/polars-statistics/skills/*/SKILL.md 2>/dev/null \| wc -l) -eq 5` | ⬜ pending |
-| drift guard (bundled==root) | PKG-01 | smoke | `for s in getting-started hypothesis-tests anova regression results; do diff -q plugins/polars-statistics/skills/polars-statistics-$s/SKILL.md python/polars_statistics/_plugin/plugins/polars-statistics/skills/polars-statistics-$s/SKILL.md || exit 1; done; echo BUNDLE_MATCHES_ROOT` | ⬜ pending |
+| copy plugin into python-source | PKG-01 | smoke | `test -f python/polars_statistics/_plugin/marketplace.json && test $(ls python/polars_statistics/_plugin/skills/*/SKILL.md 2>/dev/null \| wc -l) -eq 5` | ⬜ pending |
+| drift guard (bundled==root) | PKG-01 | smoke | `for s in getting-started hypothesis-tests anova regression results; do diff -q plugins/polars-statistics/skills/polars-statistics-$s/SKILL.md python/polars_statistics/_plugin/skills/polars-statistics-$s/SKILL.md || exit 1; done; echo BUNDLE_MATCHES_ROOT` | ⬜ pending |
 | build + archive check | PKG-01 | smoke | `unzip -l "$(ls -t target/wheels/polars_statistics-*.whl \| head -1)" \| grep -c 'polars_statistics/_plugin/.*SKILL.md'` (expect 5) | ⬜ pending |
 | clean-venv install assert | PKG-01 | behavioral | build → `pip install` into temp venv → python asserts marketplace.json + plugin.json + 5 SKILL.md exist under installed `polars_statistics/_plugin/` | ⬜ pending |
 
