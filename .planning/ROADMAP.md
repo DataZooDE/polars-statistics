@@ -137,7 +137,8 @@ real API, bundled into the wheel, and shipped as 0.8.0 on PyPI.
   2. After `pip install polars-statistics` (from the built wheel), the marketplace, `plugin.json`, and every `SKILL.md` are present in the installed package
   3. The bundled-skills packaging does not break the existing wheel build or CI gates
 
-**Plans**: TBD
+**Plans**: 1 plan
+- [ ] 16-01-PLAN.md — Copy the plugin tree under `python/polars_statistics/_plugin/` (maturin python-source auto-include), add a drift + clean-venv install verifier, prove PKG-01 end-to-end
 
 ### Phase 17: Release 0.8.0
 
