@@ -9,9 +9,14 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
   lint:
     name: Lint
+    timeout-minutes: 15
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -32,6 +37,7 @@ jobs:
 
   type-check:
     name: Type Stubs
+    timeout-minutes: 30
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -105,6 +111,7 @@ jobs:
 
   test-python:
     name: Python Tests (${{ matrix.python-version }}, ${{ matrix.os }})
+    timeout-minutes: 40
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -172,6 +179,7 @@ jobs:
 
   coverage:
     name: Coverage
+    timeout-minutes: 20
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -215,6 +223,7 @@ jobs:
 
   build-wheels:
     name: Build wheels (${{ matrix.os }})
+    timeout-minutes: 25
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
