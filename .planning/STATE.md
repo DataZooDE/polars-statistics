@@ -7,16 +7,16 @@ current_phase_name: Wheel Bundling
 current_plan: 1
 status: executing
 stopped_at: Phase 15 complete, ready to plan Phase 16
-last_updated: "2026-10-08T19:47:01.161Z"
+last_updated: "2026-10-08T20:52:05.517Z"
 last_activity: 2026-09-22
 last_activity_desc: Phase 16 execution started
-state_head: d40406471a48b3198c96abb3b7b0a94c74787780
+state_head: 1f53d106e9a6f6d74b00a0c48d641be3f7e7dd92
 progress:
-  total_phases: 6
+  total_phases: 7
   completed_phases: 3
-  total_plans: 8
+  total_plans: 17
   completed_plans: 7
-  percent: 50
+  percent: 41
 ---
 
 # Project State
@@ -155,6 +155,7 @@ None yet.
 ### Roadmap Evolution
 
 - Phase 16.1 inserted after Phase 16: Upstream crate refresh: anofox-statistics 0.4.4 + anofox-regression 0.5.15 — bump, adapt to R-matching behaviour changes, expose new API, update stubs/docs/CHANGELOG/skills (URGENT)
+- Phase 16.2 inserted after Phase 16.1: Penalized GLM + AFT survival regression from anofox-regression 0.5.16; Mann-Whitney/Wilcoxon expression estimate+CI (URGENT)
 
 ## Deferred Items
 

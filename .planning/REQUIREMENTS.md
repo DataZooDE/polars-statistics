@@ -52,6 +52,10 @@ Requirements for this milestone. Each maps to exactly one roadmap phase.
 - [ ] **UPST-03**: New upstream capabilities are exposed via expressions/PyModels: effect sizes (Cohen's d, rank-biserial), Jarque-Bera, bootstrap CIs, conditional Fisher, conf_level for binomial/proportion/Fisher tests, GLMM Wald inference, Huber/RANSAC inference, NegBin estimate_dispersion, RLS initial_p_diagonal
 - [ ] **UPST-04**: Stubs, docstrings, mkdocs, CHANGELOG and skill cheat-sheets document the new surface, and the skill-example harness passes
 
+- [ ] **UPST-05**: Penalized GLM (anofox-regression 0.5.16 `solvers::penalized_glm`) is exposed as a PyModel and Polars expressions, validated against R glm / MASS::glm.nb
+- [ ] **UPST-06**: AFT survival regression (`solvers::aft`) is exposed as a PyModel and Polars expressions, validated against R survival::survreg
+- [ ] **UPST-07**: Mann-Whitney / Wilcoxon expressions return the Hodges-Lehmann estimate and confidence interval (additive fields), and the new 16.2 surface is documented in stubs, mkdocs, CHANGELOG and skills
+
 ## v2 Requirements
 
 Deferred to future releases.
@@ -91,13 +95,16 @@ Deferred to future releases.
 | UPST-02 | Phase 16.1 | Pending |
 | UPST-03 | Phase 16.1 | Pending |
 | UPST-04 | Phase 16.1 | Pending |
+| UPST-05 | Phase 16.2 | Pending |
+| UPST-06 | Phase 16.2 | Pending |
+| UPST-07 | Phase 16.2 | Pending |
 | REL-07 | Phase 17 | Pending |
 | REL-08 | Phase 17 | Pending |
 
 **Coverage:**
 
-- v1 requirements: 18 total
-- Mapped to phases: 18 ✓
+- v1 requirements: 21 total
+- Mapped to phases: 21 ✓
 - Unmapped: 0 ✓
 
 ---

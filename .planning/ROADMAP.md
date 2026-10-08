@@ -72,6 +72,7 @@ real API, bundled into the wheel, and shipped as 0.8.0 on PyPI.
 - [x] **Phase 15: Accuracy Verification Pass** - Run every skill example against the real API and audit each skill's description so Claude auto-surfaces the right one (completed 2026-09-21)
 - [ ] **Phase 16: Wheel Bundling** - Bundle the skill files into the built wheel via maturin package data so they ship on `pip install`
 - [ ] **Phase 16.1: Upstream Crate Refresh** (INSERTED) - Bump to anofox-statistics 0.4.6 / anofox-regression 0.5.16, adapt to R-matching fixes, expose new API, update stubs/docs/skills
+- [ ] **Phase 16.2: Penalized GLM and AFT Survival Regression** (INSERTED) - Expose anofox-regression 0.5.16's penalized GLM engine and AFT survival regression; add estimate/CI to the Mann-Whitney/Wilcoxon expressions
 - [ ] **Phase 17: Release 0.8.0** - Bump 0.7.0→0.8.0 across every version source and publish to production PyPI via the OIDC pipeline
 
 ## Phase Details
@@ -166,6 +167,20 @@ real API, bundled into the wheel, and shipped as 0.8.0 on PyPI.
 - [ ] 16.1-08-PLAN.md — CHANGELOG [Unreleased] incl. behaviour changes + Rust API, README, API_REFERENCE, validation page (Wave 4)
 - [ ] 16.1-09-PLAN.md — anofox-statistics 0.4.5/0.4.6 parity: Mann-Whitney/Wilcoxon Hodges-Lehmann CI vs R (126 cases), exact-distribution gating, mcnemar_exact at large counts (Wave 2)
 
+### Phase 16.2: Penalized GLM and AFT Survival Regression (INSERTED)
+
+**Goal**: The two model families added in anofox-regression 0.5.16 (the penalized GLM engine and accelerated failure time survival regression) are available as Polars expressions and Python model classes. The Mann-Whitney / Wilcoxon expressions also return their Hodges-Lehmann estimate and confidence interval. All of it is documented, R-validated and in the skills.
+**Depends on**: Phase 16.1 (crate versions and the refreshed docs/skills baseline)
+**Requirements**: UPST-05, UPST-06, UPST-07
+**Success Criteria** (what must be TRUE):
+
+  1. Penalized GLM is exposed as a PyModel (family: poisson/binomial/logistic/negative binomial/gamma/tweedie with links; per-coefficient normal/laplace priors; ridge `lambda`; `vcov_type` laplace/sandwich/naive; offsets; inference) and as `#[polars_expr]` expressions for group_by/over. Results match upstream's R references (glm, MASS::glm.nb, negative.binomial(θ)).
+  2. AFT survival regression is exposed as a PyModel (Weibull, exponential, log-normal, log-logistic; right censoring via an event indicator; inference; `predict_quantile`/`predict_median`/`predict_survival`/`predict_cdf`) and as expressions. Results match `survival::survreg` references.
+  3. `ps.mann_whitney_u` / `ps.wilcoxon_signed_rank` expression outputs gain trailing `estimate`, `ci_lower` and `ci_upper` fields (additive), so `conf_level` takes effect.
+  4. `.pyi` stubs (drift guard green), docstrings, mkdocs, CHANGELOG and the regression/hypothesis skill cheat-sheets cover the new surface. The skill-example harness and all CI gates (clippy, fmt, ruff on new files, pytest) are green.
+
+**Plans**: TBD
+
 ### Phase 17: Release 0.8.0
 
 **Goal**: polars-statistics 0.8.0 — carrying the plugin, the five verified skills, and the wheel bundling — is built, published to production PyPI via the existing OIDC pipeline, and confirmed installable with skills present.
@@ -182,7 +197,7 @@ real API, bundled into the wheel, and shipped as 0.8.0 on PyPI.
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 13 → 14 → 15 → 16 → 16.1 → 17
+Phases execute in order: 13 → 14 → 15 → 16.1 → 16.2 → 16 → 17 (16.1/16.2 update the skills before 16 bundles them into the wheel)
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
