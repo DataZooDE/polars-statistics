@@ -4,14 +4,28 @@ use polars::prelude::*;
 use pyo3_polars::derive::polars_expr;
 
 use anofox_statistics::{
-    binom_test, chisq_goodness_of_fit, chisq_test, cohen_kappa, contingency_coef, cramers_v,
-    fisher_exact, g_test, mcnemar_exact, mcnemar_test, phi_coefficient, prop_test_one,
-    prop_test_two, Alternative,
+    binom_test_with_conf_level, chisq_goodness_of_fit, chisq_test, cohen_kappa, contingency_coef,
+    cramers_v, fisher_exact_conditional, fisher_exact_with_conf_level, g_test, mcnemar_exact,
+    mcnemar_test, phi_coefficient, prop_test_one_with_conf_level, prop_test_two_with_conf_level,
+    Alternative,
 };
 
 use crate::expressions::output_types::{
-    association_output_dtype, chisq_output_dtype, proportion_output_dtype, stats_output_dtype,
+    association_output_dtype, chisq_output_dtype, fisher_output, fisher_output_dtype,
+    proportion_output_dtype, stats_output_dtype,
 };
+
+/// Read a trailing `conf_level` scalar input at `idx`, defaulting to 0.95 when
+/// absent or null. This keeps older-arity callers (downstream rlib consumers
+/// built against the previous input contract, before `conf_level` was added)
+/// working: `inputs.get(idx)` returns `None` instead of panicking when the
+/// caller did not supply the trailing input.
+fn trailing_conf_level(inputs: &[Series], idx: usize) -> PolarsResult<f64> {
+    match inputs.get(idx) {
+        Some(s) => Ok(s.f64()?.get(0).unwrap_or(0.95)),
+        None => Ok(0.95),
+    }
+}
 
 /// Helper to parse alternative hypothesis
 fn parse_alternative(s: &str) -> Alternative {
@@ -90,15 +104,24 @@ fn association_output(
 }
 
 /// Public Rust-callable variant. Same input contract as the `pl_binom_test` expression shim.
+///
+/// # Input contract
+/// - `inputs[0]` — `u32` literal: `successes`.
+/// - `inputs[1]` — `u32` literal: `n`.
+/// - `inputs[2]` — `f64` literal: `p0`.
+/// - `inputs[3]` — `String` literal: `alternative`.
+/// - `inputs[4]` — `f64` literal, optional (trailing): `conf_level`, default 0.95 when
+///   absent (keeps the previous-arity contract working for existing rlib callers).
 pub fn binom_test_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let successes = inputs[0].u32()?.get(0).unwrap_or(0) as usize;
     let n = inputs[1].u32()?.get(0).unwrap_or(1) as usize;
     let p0 = inputs[2].f64()?.get(0).unwrap_or(0.5);
     let alt_str = inputs[3].str()?.get(0).unwrap_or("two-sided");
+    let conf_level = trailing_conf_level(inputs, 4)?;
 
     let alternative = parse_alternative(alt_str);
 
-    match binom_test(successes, n, p0, alternative) {
+    match binom_test_with_conf_level(successes, n, p0, alternative, conf_level) {
         Ok(result) => proportion_output(
             result.estimate,
             result.estimate, // For binom test, estimate is the test value
@@ -127,15 +150,23 @@ fn pl_binom_test(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Public Rust-callable variant. Same input contract as the `pl_prop_test_one` expression shim.
+///
+/// # Input contract
+/// - `inputs[0]` — `u32` literal: `successes`.
+/// - `inputs[1]` — `u32` literal: `n`.
+/// - `inputs[2]` — `f64` literal: `p0`.
+/// - `inputs[3]` — `String` literal: `alternative`.
+/// - `inputs[4]` — `f64` literal, optional (trailing): `conf_level`, default 0.95.
 pub fn prop_test_one_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let successes = inputs[0].u32()?.get(0).unwrap_or(0) as usize;
     let n = inputs[1].u32()?.get(0).unwrap_or(1) as usize;
     let p0 = inputs[2].f64()?.get(0).unwrap_or(0.5);
     let alt_str = inputs[3].str()?.get(0).unwrap_or("two-sided");
+    let conf_level = trailing_conf_level(inputs, 4)?;
 
     let alternative = parse_alternative(alt_str);
 
-    match prop_test_one(successes, n, p0, alternative) {
+    match prop_test_one_with_conf_level(successes, n, p0, alternative, conf_level) {
         Ok(result) => proportion_output(
             result.estimate[0],
             result.statistic,
@@ -164,6 +195,15 @@ fn pl_prop_test_one(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Public Rust-callable variant. Same input contract as the `pl_prop_test_two` expression shim.
+///
+/// # Input contract
+/// - `inputs[0]` — `u32` literal: `successes1`.
+/// - `inputs[1]` — `u32` literal: `n1`.
+/// - `inputs[2]` — `u32` literal: `successes2`.
+/// - `inputs[3]` — `u32` literal: `n2`.
+/// - `inputs[4]` — `String` literal: `alternative`.
+/// - `inputs[5]` — `bool` literal: `correction`.
+/// - `inputs[6]` — `f64` literal, optional (trailing): `conf_level`, default 0.95.
 pub fn prop_test_two_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let successes1 = inputs[0].u32()?.get(0).unwrap_or(0) as usize;
     let n1 = inputs[1].u32()?.get(0).unwrap_or(1) as usize;
@@ -171,10 +211,17 @@ pub fn prop_test_two_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let n2 = inputs[3].u32()?.get(0).unwrap_or(1) as usize;
     let alt_str = inputs[4].str()?.get(0).unwrap_or("two-sided");
     let correction = inputs[5].bool()?.get(0).unwrap_or(false);
+    let conf_level = trailing_conf_level(inputs, 6)?;
 
     let alternative = parse_alternative(alt_str);
 
-    match prop_test_two([successes1, successes2], [n1, n2], alternative, correction) {
+    match prop_test_two_with_conf_level(
+        [successes1, successes2],
+        [n1, n2],
+        alternative,
+        correction,
+        conf_level,
+    ) {
         Ok(result) => {
             // Difference in proportions
             let estimate = result.estimate[0] - result.estimate[1];
@@ -332,46 +379,89 @@ fn pl_g_test(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Public Rust-callable variant. Same input contract as the `pl_fisher_exact` expression shim.
+///
+/// # Input contract
+/// - `inputs[0..3]` — `u32` literals: `a`, `b`, `c`, `d` (2x2 table cells).
+/// - `inputs[4]` — `String` literal: `alternative`.
+/// - `inputs[5]` — `f64` literal, optional (trailing): `conf_level`, default 0.95.
+///
+/// Returns `statistic` (sample odds ratio `ad/bc`), `p_value`, and the Woolf
+/// (logit) confidence interval `ci_lower`/`ci_upper` at `conf_level`.
 pub fn fisher_exact_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let a = inputs[0].u32()?.get(0).unwrap_or(0) as usize;
     let b = inputs[1].u32()?.get(0).unwrap_or(0) as usize;
     let c = inputs[2].u32()?.get(0).unwrap_or(0) as usize;
     let d = inputs[3].u32()?.get(0).unwrap_or(0) as usize;
     let alt_str = inputs[4].str()?.get(0).unwrap_or("two-sided");
+    let conf_level = trailing_conf_level(inputs, 5)?;
 
     let table = [[a, b], [c, d]];
     let alternative = parse_alternative(alt_str);
 
-    match fisher_exact(&table, alternative) {
-        Ok(result) => {
-            let stat_series = Series::new("statistic".into(), vec![result.odds_ratio]);
-            let pval_series = Series::new("p_value".into(), vec![result.p_value]);
-
-            StructChunked::from_series(
-                "fisher_exact".into(),
-                1,
-                [&stat_series, &pval_series].into_iter(),
-            )
-            .map(|ca| ca.into_series())
-        }
-        Err(_) => {
-            let stat_series = Series::new("statistic".into(), vec![f64::NAN]);
-            let pval_series = Series::new("p_value".into(), vec![f64::NAN]);
-
-            StructChunked::from_series(
-                "fisher_exact".into(),
-                1,
-                [&stat_series, &pval_series].into_iter(),
-            )
-            .map(|ca| ca.into_series())
-        }
+    match fisher_exact_with_conf_level(&table, alternative, conf_level) {
+        Ok(result) => fisher_output(
+            result.odds_ratio,
+            result.p_value,
+            result.conf_int_lower,
+            result.conf_int_upper,
+            "fisher_exact",
+        ),
+        Err(_) => fisher_output(f64::NAN, f64::NAN, f64::NAN, f64::NAN, "fisher_exact"),
     }
 }
 
 /// Fisher's exact test for 2x2 tables
-#[polars_expr(output_type_func=stats_output_dtype)]
+#[polars_expr(output_type_func=fisher_output_dtype)]
 fn pl_fisher_exact(inputs: &[Series]) -> PolarsResult<Series> {
     fisher_exact_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_fisher_exact_conditional`
+/// expression shim.
+///
+/// # Input contract
+/// - `inputs[0..3]` — `u32` literals: `a`, `b`, `c`, `d` (2x2 table cells).
+/// - `inputs[4]` — `String` literal: `alternative`.
+/// - `inputs[5]` — `f64` literal, optional (trailing): `conf_level`, default 0.95.
+///
+/// Returns `statistic` (conditional MLE odds ratio), `p_value` (identical to
+/// [`fisher_exact_fit`]), and the exact conditional confidence interval
+/// `ci_lower`/`ci_upper` (one-sided for one-sided `alternative`, matching R's
+/// `fisher.test`).
+pub fn fisher_exact_conditional_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    let a = inputs[0].u32()?.get(0).unwrap_or(0) as usize;
+    let b = inputs[1].u32()?.get(0).unwrap_or(0) as usize;
+    let c = inputs[2].u32()?.get(0).unwrap_or(0) as usize;
+    let d = inputs[3].u32()?.get(0).unwrap_or(0) as usize;
+    let alt_str = inputs[4].str()?.get(0).unwrap_or("two-sided");
+    let conf_level = trailing_conf_level(inputs, 5)?;
+
+    let table = [[a, b], [c, d]];
+    let alternative = parse_alternative(alt_str);
+
+    match fisher_exact_conditional(&table, alternative, conf_level) {
+        Ok(result) => fisher_output(
+            result.odds_ratio,
+            result.p_value,
+            result.conf_int_lower,
+            result.conf_int_upper,
+            "fisher_exact_conditional",
+        ),
+        Err(_) => fisher_output(
+            f64::NAN,
+            f64::NAN,
+            f64::NAN,
+            f64::NAN,
+            "fisher_exact_conditional",
+        ),
+    }
+}
+
+/// Fisher's exact test for 2x2 tables with R `fisher.test` semantics (conditional
+/// maximum-likelihood odds ratio and exact conditional confidence interval).
+#[polars_expr(output_type_func=fisher_output_dtype)]
+fn pl_fisher_exact_conditional(inputs: &[Series]) -> PolarsResult<Series> {
+    fisher_exact_conditional_fit(inputs)
 }
 
 /// Public Rust-callable variant. Same input contract as the `pl_mcnemar_test` expression shim.

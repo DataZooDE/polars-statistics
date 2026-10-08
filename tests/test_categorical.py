@@ -343,6 +343,90 @@ class TestFisherExact:
         assert "p_value" in fisher
 
 
+class TestConfLevelAndConditionalFisher:
+    """conf_level wired through binom/prop/fisher tests; fisher_exact_conditional."""
+
+    def test_binom_test_default_conf_level_unchanged(self):
+        result = pl.select(ps.binom_test(13, 20).alias("r"))["r"][0]
+        assert result["ci_lower"] == pytest.approx(0.40781146546717190, abs=1e-8)
+        assert result["ci_upper"] == pytest.approx(0.84609079521545882, abs=1e-8)
+
+    def test_binom_test_conf_level_0_9(self):
+        result = pl.select(ps.binom_test(13, 20, conf_level=0.9).alias("r"))["r"][0]
+        assert result["ci_lower"] == pytest.approx(0.44196548868451124, abs=1e-8)
+        assert result["ci_upper"] == pytest.approx(0.8226890824255508, abs=1e-8)
+
+    def test_prop_test_one_conf_level_0_9(self):
+        result = pl.select(ps.prop_test_one(13, 20, conf_level=0.9).alias("r"))["r"][0]
+        assert result["ci_lower"] == pytest.approx(0.4665126888484717, abs=1e-8)
+        assert result["ci_upper"] == pytest.approx(0.79773995994323899, abs=1e-8)
+
+    def test_prop_test_two_correction_conf_level_0_9(self):
+        result = pl.select(
+            ps.prop_test_two(18, 30, 11, 28, correction=True, conf_level=0.9).alias("r")
+        )["r"][0]
+        assert result["ci_lower"] == pytest.approx(-0.03878519131429997, abs=1e-8)
+        assert result["ci_upper"] == pytest.approx(0.45307090560001423, abs=1e-8)
+
+    def test_fisher_exact_default_matches_r(self):
+        result = pl.select(ps.fisher_exact(18, 7, 9, 16).alias("r"))["r"][0]
+        assert result["statistic"] == pytest.approx(4.5714285714285712, abs=1e-9)
+        assert result["p_value"] == pytest.approx(0.022241295691722542, abs=1e-9)
+        assert result["ci_lower"] == pytest.approx(1.3831591632505247, abs=1e-8)
+        assert result["ci_upper"] == pytest.approx(15.108860743518289, abs=1e-8)
+
+    def test_fisher_exact_schema_is_statistic_p_value_ci_lower_ci_upper(self):
+        schema = pl.select(ps.fisher_exact(18, 7, 9, 16).alias("r")).schema["r"]
+        assert [f.name for f in schema.fields] == [
+            "statistic",
+            "p_value",
+            "ci_lower",
+            "ci_upper",
+        ]
+
+    def test_fisher_exact_conf_level_0_9(self):
+        result = pl.select(ps.fisher_exact(18, 7, 9, 16, conf_level=0.9).alias("r"))["r"][0]
+        assert result["ci_lower"] == pytest.approx(1.67626443936084, abs=1e-8)
+        assert result["ci_upper"] == pytest.approx(12.466982352523004, abs=1e-8)
+
+    def test_fisher_exact_conditional_matches_r(self):
+        result = pl.select(ps.fisher_exact_conditional(18, 7, 9, 16).alias("r"))["r"][0]
+        assert result["p_value"] == pytest.approx(0.022241295691722542, abs=1e-9)
+        assert result["statistic"] == pytest.approx(4.4215633454100463, abs=1e-3)
+        assert result["ci_lower"] == pytest.approx(1.2001230942188943, abs=1e-3)
+        assert result["ci_upper"] == pytest.approx(18.034801377448705, abs=2e-2)
+
+    def test_fisher_exact_conditional_one_sided_greater(self):
+        result = pl.select(
+            ps.fisher_exact_conditional(18, 7, 9, 16, alternative="greater").alias("r")
+        )["r"][0]
+        assert result["ci_upper"] == float("inf")
+
+    def test_fisher_exact_conditional_one_sided_less(self):
+        result = pl.select(
+            ps.fisher_exact_conditional(18, 7, 9, 16, alternative="less").alias("r")
+        )["r"][0]
+        assert result["ci_lower"] == 0.0
+
+    @pytest.mark.parametrize(
+        "builder",
+        [
+            lambda: ps.binom_test(13, 20, conf_level=1.5),
+            lambda: ps.prop_test_one(13, 20, conf_level=1.5),
+            lambda: ps.prop_test_two(18, 30, 11, 28, conf_level=1.5),
+            lambda: ps.fisher_exact(18, 7, 9, 16, conf_level=1.5),
+            lambda: ps.fisher_exact_conditional(18, 7, 9, 16, conf_level=1.5),
+        ],
+    )
+    def test_invalid_conf_level_is_nan_not_exception(self, builder):
+        result = pl.select(builder().alias("r"))["r"][0]
+        import math
+
+        for value in result.values():
+            if isinstance(value, float):
+                assert math.isnan(value)
+
+
 class TestMcNemar:
     """Tests for McNemar's test."""
 
