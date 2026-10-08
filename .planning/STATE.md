@@ -2,15 +2,15 @@
 gsd_state_version: "1.0"
 milestone: v0.8.0
 milestone_name: Claude Code Skills Plugin
-current_phase: 16
-current_phase_name: Wheel Bundling
+current_phase: "16.1"
+current_phase_name: Upstream Crate Refresh
 current_plan: 1
 status: executing
 stopped_at: Phase 15 complete, ready to plan Phase 16
-last_updated: "2026-10-08T20:52:05.517Z"
+last_updated: "2026-10-08T20:53:34.040Z"
 last_activity: 2026-09-22
 last_activity_desc: Phase 16 execution started
-state_head: 1f53d106e9a6f6d74b00a0c48d641be3f7e7dd92
+state_head: e7a536ed55cd0e1e33a81e4de85328054daa23a3
 progress:
   total_phases: 7
   completed_phases: 3
@@ -30,10 +30,10 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 
 ## Current Position
 
-Phase: 16 (Wheel Bundling) — EXECUTING
+Phase: 16.1 (Upstream Crate Refresh) — READY TO EXECUTE
 Current Plan: 1
-Total Plans in Phase: 1
-Status: Executing Phase 16
+Total Plans in Phase: 9
+Status: Ready to execute
 Last activity: 2026-09-22 — Phase 16 execution started
 
 ## Milestone Roadmap (v0.8.0)

@@ -156,16 +156,26 @@ real API, bundled into the wheel, and shipped as 0.8.0 on PyPI.
   4. `.pyi` stubs (drift guard green), docstrings, mkdocs pages, CHANGELOG (including a "behaviour changes" section) and the skill cheat-sheets cover the new surface, and the Phase 15 skill-example harness passes
 
 **Plans**: 9 plans
+**Wave 1**
 
 - [ ] 16.1-01-PLAN.md — Bump crates (exact 0.4.6 / 0.5.16), fix Tweedie smoke tests, pin every R-matching behaviour change + non-finite handling with R-reference tests (Wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 16.1-02-PLAN.md — Effect sizes (Cohen's d family, rank-biserial family) + categorical conf_level + fisher_exact_conditional (Wave 2)
 - [ ] 16.1-03-PLAN.md — NegBin estimate_dispersion/dispersion, RLS initial_p_diagonal (PyModel + all expressions + rlib), GLMM Wald inference (Wave 2)
+- [ ] 16.1-09-PLAN.md — anofox-statistics 0.4.5/0.4.6 parity: Mann-Whitney/Wilcoxon Hodges-Lehmann CI vs R (126 cases), exact-distribution gating, mcnemar_exact at large counts (Wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 16.1-04-PLAN.md — Jarque-Bera, bootstrap_mean_ci / bootstrap_ci, rlib smoke for all new/changed statistics *_fit (Wave 3)
 - [ ] 16.1-05-PLAN.md — Huber/RANSAC inference, RANSAC.inlier_fit(), TheilSen univariate_pairwise, variance_factor/leverage_new, Ridge inference getters (Wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 16.1-06-PLAN.md — Skill cheat-sheets + ROUTING.md for the new surface, harness green (Wave 4)
 - [ ] 16.1-07-PLAN.md — mkdocs API pages (new effect-sizes page, outputs, statistics + regression pages) (Wave 4)
 - [ ] 16.1-08-PLAN.md — CHANGELOG [Unreleased] incl. behaviour changes + Rust API, README, API_REFERENCE, validation page (Wave 4)
-- [ ] 16.1-09-PLAN.md — anofox-statistics 0.4.5/0.4.6 parity: Mann-Whitney/Wilcoxon Hodges-Lehmann CI vs R (126 cases), exact-distribution gating, mcnemar_exact at large counts (Wave 2)
 
 ### Phase 16.2: Penalized GLM and AFT Survival Regression (INSERTED)
 
