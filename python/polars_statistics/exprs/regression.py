@@ -1935,6 +1935,14 @@ def tweedie(
     -------
     pl.Expr
         Struct containing GLM results.
+
+    Notes
+    -----
+    ``aic``/``bic`` are NaN unless ``var_power`` is one of 0, 1, 2, or 3 — other
+    powers have no closed-form Tweedie density (matches R's ``tweedie`` package),
+    so the log-likelihood (and therefore AIC/BIC) cannot be computed. The default
+    ``var_power=1.5`` therefore reports NaN ``aic``/``bic``. Coefficients and
+    standard errors are unaffected and remain finite.
     """
     add_intercept = _resolve_intercept(add_intercept, with_intercept)
     if isinstance(y, str):
@@ -2520,7 +2528,15 @@ def tweedie_summary(
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
 ) -> pl.Expr:
-    """Tweedie GLM coefficient summary in tidy format."""
+    """Tweedie GLM coefficient summary in tidy format.
+
+    Notes
+    -----
+    Model-level ``aic``/``bic`` are NaN unless ``var_power`` is one of 0, 1, 2,
+    or 3 — other powers have no closed-form Tweedie density, so the
+    log-likelihood (and therefore AIC/BIC) cannot be computed. Coefficient
+    estimates and standard errors are unaffected.
+    """
     add_intercept = _resolve_intercept(add_intercept, with_intercept)
     if isinstance(y, str):
         y = pl.col(y)
@@ -4018,6 +4034,13 @@ def tweedie_formula(
     -------
     pl.Expr
         Struct containing GLM results.
+
+    Notes
+    -----
+    ``aic``/``bic`` are NaN unless ``var_power`` is one of 0, 1, 2, or 3 — other
+    powers have no closed-form Tweedie density, so the log-likelihood (and
+    therefore AIC/BIC) cannot be computed. Coefficients and standard errors are
+    unaffected.
     """
     add_intercept = _resolve_intercept(add_intercept, with_intercept)
     response, x_exprs, _ = _parse_formula(formula)

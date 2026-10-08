@@ -24,7 +24,10 @@ use crate::utils::{IntoNumpy, ToFaer};
 /// Parameters
 /// ----------
 /// var_power : float, default 1.5
-///     Variance power parameter.
+///     Variance power parameter. `aic`/`bic` are NaN unless this is one of
+///     0, 1, 2, or 3 — other powers (including the default 1.5) have no
+///     closed-form Tweedie density, so the log-likelihood cannot be computed.
+///     Coefficients and standard errors are unaffected.
 /// link_power : float, optional
 ///     Link power. If None, uses canonical link.
 /// with_intercept : bool, default True
@@ -215,6 +218,11 @@ impl PyTweedie {
             .map(|pv| pv.into_numpy(py)))
     }
 
+    /// Akaike Information Criterion.
+    ///
+    /// NaN unless `var_power` is one of 0, 1, 2, or 3 — other powers have no
+    /// closed-form Tweedie density, so the log-likelihood (and therefore AIC)
+    /// cannot be computed.
     #[getter]
     fn aic(&self) -> PyResult<Option<f64>> {
         let fitted = self
@@ -225,6 +233,11 @@ impl PyTweedie {
         Ok(Some(fitted.result().aic))
     }
 
+    /// Bayesian Information Criterion.
+    ///
+    /// NaN unless `var_power` is one of 0, 1, 2, or 3 — other powers have no
+    /// closed-form Tweedie density, so the log-likelihood (and therefore BIC)
+    /// cannot be computed.
     #[getter]
     fn bic(&self) -> PyResult<Option<f64>> {
         let fitted = self
