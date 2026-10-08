@@ -189,7 +189,25 @@ real API, bundled into the wheel, and shipped as 0.8.0 on PyPI.
   3. `ps.mann_whitney_u` / `ps.wilcoxon_signed_rank` expression outputs gain trailing `estimate`, `ci_lower` and `ci_upper` fields (additive), so `conf_level` takes effect.
   4. `.pyi` stubs (drift guard green), docstrings, mkdocs, CHANGELOG and the regression/hypothesis skill cheat-sheets cover the new surface. The skill-example harness and all CI gates (clippy, fmt, ruff on new files, pytest) are green.
 
-**Plans**: TBD
+**Plans**: 7 plans
+**Wave 1**
+
+- [ ] 16.2-01-PLAN.md — Penalized GLM engine: PyModel + fit expression + formula, R-validated (Wave 1)
+- [ ] 16.2-02-PLAN.md — Mann-Whitney/Wilcoxon expression estimate + CI, schema lock updated (Wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 16.2-03-PLAN.md — Penalized GLM summary/predict expressions + formula variants + rlib (Wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 16.2-04-PLAN.md — AFT survival regression: PyModel + expressions vs survreg (Wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 16.2-05-PLAN.md — mkdocs API pages (Wave 4)
+- [ ] 16.2-06-PLAN.md — CHANGELOG / README / API_REFERENCE / validation page (Wave 4)
+- [ ] 16.2-07-PLAN.md — Skills + ROUTING + full phase gate (Wave 4)
 
 ### Phase 17: Release 0.8.0
 
