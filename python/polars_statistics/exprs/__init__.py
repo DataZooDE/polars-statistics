@@ -8,6 +8,8 @@ from polars_statistics.exprs.parametric import (
     one_way_anova,
     two_way_anova,
     repeated_measures_anova,
+    cohens_d,
+    cohens_d_one_sample,
 )
 from polars_statistics.exprs.nonparametric import (
     mann_whitney_u,
@@ -204,6 +206,8 @@ __all__ = [
     "one_way_anova",
     "two_way_anova",
     "repeated_measures_anova",
+    "cohens_d",
+    "cohens_d_one_sample",
     # Non-parametric tests
     "mann_whitney_u",
     "wilcoxon_signed_rank",

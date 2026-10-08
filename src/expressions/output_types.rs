@@ -24,6 +24,65 @@ pub fn generic_stats_output(statistic: f64, p_value: f64, name: &str) -> PolarsR
     .map(|ca| ca.into_series())
 }
 
+/// Output dtype for effect-size expressions (Cohen's d, rank-biserial family):
+/// struct{estimate: f64}
+pub fn effect_size_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
+    let fields = vec![Field::new("estimate".into(), DataType::Float64)];
+    Ok(Field::new("effect_size".into(), DataType::Struct(fields)))
+}
+
+/// Create output Series for an effect-size expression from a single estimate.
+pub fn effect_size_output(estimate: f64, name: &str) -> PolarsResult<Series> {
+    let estimate_series = Series::new("estimate".into(), vec![estimate]);
+
+    StructChunked::from_series(
+        name.into(),
+        estimate_series.len(),
+        [&estimate_series].into_iter(),
+    )
+    .map(|ca| ca.into_series())
+}
+
+/// Output dtype for Fisher's exact test (with confidence interval):
+/// struct{statistic: f64, p_value: f64, ci_lower: f64, ci_upper: f64}
+pub fn fisher_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
+    let fields = vec![
+        Field::new("statistic".into(), DataType::Float64),
+        Field::new("p_value".into(), DataType::Float64),
+        Field::new("ci_lower".into(), DataType::Float64),
+        Field::new("ci_upper".into(), DataType::Float64),
+    ];
+    Ok(Field::new("fisher_exact".into(), DataType::Struct(fields)))
+}
+
+/// Create output Series for Fisher's exact test: odds ratio (as `statistic`),
+/// p-value, and the confidence interval bounds.
+pub fn fisher_output(
+    odds_ratio: f64,
+    p_value: f64,
+    ci_lower: f64,
+    ci_upper: f64,
+    name: &str,
+) -> PolarsResult<Series> {
+    let stat_series = Series::new("statistic".into(), vec![odds_ratio]);
+    let pval_series = Series::new("p_value".into(), vec![p_value]);
+    let ci_lower_series = Series::new("ci_lower".into(), vec![ci_lower]);
+    let ci_upper_series = Series::new("ci_upper".into(), vec![ci_upper]);
+
+    StructChunked::from_series(
+        name.into(),
+        stat_series.len(),
+        [
+            &stat_series,
+            &pval_series,
+            &ci_lower_series,
+            &ci_upper_series,
+        ]
+        .into_iter(),
+    )
+    .map(|ca| ca.into_series())
+}
+
 /// Output dtype for TOST equivalence tests
 pub fn tost_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
     let fields = vec![

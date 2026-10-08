@@ -4,13 +4,13 @@ use polars::prelude::*;
 use pyo3_polars::derive::polars_expr;
 
 use anofox_statistics::{
-    one_way_anova, repeated_measures_anova, t_test, two_way_anova, yuen_test, Alternative,
-    AnovaKind, TTestKind,
+    cohens_d, cohens_d_one_sample, one_way_anova, repeated_measures_anova, t_test, two_way_anova,
+    yuen_test, Alternative, AnovaKind, TTestKind,
 };
 
 use crate::expressions::output_types::{
-    generic_stats_output, one_way_anova_output_dtype, repeated_measures_anova_output_dtype,
-    stats_output_dtype, two_way_anova_output_dtype,
+    effect_size_output, effect_size_output_dtype, generic_stats_output, one_way_anova_output_dtype,
+    repeated_measures_anova_output_dtype, stats_output_dtype, two_way_anova_output_dtype,
 };
 
 /// Helper to parse alternative hypothesis from string
@@ -131,6 +131,73 @@ pub fn yuen_test_fit(inputs: &[Series]) -> PolarsResult<Series> {
 #[polars_expr(output_type_func=stats_output_dtype)]
 fn pl_yuen_test(inputs: &[Series]) -> PolarsResult<Series> {
     yuen_test_fit(inputs)
+}
+
+// ─── Effect sizes ────────────────────────────────────────────────────────────
+
+/// Parse a Cohen's d `kind` string into [`TTestKind`]. Unrecognized values fall
+/// back to [`TTestKind::Student`] (the Python builder validates `kind` before
+/// this point is reached, so this is a defensive default, not a user-facing
+/// error path).
+fn parse_cohens_d_kind(s: &str) -> TTestKind {
+    match s.to_lowercase().as_str() {
+        "welch" => TTestKind::Welch,
+        "paired" => TTestKind::Paired,
+        _ => TTestKind::Student,
+    }
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_cohens_d` expression shim.
+///
+/// # Input contract
+/// - `inputs[0]` — `f64` Series (first sample `x`).
+/// - `inputs[1]` — `f64` Series (second sample `y`).
+/// - `inputs[2]` — `String` literal: `kind` (`"student"` | `"welch"` | `"paired"`).
+/// - `inputs[3]` — `f64` literal: `mu`, the null value of the mean difference.
+pub fn cohens_d_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    let x = inputs[0].f64()?;
+    let y = inputs[1].f64()?;
+    let kind_str = inputs[2].str()?.get(0).unwrap_or("student");
+    let mu = inputs[3].f64()?.get(0).unwrap_or(0.0);
+
+    let x_vec: Vec<f64> = x.into_no_null_iter().collect();
+    let y_vec: Vec<f64> = y.into_no_null_iter().collect();
+
+    let kind = parse_cohens_d_kind(kind_str);
+
+    match cohens_d(&x_vec, &y_vec, kind, mu) {
+        Ok(d) => effect_size_output(d, "cohens_d"),
+        Err(_) => effect_size_output(f64::NAN, "cohens_d"),
+    }
+}
+
+/// Cohen's d (standardised mean difference) for two-sample, Welch, or paired t-tests.
+#[polars_expr(output_type_func=effect_size_output_dtype)]
+fn pl_cohens_d(inputs: &[Series]) -> PolarsResult<Series> {
+    cohens_d_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_cohens_d_one_sample` expression shim.
+///
+/// # Input contract
+/// - `inputs[0]` — `f64` Series (sample `x`).
+/// - `inputs[1]` — `f64` literal: `mu`, the null value of the mean.
+pub fn cohens_d_one_sample_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    let x = inputs[0].f64()?;
+    let mu = inputs[1].f64()?.get(0).unwrap_or(0.0);
+
+    let x_vec: Vec<f64> = x.into_no_null_iter().collect();
+
+    match cohens_d_one_sample(&x_vec, mu) {
+        Ok(d) => effect_size_output(d, "cohens_d_one_sample"),
+        Err(_) => effect_size_output(f64::NAN, "cohens_d_one_sample"),
+    }
+}
+
+/// Cohen's d (standardised mean difference) for a one-sample t-test.
+#[polars_expr(output_type_func=effect_size_output_dtype)]
+fn pl_cohens_d_one_sample(inputs: &[Series]) -> PolarsResult<Series> {
+    cohens_d_one_sample_fit(inputs)
 }
 
 // ─── ANOVA family ────────────────────────────────────────────────────────────

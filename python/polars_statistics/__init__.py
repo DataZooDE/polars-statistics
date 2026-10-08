@@ -92,6 +92,8 @@ from polars_statistics.exprs import (
     cloglog_predict,
     cloglog_summary,
     cohen_kappa,
+    cohens_d,
+    cohens_d_one_sample,
     # Diagnostics expressions
     condition_number,
     contingency_coef,
@@ -327,6 +329,8 @@ __all__ = [
     "one_way_anova",
     "two_way_anova",
     "repeated_measures_anova",
+    "cohens_d",
+    "cohens_d_one_sample",
     # Non-parametric test expressions
     "mann_whitney_u",
     "wilcoxon_signed_rank",
