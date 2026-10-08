@@ -4,19 +4,19 @@ milestone: v0.8.0
 milestone_name: Claude Code Skills Plugin
 current_phase: "16.1"
 current_phase_name: Upstream Crate Refresh
-current_plan: 1
+current_plan: 2
 status: executing
-stopped_at: Phase 15 complete, ready to plan Phase 16
-last_updated: "2026-10-08T20:54:07.924Z"
+stopped_at: Completed 16.1-01-PLAN.md
+last_updated: "2026-10-08T21:27:05.718Z"
 last_activity: 2026-10-08
 last_activity_desc: Phase 16.1 execution resumed (wave continue)
-state_head: fc849d383146376922cc602059706135d5b67102
+state_head: a6334826d24b186bec792a87868a8d824d0dc5aa
 progress:
   total_phases: 7
   completed_phases: 3
-  total_plans: 17
-  completed_plans: 7
-  percent: 41
+  total_plans: 21
+  completed_plans: 8
+  percent: 38
 ---
 
 # Project State
@@ -31,9 +31,9 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 ## Current Position
 
 Phase: 16.1 (Upstream Crate Refresh) — EXECUTING
-Current Plan: 1
+Current Plan: 2
 Total Plans in Phase: 9
-Status: Executing Phase 16.1
+Status: Ready to execute
 Last activity: 2026-10-08 — Phase 16.1 execution resumed (wave continue)
 
 ## Milestone Roadmap (v0.8.0)
@@ -100,6 +100,7 @@ Execution order: 13 → 14 → 15 → 16 → 17
 | Phase 06 P04 | 15 | 2 tasks | 1 files |
 | Phase 14 P01 | 4 | 1 tasks | 1 files |
 | Phase 14 P02 | 9min | 1 tasks | 1 files |
+| Phase 16.1 P01 | 34min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -135,6 +136,7 @@ Recent decisions affecting current work:
 - [Phase 14]: 14-01: Frontmatter contract locked — four fields only (name, description, version 0.8.0, user-invocable false); Wave-2 plans copy verbatim
 - [Phase 14]: 14-01: Section structure locked — Overview / When-to-use / API-Reference / Worked-Examples / Gotchas / See-also for all five SKILL.md files
 - [Phase 14]: Forecast functions excluded from hypothesis-tests skill; ICC gotcha documented inline under Group D; categorical split into scalar-arg vs contingency-table-column subgroups
+- [Phase 16.1]: 16.1-01: Cargo.lock is gitignored (library-crate convention) — version pins verified on disk via grep, not committed to git
 
 ### Pending Todos
 
@@ -167,7 +169,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-21T18:56:36.074Z
-Stopped at: Phase 15 complete, ready to plan Phase 16
+Last session: 2026-10-08T21:27:05.651Z
+Stopped at: Completed 16.1-01-PLAN.md
 Resume file: None
 </content>
