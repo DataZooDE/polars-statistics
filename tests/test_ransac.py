@@ -92,12 +92,16 @@ class TestRANSAC:
         assert len(model.inlier_mask) == 50
 
     def test_n_observations(self):
+        """anofox-regression 0.5.14 #35: n_observations now reports the inlier count
+        (the sample size the inference statistics were fit on), not the total row
+        count. residuals still covers every row regardless of inlier/outlier status."""
         np.random.seed(9)
         n = 55
         X = np.random.randn(n, 2)
         y = X @ np.array([1.0, -1.0]) + 0.1 * np.random.randn(n)
         model = RANSAC().fit(X, y)
-        assert model.n_observations == n
+        assert model.n_observations == model.n_inliers
+        assert len(model.residuals) == n
 
     def test_recovers_known_slope_with_outliers(self):
         """RANSAC recovers the true slope even with 20% outliers.

@@ -2241,7 +2241,16 @@ def ridge_summary(
     with_intercept: bool | None = None,
     solve_method: str | None = None,
 ) -> pl.Expr:
-    """Ridge regression coefficient summary in tidy format."""
+    """Ridge regression coefficient summary in tidy format.
+
+    Notes
+    -----
+    For ``lambda_ > 0``, ``std_error`` is the ridge sandwich standard error
+    (``sigma^2 * A @ X'X @ A'``, matching R), but ``statistic``/``p_value`` are
+    NaN because a classical t-test on shrunken/biased coefficients is not valid
+    (anofox-regression 0.5.14 #37). ``lambda_ = 0`` delegates to OLS inference,
+    so ``statistic``/``p_value`` are finite in that case.
+    """
     add_intercept = _resolve_intercept(add_intercept, with_intercept)
     if isinstance(y, str):
         y = pl.col(y)
