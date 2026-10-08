@@ -259,3 +259,185 @@ def brunner_munzel(
         ],
         returns_scalar=True,
     )
+
+
+def rank_biserial(
+    x: Union[pl.Expr, str],
+    y: Union[pl.Expr, str],
+    mu: Optional[float] = None,
+) -> pl.Expr:
+    """
+    Compute the rank-biserial correlation effect size for the Mann-Whitney U test.
+
+    Parameters
+    ----------
+    x : pl.Expr or str
+        First sample expression or column name.
+    y : pl.Expr or str
+        Second sample expression or column name.
+    mu : float, optional
+        Location shift applied to ``y`` under the null hypothesis, exactly as
+        in :func:`mann_whitney_u`.
+
+    Returns
+    -------
+    pl.Expr
+        Expression returning struct{estimate: f64}.
+
+    Notes
+    -----
+    ``r = 1 - 2 * U1 / (n1 * n2)``, where ``U1`` is the Mann-Whitney U
+    statistic of ``x`` (:attr:`MannWhitneyU.statistic`, or
+    ``ps.mann_whitney_u(...).struct.field("statistic")``). ``r > 0`` when
+    ``y`` tends to be larger than ``x``; R's ``effectsize::rank_biserial``
+    reports the opposite sign. Non-finite values are dropped by this builder
+    (the :class:`MannWhitneyU` class instead ranks +/-Inf like R). This
+    expression is O(n1 * n2) time with O(1) memory, the same complexity as
+    the Mann-Whitney U statistic itself.
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> import polars_statistics as ps
+    >>>
+    >>> df = pl.DataFrame({
+    ...     "x": [1.0, 2.0, 3.0, 4.0, 5.0],
+    ...     "y": [2.0, 4.0, 6.0, 8.0, 10.0],
+    ... })
+    >>>
+    >>> df.select(ps.rank_biserial("x", "y"))
+    """
+    if isinstance(x, str):
+        x = pl.col(x)
+    if isinstance(y, str):
+        y = pl.col(y)
+
+    x_clean = x.filter(x.is_finite())
+    y_clean = y.filter(y.is_finite())
+
+    mu_expr = pl.lit(mu, dtype=pl.Float64) if mu is not None else pl.lit(None, dtype=pl.Float64)
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_rank_biserial",
+        args=[x_clean, y_clean, mu_expr],
+        returns_scalar=True,
+    )
+
+
+def matched_pairs_rank_biserial(
+    x: Union[pl.Expr, str],
+    y: Union[pl.Expr, str],
+    mu: Optional[float] = None,
+) -> pl.Expr:
+    """
+    Compute the matched-pairs rank-biserial correlation effect size for the
+    Wilcoxon signed-rank test.
+
+    Parameters
+    ----------
+    x : pl.Expr or str
+        First sample (before) expression or column name.
+    y : pl.Expr or str
+        Second sample (after) expression or column name.
+    mu : float, optional
+        Hypothesized location under the null hypothesis, exactly as in
+        :func:`wilcoxon_signed_rank`.
+
+    Returns
+    -------
+    pl.Expr
+        Expression returning struct{estimate: f64}.
+
+    Notes
+    -----
+    ``r = (T- - T+) / (T+ + T-)``, the sums of signed ranks of
+    ``|x - y - mu|`` for positive / negative differences (zero differences
+    dropped). ``r > 0`` when ``y`` tends to be larger than ``x``; R's
+    ``effectsize::rank_biserial(x, y, paired = TRUE)`` reports the opposite
+    sign. Returns NaN when every difference is zero or lengths are unequal.
+    Both columns must be finite in the same rows (jointly filtered).
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> import polars_statistics as ps
+    >>>
+    >>> df = pl.DataFrame({
+    ...     "before": [1.0, 2.0, 3.0, 4.0, 5.0],
+    ...     "after": [1.5, 2.8, 3.2, 4.5, 5.1],
+    ... })
+    >>>
+    >>> df.select(ps.matched_pairs_rank_biserial("before", "after"))
+    """
+    if isinstance(x, str):
+        x = pl.col(x)
+    if isinstance(y, str):
+        y = pl.col(y)
+
+    x_clean = x.filter(x.is_finite() & y.is_finite())
+    y_clean = y.filter(x.is_finite() & y.is_finite())
+
+    mu_expr = pl.lit(mu, dtype=pl.Float64) if mu is not None else pl.lit(None, dtype=pl.Float64)
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_matched_pairs_rank_biserial",
+        args=[x_clean, y_clean, mu_expr],
+        returns_scalar=True,
+    )
+
+
+def rank_biserial_from_u(
+    u1: float,
+    n1: int,
+    n2: int,
+) -> pl.Expr:
+    """
+    Compute the rank-biserial correlation directly from a Mann-Whitney U statistic.
+
+    Parameters
+    ----------
+    u1 : float
+        The Mann-Whitney U statistic of the first sample (R's ``W``):
+        :attr:`MannWhitneyU.statistic`, or
+        ``ps.mann_whitney_u(...).struct.field("statistic")``.
+    n1 : int
+        Size of the first sample.
+    n2 : int
+        Size of the second sample.
+
+    Returns
+    -------
+    pl.Expr
+        Expression returning struct{estimate: f64}.
+
+    Notes
+    -----
+    ``r = 1 - 2 * u1 / (n1 * n2)``; returns NaN when ``n1 * n2 == 0``. Same
+    sign convention as :func:`rank_biserial`: positive when the second
+    sample tends to be larger (R's ``effectsize::rank_biserial`` uses the
+    opposite sign).
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> import polars_statistics as ps
+    >>> from polars_statistics import MannWhitneyU
+    >>> import numpy as np
+    >>>
+    >>> x = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
+    >>> y = np.array([2.0, 4.0, 6.0, 8.0, 10.0])
+    >>> u1 = MannWhitneyU().fit(x, y).statistic
+    >>> pl.select(ps.rank_biserial_from_u(u1, 5, 5))
+    """
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_rank_biserial_from_u",
+        args=[
+            pl.lit(u1, dtype=pl.Float64),
+            pl.lit(n1, dtype=pl.UInt32),
+            pl.lit(n2, dtype=pl.UInt32),
+        ],
+        returns_scalar=True,
+    )

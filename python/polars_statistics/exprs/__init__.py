@@ -16,6 +16,9 @@ from polars_statistics.exprs.nonparametric import (
     wilcoxon_signed_rank,
     kruskal_wallis,
     brunner_munzel,
+    rank_biserial,
+    matched_pairs_rank_biserial,
+    rank_biserial_from_u,
 )
 from polars_statistics.exprs.distributional import (
     shapiro_wilk,
@@ -213,6 +216,9 @@ __all__ = [
     "wilcoxon_signed_rank",
     "kruskal_wallis",
     "brunner_munzel",
+    "rank_biserial",
+    "matched_pairs_rank_biserial",
+    "rank_biserial_from_u",
     # Distributional tests
     "shapiro_wilk",
     "dagostino",

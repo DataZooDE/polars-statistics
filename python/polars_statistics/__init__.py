@@ -155,6 +155,7 @@ from polars_statistics.exprs import (
     logistic_working_residuals,
     # Non-parametric tests
     mann_whitney_u,
+    matched_pairs_rank_biserial,
     mcnemar_exact,
     mcnemar_test,
     mmd_test,
@@ -207,6 +208,8 @@ from polars_statistics.exprs import (
     quantile_predict,
     # Summary / predict completeness (issue #18)
     quantile_summary,
+    rank_biserial,
+    rank_biserial_from_u,
     repeated_measures_anova,
     residual_outliers,
     ridge,
@@ -336,6 +339,9 @@ __all__ = [
     "wilcoxon_signed_rank",
     "kruskal_wallis",
     "brunner_munzel",
+    "rank_biserial",
+    "matched_pairs_rank_biserial",
+    "rank_biserial_from_u",
     # Distributional test expressions
     "shapiro_wilk",
     "dagostino",
