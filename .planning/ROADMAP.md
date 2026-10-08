@@ -71,7 +71,7 @@ real API, bundled into the wheel, and shipped as 0.8.0 on PyPI.
 - [x] **Phase 14: Skill Cheat-Sheet Authoring** - Author the five capability-family `SKILL.md` cheat-sheets with correct frontmatter and consistent structure, examples checked live while writing (completed 2026-09-21)
 - [x] **Phase 15: Accuracy Verification Pass** - Run every skill example against the real API and audit each skill's description so Claude auto-surfaces the right one (completed 2026-09-21)
 - [ ] **Phase 16: Wheel Bundling** - Bundle the skill files into the built wheel via maturin package data so they ship on `pip install`
-- [ ] **Phase 16.1: Upstream Crate Refresh** (INSERTED) - Bump to anofox-statistics 0.4.4 / anofox-regression 0.5.15, adapt to R-matching fixes, expose new API, update stubs/docs/skills
+- [ ] **Phase 16.1: Upstream Crate Refresh** (INSERTED) - Bump to anofox-statistics 0.4.6 / anofox-regression 0.5.16, adapt to R-matching fixes, expose new API, update stubs/docs/skills
 - [ ] **Phase 17: Release 0.8.0** - Bump 0.7.0→0.8.0 across every version source and publish to production PyPI via the OIDC pipeline
 
 ## Phase Details
@@ -144,19 +144,19 @@ real API, bundled into the wheel, and shipped as 0.8.0 on PyPI.
 
 ### Phase 16.1: Upstream Crate Refresh (INSERTED)
 
-**Goal**: polars-statistics runs on anofox-statistics 0.4.4 and anofox-regression 0.5.15. Every new upstream capability is exposed through the Polars/Python API, the R-matching behaviour changes are reflected in tests and docs, and the skills that ship in the wheel describe the new surface.
+**Goal**: polars-statistics runs on anofox-statistics 0.4.6 and anofox-regression 0.5.16. Every new upstream capability is exposed through the Polars/Python API, the R-matching behaviour changes are reflected in tests and docs, and the skills that ship in the wheel describe the new surface.
 **Depends on**: Phase 15 (updates the verified skills). Phase 16 must re-sync its bundled `_plugin/` copy afterwards; its drift guard enforces that.
 **Requirements**: UPST-01, UPST-02, UPST-03, UPST-04
 **Success Criteria** (what must be TRUE):
 
-  1. `Cargo.toml`/`Cargo.lock` pin anofox-statistics 0.4.4 and anofox-regression 0.5.15; clippy `-D warnings`, cargo fmt, ruff and the full pytest suite are green
+  1. `Cargo.toml`/`Cargo.lock` pin anofox-statistics 0.4.6 and anofox-regression 0.5.16; clippy `-D warnings`, cargo fmt, ruff and the full pytest suite are green
   2. Tests that encoded pre-fix numbers are updated to the R-matching values (Tweedie AIC/BIC NaN for non-closed-form powers, linear-solver AIC/BIC, no-intercept R², Ridge sandwich SEs with None inference for λ>0, RANSAC stats, NegBin SEs/log-likelihood, Gamma/Tweedie dispersion, Shapiro-Wilk n≤11, Kendall ties, binomial/proportion/Fisher intervals, exact Mann-Whitney, NaN/Inf input errors instead of panics), with R references where upstream supplies them
   3. New upstream API is exposed as expressions and/or PyModel options, following the existing patterns: Cohen's d (two-sample/paired/one-sample), rank-biserial effect sizes, Jarque-Bera, bootstrap CIs (`bootstrap_mean_ci`), `fisher_exact_conditional`, `conf_level` for binomial/proportion/Fisher tests, GLMM z/p-values and Wald CIs, Huber and RANSAC inference (`compute_inference`/`confidence_level`), NegBin `estimate_dispersion`, RLS `initial_p_diagonal`
   4. `.pyi` stubs (drift guard green), docstrings, mkdocs pages, CHANGELOG (including a "behaviour changes" section) and the skill cheat-sheets cover the new surface, and the Phase 15 skill-example harness passes
 
-**Plans**: 8 plans
+**Plans**: 9 plans
 
-- [ ] 16.1-01-PLAN.md — Bump crates (exact 0.4.4 / 0.5.15), fix Tweedie smoke tests, pin every R-matching behaviour change + non-finite handling with R-reference tests (Wave 1)
+- [ ] 16.1-01-PLAN.md — Bump crates (exact 0.4.6 / 0.5.16), fix Tweedie smoke tests, pin every R-matching behaviour change + non-finite handling with R-reference tests (Wave 1)
 - [ ] 16.1-02-PLAN.md — Effect sizes (Cohen's d family, rank-biserial family) + categorical conf_level + fisher_exact_conditional (Wave 2)
 - [ ] 16.1-03-PLAN.md — NegBin estimate_dispersion/dispersion, RLS initial_p_diagonal (PyModel + all expressions + rlib), GLMM Wald inference (Wave 2)
 - [ ] 16.1-04-PLAN.md — Jarque-Bera, bootstrap_mean_ci / bootstrap_ci, rlib smoke for all new/changed statistics *_fit (Wave 3)
@@ -164,6 +164,7 @@ real API, bundled into the wheel, and shipped as 0.8.0 on PyPI.
 - [ ] 16.1-06-PLAN.md — Skill cheat-sheets + ROUTING.md for the new surface, harness green (Wave 4)
 - [ ] 16.1-07-PLAN.md — mkdocs API pages (new effect-sizes page, outputs, statistics + regression pages) (Wave 4)
 - [ ] 16.1-08-PLAN.md — CHANGELOG [Unreleased] incl. behaviour changes + Rust API, README, API_REFERENCE, validation page (Wave 4)
+- [ ] 16.1-09-PLAN.md — anofox-statistics 0.4.5/0.4.6 parity: Mann-Whitney/Wilcoxon Hodges-Lehmann CI vs R (126 cases), exact-distribution gating, mcnemar_exact at large counts (Wave 2)
 
 ### Phase 17: Release 0.8.0
 

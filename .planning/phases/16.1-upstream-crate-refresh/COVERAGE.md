@@ -1,9 +1,12 @@
-# API Coverage — anofox-statistics 0.4.2→0.4.4 and anofox-regression 0.5.13→0.5.15
+# API Coverage — anofox-statistics 0.4.2→0.4.6 and anofox-regression 0.5.13→0.5.16
 
 > Full coverage by default. Opt-outs are explicit, reasoned decisions.
 > Surface enumerated by diffing every `pub fn` / `pub struct` between the pinned and target
 > crate sources in the cargo registry (not from CHANGELOG prose), plus CHANGELOG "Added" items.
 > The reason column of INTEGRATE rows names where the capability lands (plan number).
+> Retarget (CONTEXT, 2026-10-08): anofox-statistics 0.4.5 / 0.4.6 add no public API (every `pub` item
+> diffed) — only behaviour/memory fixes, listed as rows below. anofox-regression 0.5.16 adds only
+> `solvers::penalized_glm` and `solvers::aft`, which are deferred to Phase 16.2 (section at the end).
 
 | capability | decision | reason |
 |---|---|---|
@@ -22,6 +25,10 @@
 | stats: bootstrap_ci with fixed statistic (mean/median/std) | INTEGRATE | new ps.bootstrap_ci(statistic=) via Rust closure dispatch — Plan 04 |
 | stats: bootstrap_ci with an arbitrary user closure | OPT-OUT | explicitly out of scope: a Rust Fn closure cannot cross FFI; Python callbacks in Polars worker threads risk GIL deadlock (see note 1) |
 | stats: non-finite handling (#17: NaN error, ±Inf ranked) | INTEGRATE | locked by tests/test_nonfinite.py (Plan 01); documented (Plans 07, 08) |
+| stats: Mann-Whitney / Wilcoxon HL estimate + CI parity with R (0.4.5) | INTEGRATE | MannWhitneyU / WilcoxonSignedRank estimate + conf_int tested on 126 R cases (Plan 09); documented (Plans 06-08) |
+| stats: exact distributions without overflow, small-n gating (0.4.5) | INTEGRATE | exact=True semantics tested (Plan 09); documented (Plans 06-08) |
+| stats: mcnemar_exact via binomial CDF, finite for large b+c (0.4.6) | INTEGRATE | ps.mcnemar_exact R parity up to b+c = 10^6 (Plan 09) |
+| stats: O(n) memory kendall / distance_cor / TOST-Wilcoxon / MMD / energy (0.4.5) | INTEGRATE | inherited by the existing builders; large-sample + TOST alpha>0.5 tests (Plan 09); CHANGELOG (Plan 08) |
 | stats: validate_finite_data | OPT-OUT | not needed: input-validation helper, not a statistical capability; its effect is tested via the non-finite paths |
 | reg: Huber compute_inference / confidence_level | INTEGRATE | Huber kwargs + inference getters — Plan 05 |
 | reg: RANSAC compute_inference / confidence_level | INTEGRATE | RANSAC kwargs + inference and fit-stat getters — Plan 05 |
@@ -52,3 +59,16 @@
 3. `inference::compute_variance_factor`, `compute_ridge_variance_factor`, `leverage_new`,
    `intervals_from_variance_factor` are matrix utilities whose capability is exposed through
    `OLS/WLS/Ridge.variance_factor()` / `.leverage_new()` and the `*_predict` interval expressions.
+
+## Deferred to Phase 16.2 (not part of this phase's surface)
+
+These are new in anofox-regression 0.5.16. They are **deferred → Phase 16.2** by user decision
+(CONTEXT "Retarget to latest"), not opted out. 16.1 only adopts the 0.5.16 version and keeps all
+gates green on it. They are kept out of the decision table above because the coverage gate accepts
+only INTEGRATE / OPT-OUT.
+
+- `solvers::penalized_glm` — `PenalizedGlmRegressor` / `FittedPenalizedGlm`, `PenalizedGlmFamily`, `PriorSpec`,
+  `VcovType`, column-major `fit_poisson` / `fit_binomial` / `fit_logistic` / `fit_negbinomial` / `fit_gamma` /
+  `fit_tweedie` (+ option/result types) — deferred → Phase 16.2.
+- `solvers::aft` — `AftRegressor` / `FittedAft`, `AftDistribution`, column-major `fit_aft` / `AftOptions` /
+  `AftResult` — deferred → Phase 16.2.
