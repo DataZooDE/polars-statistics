@@ -7,10 +7,10 @@ current_phase_name: Upstream Crate Refresh
 current_plan: 1
 status: executing
 stopped_at: Phase 15 complete, ready to plan Phase 16
-last_updated: "2026-10-08T20:53:34.040Z"
-last_activity: 2026-09-22
-last_activity_desc: Phase 16 execution started
-state_head: e7a536ed55cd0e1e33a81e4de85328054daa23a3
+last_updated: "2026-10-08T20:54:07.924Z"
+last_activity: 2026-10-08
+last_activity_desc: Phase 16.1 execution resumed (wave continue)
+state_head: fc849d383146376922cc602059706135d5b67102
 progress:
   total_phases: 7
   completed_phases: 3
@@ -26,15 +26,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-20)
 
 **Core value:** Every public statistical capability in the backing `anofox-*` crates is exposed through the Polars/Python API — correctly, documented, tested, and shipped to PyPI.
-**Current focus:** Phase 16 — Wheel Bundling
+**Current focus:** Phase 16.1 — Upstream Crate Refresh
 
 ## Current Position
 
-Phase: 16.1 (Upstream Crate Refresh) — READY TO EXECUTE
+Phase: 16.1 (Upstream Crate Refresh) — EXECUTING
 Current Plan: 1
 Total Plans in Phase: 9
-Status: Ready to execute
-Last activity: 2026-09-22 — Phase 16 execution started
+Status: Executing Phase 16.1
+Last activity: 2026-10-08 — Phase 16.1 execution resumed (wave continue)
 
 ## Milestone Roadmap (v0.8.0)
 
