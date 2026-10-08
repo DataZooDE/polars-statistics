@@ -71,6 +71,7 @@ real API, bundled into the wheel, and shipped as 0.8.0 on PyPI.
 - [x] **Phase 14: Skill Cheat-Sheet Authoring** - Author the five capability-family `SKILL.md` cheat-sheets with correct frontmatter and consistent structure, examples checked live while writing (completed 2026-09-21)
 - [x] **Phase 15: Accuracy Verification Pass** - Run every skill example against the real API and audit each skill's description so Claude auto-surfaces the right one (completed 2026-09-21)
 - [ ] **Phase 16: Wheel Bundling** - Bundle the skill files into the built wheel via maturin package data so they ship on `pip install`
+- [ ] **Phase 16.1: Upstream Crate Refresh** (INSERTED) - Bump to anofox-statistics 0.4.4 / anofox-regression 0.5.15, adapt to R-matching fixes, expose new API, update stubs/docs/skills
 - [ ] **Phase 17: Release 0.8.0** - Bump 0.7.0→0.8.0 across every version source and publish to production PyPI via the OIDC pipeline
 
 ## Phase Details
@@ -138,7 +139,22 @@ real API, bundled into the wheel, and shipped as 0.8.0 on PyPI.
   3. The bundled-skills packaging does not break the existing wheel build or CI gates
 
 **Plans**: 1 plan
+
 - [ ] 16-01-PLAN.md — Copy the plugin tree under `python/polars_statistics/_plugin/` (maturin python-source auto-include), add a drift + clean-venv install verifier, prove PKG-01 end-to-end
+
+### Phase 16.1: Upstream Crate Refresh (INSERTED)
+
+**Goal**: polars-statistics runs on anofox-statistics 0.4.4 and anofox-regression 0.5.15. Every new upstream capability is exposed through the Polars/Python API, the R-matching behaviour changes are reflected in tests and docs, and the skills that ship in the wheel describe the new surface.
+**Depends on**: Phase 15 (updates the verified skills). Phase 16 must re-sync its bundled `_plugin/` copy afterwards; its drift guard enforces that.
+**Requirements**: UPST-01, UPST-02, UPST-03, UPST-04
+**Success Criteria** (what must be TRUE):
+
+  1. `Cargo.toml`/`Cargo.lock` pin anofox-statistics 0.4.4 and anofox-regression 0.5.15; clippy `-D warnings`, cargo fmt, ruff and the full pytest suite are green
+  2. Tests that encoded pre-fix numbers are updated to the R-matching values (Tweedie AIC/BIC NaN for non-closed-form powers, linear-solver AIC/BIC, no-intercept R², Ridge sandwich SEs with None inference for λ>0, RANSAC stats, NegBin SEs/log-likelihood, Gamma/Tweedie dispersion, Shapiro-Wilk n≤11, Kendall ties, binomial/proportion/Fisher intervals, exact Mann-Whitney, NaN/Inf input errors instead of panics), with R references where upstream supplies them
+  3. New upstream API is exposed as expressions and/or PyModel options, following the existing patterns: Cohen's d (two-sample/paired/one-sample), rank-biserial effect sizes, Jarque-Bera, bootstrap CIs (`bootstrap_mean_ci`), `fisher_exact_conditional`, `conf_level` for binomial/proportion/Fisher tests, GLMM z/p-values and Wald CIs, Huber and RANSAC inference (`compute_inference`/`confidence_level`), NegBin `estimate_dispersion`, RLS `initial_p_diagonal`
+  4. `.pyi` stubs (drift guard green), docstrings, mkdocs pages, CHANGELOG (including a "behaviour changes" section) and the skill cheat-sheets cover the new surface, and the Phase 15 skill-example harness passes
+
+**Plans**: TBD
 
 ### Phase 17: Release 0.8.0
 
@@ -156,7 +172,7 @@ real API, bundled into the wheel, and shipped as 0.8.0 on PyPI.
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 13 → 14 → 15 → 16 → 17
+Phases execute in numeric order: 13 → 14 → 15 → 16 → 16.1 → 17
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|

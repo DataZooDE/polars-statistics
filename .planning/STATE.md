@@ -7,16 +7,16 @@ current_phase_name: Wheel Bundling
 current_plan: 1
 status: executing
 stopped_at: Phase 15 complete, ready to plan Phase 16
-last_updated: "2026-09-22T18:31:03.048Z"
+last_updated: "2026-10-08T19:47:01.161Z"
 last_activity: 2026-09-22
 last_activity_desc: Phase 16 execution started
-state_head: d8e7ae0277499a5083d2151895becbc854ba42ba
+state_head: d40406471a48b3198c96abb3b7b0a94c74787780
 progress:
-  total_phases: 5
+  total_phases: 6
   completed_phases: 3
   total_plans: 8
   completed_plans: 7
-  percent: 60
+  percent: 50
 ---
 
 # Project State
@@ -151,6 +151,10 @@ None yet.
 |---|-------------|------|--------|-----------|
 | 260818-rj2 | Add Examples section to README linking runnable examples/ scripts and docs/examples cookbook (fixes #36) | 2026-08-18 | b5e8e16 | [260818-rj2-add-examples-section-to-readme-linking-r](./quick/260818-rj2-add-examples-section-to-readme-linking-r/) |
 | 260819-jkj | Fix stuck v0.6.0 PyPI release — bumped python __version__ to 0.6.0, re-triggered publish | 2026-08-19 | (pending) | [260819-jkj-fix-v0.6.0-pypi-release](./quick/260819-jkj-fix-v0.6.0-pypi-release/) |
+
+### Roadmap Evolution
+
+- Phase 16.1 inserted after Phase 16: Upstream crate refresh: anofox-statistics 0.4.4 + anofox-regression 0.5.15 — bump, adapt to R-matching behaviour changes, expose new API, update stubs/docs/CHANGELOG/skills (URGENT)
 
 ## Deferred Items
 
