@@ -398,3 +398,81 @@ Struct {
     n: UInt32,
 }
 ```
+
+---
+
+## Effect Size Output
+
+Returned by `cohens_d`, `cohens_d_one_sample`, `rank_biserial`,
+`matched_pairs_rank_biserial`, `rank_biserial_from_u`. See
+[Effect Sizes & Bootstrap CIs](tests/effect-sizes.md).
+
+```
+Struct {
+    estimate: Float64,
+}
+```
+
+---
+
+## Jarque-Bera Output
+
+Returned by `jarque_bera`. See [Distributional Tests](tests/distributional.md).
+
+```
+Struct {
+    statistic: Float64,
+    p_value: Float64,
+    skewness: Float64,
+    kurtosis: Float64,
+    n: UInt32,
+}
+```
+
+Fewer than 3 finite values, a non-finite input, or constant data yield NaN
+`statistic`/`p_value`/`skewness`/`kurtosis` and `n == 0` (never an exception).
+
+---
+
+## Bootstrap CI Output
+
+Returned by `bootstrap_mean_ci` and `bootstrap_ci`. See
+[Effect Sizes & Bootstrap CIs](tests/effect-sizes.md).
+
+```
+Struct {
+    estimate: Float64,
+    se: Float64,
+    ci_lower: Float64,
+    ci_upper: Float64,
+    conf_level: Float64,
+    n_bootstrap: UInt32,
+}
+```
+
+`se` is the bootstrap standard error (the sample SD of the resampled replicates).
+Invalid parameters (`n_bootstrap < 2`, `conf_level` outside `(0, 1)`, fewer than 2
+finite observations) yield an all-NaN struct, never an exception.
+
+---
+
+## Fisher Exact Output
+
+Returned by `fisher_exact` and `fisher_exact_conditional`. See
+[Categorical Tests](tests/categorical.md).
+
+```
+Struct {
+    statistic: Float64,
+    p_value: Float64,
+    ci_lower: Float64,
+    ci_upper: Float64,
+}
+```
+
+`statistic` is the odds ratio: for `fisher_exact` this is the sample odds ratio
+(`ad/bc`) with a two-sided Woolf (logit) interval; for `fisher_exact_conditional`
+it is R `fisher.test`'s conditional maximum-likelihood odds ratio with the exact
+conditional interval. `ci_lower`/`ci_upper` were added to `fisher_exact` in 0.8.0 —
+previously the struct had only `statistic`/`p_value`. One-sided `alternative` values
+give a one-sided interval (`"greater"` → `ci_upper = +inf`, `"less"` → `ci_lower = 0.0`).

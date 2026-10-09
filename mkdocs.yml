@@ -74,6 +74,7 @@ nav:
       - Forecast Comparison: api/tests/forecast.md
       - Categorical Tests: api/tests/categorical.md
       - TOST Equivalence: api/tests/tost.md
+      - Effect Sizes & Bootstrap CIs: api/tests/effect-sizes.md
   - Regression:
       - Linear Models: api/regression/linear.md
       - GLM: api/regression/glm.md
