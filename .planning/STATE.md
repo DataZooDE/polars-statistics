@@ -2,15 +2,15 @@
 gsd_state_version: "1.0"
 milestone: v0.8.0
 milestone_name: Claude Code Skills Plugin
-current_phase: 16
-current_phase_name: Wheel Bundling
-current_plan: Not started
-status: planning
+current_phase: "16.2"
+current_phase_name: Penalized GLM and AFT Survival Regression
+current_plan: 1
+status: executing
 stopped_at: Phase 16.1 complete, ready to plan Phase 16
-last_updated: "2026-10-09T11:45:13.906Z"
+last_updated: "2026-10-09T11:45:24.945Z"
 last_activity: 2026-10-09
-last_activity_desc: Phase 16.1 complete, transitioned to Phase 16
-state_head: 229074ce3f48a573987fb3fdeb1de3d822ce7970
+last_activity_desc: Phase 16.2 execution started
+state_head: ca8504cdc8cf919bceedcd6c0fa1d9061de4a8e2
 progress:
   total_phases: 9
   completed_phases: 1
@@ -26,15 +26,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-20)
 
 **Core value:** Every public statistical capability in the backing `anofox-*` crates is exposed through the Polars/Python API — correctly, documented, tested, and shipped to PyPI.
-**Current focus:** Phase 16.1 — Upstream Crate Refresh
+**Current focus:** Phase 16.2 — Penalized GLM and AFT Survival Regression
 
 ## Current Position
 
-Phase: 16 — Wheel Bundling
-Current Plan: Not started
-Total Plans in Phase: 9
-Status: Ready to plan
-Last activity: 2026-10-09 — Phase 16.1 complete, transitioned to Phase 16
+Phase: 16.2 (Penalized GLM and AFT Survival Regression) — EXECUTING
+Current Plan: 1
+Total Plans in Phase: 8
+Status: Executing Phase 16.2
+Last activity: 2026-10-09 — Phase 16.2 execution started
 
 ## Milestone Roadmap (v0.8.0)
 
