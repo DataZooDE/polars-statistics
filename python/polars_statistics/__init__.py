@@ -80,6 +80,8 @@ from polars_statistics.exprs import (
     bls_formula,
     bls_predict,
     bls_summary,
+    bootstrap_ci,
+    bootstrap_mean_ci,
     brown_forsythe,
     brunner_munzel,
     check_binary_separation,
@@ -348,6 +350,9 @@ __all__ = [
     "shapiro_wilk",
     "dagostino",
     "jarque_bera",
+    # Resampling (bootstrap CI) expressions
+    "bootstrap_mean_ci",
+    "bootstrap_ci",
     # Forecast test expressions
     "diebold_mariano",
     "permutation_t_test",

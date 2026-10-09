@@ -12,6 +12,7 @@ mod nonparametric;
 mod output_types;
 mod parametric;
 mod regression;
+mod resampling;
 mod tost;
 
 // Re-exports for polars plugin FFI - these are used via Python
@@ -33,5 +34,7 @@ pub use output_types::*;
 pub use parametric::*;
 #[allow(unused_imports)]
 pub use regression::*;
+#[allow(unused_imports)]
+pub use resampling::*;
 #[allow(unused_imports)]
 pub use tost::*;

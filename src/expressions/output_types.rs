@@ -126,6 +126,53 @@ pub fn jarque_bera_output(
     .map(|ca| ca.into_series())
 }
 
+/// Output dtype for percentile bootstrap confidence intervals:
+/// struct{estimate: f64, se: f64, ci_lower: f64, ci_upper: f64, conf_level: f64, n_bootstrap: u32}
+pub fn bootstrap_ci_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
+    let fields = vec![
+        Field::new("estimate".into(), DataType::Float64),
+        Field::new("se".into(), DataType::Float64),
+        Field::new("ci_lower".into(), DataType::Float64),
+        Field::new("ci_upper".into(), DataType::Float64),
+        Field::new("conf_level".into(), DataType::Float64),
+        Field::new("n_bootstrap".into(), DataType::UInt32),
+    ];
+    Ok(Field::new("bootstrap_ci".into(), DataType::Struct(fields)))
+}
+
+/// Create output Series for a percentile bootstrap confidence interval.
+pub fn bootstrap_ci_output(
+    estimate: f64,
+    se: f64,
+    ci_lower: f64,
+    ci_upper: f64,
+    conf_level: f64,
+    n_bootstrap: u32,
+    name: &str,
+) -> PolarsResult<Series> {
+    let estimate_series = Series::new("estimate".into(), vec![estimate]);
+    let se_series = Series::new("se".into(), vec![se]);
+    let ci_lower_series = Series::new("ci_lower".into(), vec![ci_lower]);
+    let ci_upper_series = Series::new("ci_upper".into(), vec![ci_upper]);
+    let conf_level_series = Series::new("conf_level".into(), vec![conf_level]);
+    let n_bootstrap_series = Series::new("n_bootstrap".into(), vec![n_bootstrap]);
+
+    StructChunked::from_series(
+        name.into(),
+        estimate_series.len(),
+        [
+            &estimate_series,
+            &se_series,
+            &ci_lower_series,
+            &ci_upper_series,
+            &conf_level_series,
+            &n_bootstrap_series,
+        ]
+        .into_iter(),
+    )
+    .map(|ca| ca.into_series())
+}
+
 /// Output dtype for TOST equivalence tests
 pub fn tost_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
     let fields = vec![

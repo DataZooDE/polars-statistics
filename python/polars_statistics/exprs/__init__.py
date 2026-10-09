@@ -75,6 +75,10 @@ from polars_statistics.exprs.categorical import (
     phi_coefficient,
     contingency_coef,
 )
+from polars_statistics.exprs.resampling import (
+    bootstrap_mean_ci,
+    bootstrap_ci,
+)
 from polars_statistics.exprs.regression import (
     ols,
     ridge,
@@ -225,6 +229,9 @@ __all__ = [
     "shapiro_wilk",
     "dagostino",
     "jarque_bera",
+    # Resampling (bootstrap CI) expressions
+    "bootstrap_mean_ci",
+    "bootstrap_ci",
     # Forecast tests
     "diebold_mariano",
     "permutation_t_test",
