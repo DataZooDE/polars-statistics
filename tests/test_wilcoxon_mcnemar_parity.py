@@ -32,7 +32,7 @@ import pytest
 from polars_statistics import MannWhitneyU, WilcoxonSignedRank
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "wilcox_ci_reference.csv"
-FIXTURE_SHA256_PREFIX = "e51fd41b79d5e43274cfe86378e71395b2a96461347294add8e425c52863c296"
+FIXTURE_SHA256 = "e51fd41b79d5e43274cfe86378e71395b2a96461347294add8e425c52863c296"
 
 _ALTERNATIVE_MAP = {"two.sided": "two-sided", "less": "less", "greater": "greater"}
 
@@ -115,7 +115,7 @@ def test_hodges_lehmann_fixture_integrity():
 
     assert len(_FIXTURE_ROWS) == 126
     digest = hashlib.sha256(FIXTURE_PATH.read_bytes()).hexdigest()
-    assert digest == FIXTURE_SHA256_PREFIX
+    assert digest == FIXTURE_SHA256
 
 
 def test_exact_distribution_rank_sum_no_overflow():
