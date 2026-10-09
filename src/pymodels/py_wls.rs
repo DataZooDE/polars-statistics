@@ -1,9 +1,9 @@
 //! PyO3 wrapper for Weighted Least Squares regression.
 
-use numpy::{PyArray1, PyReadonlyArray1, PyReadonlyArray2};
+use numpy::{PyArray1, PyArray2, PyReadonlyArray1, PyReadonlyArray2};
 use pyo3::prelude::*;
 
-use anofox_regression::solvers::{FittedRegressor, Regressor, WlsRegressor};
+use anofox_regression::solvers::{FittedRegressor, FittedWls, Regressor, WlsRegressor};
 
 use crate::utils::{IntoNumpy, ToFaer};
 
@@ -45,7 +45,7 @@ pub struct PyWLS {
     with_intercept: bool,
     compute_inference: bool,
     confidence_level: f64,
-    fitted: Option<Box<dyn FittedRegressor + Send + Sync>>,
+    fitted: Option<FittedWls>,
 }
 
 #[pymethods]
@@ -101,7 +101,7 @@ impl PyWLS {
             .fit(&x_mat, &y_col)
             .map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>(e.to_string()))?;
 
-        slf.fitted = Some(Box::new(fitted));
+        slf.fitted = Some(fitted);
         Ok(slf)
     }
 
@@ -223,23 +223,62 @@ impl PyWLS {
             return Err(crate::pymodels::errors::not_fitted_err("WLS"));
         }
         // CR-03: WLS HC inference requires the weight-aware sandwich
-        // (X'WX)^{-1}(X'diag(w·e²)X)(X'WX)^{-1}, but the fitted object is stored
-        // as Box<dyn FittedRegressor> which cannot be downcast to FittedWls to
-        // retrieve the weight vector.  Returning the unweighted OLS sandwich is
-        // silently wrong for heterogeneous weights — the primary use case of WLS.
-        // Raise NotImplementedError so callers are not misled.
+        // (X'WX)^{-1}(X'diag(w·e²)X)(X'WX)^{-1}. `self.fitted` now stores a
+        // concrete `FittedWls` (16.1-05 Task 3) so the weight vector itself is
+        // reachable via `fitted.weights()`, but computing this sandwich is out
+        // of this plan's scope — not implemented yet. Returning the unweighted
+        // OLS sandwich would be silently wrong for heterogeneous weights — the
+        // primary use case of WLS. Raise NotImplementedError so callers are not
+        // misled.
         //
         // Workaround: scale X and y by sqrt(w_i), fit OLS on the scaled data,
         // and call OLS.hc_inference on the result.
         let _ = (x, hc_type);
         Err(PyErr::new::<pyo3::exceptions::PyNotImplementedError, _>(
             "WLS.hc_inference is not yet implemented: the weight-correct sandwich \
-             (X'WX)^{-1}(X'diag(w·e²)X)(X'WX)^{-1} requires the stored observation \
-             weights, which are not accessible through the FittedRegressor trait. \
+             (X'WX)^{-1}(X'diag(w·e²)X)(X'WX)^{-1} has not been wired up yet. \
              Workaround: scale X and y by sqrt(w_i), fit OLS on the scaled data, \
              and call OLS.hc_inference on the result.",
         ))
     }
+    /// Variance factor ``M`` with ``Var(x0' beta) = sigma^2 x0' M x0``
+    /// (``(X'WX)^-1``). ``(p+1) x (p+1)`` with an intercept (index 0), ``p x
+    /// p`` without; aliased rows/columns are zero. ``None`` for fits from
+    /// moments.
+    fn variance_factor<'py>(&self, py: Python<'py>) -> PyResult<Option<Bound<'py, PyArray2<f64>>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("WLS"))?;
+
+        Ok(fitted.variance_factor().as_ref().map(|m| m.into_numpy(py)))
+    }
+
+    /// Leverage ``x0' M x0`` of new rows (one column per feature; aliased
+    /// columns are ignored). ``NaN`` when no variance factor is available.
+    fn leverage_new<'py>(
+        &self,
+        py: Python<'py>,
+        x_new: PyReadonlyArray2<'py, f64>,
+    ) -> PyResult<Bound<'py, PyArray1<f64>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("WLS"))?;
+
+        let x_new_mat = x_new.to_faer();
+        let expected = fitted.coefficients().nrows();
+        if x_new_mat.ncols() != expected {
+            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
+                "WLS.leverage_new: x_new has {} columns but the model was fit with {} \
+                 feature(s) — they must match.",
+                x_new_mat.ncols(),
+                expected
+            )));
+        }
+        Ok(fitted.leverage_new(&x_new_mat).into_numpy(py))
+    }
+
     /// Informative repr: class name plus key state; never panics if unfitted.
     fn __repr__(slf: &Bound<'_, Self>) -> PyResult<String> {
         crate::pymodels::ergonomics::repr(slf.as_any())

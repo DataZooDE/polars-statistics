@@ -1,6 +1,6 @@
 //! PyO3 wrapper for Ridge regression.
 
-use numpy::{PyArray1, PyReadonlyArray1, PyReadonlyArray2};
+use numpy::{PyArray1, PyArray2, PyReadonlyArray1, PyReadonlyArray2};
 use pyo3::prelude::*;
 
 use anofox_regression::inference::compute_hc_inference;
@@ -42,7 +42,7 @@ pub struct PyRidge {
     with_intercept: bool,
     compute_inference: bool,
     confidence_level: f64,
-    fitted: Option<Box<dyn FittedRegressor + Send + Sync>>,
+    fitted: Option<FittedRidge>,
 }
 
 #[pymethods]
@@ -101,7 +101,7 @@ impl PyRidge {
             .fit(&x_mat, &y_col)
             .map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>(e.to_string()))?;
 
-        slf.fitted = Some(Box::new(fitted));
+        slf.fitted = Some(fitted);
         Ok(slf)
     }
 
@@ -302,9 +302,112 @@ impl PyRidge {
         let fitted: FittedRidge = model
             .fit_from_accumulator(&acc.inner)
             .map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>(e.to_string()))?;
-        slf.fitted = Some(Box::new(fitted));
+        slf.fitted = Some(fitted);
         Ok(slf)
     }
+    /// Standard errors of coefficients (``None`` unless ``compute_inference=True``).
+    ///
+    /// For ``lambda_ > 0`` these are the ridge sandwich SEs and
+    /// ``t_statistics``/``p_values`` are ``None`` (a t-test on shrunken
+    /// coefficients is not valid; anofox-regression >= 0.5.14); ``lambda_ ==
+    /// 0`` delegates to OLS.
+    #[getter]
+    fn std_errors<'py>(&self, py: Python<'py>) -> PyResult<Option<Bound<'py, PyArray1<f64>>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Ridge"))?;
+
+        Ok(fitted
+            .result()
+            .std_errors
+            .as_ref()
+            .map(|se| se.into_numpy(py)))
+    }
+
+    /// t-statistics for coefficients (``None`` unless ``compute_inference=True``
+    /// and ``lambda_ == 0``; a t-test on shrunken ridge coefficients is not valid).
+    #[getter]
+    fn t_statistics<'py>(&self, py: Python<'py>) -> PyResult<Option<Bound<'py, PyArray1<f64>>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Ridge"))?;
+
+        Ok(fitted
+            .result()
+            .t_statistics
+            .as_ref()
+            .map(|ts| ts.into_numpy(py)))
+    }
+
+    /// P-values for coefficient significance tests (``None`` unless
+    /// ``compute_inference=True`` and ``lambda_ == 0``).
+    #[getter]
+    fn p_values<'py>(&self, py: Python<'py>) -> PyResult<Option<Bound<'py, PyArray1<f64>>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Ridge"))?;
+
+        Ok(fitted
+            .result()
+            .p_values
+            .as_ref()
+            .map(|pv| pv.into_numpy(py)))
+    }
+
+    /// Standard error of the intercept (``None`` unless ``compute_inference=True``).
+    #[getter]
+    fn intercept_std_error(&self) -> PyResult<Option<f64>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Ridge"))?;
+
+        Ok(fitted.result().intercept_std_error)
+    }
+
+    /// Variance factor ``M`` with ``Var(x0' beta) = sigma^2 x0' M x0``.
+    ///
+    /// For ``lambda_ > 0`` this is the ridge sandwich ``A X'X A``, ``A =
+    /// (X'X + lambda P)^-1``; for ``lambda_ == 0`` it is ``(X'X)^-1``.
+    /// ``(p+1) x (p+1)`` with an intercept (index 0), ``p x p`` without;
+    /// aliased rows/columns are zero. ``None`` for fits from moments.
+    fn variance_factor<'py>(&self, py: Python<'py>) -> PyResult<Option<Bound<'py, PyArray2<f64>>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Ridge"))?;
+
+        Ok(fitted.variance_factor().map(|m| m.into_numpy(py)))
+    }
+
+    /// Leverage ``x0' M x0`` of new rows (one column per feature; aliased
+    /// columns are ignored). ``NaN`` when no variance factor is available.
+    fn leverage_new<'py>(
+        &self,
+        py: Python<'py>,
+        x_new: PyReadonlyArray2<'py, f64>,
+    ) -> PyResult<Bound<'py, PyArray1<f64>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Ridge"))?;
+
+        let x_new_mat = x_new.to_faer();
+        let expected = fitted.coefficients().nrows();
+        if x_new_mat.ncols() != expected {
+            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
+                "Ridge.leverage_new: x_new has {} columns but the model was fit with {} \
+                 feature(s) — they must match.",
+                x_new_mat.ncols(),
+                expected
+            )));
+        }
+        Ok(fitted.leverage_new(&x_new_mat).into_numpy(py))
+    }
+
     /// Informative repr: class name plus key state; never panics if unfitted.
     fn __repr__(slf: &Bound<'_, Self>) -> PyResult<String> {
         crate::pymodels::ergonomics::repr(slf.as_any())

@@ -1,6 +1,6 @@
 //! PyO3 wrapper for OLS regression.
 
-use numpy::{PyArray1, PyReadonlyArray1, PyReadonlyArray2};
+use numpy::{PyArray1, PyArray2, PyReadonlyArray1, PyReadonlyArray2};
 use pyo3::prelude::*;
 
 use anofox_regression::prelude::*;
@@ -549,6 +549,45 @@ impl PyOLS {
             .map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>(e.to_string()))?;
         slf.fitted = Some(fitted);
         Ok(slf)
+    }
+
+    /// Variance factor ``M`` with ``Var(x0' beta) = sigma^2 x0' M x0``
+    /// (``(X'X)^-1``). ``(p+1) x (p+1)`` with an intercept (index 0), ``p x
+    /// p`` without; aliased rows/columns are zero. ``None`` for fits from
+    /// moments (e.g. :meth:`fit_from_accumulator`).
+    fn variance_factor<'py>(&self, py: Python<'py>) -> PyResult<Option<Bound<'py, PyArray2<f64>>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("OLS"))?;
+
+        Ok(fitted.variance_factor().as_ref().map(|m| m.into_numpy(py)))
+    }
+
+    /// Leverage ``x0' M x0`` of new rows (one column per feature; aliased
+    /// columns are ignored). ``NaN`` when no variance factor is available
+    /// (e.g. a fit from moments).
+    fn leverage_new<'py>(
+        &self,
+        py: Python<'py>,
+        x_new: PyReadonlyArray2<'py, f64>,
+    ) -> PyResult<Bound<'py, PyArray1<f64>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("OLS"))?;
+
+        let x_new_mat = x_new.to_faer();
+        let expected = fitted.coefficients().nrows();
+        if x_new_mat.ncols() != expected {
+            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
+                "OLS.leverage_new: x_new has {} columns but the model was fit with {} \
+                 feature(s) — they must match.",
+                x_new_mat.ncols(),
+                expected
+            )));
+        }
+        Ok(fitted.leverage_new(&x_new_mat).into_numpy(py))
     }
 
     /// Informative repr, e.g. ``OLS(fitted=True, r_squared=0.9820, ...)``.
