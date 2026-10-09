@@ -2146,6 +2146,21 @@ def _normalize_priors(
     return out
 
 
+def _normalize_offset(offset: Union[pl.Expr, str, None]) -> pl.Expr:
+    """Normalize a penalized-GLM ``offset=`` argument to a `Float64` expression.
+
+    ``None`` becomes a literal ``0.0`` (no offset); a string is treated as a
+    column name; anything else (an expression) is cast directly. Shared by
+    `penalized_glm`, `penalized_glm_summary`, and `penalized_glm_predict`
+    (IN-01).
+    """
+    if offset is None:
+        return pl.lit(0.0, dtype=pl.Float64)
+    if isinstance(offset, str):
+        return pl.col(offset).cast(pl.Float64)
+    return offset.cast(pl.Float64)
+
+
 _PENALIZED_GLM_FAMILIES = (
     "poisson",
     "binomial",
@@ -2380,12 +2395,7 @@ def penalized_glm(
 
     if isinstance(y, str):
         y = pl.col(y)
-    if offset is None:
-        offset_expr = pl.lit(0.0, dtype=pl.Float64)
-    elif isinstance(offset, str):
-        offset_expr = pl.col(offset).cast(pl.Float64)
-    else:
-        offset_expr = offset.cast(pl.Float64)
+    offset_expr = _normalize_offset(offset)
 
     x_exprs = []
     for xi in x:
@@ -3545,12 +3555,7 @@ def penalized_glm_summary(
 
     if isinstance(y, str):
         y = pl.col(y)
-    if offset is None:
-        offset_expr = pl.lit(0.0, dtype=pl.Float64)
-    elif isinstance(offset, str):
-        offset_expr = pl.col(offset).cast(pl.Float64)
-    else:
-        offset_expr = offset.cast(pl.Float64)
+    offset_expr = _normalize_offset(offset)
 
     x_exprs = []
     for xi in x:
@@ -4626,12 +4631,7 @@ def penalized_glm_predict(
 
     if isinstance(y, str):
         y = pl.col(y)
-    if offset is None:
-        offset_expr = pl.lit(0.0, dtype=pl.Float64)
-    elif isinstance(offset, str):
-        offset_expr = pl.col(offset).cast(pl.Float64)
-    else:
-        offset_expr = offset.cast(pl.Float64)
+    offset_expr = _normalize_offset(offset)
 
     x_exprs = []
     for xi in x:
