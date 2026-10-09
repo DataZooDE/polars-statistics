@@ -4,18 +4,18 @@ milestone: v0.8.0
 milestone_name: Claude Code Skills Plugin
 current_phase: "16.2"
 current_phase_name: Penalized GLM and AFT Survival Regression
-current_plan: 4
+current_plan: 5
 status: executing
-stopped_at: Completed 16.2-03-PLAN.md
-last_updated: "2026-10-09T13:33:07.267Z"
+stopped_at: Completed 16.2-04-PLAN.md
+last_updated: "2026-10-09T15:32:22.553Z"
 last_activity: 2026-10-09
 last_activity_desc: Phase 16.2 execution started
-state_head: 312158dd91c8635a4c7af2b64f3eac9fed471bca
+state_head: 87d67c8a6f174e4111586ded4a5e060f6d998225
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 36
-  completed_plans: 19
+  completed_plans: 20
   percent: 0
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 ## Current Position
 
 Phase: 16.2 (Penalized GLM and AFT Survival Regression) — EXECUTING
-Current Plan: 4
+Current Plan: 5
 Total Plans in Phase: 8
 Status: Ready to execute
 Last activity: 2026-10-09 — Phase 16.2 execution started
@@ -113,6 +113,7 @@ Execution order: 13 → 14 → 15 → 16 → 17
 | Phase 16.2 P01 | 45min | 3 tasks | 7 files |
 | Phase 16.2 P02 | 50min | 3 tasks | 13 files |
 | Phase 16.2 P03 | 22min | 2 tasks | 7 files |
+| Phase 16.2 P04 | 50min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -171,6 +172,7 @@ Recent decisions affecting current work:
 - [Phase 16.2]: 16.2-02: Ridge lambda_=4.0 confirmed numerically IDENTICAL to a N(0, 1/sqrt(4)) prior and the Laplace prior proximal soft-threshold confirmed to zero the coefficient exactly with a NaN SE -- both matched the plan's assumed behaviour exactly, no fallback/deviation needed.
 - [Phase 16.2]: 16.2-03: Hoisted the inline tolerance-check closure to a module-level _assert_close_or_inf helper so the expression-layer R parity test could reuse the PyModel-class parity test's infinite-sign/tolerance logic — avoid duplicating the 126-case tolerance rule across two tests
 - [Phase 16.2]: 16.2-03: [Rule 1] Fixed test_nonfinite.py's whole-dict equality assertion broken by the widened struct's NaN estimate/ci_lower/ci_upper fields (NaN != NaN under ==) with pytest.approx(nan_ok=True) — keeps the full suite green without loosening the assertion's intent
+- [Phase 16.2]: 16.2-04: A null offset always forces a NaN prediction via an explicit offset_null_mask, never by relying on NaN arithmetic propagating through a family's inverse-link — PoissonLink::link_inverse clamps via f64::max for numerical stability, which silently replaces a NaN operand with the clamp floor (1e-14) instead of propagating it -- found via a failing test during Task 2.
 
 ### Pending Todos
 
@@ -206,7 +208,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-10-09T13:33:07.226Z
-Stopped at: Completed 16.2-03-PLAN.md
+Last session: 2026-10-09T15:32:22.509Z
+Stopped at: Completed 16.2-04-PLAN.md
 Resume file: None
 </content>
