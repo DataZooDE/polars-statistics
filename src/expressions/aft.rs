@@ -556,28 +556,35 @@ fn aft_predict_impl(
     // Mask time at rows whose event is null, exactly like `aft_inputs`, so
     // the null-policy split below excludes them from the fit under every
     // policy (the event column itself is converted to `Vec<bool>` only for
-    // the rows the split keeps).
+    // the rows the split keeps). Validation mirrors `aft_inputs` exactly: a
+    // non-Boolean event value other than `0.0`/`1.0` (e.g. R's `1`/`2`
+    // coding) is a coding error, not silently-censored data, so it produces
+    // the same all-NaN prediction struct `aft_fit`/`aft_summary_fit` return
+    // for the equivalent input — it must never reach the fit below.
     let event_series = &inputs[1];
-    let event_null_mask: Vec<bool> = match event_series.dtype() {
+    let mut event_null_mask = vec![false; n_rows];
+    let mut event_bool: Vec<Option<bool>> = vec![None; n_rows];
+    match event_series.dtype() {
         DataType::Boolean => {
             let ca = event_series.bool()?;
-            (0..n_rows).map(|i| ca.get(i).is_none()).collect()
+            for i in 0..n_rows {
+                match ca.get(i) {
+                    Some(b) => event_bool[i] = Some(b),
+                    None => event_null_mask[i] = true,
+                }
+            }
         }
         _ => {
             let casted = event_series.cast(&DataType::Float64)?;
             let ca = casted.f64()?;
-            (0..n_rows).map(|i| ca.get(i).is_none()).collect()
-        }
-    };
-    let event_bool: Vec<Option<bool>> = match event_series.dtype() {
-        DataType::Boolean => {
-            let ca = event_series.bool()?;
-            (0..n_rows).map(|i| ca.get(i)).collect()
-        }
-        _ => {
-            let casted = event_series.cast(&DataType::Float64)?;
-            let ca = casted.f64()?;
-            (0..n_rows).map(|i| ca.get(i).map(|v| v == 1.0)).collect()
+            for i in 0..n_rows {
+                match ca.get(i) {
+                    Some(v) if v == 0.0 => event_bool[i] = Some(false),
+                    Some(v) if v == 1.0 => event_bool[i] = Some(true),
+                    Some(_) => return prediction_nan_output_with_prefix(n_rows, prefix),
+                    None => event_null_mask[i] = true,
+                }
+            }
         }
     };
 

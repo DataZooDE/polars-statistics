@@ -122,6 +122,38 @@ class TestAftEventCoding:
         r = df.select(ps.aft("time", "bad_event", "x1", "x2").alias("r")).unnest("r")
         assert math.isnan(r["intercept"][0])
 
+    def test_predict_event_coding_invalid_gives_nan(self):
+        """CR-01 regression: the four `aft_predict_*` expressions must reject
+        invalid event codes (e.g. R's 1/2 coding) exactly like `aft`/
+        `aft_summary` do -- an all-NaN prediction struct, not a silently
+        wrong value from misreading the bad code as "censored"."""
+        df = _fixture_df().with_columns(
+            pl.when(pl.int_range(pl.len()) == 0)
+            .then(2.0)
+            .otherwise(pl.col("event_float"))
+            .alias("bad_event")
+        )
+
+        q = df.select(
+            ps.aft_predict_quantile("time", "bad_event", "x1", "x2", p=0.5).alias("r")
+        ).unnest("r")
+        assert all(math.isnan(v) for v in q["aft_predict_quantile_prediction"])
+
+        m = df.select(
+            ps.aft_predict_median("time", "bad_event", "x1", "x2").alias("r")
+        ).unnest("r")
+        assert all(math.isnan(v) for v in m["aft_predict_median_prediction"])
+
+        s = df.select(
+            ps.aft_predict_survival("time", "bad_event", "x1", "x2", t=5.0).alias("r")
+        ).unnest("r")
+        assert all(math.isnan(v) for v in s["aft_predict_survival_prediction"])
+
+        c = df.select(
+            ps.aft_predict_cdf("time", "bad_event", "x1", "x2", t=5.0).alias("r")
+        ).unnest("r")
+        assert all(math.isnan(v) for v in c["aft_predict_cdf_prediction"])
+
     def test_time_zero_gives_nan_struct(self):
         df = _fixture_df().with_columns(
             pl.when(pl.int_range(pl.len()) == 0)

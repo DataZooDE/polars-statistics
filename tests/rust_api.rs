@@ -104,6 +104,20 @@ fn assert_f64_finite_or_zero(s: &Series, field: &str) {
     let _ = v;
 }
 
+/// Helper: assert a struct f64 field is NaN for every row (proves a
+/// reject-path all-NaN fill, not merely "didn't panic").
+fn assert_f64_all_nan(s: &Series, field: &str) {
+    let ca = s.struct_().expect("expected struct series");
+    let f = ca
+        .field_by_name(field)
+        .unwrap_or_else(|_| panic!("missing field `{field}`"));
+    let fca = f.f64().expect("expected f64 column");
+    for i in 0..fca.len() {
+        let v = fca.get(i).unwrap_or(f64::NAN);
+        assert!(v.is_nan(), "expected `{field}`[{i}] to be NaN, got {v}");
+    }
+}
+
 // =============================================================================
 // Linear regression (OLS / Ridge / Elastic Net / WLS / RLS / BLS) +
 // Quantile / Isotonic + their *_summary_fit + *_predict_fit variants
@@ -1046,6 +1060,39 @@ fn glm_fits() {
         let cdf =
             aft_predict_cdf_fit(&inputs, &survival_kwargs).expect("aft_predict_cdf_fit failed");
         assert_eq!(cdf.len(), time.len());
+
+        // CR-01 regression: an invalid numeric event code (e.g. R's 1/2
+        // coding) must produce the same all-NaN prediction struct `aft_fit`
+        // returns for the equivalent input across all four predict
+        // expressions — never be silently misread as "censored".
+        let bad_event: Vec<f64> = (0..time.len())
+            .map(|i| {
+                if i == 0 {
+                    2.0
+                } else if event[i] {
+                    1.0
+                } else {
+                    0.0
+                }
+            })
+            .collect();
+        let bad_inputs = vec![
+            series_f64("time", &time),
+            series_f64("event", &bad_event),
+            series_f64("x1", &x_cnt),
+        ];
+        let bad_quantile = aft_predict_quantile_fit(&bad_inputs, &median_kwargs)
+            .expect("aft_predict_quantile_fit should NaN-fill, not error, on invalid event");
+        assert_f64_all_nan(&bad_quantile, "aft_prediction");
+        let bad_median = aft_predict_median_fit(&bad_inputs, &median_kwargs)
+            .expect("aft_predict_median_fit should NaN-fill, not error, on invalid event");
+        assert_f64_all_nan(&bad_median, "aft_prediction");
+        let bad_survival = aft_predict_survival_fit(&bad_inputs, &survival_kwargs)
+            .expect("aft_predict_survival_fit should NaN-fill, not error, on invalid event");
+        assert_f64_all_nan(&bad_survival, "aft_prediction");
+        let bad_cdf = aft_predict_cdf_fit(&bad_inputs, &survival_kwargs)
+            .expect("aft_predict_cdf_fit should NaN-fill, not error, on invalid event");
+        assert_f64_all_nan(&bad_cdf, "aft_prediction");
 
         // Err (no panic) for an invalid distribution.
         let bad_distribution = AftKwargs {
