@@ -22,15 +22,18 @@ ps.mann_whitney_u(
 ) -> pl.Expr
 ```
 
-**Returns:** `Struct{statistic: Float64, p_value: Float64}`
+**Returns:** `Struct{statistic: Float64, p_value: Float64, estimate: Float64, ci_lower: Float64, ci_upper: Float64}`
 
 **Null hypothesis:** The distributions of x and y are equal (P(X > Y) = P(Y > X)).
 
-**Important:** `conf_level` and `mu` feed the hypothesis test (the location-shift null
-and, together with `exact`, which computation path to use) but this expression's
-output struct is **only** `{statistic, p_value}` — the Hodges-Lehmann point
-`estimate` and its confidence interval are available **only** on the
-[`MannWhitneyU` class](../classes/tests.md#mannwhitneyu), not on this expression.
+**`estimate`/`ci_lower`/`ci_upper` (trailing fields added in 0.8.0):** the Hodges-Lehmann shift
+estimate and its confidence interval, matching R `wilcox.test(conf.int = TRUE)` on 126 upstream
+reference cases. They are `NaN` unless `conf_level` is given (R itself only reports them with
+`conf.int = TRUE`); a one-sided `alternative` gives an interval with an infinite bound. The
+first two fields (`statistic`, `p_value`) are unchanged in order and value. See
+[Mann-Whitney / Wilcoxon Output](../outputs.md#mann-whitney-wilcoxon-output) for the full
+schema — it is identical to the
+[`MannWhitneyU` class](../classes/tests.md#mannwhitneyu)'s `estimate`/`conf_int`.
 
 **Assumptions:**
 - Independent observations
@@ -52,6 +55,12 @@ df.select(ps.mann_whitney_u("treatment", "control"))
 df.group_by("experiment").agg(
     ps.mann_whitney_u("treatment", "control").alias("test")
 )
+
+# Hodges-Lehmann estimate and 95% confidence interval
+result = df.select(
+    ps.mann_whitney_u("treatment", "control", conf_level=0.95).alias("test")
+).unnest("test")
+result.select("estimate", "ci_lower", "ci_upper")
 ```
 
 **Effect size:** pair with [`rank_biserial`](effect-sizes.md#rank_biserial) for a
@@ -78,14 +87,17 @@ ps.wilcoxon_signed_rank(
 ) -> pl.Expr
 ```
 
-**Returns:** `Struct{statistic: Float64, p_value: Float64}`
+**Returns:** `Struct{statistic: Float64, p_value: Float64, estimate: Float64, ci_lower: Float64, ci_upper: Float64}`
 
 **Null hypothesis:** The median of paired differences is zero.
 
-**Important:** as with `mann_whitney_u`, `conf_level`/`mu` feed the test but this
-expression returns only `{statistic, p_value}` — the Hodges-Lehmann `estimate` and
-`conf_int` are PyModel-only, on the
-[`WilcoxonSignedRank` class](../classes/tests.md#wilcoxonsignedrank).
+**`estimate`/`ci_lower`/`ci_upper` (trailing fields added in 0.8.0):** as with `mann_whitney_u`,
+the Hodges-Lehmann pseudo-median estimate of `x - y` and its confidence interval, matching R
+`wilcox.test(conf.int = TRUE)` on 126 upstream reference cases. They are `NaN` unless
+`conf_level` is given, and a one-sided `alternative` gives an interval with an infinite bound.
+The first two fields (`statistic`, `p_value`) are unchanged. Equal to the
+[`WilcoxonSignedRank` class](../classes/tests.md#wilcoxonsignedrank)'s `estimate`/`conf_int`.
+See [Mann-Whitney / Wilcoxon Output](../outputs.md#mann-whitney-wilcoxon-output).
 
 **Assumptions:**
 - Paired observations
@@ -107,6 +119,12 @@ df.select(ps.wilcoxon_signed_rank("before", "after"))
 df.group_by("subject_group").agg(
     ps.wilcoxon_signed_rank("pre_test", "post_test").alias("test")
 )
+
+# Hodges-Lehmann pseudo-median estimate and 95% confidence interval
+result = df.select(
+    ps.wilcoxon_signed_rank("before", "after", conf_level=0.95).alias("test")
+).unnest("test")
+result.select("estimate", "ci_lower", "ci_upper")
 ```
 
 **Effect size:** pair with [`matched_pairs_rank_biserial`](effect-sizes.md#matched_pairs_rank_biserial)
@@ -209,7 +227,10 @@ df.select(ps.brunner_munzel("treatment", "control", alternative="greater"))
       (anofox-statistics 0.4.5, validated on 126 R reference cases — see
       [`MannWhitneyU`/`WilcoxonSignedRank`](../classes/tests.md) for the full
       semantics: root-finding on the asymptotic path, one-sided intervals with an
-      infinite bound, continuity correction applied to the interval).
+      infinite bound, continuity correction applied to the interval). Originally
+      class-only; since 0.8.0 `ps.mann_whitney_u`/`ps.wilcoxon_signed_rank` return the
+      identical `estimate`/`ci_lower`/`ci_upper` as trailing struct fields — see
+      above and [Mann-Whitney / Wilcoxon Output](../outputs.md#mann-whitney-wilcoxon-output).
     - **`exact=True` is honoured only below a sample-size threshold** — above
       `n1 * n2 > 10,000` (rank sum / Mann-Whitney) or `300` non-zero differences
       (signed rank / Wilcoxon), `exact=True` is silently ignored and the normal

@@ -110,6 +110,11 @@ give an interval with an infinite bound; `exact=True` is honoured only for
 infinite observation makes `estimate`/`conf_int` `NaN`. Computing the CI on 20,000
 observations per group completes in O(n) memory (previously O(n^2), ~3.2 GB).
 
+**Since 0.8.0, `ps.mann_whitney_u` returns the same values** as trailing
+`estimate`/`ci_lower`/`ci_upper` struct fields (additive; `statistic`/`p_value`
+unchanged) — see [`mann_whitney_u`](../tests/nonparametric.md#mann_whitney_u) and
+[Mann-Whitney / Wilcoxon Output](../outputs.md#mann-whitney-wilcoxon-output).
+
 ### WilcoxonSignedRank
 
 Wilcoxon signed-rank test for paired samples.
@@ -135,6 +140,12 @@ test.conf_int   # np.ndarray | None — [lower, upper], shape (2,)
 computed on `x - y` (not shifted by `mu`); `exact=True` is honoured only for
 `<= 300` non-zero differences. O(n log n) time, O(n) memory — 100,000 observations
 per group is fine.
+
+**Since 0.8.0, `ps.wilcoxon_signed_rank` returns the same values** as trailing
+`estimate`/`ci_lower`/`ci_upper` struct fields (additive; `statistic`/`p_value`
+unchanged) — see
+[`wilcoxon_signed_rank`](../tests/nonparametric.md#wilcoxon_signed_rank) and
+[Mann-Whitney / Wilcoxon Output](../outputs.md#mann-whitney-wilcoxon-output).
 
 ### KruskalWallis
 
