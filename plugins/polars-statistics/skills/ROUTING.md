@@ -13,7 +13,7 @@ description edits.
 | `polars-statistics-getting-started` | Get started with polars-statistics — install the package, understand the two API styles (expressions vs. PyModel classes), choose the right model with the decision matrix, and migrate from sklearn. |
 | `polars-statistics-hypothesis-tests` | Use polars-statistics hypothesis tests — run t-tests, Mann-Whitney, Kruskal-Wallis, normality tests, correlation tests, chi-square, Fisher's exact, TOST equivalence tests, MMD, energy distance, effect sizes (Cohen's d, rank-biserial), Jarque-Bera normality, or bootstrap confidence intervals as Polars expressions. |
 | `polars-statistics-anova` | Use polars-statistics ANOVA — run one-way ANOVA (Fisher or Welch), two-way ANOVA, repeated-measures ANOVA, or intraclass correlation coefficient (ICC) as Polars expressions. |
-| `polars-statistics-regression` | Use polars-statistics regression — fit OLS, Ridge, Lasso, Elastic Net, WLS, RLS, BLS, NNLS, Quantile, Huber, PLS, ALM, or any GLM (logistic, Poisson, Negative Binomial, Tweedie, Probit, Cloglog) as Polars expressions or as PyModel classes; use R-style formulas with interactions and polynomial terms. |
+| `polars-statistics-regression` | Use polars-statistics regression — fit OLS, Ridge, Lasso, Elastic Net, WLS, RLS, BLS, NNLS, Quantile, Huber, PLS, ALM, or any GLM (logistic, Poisson, Negative Binomial, Tweedie, Probit, Cloglog) as Polars expressions or as PyModel classes; use R-style formulas with interactions and polynomial terms; get standard errors and p-values for Huber/RANSAC robust fits and GLMM fixed effects, or leverage/variance diagnostics for OLS/WLS/Ridge. |
 | `polars-statistics-results` | Consume polars-statistics expression results — extract struct fields, unnest result columns, call to_dict() and summary() on PyModel classes, handle PyRuntimeError for unfitted models, or work with the typed .pyi API. |
 
 ---
@@ -67,6 +67,9 @@ description edits.
 | "Cook's distance and VIF to detect influential points" | `polars-statistics-regression` | CORRECT — "diagnostics" implied; no other skill covers regression diagnostics |
 | "Quantile regression at tau=0.9" | `polars-statistics-regression` | CORRECT — "Quantile" explicit |
 | "Fit Poisson GLM for count data" | `polars-statistics-regression` | CORRECT — "Poisson" explicit |
+| "Get standard errors for a Huber regression" | `polars-statistics-regression` | CORRECT — "standard errors...for Huber/RANSAC robust fits" explicit |
+| "p-values for GLMM fixed effects" | `polars-statistics-regression` | CORRECT — "p-values for...GLMM fixed effects" explicit |
+| "Leverage of new observations for an OLS fit" | `polars-statistics-regression` | CORRECT — "leverage/variance diagnostics for OLS/WLS/Ridge" explicit |
 
 ### Family: Results
 

@@ -1,6 +1,6 @@
 ---
 name: polars-statistics-regression
-description: Use polars-statistics regression — fit OLS, Ridge, Lasso, Elastic Net, WLS, RLS, BLS, NNLS, Quantile, Huber, PLS, ALM, or any GLM (logistic, Poisson, Negative Binomial, Tweedie, Probit, Cloglog) as Polars expressions or as PyModel classes; use R-style formulas with interactions and polynomial terms.
+description: Use polars-statistics regression — fit OLS, Ridge, Lasso, Elastic Net, WLS, RLS, BLS, NNLS, Quantile, Huber, PLS, ALM, or any GLM (logistic, Poisson, Negative Binomial, Tweedie, Probit, Cloglog) as Polars expressions or as PyModel classes; use R-style formulas with interactions and polynomial terms; get standard errors and p-values for Huber/RANSAC robust fits and GLMM fixed effects, or leverage/variance diagnostics for OLS/WLS/Ridge.
 version: "0.8.0"
 user-invocable: false
 ---
@@ -62,6 +62,8 @@ OLS(
   .fit(x, y) -> OLS
   .fit_from_accumulator(acc: MomentAccumulator) -> OLS
   .hc_inference(x, hc_type: str = "hc1") -> dict   # hc_type: "hc0" | "hc1" | "hc2" | "hc3"
+  .variance_factor() -> np.ndarray | None   # (p+1)x(p+1) with intercept, p x p without; None for moments-fits
+  .leverage_new(x_new) -> np.ndarray        # hat-matrix leverage for new rows; ValueError on column-count mismatch
   # Properties:
   .coefficients, .intercept
   .r_squared, .adj_r_squared, .mse, .rmse
@@ -80,7 +82,12 @@ Ridge(
   .fit(x, y) -> Ridge
   .fit_from_accumulator(acc: MomentAccumulator) -> Ridge
   .hc_inference(x, hc_type: str = "hc1") -> dict
+  .variance_factor() -> np.ndarray | None   # same contract as OLS.variance_factor()
+  .leverage_new(x_new) -> np.ndarray
   .coefficients, .intercept, .r_squared, .adj_r_squared, .lambda_value
+  # Inference getters (sandwich SEs; see the lambda_>0 gotcha below):
+  .std_errors, .intercept_std_error        # always populated when compute_inference=True
+  .p_values, .t_statistics                 # None when lambda_ > 0 (no valid t-test on shrunken coefficients)
 
 ElasticNet(
     lambda_: float = 1.0,                 # total regularization strength
@@ -101,15 +108,18 @@ WLS(
 )
   .fit(x, y, weights) -> WLS             # 3-ARG fit — weights is required, not optional
   .hc_inference(x, hc_type: str = "hc1") -> dict
+  .variance_factor() -> np.ndarray | None   # same contract as OLS.variance_factor()
+  .leverage_new(x_new) -> np.ndarray
   .coefficients, .intercept, .r_squared
 
 RLS(
     forgetting_factor: float = 1.0,       # 0 < factor <= 1; 1.0 = expanding OLS
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,   # deprecated
+    initial_p_diagonal: float = 1e6,      # P0 = initial_p_diagonal * I (prior covariance diagonal)
 )
   .fit(x, y) -> RLS
-  .coefficients, .intercept, .r_squared, .forgetting_factor_value
+  .coefficients, .intercept, .r_squared, .forgetting_factor_value, .initial_p_diagonal_value
 
 BLS(
     lower_bound: float | None = None,
@@ -158,10 +168,16 @@ Huber(
     with_intercept: bool | None = None,   # deprecated
     max_iter: int = 100,
     tol: float = 1e-5,
+    compute_inference: bool = False,      # opt-in: MASS::rlm(method="XtX")-validated
+    confidence_level: float = 0.95,
 )
   .fit(x, y) -> Huber
   .coefficients, .intercept, .r_squared, .mse, .rmse, .scale
   .n_outliers, .outliers, .epsilon
+  # Inference getters (None unless compute_inference=True; see Example 9):
+  .std_errors, .t_statistics, .p_values
+  .conf_interval_lower, .conf_interval_upper
+  .intercept_std_error, .intercept_t_statistic, .intercept_p_value, .intercept_conf_interval
 
 PLS(
     n_components: int = 2,
@@ -182,6 +198,8 @@ TheilSen(
     max_iter: int = 300,
     tol: float = 1e-3,
     random_state: int = 0,
+    univariate_pairwise: bool = True,     # True = classical median-of-pairwise-slopes (Sen 1968);
+                                           # False = sklearn's spatial-median-over-subsamples estimator
 )
   .fit(x, y) -> TheilSen
   .coefficients, .intercept, .r_squared, .mse, .rmse, .residuals
@@ -195,9 +213,20 @@ RANSAC(
     stop_probability: float = 0.99,
     stop_n_inliers: int | None = None,
     random_state: int = 0,
+    compute_inference: bool = False,
+    confidence_level: float = 0.95,
 )
   .fit(x, y) -> RANSAC
   .coefficients, .intercept, .r_squared, .inlier_mask, .n_inliers, .n_trials, .residuals
+  # Fit statistics below are those of the inlier-only OLS fit (anofox-regression 0.5.14);
+  # r_squared/n_observations above are also inlier-only, not whole-sample:
+  .adj_r_squared, .mse, .rmse, .f_statistic, .f_pvalue, .aic, .bic, .log_likelihood
+  # Same inference getters as Huber (None unless compute_inference=True):
+  .std_errors, .t_statistics, .p_values
+  .conf_interval_lower, .conf_interval_upper
+  .intercept_std_error, .intercept_t_statistic, .intercept_p_value, .intercept_conf_interval
+  .inlier_fit() -> OLS                  # a real fitted OLS instance on the inlier rows only;
+                                         # coefficients/intercept/std_errors match RANSAC's own
 
 BayesianRidge(
     fit_intercept: bool = True,
@@ -347,10 +376,13 @@ NegativeBinomial(
     max_iter: int = 100,
     tol: float = 1e-6,
     lambda_: float = 0.0,
+    estimate_dispersion: bool = False,    # False (default) = SEs use dispersion 1;
+                                           # True = Pearson-dispersion SEs (R summary.glm(negative.binomial(theta)))
 )
   .fit(x, y) -> NegativeBinomial
   .predict(x) -> np.ndarray
   .coefficients, .intercept, .aic, .bic, .p_values, .std_errors, .theta_estimated
+  .dispersion                            # 1.0 by default; the estimated Pearson dispersion when estimate_dispersion=True
 
 Tweedie(
     var_power: float = 1.5,               # 0=Gaussian, 1=Poisson, 2=Gamma, 3=InvGaussian
@@ -434,6 +466,8 @@ GLMM()
   .fixed_effects, .intercept, .random_effects, .random_sd, .slopes
   .sigma, .theta, .deviance, .log_likelihood
   .n_groups, .iterations, .converged, .std_errors
+  .z_values, .p_values                   # Wald inference: z = fixed_effects / std_errors
+  .conf_int(level: float = 0.95) -> tuple[np.ndarray, np.ndarray]   # (lower, upper); all-NaN for invalid level
   .factors() -> list[dict]
 
 ALM(
@@ -549,7 +583,7 @@ ps.ridge(y, *x, lambda_=1.0, add_intercept=None, with_intercept=None, solve_meth
 ps.elastic_net(y, *x, lambda_=1.0, alpha=0.5, add_intercept=None, with_intercept=None)
 ps.lasso(y, *x, lambda_=1.0, add_intercept=None, with_intercept=None)       # elastic_net(alpha=1.0)
 ps.wls(y, weights, *x, add_intercept=None, with_intercept=None, solve_method=None)  # weights BEFORE *x
-ps.rls(y, *x, forgetting_factor=0.99, add_intercept=None, with_intercept=None)
+ps.rls(y, *x, forgetting_factor=0.99, add_intercept=None, with_intercept=None, initial_p_diagonal=1e6)
 ps.expanding_ols(y, *x, add_intercept=None, with_intercept=None)             # rls(forgetting_factor=1.0)
 ps.bls(y, *x, lower_bound=None, upper_bound=None, add_intercept=None, with_intercept=None)
 ps.nnls(y, *x, add_intercept=None, with_intercept=None)                      # bls(lower_bound=0.0)
@@ -562,7 +596,7 @@ ps.isotonic(y, x, increasing=True)      # NOTE: single x column (not *x)
 ps.logistic(y, *x, lambda_=0.0, add_intercept=None, with_intercept=None)
 ps.logistic_regression(y, *x, penalty="l2", C=1.0, threshold=0.5, add_intercept=None, with_intercept=None, max_iter=100, tol=1e-8)
 ps.poisson(y, *x, lambda_=0.0, add_intercept=None, with_intercept=None)
-ps.negative_binomial(y, *x, theta=None, lambda_=0.0, add_intercept=None, with_intercept=None)
+ps.negative_binomial(y, *x, theta=None, lambda_=0.0, add_intercept=None, with_intercept=None, estimate_dispersion=False)
 ps.tweedie(y, *x, var_power=1.5, lambda_=0.0, add_intercept=None, with_intercept=None)
 ps.probit(y, *x, lambda_=0.0, add_intercept=None, with_intercept=None)
 ps.cloglog(y, *x, lambda_=0.0, add_intercept=None, with_intercept=None)
@@ -591,14 +625,14 @@ ps.ridge_summary(y, *x, lambda_=1.0, add_intercept=None, with_intercept=None, so
 ps.elastic_net_summary(y, *x, lambda_=1.0, alpha=0.5, add_intercept=None, with_intercept=None)
 ps.lasso_summary(y, *x, lambda_=1.0, add_intercept=None, with_intercept=None)
 ps.wls_summary(y, weights, *x, add_intercept=None, with_intercept=None, solve_method=None)
-ps.rls_summary(y, *x, forgetting_factor=0.99, add_intercept=None, with_intercept=None)
+ps.rls_summary(y, *x, forgetting_factor=0.99, add_intercept=None, with_intercept=None, initial_p_diagonal=1e6)
 ps.bls_summary(y, *x, lower_bound=None, upper_bound=None, add_intercept=None, with_intercept=None)
 ps.quantile_summary(y, *x, tau=0.5, add_intercept=None, with_intercept=None)
 # Note: quantile_summary std_error/statistic/p_value are NaN (no analytic SEs)
 
 ps.logistic_summary(y, *x, lambda_=0.0, add_intercept=None, with_intercept=None)
 ps.poisson_summary(y, *x, lambda_=0.0, add_intercept=None, with_intercept=None)
-ps.negative_binomial_summary(y, *x, theta=None, lambda_=0.0, add_intercept=None, with_intercept=None)
+ps.negative_binomial_summary(y, *x, theta=None, lambda_=0.0, add_intercept=None, with_intercept=None, estimate_dispersion=False)
 ps.tweedie_summary(y, *x, var_power=1.5, lambda_=0.0, add_intercept=None, with_intercept=None)
 ps.probit_summary(y, *x, lambda_=0.0, add_intercept=None, with_intercept=None)
 ps.cloglog_summary(y, *x, lambda_=0.0, add_intercept=None, with_intercept=None)
@@ -628,7 +662,7 @@ ps.ridge_predict(y, *x, lambda_=1.0, add_intercept=True, solve_method=None, inte
 ps.elastic_net_predict(y, *x, lambda_=1.0, alpha=0.5, add_intercept=True, interval=None, level=0.95, null_policy="drop", name=None)
 ps.lasso_predict(y, *x, lambda_=1.0, add_intercept=True, interval=None, level=0.95, null_policy="drop", name=None)
 ps.wls_predict(y, weights, *x, add_intercept=True, solve_method=None, interval=None, level=0.95, null_policy="drop", name=None)
-ps.rls_predict(y, *x, forgetting_factor=0.99, add_intercept=True, interval=None, level=0.95, null_policy="drop", name=None)
+ps.rls_predict(y, *x, forgetting_factor=0.99, add_intercept=True, interval=None, level=0.95, null_policy="drop", name=None, initial_p_diagonal=1e6)
 ps.bls_predict(y, *x, lower_bound=None, upper_bound=None, add_intercept=True, interval=None, level=0.95, null_policy="drop", name=None)
 ps.nnls_predict(y, *x, add_intercept=True, interval=None, level=0.95, null_policy="drop", name=None)
 ps.quantile_predict(y, *x, tau=0.5, add_intercept=True, null_policy="drop", name=None)
@@ -637,7 +671,7 @@ ps.isotonic_predict(y, x, increasing=True, null_policy="drop", name=None)   # si
 
 ps.logistic_predict(y, *x, lambda_=0.0, add_intercept=True, interval=None, level=0.95, null_policy="drop", name=None)
 ps.poisson_predict(y, *x, lambda_=0.0, add_intercept=True, interval=None, level=0.95, null_policy="drop", name=None)
-ps.negative_binomial_predict(y, *x, lambda_=0.0, add_intercept=True, interval=None, level=0.95, null_policy="drop", name=None)
+ps.negative_binomial_predict(y, *x, lambda_=0.0, add_intercept=True, interval=None, level=0.95, null_policy="drop", name=None, estimate_dispersion=False)
 # Note: negative_binomial_predict does not expose theta= (unlike negative_binomial fit which
 # accepts theta=). The predict variant estimates theta internally from the data.
 ps.tweedie_predict(y, *x, var_power=1.5, lambda_=0.0, add_intercept=True, interval=None, level=0.95, null_policy="drop", name=None)
@@ -669,12 +703,12 @@ ps.elastic_net_formula(formula: str, lambda_=1.0, alpha=0.5, add_intercept=None,
 ps.lasso_formula(formula: str, lambda_=1.0, add_intercept=None, with_intercept=None)
 ps.wls_formula(formula: str, weights, add_intercept=None, with_intercept=None, solve_method=None)
 # Note: wls_formula takes a weights positional arg (column name or expr) after formula
-ps.rls_formula(formula: str, forgetting_factor=0.99, add_intercept=None, with_intercept=None)
+ps.rls_formula(formula: str, forgetting_factor=0.99, add_intercept=None, with_intercept=None, initial_p_diagonal=1e6)
 ps.bls_formula(formula: str, lower_bound=None, upper_bound=None, add_intercept=None, with_intercept=None)
 ps.nnls_formula(formula: str, add_intercept=None, with_intercept=None)
 ps.logistic_formula(formula: str, add_intercept=None, with_intercept=None)
 ps.poisson_formula(formula: str, add_intercept=None, with_intercept=None)
-ps.negative_binomial_formula(formula: str, theta=None, add_intercept=None, with_intercept=None)
+ps.negative_binomial_formula(formula: str, theta=None, add_intercept=None, with_intercept=None, estimate_dispersion=False)
 ps.tweedie_formula(formula: str, var_power=1.5, add_intercept=None, with_intercept=None)
 ps.probit_formula(formula: str, add_intercept=None, with_intercept=None)
 ps.cloglog_formula(formula: str, add_intercept=None, with_intercept=None)
@@ -984,6 +1018,38 @@ result_pred = df.with_columns(
 ).unnest("pred")
 ```
 
+### Example 9: Robust-regression inference and RANSAC's inlier fit
+
+```python
+import numpy as np
+from polars_statistics import Huber, RANSAC, OLS
+
+rng = np.random.default_rng(0)
+n = 60
+x = rng.normal(0, 1, n)
+y = 2.0 * x + 1.0 + rng.normal(0, 0.3, n)
+y[:5] += 20.0   # plant outliers in the first 5 rows
+X = x.reshape(-1, 1)
+
+# Huber: opt into Wald inference with compute_inference=True
+h = Huber(compute_inference=True).fit(X, y)
+print(h.std_errors)   # array of per-coefficient SEs (None when compute_inference=False)
+print(h.p_values)
+
+# RANSAC: same opt-in inference, plus the inlier-only fit statistics
+r = RANSAC(compute_inference=True, random_state=0).fit(X, y)
+print(r.n_inliers, r.std_errors, r.p_values)
+
+# RANSAC.inlier_fit() returns a real fitted OLS instance on the inlier rows only
+inlier_model = r.inlier_fit()
+print(inlier_model.summary())
+assert np.allclose(inlier_model.coefficients, r.coefficients)
+
+# OLS.leverage_new() scores leverage for new observations against the fitted design
+ols = OLS(add_intercept=True).fit(X, y)
+print(ols.leverage_new(X[:3]))   # one leverage value per new row
+```
+
 ## Gotchas / Notes
 
 **Intercept kwarg deprecation.** Use `add_intercept=True/False` in all new code. The old parameter name emits `FutureWarning` at runtime. Both names are accepted for backward compatibility, but `add_intercept=` is the current name.
@@ -1013,6 +1079,24 @@ result_pred = df.with_columns(
 **`ps.logistic_regression` (expression) vs `ps.logistic` (expression).** `logistic` is the lower-level IRLS GLM; `logistic_regression` is the sklearn-style wrapper with `penalty=`, `C=`, `threshold=`. For most use cases, prefer `ps.logistic`.
 
 **`MomentAccumulator` for streaming OLS.** Push rows one at a time with `.push_row(x_row, y)`, then call `OLS().fit_from_accumulator(acc)` or `Ridge().fit_from_accumulator(acc)` to get the fitted model. Merge accumulators from parallel streams with `.merge(other)`.
+
+**Ridge `lambda_ > 0` gives sandwich SEs with no t-test.** `Ridge.std_errors`/`.intercept_std_error` are always populated (a sandwich-estimator SE), but `.p_values`/`.t_statistics` are `None` whenever `lambda_ > 0` — a t-test on shrunken coefficients is not statistically valid. At `lambda_ == 0`, `Ridge` delegates fully to `OLS` semantics (full inference).
+
+**RANSAC statistics describe the inlier-only OLS fit, not the whole sample.** Since anofox-regression 0.5.14, `RANSAC.r_squared`, `.n_observations`, `.adj_r_squared`, `.mse`, `.rmse`, `.f_statistic`/`.f_pvalue`, `.aic`/`.bic`/`.log_likelihood` are all computed on the inlier rows only (`n_observations == n_inliers`), matching `R summary(lm(y[inliers] ~ x[inliers]))`. Use `RANSAC.inlier_fit()` to get the equivalent standalone `OLS` object.
+
+**Tweedie `aic`/`bic` are `NaN` for non-closed-form `var_power`.** Only `var_power` in `{0.0, 1.0, 2.0, 3.0}` (Gaussian, Poisson, Gamma, inverse-Gaussian) has a closed-form density for computing the log-likelihood-based `aic`/`bic`. The **default** `var_power=1.5` has no closed-form density and reports `NaN` for both — this is expected, not a bug. `coefficients`, `std_errors`, and `p_values` are unaffected.
+
+**NegativeBinomial SEs use dispersion 1 by default.** `estimate_dispersion=False` (the default) matches the historical behaviour — standard errors assume dispersion exactly 1. Pass `estimate_dispersion=True` to get Pearson-dispersion-corrected SEs (`NegativeBinomial.dispersion` exposes the estimated value), matching R `summary.glm(negative.binomial(theta))`.
+
+**Linear-solver `log_likelihood`/`aic`/`bic` now equal R's `logLik.lm`.** `OLS`/`WLS`/`Ridge` (at `lambda_ == 0`) report the exact R-matching Gaussian log-likelihood and its AIC/BIC since anofox-regression 0.5.14 — a previous constant-offset discrepancy is gone, but code that pinned the old numeric values will need updating.
+
+**No-intercept R² uses the uncentred TSS.** For `OLS`/`WLS` fit without an intercept (`add_intercept=False`), `r_squared`/`adj_r_squared`/`f_statistic` are computed against the uncentred total sum of squares (`sum(y^2)`, not `sum((y - mean(y))^2)`), matching R's `lm(y ~ x - 1)` convention. This also affects any constant-column input that aliases to the intercept term.
+
+**GLMM Poisson/binomial `log_likelihood` includes the saturated term.** `GLMM.log_likelihood` for non-Gaussian families matches `lme4`'s deviance-based log-likelihood (includes the saturated-model term), not a raw sum of per-observation log-densities.
+
+**Huber/RANSAC inference is PyModel-only — no expression form.** `compute_inference`/`confidence_level` and the inference getters exist only on the `Huber`/`RANSAC` PyModel classes. `ps.huber(...)` (the expression) does not expose them.
+
+**Rust `rlib` callers: new NegBin/RLS options arrive via additive `*_fit_with` functions.** If you consume `polars-statistics` as a Rust `rlib` (not through Python), `estimate_dispersion` and `initial_p_diagonal` are reachable through new `negative_binomial_fit_with`/`rls_fit_with` (and their `_summary`/`_predict` counterparts), which take an additional named kwargs struct. Every pre-existing `pub fn *_fit` signature is unchanged — this is purely additive.
 
 ## See also
 

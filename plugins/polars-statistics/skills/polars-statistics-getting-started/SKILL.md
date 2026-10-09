@@ -182,7 +182,9 @@ Every PyModel class shares this interface:
 | Regularized regression (L2) | `ps.ridge("y","x", lambda_=1.0)` | `Ridge(lambda_=1.0)` | `lambda_` controls strength |
 | Regularized regression (L1) | `ps.lasso("y","x", lambda_=1.0)` | — | `ElasticNet(alpha=1.0)` under the hood |
 | Elastic net | `ps.elastic_net("y","x", lambda_=1.0, alpha=0.5)` | `ElasticNet` | `alpha` = L1 ratio |
-| Robust regression | `ps.huber("y","x")` / `ps.quantile("y","x", tau=0.5)` | `Huber`, `Quantile`, `TheilSen` | outlier-resistant |
+| Robust regression | `ps.huber("y","x")` / `ps.quantile("y","x", tau=0.5)` | `Huber`, `Quantile`, `TheilSen`, `RANSAC` | outlier-resistant; SEs via `Huber`/`RANSAC(compute_inference=True)` |
+| Effect size for a group comparison | `ps.cohens_d("a","b")` / `ps.rank_biserial("a","b")` | — | see polars-statistics-hypothesis-tests |
+| Bootstrap CI for a mean (incl. dependent data) | `ps.bootstrap_mean_ci("x", block_length=...)` | — | `block_length=0` IID, `>0` time-series; see polars-statistics-hypothesis-tests |
 | Count data | `ps.poisson("y","x")` / `ps.negative_binomial("y","x")` | `Poisson`, `NegativeBinomial` | NB for overdispersion |
 | Binary outcome | `ps.logistic("y","x")` | `Logistic`, `LogisticRegression` | `Logistic`=lower-level; `LogisticRegression`=sklearn-style |
 | Flexible GLM (25 families) | `ps.alm("y","x", distribution="normal")` | `ALM` | Augmented Linear Model |
