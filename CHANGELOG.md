@@ -7,11 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Upstream crate refresh: `anofox-statistics` 0.4.2 → 0.4.6 and `anofox-regression`
-0.5.13 → 0.5.16 — new API exposed and R-matching fixes adopted. No new statistical
-methods are introduced in this release; this is an exposure/correctness pass on
-the existing `anofox-*` surface plus the confidence-level/effect-size/bootstrap
-additions those crates now provide.
+Upstream crate refresh: `anofox-statistics` 0.4.2 → 0.4.7 and `anofox-regression`
+0.5.13 → 0.5.22 — new API exposed and R-matching fixes adopted, plus two new
+model families (penalized GLM, AFT survival regression). This release is an
+exposure/correctness pass on the existing `anofox-*` surface — the
+confidence-level/effect-size/bootstrap additions those crates now provide — and
+also exposes the family-generic penalized GLM and accelerated-failure-time
+survival engines `anofox-regression` added in 0.5.16.
 
 ### Added
 
@@ -67,12 +69,34 @@ additions those crates now provide.
   sandwich standard errors for `lambda_ > 0` (t-statistics/p-values are `None`,
   since a t-test is not valid on shrunken coefficients), delegating fully to OLS
   inference at `lambda_ = 0`; R-reference validated.
+- **Penalized GLM** — `PenalizedGLM` class (`family="poisson"|"binomial"|
+  "logistic"|"negative_binomial"|"gamma"|"tweedie"` with links, per-coefficient
+  Normal/Laplace priors as plain tuples or dicts, ridge `lambda_`,
+  `vcov_type="laplace"|"sandwich"|"naive"`, offsets, `estimate_dispersion` for
+  quasipoisson standard errors, inference including the intercept, scaled
+  `vcov`, `information`, separation) and the expressions `ps.penalized_glm`,
+  `ps.penalized_glm_summary` (tidy table with confidence intervals),
+  `ps.penalized_glm_predict` (response/link scale), `ps.penalized_glm_formula`,
+  `_formula_summary`, `_formula_predict`; validated against R `glm`,
+  `MASS::glm.nb()`, `negative.binomial(theta)`, and `quasipoisson`.
+- **AFT survival regression** — `AFT` class (`distribution="weibull"|
+  "exponential"|"lognormal"|"loglogistic"`, right censoring via an event
+  indicator, priors, `vcov_type`, inference, `predict_quantile`/`_median`/
+  `_survival`/`_cdf`) and `ps.aft`, `ps.aft_summary`, `ps.aft_predict_quantile`/
+  `_median`/`_survival`/`_cdf`, `ps.aft_formula`, `ps.aft_formula_summary`;
+  validated against R `survival::survreg`.
 
 ### Changed
 
 - **`ps.fisher_exact`** output struct gains trailing `ci_lower` / `ci_upper`
   fields (Woolf/logit interval). `statistic` and `p_value` are unchanged in
   name, order, and value.
+- **`ps.mann_whitney_u` / `ps.wilcoxon_signed_rank`** output structs gain
+  trailing `estimate`, `ci_lower`, `ci_upper` fields (Hodges-Lehmann estimate
+  and interval, `NaN` unless `conf_level` is given, matching R
+  `wilcox.test(conf.int = TRUE)`). `statistic` and `p_value` are unchanged in
+  name, order, and value — code that unnests the struct will see three more
+  trailing columns.
 
 ### Behaviour changes (results now match R)
 
@@ -126,6 +150,22 @@ additions those crates now provide.
   approximation instead of overflowing; `mcnemar_exact` p-values now come from
   the binomial CDF (matching R `binom.test(b, b + c, 0.5)`), fixing `NaN`
   results for large discordant-pair counts.
+- **Regression** (`anofox-regression` 0.5.19–0.5.21): `OLS` / `WLS` alias
+  rank-deficient designs the way R's `lm` does (`dqrdc2`, relative tolerance
+  1e-7) for every `solve_method` — the **later** of two exactly or
+  near-exactly collinear columns gets a `NaN` coefficient (previously `qr`
+  aliased the earlier column and `svd` returned a minimum-norm split across
+  both collinear columns), and the aliasing decision is scale-independent;
+  `WLS` without an intercept now reports standard errors from the reduced
+  (non-aliased) fit. Every GLM `*_summary` expression (Binomial, Poisson,
+  Negative Binomial, Tweedie, Gamma, Probit, Cloglog) now reports a finite
+  intercept `std_error` / `statistic` / `p_value` (previously `NaN`), and
+  Tweedie / Gamma also report per-coefficient `statistic` / `p_value`; probit
+  standard errors use `statrs` `erfc` / `erfc_inv` and match R to full
+  precision (previously off R in the 5th digit); GLM Wald p-values use the
+  survival function and no longer underflow to `0`. `LARS` / `LassoLars` now
+  alias the **later** of exactly collinear columns (previously
+  platform-dependent).
 
 ### Fixed
 
@@ -157,12 +197,23 @@ index changed):
 - `binom_test_fit` / `prop_test_one_fit` / `prop_test_two_fit` /
   `fisher_exact_fit` now accept an optional trailing `conf_level` input — the
   old arity still works unchanged.
+- New `*_fit` functions: `penalized_glm_fit`, `penalized_glm_summary_fit`,
+  `penalized_glm_predict_fit` (`PenalizedGlmKwargs`, `PriorKwarg`), `aft_fit`,
+  `aft_summary_fit`, `aft_predict_quantile_fit`, `aft_predict_median_fit`,
+  `aft_predict_survival_fit`, `aft_predict_cdf_fit` (`AftKwargs`), plus the
+  shared helpers `parse_penalized_glm_family`, `prior_spec_from_parts`,
+  `parse_vcov_type`, `parse_aft_distribution`, and the output-dtype builders
+  `inference_summary_output_dtype` / `rank_location_output_dtype`.
+- `mann_whitney_u_fit` / `wilcoxon_signed_rank_fit` keep their existing input
+  contract unchanged and now return the widened (5-field) struct.
 
 ### Dependencies
 
-- `anofox-statistics` 0.4.2 → 0.4.6.
-- `anofox-regression` 0.5.13 → 0.5.16 (0.5.16's penalized GLM and AFT survival
-  solvers are not yet exposed in the Python API — tracked for a later phase).
+- `anofox-statistics` 0.4.2 → 0.4.7.
+- `anofox-regression` 0.5.13 → 0.5.22 — the 0.5.16 penalized GLM and AFT
+  survival solvers are now exposed (see Added). The other 0.4.7 / 0.5.17–0.5.22
+  additions (post-hoc tests, `p_adjust`, `augment`, `ModelInfo`, GLMM families,
+  empirical-Bayes shrinkage) are planned for a later release.
 
 ## [0.7.0] - 2026-09-20
 
