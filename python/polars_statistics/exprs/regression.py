@@ -286,6 +286,7 @@ def rls(
     forgetting_factor: float = 0.99,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
+    initial_p_diagonal: float = 1e6,
 ) -> pl.Expr:
     """Recursive Least Squares regression as a Polars expression.
 
@@ -299,6 +300,12 @@ def rls(
         Forgetting factor (0 < lambda <= 1).
     add_intercept : bool, default True
         Whether to include an intercept term.
+    initial_p_diagonal : float, default 1e6
+        Diagonal delta of the initial covariance P0 = delta*I. Large values
+        express a vague prior (approaches batch OLS when forgetting_factor=1);
+        small values shrink early estimates toward zero and are numerically
+        more stable. Must be positive and finite; an invalid value yields a
+        NaN struct (no exception).
 
     Returns
     -------
@@ -324,6 +331,7 @@ def rls(
             pl.lit(add_intercept, dtype=pl.Boolean),
             *x_exprs,
         ],
+        kwargs={"initial_p_diagonal": initial_p_diagonal},
         returns_scalar=True,
     )
 
@@ -2376,8 +2384,15 @@ def rls_summary(
     forgetting_factor: float = 0.99,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
+    initial_p_diagonal: float = 1e6,
 ) -> pl.Expr:
-    """Recursive Least Squares coefficient summary in tidy format."""
+    """Recursive Least Squares coefficient summary in tidy format.
+
+    Parameters
+    ----------
+    initial_p_diagonal : float, default 1e6
+        See :func:`rls`.
+    """
     add_intercept = _resolve_intercept(add_intercept, with_intercept)
     if isinstance(y, str):
         y = pl.col(y)
@@ -2397,6 +2412,7 @@ def rls_summary(
             pl.lit(add_intercept, dtype=pl.Boolean),
             *x_exprs,
         ],
+        kwargs={"initial_p_diagonal": initial_p_diagonal},
         returns_scalar=True,
     )
 
@@ -3063,6 +3079,7 @@ def rls_predict(
     level: float = 0.95,
     null_policy: str = "drop",
     name: str | None = None,
+    initial_p_diagonal: float = 1e6,
 ) -> pl.Expr:
     """Recursive Least Squares predictions with optional intervals.
 
@@ -3084,6 +3101,8 @@ def rls_predict(
         "drop" or "drop_y_zero_x".
     name : str or None, default None
         Custom prefix for output column names. If None, uses "rls".
+    initial_p_diagonal : float, default 1e6
+        See :func:`rls`.
 
     Returns
     -------
@@ -3114,7 +3133,7 @@ def rls_predict(
             pl.lit(forgetting_factor, dtype=pl.Float64),
             *x_exprs,
         ],
-        kwargs={"prefix": prefix},
+        kwargs={"prefix": prefix, "initial_p_diagonal": initial_p_diagonal},
         returns_scalar=False,
     )
 
@@ -3892,6 +3911,7 @@ def rls_formula(
     forgetting_factor: float = 0.99,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
+    initial_p_diagonal: float = 1e6,
 ) -> pl.Expr:
     """Recursive Least Squares regression using R-style formula syntax.
 
@@ -3903,6 +3923,8 @@ def rls_formula(
         Forgetting factor (0 < lambda <= 1).
     add_intercept : bool, default True
         Whether to include an intercept term.
+    initial_p_diagonal : float, default 1e6
+        See :func:`rls`.
 
     Returns
     -------
@@ -3912,7 +3934,11 @@ def rls_formula(
     add_intercept = _resolve_intercept(add_intercept, with_intercept)
     response, x_exprs, _ = _parse_formula(formula)
     return rls(
-        response, *x_exprs, forgetting_factor=forgetting_factor, add_intercept=add_intercept
+        response,
+        *x_exprs,
+        forgetting_factor=forgetting_factor,
+        add_intercept=add_intercept,
+        initial_p_diagonal=initial_p_diagonal,
     )
 
 

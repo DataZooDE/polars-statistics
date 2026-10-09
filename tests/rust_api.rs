@@ -285,6 +285,20 @@ fn linear_regression_fits() {
         ];
         let out = rls_fit(&inputs).expect("rls_fit failed");
         assert_n_obs_nonzero(&out, "n_observations");
+
+        // Additive `_with` variant (#16.1-03): old contract == new default.
+        let default_kwargs = RlsKwargs::default();
+        let out_with = rls_fit_with(&inputs, &default_kwargs).expect("rls_fit_with failed");
+        assert_eq!(
+            out, out_with,
+            "rls_fit must equal fit_with at default kwargs"
+        );
+
+        let tight_kwargs = RlsKwargs {
+            initial_p_diagonal: 1e-3,
+        };
+        let _ = rls_fit_with(&inputs, &tight_kwargs)
+            .expect("rls_fit_with(initial_p_diagonal=1e-3) failed");
     }
 
     // -----------------------------------------------------------------
@@ -410,6 +424,13 @@ fn linear_regression_fits() {
             series_f64("x1", &x),
         ];
         let _ = rls_summary_fit(&inputs).expect("rls_summary_fit failed");
+        let _ = rls_summary_fit_with(
+            &inputs,
+            &RlsKwargs {
+                initial_p_diagonal: 1e-3,
+            },
+        )
+        .expect("rls_summary_fit_with(initial_p_diagonal=1e-3) failed");
     }
     {
         let inputs = vec![
@@ -507,6 +528,29 @@ fn linear_regression_fits() {
         ];
         let out = rls_predict_fit(&inputs, kwargs()).expect("rls_predict_fit failed");
         assert_eq!(out.len(), y.len());
+
+        let out_with = rls_predict_fit_with(
+            &inputs,
+            RlsPredictKwargs {
+                prefix: "p".to_string(),
+                initial_p_diagonal: 1e6,
+            },
+        )
+        .expect("rls_predict_fit_with failed");
+        assert_eq!(
+            out, out_with,
+            "rls_predict_fit must equal predict_fit_with at default kwargs"
+        );
+
+        let out_tight = rls_predict_fit_with(
+            &inputs,
+            RlsPredictKwargs {
+                prefix: "p".to_string(),
+                initial_p_diagonal: 1e-3,
+            },
+        )
+        .expect("rls_predict_fit_with(initial_p_diagonal=1e-3) failed");
+        assert_eq!(out_tight.len(), y.len());
     }
 
     // bls_predict: + lower + upper.

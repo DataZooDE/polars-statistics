@@ -19,28 +19,36 @@ use crate::utils::{IntoNumpy, ToFaer};
 ///     observations (converges to OLS). Values < 1.0 weight recent data more heavily.
 /// with_intercept : bool, default True
 ///     Whether to include an intercept term in the model.
+/// initial_p_diagonal : float, default 1e6
+///     Diagonal delta of the initial covariance P0 = delta*I. Large values
+///     express a vague prior (approaches batch OLS with forgetting_factor=1);
+///     small values shrink early estimates toward zero and are numerically
+///     more stable. Must be positive and finite.
 #[pyclass(name = "RLS")]
 pub struct PyRLS {
     forgetting_factor: f64,
     with_intercept: bool,
+    initial_p_diagonal: f64,
     fitted: Option<Box<dyn FittedRegressor + Send + Sync>>,
 }
 
 #[pymethods]
 impl PyRLS {
     #[new]
-    #[pyo3(signature = (forgetting_factor=1.0, add_intercept=None, with_intercept=None))]
+    #[pyo3(signature = (forgetting_factor=1.0, add_intercept=None, with_intercept=None, initial_p_diagonal=1e6))]
     fn new(
         py: Python<'_>,
         forgetting_factor: f64,
         add_intercept: Option<bool>,
         with_intercept: Option<bool>,
+        initial_p_diagonal: f64,
     ) -> PyResult<Self> {
         let with_intercept =
             crate::pymodels::errors::resolve_intercept(py, add_intercept, with_intercept, true)?;
         Ok(Self {
             forgetting_factor,
             with_intercept,
+            initial_p_diagonal,
             fitted: None,
         })
     }
@@ -57,6 +65,7 @@ impl PyRLS {
         let model = RlsRegressor::builder()
             .forgetting_factor(slf.forgetting_factor)
             .with_intercept(slf.with_intercept)
+            .initial_p_diagonal(slf.initial_p_diagonal)
             .build();
 
         let fitted = model
@@ -138,6 +147,11 @@ impl PyRLS {
     #[getter]
     fn forgetting_factor_value(&self) -> f64 {
         self.forgetting_factor
+    }
+
+    #[getter]
+    fn initial_p_diagonal_value(&self) -> f64 {
+        self.initial_p_diagonal
     }
     /// Informative repr: class name plus key state; never panics if unfitted.
     fn __repr__(slf: &Bound<'_, Self>) -> PyResult<String> {

@@ -726,8 +726,49 @@ fn pl_wls(inputs: &[Series]) -> PolarsResult<Series> {
     wls_fit(inputs)
 }
 
+/// Default diagonal of the initial RLS P matrix (P0 = delta*I), matching
+/// `anofox_regression::solvers::RlsRegressorBuilder`'s own default.
+fn default_initial_p_diagonal() -> f64 {
+    1e6
+}
+
+/// Named kwargs for the RLS fit/summary shims (additive — default matches the
+/// pre-existing RlsRegressorBuilder default of 1e6).
+#[derive(Deserialize, Clone, Debug)]
+pub struct RlsKwargs {
+    /// Diagonal of the initial covariance P0 = delta*I. Default 1e6 (vague
+    /// prior); smaller values shrink early estimates toward zero.
+    #[serde(default = "default_initial_p_diagonal")]
+    pub initial_p_diagonal: f64,
+}
+
+impl Default for RlsKwargs {
+    fn default() -> Self {
+        Self {
+            initial_p_diagonal: default_initial_p_diagonal(),
+        }
+    }
+}
+
+/// Named kwargs for the RLS predict shim: output-column `prefix` plus the
+/// `initial_p_diagonal` option.
+#[derive(Deserialize, Clone, Debug)]
+pub struct RlsPredictKwargs {
+    /// Prefix for output column names.
+    pub prefix: String,
+    /// See [`RlsKwargs::initial_p_diagonal`].
+    #[serde(default = "default_initial_p_diagonal")]
+    pub initial_p_diagonal: f64,
+}
+
 /// Public Rust-callable variant. Same input contract as the `pl_rls` expression shim.
 pub fn rls_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    rls_fit_with(inputs, &RlsKwargs::default())
+}
+
+/// Additive variant of [`rls_fit`] taking the named `initial_p_diagonal`
+/// option. Same positional input contract.
+pub fn rls_fit_with(inputs: &[Series], kwargs: &RlsKwargs) -> PolarsResult<Series> {
     let forgetting_factor = inputs[1].f64()?.get(0).unwrap_or(0.99);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
 
@@ -739,6 +780,7 @@ pub fn rls_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let model = RlsRegressor::builder()
         .forgetting_factor(forgetting_factor)
         .with_intercept(with_intercept)
+        .initial_p_diagonal(kwargs.initial_p_diagonal)
         .build();
 
     match model.fit(&x, &y) {
@@ -764,9 +806,10 @@ pub fn rls_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// RLS regression expression.
 /// inputs[0] = y, inputs[1] = forgetting_factor, inputs[2] = with_intercept, inputs[3..] = x columns
+/// kwargs: `initial_p_diagonal` (named, additive — see [`RlsKwargs`]).
 #[polars_expr(output_type_func=linear_regression_output_dtype)]
-fn pl_rls(inputs: &[Series]) -> PolarsResult<Series> {
-    rls_fit(inputs)
+fn pl_rls(inputs: &[Series], kwargs: RlsKwargs) -> PolarsResult<Series> {
+    rls_fit_with(inputs, &kwargs)
 }
 
 /// Public Rust-callable variant. Same input contract as the `pl_bls` expression shim.
@@ -3208,6 +3251,12 @@ fn pl_wls_summary(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_rls_summary` expression shim.
 pub fn rls_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    rls_summary_fit_with(inputs, &RlsKwargs::default())
+}
+
+/// Additive variant of [`rls_summary_fit`] taking the named
+/// `initial_p_diagonal` option. Same positional input contract.
+pub fn rls_summary_fit_with(inputs: &[Series], kwargs: &RlsKwargs) -> PolarsResult<Series> {
     let forgetting_factor = inputs[1].f64()?.get(0).unwrap_or(0.99);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let n_features = inputs.len() - 3;
@@ -3220,6 +3269,7 @@ pub fn rls_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let model = RlsRegressor::builder()
         .forgetting_factor(forgetting_factor)
         .with_intercept(with_intercept)
+        .initial_p_diagonal(kwargs.initial_p_diagonal)
         .build();
 
     match model.fit(&x, &y) {
@@ -3268,9 +3318,10 @@ pub fn rls_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// RLS summary expression
 /// inputs[0] = y, inputs[1] = forgetting_factor, inputs[2] = with_intercept, inputs[3..] = x columns
+/// kwargs: `initial_p_diagonal` (named, additive — see [`RlsKwargs`]).
 #[polars_expr(output_type_func=summary_output_dtype)]
-fn pl_rls_summary(inputs: &[Series]) -> PolarsResult<Series> {
-    rls_summary_fit(inputs)
+fn pl_rls_summary(inputs: &[Series], kwargs: RlsKwargs) -> PolarsResult<Series> {
+    rls_summary_fit_with(inputs, &kwargs)
 }
 
 /// Public Rust-callable variant. Same input contract as the `pl_bls_summary` expression shim.
@@ -4316,6 +4367,18 @@ fn pl_wls_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Seri
 
 /// Public Rust-callable variant. Same input contract as the `pl_rls_predict` expression shim.
 pub fn rls_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
+    rls_predict_fit_with(
+        inputs,
+        RlsPredictKwargs {
+            prefix: kwargs.prefix,
+            initial_p_diagonal: default_initial_p_diagonal(),
+        },
+    )
+}
+
+/// Additive variant of [`rls_predict_fit`] taking the named
+/// `initial_p_diagonal` option. Same positional input contract.
+pub fn rls_predict_fit_with(inputs: &[Series], kwargs: RlsPredictKwargs) -> PolarsResult<Series> {
     let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
     let interval = inputs[2].str()?.get(0);
     let level = inputs[3].f64()?.get(0).unwrap_or(0.95);
@@ -4334,6 +4397,7 @@ pub fn rls_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult
     let model = RlsRegressor::builder()
         .forgetting_factor(forgetting_factor)
         .with_intercept(with_intercept)
+        .initial_p_diagonal(kwargs.initial_p_diagonal)
         .build();
 
     match model.fit(&x_fit, &y) {
@@ -4386,12 +4450,27 @@ pub fn rls_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult
     }
 }
 
+/// Output dtype for `pl_rls_predict` — delegates to the shared prefix-based
+/// prediction schema (`initial_p_diagonal` does not affect shape).
+fn rls_predict_output_dtype(
+    input_fields: &[Field],
+    kwargs: RlsPredictKwargs,
+) -> PolarsResult<Field> {
+    predict_output_dtype_with_prefix(
+        input_fields,
+        PredictKwargs {
+            prefix: kwargs.prefix,
+        },
+    )
+}
+
 /// RLS prediction expression
 /// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval, inputs[3] = level,
 /// inputs[4] = null_policy, inputs[5] = forgetting_factor, inputs[6..] = x columns
-#[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
-fn pl_rls_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
-    rls_predict_fit(inputs, kwargs)
+/// kwargs: `prefix`, `initial_p_diagonal` (named, additive — see [`RlsPredictKwargs`]).
+#[polars_expr(output_type_func_with_kwargs=rls_predict_output_dtype)]
+fn pl_rls_predict(inputs: &[Series], kwargs: RlsPredictKwargs) -> PolarsResult<Series> {
+    rls_predict_fit_with(inputs, kwargs)
 }
 
 /// Public Rust-callable variant. Same input contract as the `pl_bls_predict` expression shim.
