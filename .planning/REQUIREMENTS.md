@@ -56,6 +56,10 @@ Requirements for this milestone. Each maps to exactly one roadmap phase.
 - [ ] **UPST-06**: AFT survival regression (`solvers::aft`) is exposed as a PyModel and Polars expressions, validated against R survival::survreg
 - [ ] **UPST-07**: Mann-Whitney / Wilcoxon expressions return the Hodges-Lehmann estimate and confidence interval (additive fields), and the new 16.2 surface is documented in stubs, mkdocs, CHANGELOG and skills
 
+- [ ] **UPST-08**: Post-hoc tests (Tukey HSD, pairwise t, Dunn), p_adjust and ptukey/qtukey from anofox-statistics 0.4.7 are exposed and match R
+- [ ] **UPST-09**: anofox-regression 0.5.17–0.5.21 additions (augment diagnostics, ModelInfo, GLM intercept inference, GLMM NegBin/Gamma/Tweedie + offset + per-factor random slopes, alias_tolerance, penalized GLM estimate_dispersion, EB shrinkage) are exposed and match R
+- [ ] **UPST-10**: The 16.3 surface is documented in stubs, mkdocs, CHANGELOG and skills, with opt-outs recorded in COVERAGE.md
+
 ## v2 Requirements
 
 Deferred to future releases.
@@ -98,13 +102,16 @@ Deferred to future releases.
 | UPST-05 | Phase 16.2 | Pending |
 | UPST-06 | Phase 16.2 | Pending |
 | UPST-07 | Phase 16.2 | Pending |
+| UPST-08 | Phase 16.3 | Pending |
+| UPST-09 | Phase 16.3 | Pending |
+| UPST-10 | Phase 16.3 | Pending |
 | REL-07 | Phase 17 | Pending |
 | REL-08 | Phase 17 | Pending |
 
 **Coverage:**
 
-- v1 requirements: 21 total
-- Mapped to phases: 21 ✓
+- v1 requirements: 24 total
+- Mapped to phases: 24 ✓
 - Unmapped: 0 ✓
 
 ---

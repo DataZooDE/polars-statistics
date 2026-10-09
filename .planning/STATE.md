@@ -7,16 +7,16 @@ current_phase_name: Upstream Crate Refresh
 current_plan: 5
 status: executing
 stopped_at: Completed 16.1-09-PLAN.md
-last_updated: "2026-10-09T06:21:45.065Z"
+last_updated: "2026-10-09T06:48:46.707Z"
 last_activity: 2026-10-08
 last_activity_desc: Phase 16.1 execution resumed (wave continue)
-state_head: de8ee3af81650fa557e1ce1dcde33b2b05f46c8c
+state_head: 620aaf3b6b482880938bb019d898945b8a64f4b1
 progress:
-  total_phases: 7
+  total_phases: 8
   completed_phases: 3
   total_plans: 24
   completed_plans: 11
-  percent: 43
+  percent: 38
 ---
 
 # Project State
@@ -166,6 +166,7 @@ None yet.
 
 - Phase 16.1 inserted after Phase 16: Upstream crate refresh: anofox-statistics 0.4.4 + anofox-regression 0.5.15 — bump, adapt to R-matching behaviour changes, expose new API, update stubs/docs/CHANGELOG/skills (URGENT)
 - Phase 16.2 inserted after Phase 16.1: Penalized GLM + AFT survival regression from anofox-regression 0.5.16; Mann-Whitney/Wilcoxon expression estimate+CI (URGENT)
+- Phase 16.3 inserted after Phase 16.2: Upstream API wave 2: anofox-statistics 0.4.7 + anofox-regression 0.5.17–0.5.21; 16.2 retargeted to bump to 0.4.7/0.5.21 (URGENT)
 
 ## Deferred Items
 
