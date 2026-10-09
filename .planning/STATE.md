@@ -4,19 +4,19 @@ milestone: v0.8.0
 milestone_name: Claude Code Skills Plugin
 current_phase: "16.1"
 current_phase_name: Upstream Crate Refresh
-current_plan: 3
+current_plan: 4
 status: executing
-stopped_at: Completed 16.1-02-PLAN.md
-last_updated: "2026-10-08T21:54:07.530Z"
+stopped_at: Completed 16.1-03-PLAN.md
+last_updated: "2026-10-09T06:13:46.165Z"
 last_activity: 2026-10-08
 last_activity_desc: Phase 16.1 execution resumed (wave continue)
-state_head: 3576e6caf966e980c9c935782f57e7552aa1ae00
+state_head: 9a1fd859f82762a410ffcee438dc454a8a538cb8
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 24
-  completed_plans: 9
-  percent: 38
+  completed_plans: 10
+  percent: 42
 ---
 
 # Project State
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 ## Current Position
 
 Phase: 16.1 (Upstream Crate Refresh) — EXECUTING
-Current Plan: 3
+Current Plan: 4
 Total Plans in Phase: 9
 Status: Ready to execute
 Last activity: 2026-10-08 — Phase 16.1 execution resumed (wave continue)
@@ -102,6 +102,7 @@ Execution order: 13 → 14 → 15 → 16 → 17
 | Phase 14 P02 | 9min | 1 tasks | 1 files |
 | Phase 16.1 P01 | 34min | 3 tasks | 9 files |
 | Phase 16.1 P02 | 25min | 3 tasks | 10 files |
+| Phase 16.1 P03 | 55min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -139,6 +140,8 @@ Recent decisions affecting current work:
 - [Phase 14]: Forecast functions excluded from hypothesis-tests skill; ICC gotcha documented inline under Group D; categorical split into scalar-arg vs contingency-table-column subgroups
 - [Phase 16.1]: 16.1-01: Cargo.lock is gitignored (library-crate convention) — version pins verified on disk via grep, not committed to git
 - [Phase 16.1]: 16.1-02: fisher_exact schema widening (statistic/p_value -> +ci_lower/ci_upper) required zero existing-test edits. — Backward-compatible additive struct field; membership-style assertions kept passing unmodified.
+- [Phase 16.1]: 16.1-03: resumed stalled executor's uncommitted Task 1 work after reviewing it matched the plan exactly
+- [Phase 16.1]: 16.1-03: Tasks 1/2 edits to shared files temporarily set aside/restored per-task (not git stash) to keep each commit's rebuild+verify scoped to only that task's code
 
 ### Pending Todos
 
@@ -171,7 +174,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-10-08T21:54:07.454Z
-Stopped at: Completed 16.1-02-PLAN.md
+Last session: 2026-10-09T06:13:46.131Z
+Stopped at: Completed 16.1-03-PLAN.md
 Resume file: None
 </content>
