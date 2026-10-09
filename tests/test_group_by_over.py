@@ -202,11 +202,29 @@ class TestNonParametricGroupBy:
             ps.mann_whitney_u("x", "y").alias("result")
         )
         assert result.shape[0] == 2
+        assert has_valid_numbers(
+            result, nan_ok=("estimate", "ci_lower", "ci_upper")
+        )
+
+    def test_mann_whitney_u_group_by_conf_level(self, df_two_sample):
+        result = df_two_sample.group_by("group").agg(
+            ps.mann_whitney_u("x", "y", conf_level=0.95).alias("result")
+        )
+        assert result.shape[0] == 2
         assert has_valid_numbers(result)
 
     def test_wilcoxon_signed_rank_group_by(self, df_two_sample):
         result = df_two_sample.group_by("group").agg(
             ps.wilcoxon_signed_rank("x", "y").alias("result")
+        )
+        assert result.shape[0] == 2
+        assert has_valid_numbers(
+            result, nan_ok=("estimate", "ci_lower", "ci_upper")
+        )
+
+    def test_wilcoxon_signed_rank_group_by_conf_level(self, df_two_sample):
+        result = df_two_sample.group_by("group").agg(
+            ps.wilcoxon_signed_rank("x", "y", conf_level=0.95).alias("result")
         )
         assert result.shape[0] == 2
         assert has_valid_numbers(result)
@@ -555,11 +573,29 @@ class TestNonParametricOver:
             ps.mann_whitney_u("x", "y").over("group").alias("result")
         )
         assert result.shape[0] == 100
+        assert has_valid_numbers(
+            result, nan_ok=("estimate", "ci_lower", "ci_upper")
+        )
+
+    def test_mann_whitney_u_over_conf_level(self, df_two_sample):
+        result = df_two_sample.with_columns(
+            ps.mann_whitney_u("x", "y", conf_level=0.95).over("group").alias("result")
+        )
+        assert result.shape[0] == 100
         assert has_valid_numbers(result)
 
     def test_wilcoxon_signed_rank_over(self, df_two_sample):
         result = df_two_sample.with_columns(
             ps.wilcoxon_signed_rank("x", "y").over("group").alias("result")
+        )
+        assert result.shape[0] == 100
+        assert has_valid_numbers(
+            result, nan_ok=("estimate", "ci_lower", "ci_upper")
+        )
+
+    def test_wilcoxon_signed_rank_over_conf_level(self, df_two_sample):
+        result = df_two_sample.with_columns(
+            ps.wilcoxon_signed_rank("x", "y", conf_level=0.95).over("group").alias("result")
         )
         assert result.shape[0] == 100
         assert has_valid_numbers(result)

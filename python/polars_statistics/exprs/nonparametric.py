@@ -46,7 +46,13 @@ def mann_whitney_u(
     Returns
     -------
     pl.Expr
-        Expression returning struct{statistic: f64, p_value: f64}
+        Expression returning struct{statistic: f64, p_value: f64, estimate: f64,
+        ci_lower: f64, ci_upper: f64}. `estimate` is the Hodges-Lehmann estimate of
+        the location shift (difference in medians); `estimate`/`ci_lower`/`ci_upper`
+        are NaN unless `conf_level` is given, matching R's `wilcox.test`, which only
+        reports `estimate`/`conf.int` when `conf.int = TRUE`. A one-sided
+        `alternative` ("less"/"greater") may give an infinite bound. Values match
+        R `wilcox.test(..., conf.int = TRUE)`.
 
     Examples
     --------
@@ -59,6 +65,7 @@ def mann_whitney_u(
     ... })
     >>>
     >>> df.select(ps.mann_whitney_u("x", "y"))
+    >>> df.select(ps.mann_whitney_u("x", "y", conf_level=0.95))
     """
     if isinstance(x, str):
         x = pl.col(x)
@@ -122,7 +129,25 @@ def wilcoxon_signed_rank(
     Returns
     -------
     pl.Expr
-        Expression returning struct{statistic: f64, p_value: f64}
+        Expression returning struct{statistic: f64, p_value: f64, estimate: f64,
+        ci_lower: f64, ci_upper: f64}. `estimate` is the Hodges-Lehmann pseudo-median
+        of x - y; `estimate`/`ci_lower`/`ci_upper` are NaN unless `conf_level` is
+        given, matching R's `wilcox.test`, which only reports `estimate`/`conf.int`
+        when `conf.int = TRUE`. A one-sided `alternative` ("less"/"greater") may
+        give an infinite bound. Values match R `wilcox.test(..., conf.int = TRUE)`.
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> import polars_statistics as ps
+    >>>
+    >>> df = pl.DataFrame({
+    ...     "x": [1.0, 2.0, 3.0, 4.0, 5.0],
+    ...     "y": [1.2, 2.1, 2.9, 4.3, 4.8],
+    ... })
+    >>>
+    >>> df.select(ps.wilcoxon_signed_rank("x", "y"))
+    >>> df.select(ps.wilcoxon_signed_rank("x", "y", conf_level=0.95))
     """
     if isinstance(x, str):
         x = pl.col(x)

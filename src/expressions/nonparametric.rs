@@ -9,7 +9,8 @@ use anofox_statistics::{
 };
 
 use crate::expressions::output_types::{
-    effect_size_output, effect_size_output_dtype, generic_stats_output, stats_output_dtype,
+    effect_size_output, effect_size_output_dtype, generic_stats_output, rank_location_output,
+    rank_location_output_dtype, stats_output_dtype,
 };
 
 /// Helper to parse alternative hypothesis from string
@@ -22,6 +23,10 @@ fn parse_alternative(s: &str) -> Alternative {
 }
 
 /// Public Rust-callable variant. Same input contract as the `pl_mann_whitney_u` expression shim.
+///
+/// Returns `struct{statistic: f64, p_value: f64, estimate: f64, ci_lower: f64, ci_upper: f64}`.
+/// `estimate`/`ci_lower`/`ci_upper` are NaN unless `conf_level` (inputs[5]) is `Some`; a
+/// one-sided `alternative` may give an infinite bound, preserved as such.
 pub fn mann_whitney_u_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let x = inputs[0].f64()?;
     let y = inputs[1].f64()?;
@@ -45,18 +50,28 @@ pub fn mann_whitney_u_fit(inputs: &[Series]) -> PolarsResult<Series> {
         conf_level,
         mu,
     ) {
-        Ok(result) => generic_stats_output(result.statistic, result.p_value, "mann_whitney_u"),
-        Err(_) => generic_stats_output(f64::NAN, f64::NAN, "mann_whitney_u"),
+        Ok(result) => rank_location_output(
+            result.statistic,
+            result.p_value,
+            result.estimate,
+            result.conf_int.as_ref().map(|ci| (ci.lower, ci.upper)),
+            "mann_whitney_u",
+        ),
+        Err(_) => rank_location_output(f64::NAN, f64::NAN, None, None, "mann_whitney_u"),
     }
 }
 
 /// Mann-Whitney U test
-#[polars_expr(output_type_func=stats_output_dtype)]
+#[polars_expr(output_type_func=rank_location_output_dtype)]
 fn pl_mann_whitney_u(inputs: &[Series]) -> PolarsResult<Series> {
     mann_whitney_u_fit(inputs)
 }
 
 /// Public Rust-callable variant. Same input contract as the `pl_wilcoxon_signed_rank` expression shim.
+///
+/// Returns `struct{statistic: f64, p_value: f64, estimate: f64, ci_lower: f64, ci_upper: f64}`.
+/// `estimate`/`ci_lower`/`ci_upper` are NaN unless `conf_level` (inputs[5]) is `Some`; a
+/// one-sided `alternative` may give an infinite bound, preserved as such.
 pub fn wilcoxon_signed_rank_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let x = inputs[0].f64()?;
     let y = inputs[1].f64()?;
@@ -80,15 +95,19 @@ pub fn wilcoxon_signed_rank_fit(inputs: &[Series]) -> PolarsResult<Series> {
         conf_level,
         mu,
     ) {
-        Ok(result) => {
-            generic_stats_output(result.statistic, result.p_value, "wilcoxon_signed_rank")
-        }
-        Err(_) => generic_stats_output(f64::NAN, f64::NAN, "wilcoxon_signed_rank"),
+        Ok(result) => rank_location_output(
+            result.statistic,
+            result.p_value,
+            result.estimate,
+            result.conf_int.as_ref().map(|ci| (ci.lower, ci.upper)),
+            "wilcoxon_signed_rank",
+        ),
+        Err(_) => rank_location_output(f64::NAN, f64::NAN, None, None, "wilcoxon_signed_rank"),
     }
 }
 
 /// Wilcoxon signed-rank test
-#[polars_expr(output_type_func=stats_output_dtype)]
+#[polars_expr(output_type_func=rank_location_output_dtype)]
 fn pl_wilcoxon_signed_rank(inputs: &[Series]) -> PolarsResult<Series> {
     wilcoxon_signed_rank_fit(inputs)
 }

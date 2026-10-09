@@ -49,6 +49,39 @@ def _row_id(i, row):
 _FIXTURE_ROWS = _load_fixture_rows()
 
 
+def _assert_close_or_inf(ref, got, name, tol):
+    """Shared tolerance check for Hodges-Lehmann estimate/CI values.
+
+    Infinite references (one-sided CI bounds) must match sign and infinitude
+    exactly; finite references are compared within `tol * (1 + |ref|)`.
+    """
+    if math.isinf(ref):
+        assert got is not None and math.isinf(got), f"{name}: ref={ref} got={got}"
+        assert math.copysign(1.0, got) == math.copysign(1.0, ref), (
+            f"{name}: wrong infinite sign, ref={ref} got={got}"
+        )
+    else:
+        assert got is not None and math.isfinite(got), f"{name}: ref={ref} got={got}"
+        allowed = tol * (1 + abs(ref))
+        assert abs(got - ref) <= allowed, (
+            f"{name}: ref={ref} got={got} diff={abs(got - ref)} tol={allowed}"
+        )
+
+
+def _pad_to_common_length(a, b):
+    """Pad two unequal-length numeric lists with None to a common length.
+
+    `ps.mann_whitney_u`/`ps.wilcoxon_signed_rank` filter non-finite/null values
+    independently per column before calling the plugin (see
+    `python/polars_statistics/exprs/nonparametric.py`), so padding the shorter
+    sample with None lets both samples share one Polars DataFrame.
+    """
+    n = max(len(a), len(b))
+    a_padded = list(a) + [None] * (n - len(a))
+    b_padded = list(b) + [None] * (n - len(b))
+    return a_padded, b_padded
+
+
 @pytest.mark.parametrize(
     "idx,row",
     list(enumerate(_FIXTURE_ROWS)),
@@ -91,22 +124,118 @@ def test_hodges_lehmann_matches_r(idx, row):
     conf_int = model.conf_int
     lower, upper = (conf_int[0], conf_int[1]) if conf_int is not None else (None, None)
 
-    def _assert_matches(ref, got, name):
-        if math.isinf(ref):
-            assert got is not None and math.isinf(got), f"{name}: ref={ref} got={got}"
-            assert math.copysign(1.0, got) == math.copysign(1.0, ref), (
-                f"{name}: wrong infinite sign, ref={ref} got={got}"
-            )
-        else:
-            assert got is not None and math.isfinite(got), f"{name}: ref={ref} got={got}"
-            allowed = tol * (1 + abs(ref))
-            assert abs(got - ref) <= allowed, (
-                f"{name}: ref={ref} got={got} diff={abs(got - ref)} tol={allowed}"
-            )
+    _assert_close_or_inf(estimate_ref, estimate, "estimate", tol)
+    _assert_close_or_inf(lower_ref, lower, "lower", tol)
+    _assert_close_or_inf(upper_ref, upper, "upper", tol)
 
-    _assert_matches(estimate_ref, estimate, "estimate")
-    _assert_matches(lower_ref, lower, "lower")
-    _assert_matches(upper_ref, upper, "upper")
+
+@pytest.mark.parametrize(
+    "idx,row",
+    list(enumerate(_FIXTURE_ROWS)),
+    ids=[_row_id(i, row) for i, row in enumerate(_FIXTURE_ROWS)],
+)
+def test_expression_hodges_lehmann_matches_r(idx, row):
+    """Phase 16.2 UPST-07: the expression layer (ps.mann_whitney_u /
+    ps.wilcoxon_signed_rank) reports the same Hodges-Lehmann estimate/CI as the
+    PyModel classes, matching R wilcox.test on all 126 upstream reference cases.
+
+    `x`/`y` are mapped exactly as `test_hodges_lehmann_matches_r` maps the class
+    call (same kwargs, same two sample arrays for both "mw" and "wsr" kinds) and
+    padded with None to a common frame length since the two samples may have
+    different lengths.
+    """
+    kind = row["kind"]
+    alternative = _ALTERNATIVE_MAP[row["alternative"]]
+    continuity_correction = row["correct"] == "TRUE"
+    exact = row["exact"] == "TRUE"
+    conf_level = float(row["conf_level"])
+    mu = float(row["mu"])
+    estimate_ref = float(row["estimate"])
+    lower_ref = float(row["lower"])
+    upper_ref = float(row["upper"])
+    x = [float(v) for v in row["x"].split()]
+    y = [float(v) for v in row["y"].split()]
+
+    tol = 1e-12 if exact else 1e-9
+
+    x_padded, y_padded = _pad_to_common_length(x, y)
+    df = pl.DataFrame({"x": x_padded, "y": y_padded})
+    builder = ps.mann_whitney_u if kind == "mw" else ps.wilcoxon_signed_rank
+    result = df.select(
+        builder(
+            "x",
+            "y",
+            alternative=alternative,
+            continuity_correction=continuity_correction,
+            exact=exact,
+            conf_level=conf_level,
+            mu=mu,
+        ).alias("r")
+    ).item()
+
+    _assert_close_or_inf(estimate_ref, result["estimate"], "estimate", tol)
+    _assert_close_or_inf(lower_ref, result["ci_lower"], "lower", tol)
+    _assert_close_or_inf(upper_ref, result["ci_upper"], "upper", tol)
+
+
+def test_expression_estimate_nan_without_conf_level():
+    """Phase 16.2 UPST-07: without conf_level, estimate/ci_lower/ci_upper are NaN
+    for both expressions (R reports no estimate without conf.int)."""
+    df = pl.DataFrame({"x": [1.0, 2.0, 3.0], "y": [1.2, 2.1, 2.9]})
+
+    mw = df.select(ps.mann_whitney_u("x", "y").alias("r")).item()
+    assert math.isnan(mw["estimate"])
+    assert math.isnan(mw["ci_lower"])
+    assert math.isnan(mw["ci_upper"])
+
+    wsr = df.select(ps.wilcoxon_signed_rank("x", "y").alias("r")).item()
+    assert math.isnan(wsr["estimate"])
+    assert math.isnan(wsr["ci_lower"])
+    assert math.isnan(wsr["ci_upper"])
+
+
+def test_expression_matches_class():
+    """Phase 16.2 UPST-07: expression estimate/CI equal the MannWhitneyU /
+    WilcoxonSignedRank PyModel classes exactly (same underlying engine call)."""
+    x = [((i * 37) % 101) / 10 for i in range(40)]
+    y = [((i * 53) % 103) / 10 + 0.55 for i in range(40)]
+
+    df = pl.DataFrame({"x": x, "y": y})
+    expr_result = df.select(ps.mann_whitney_u("x", "y", conf_level=0.9).alias("r")).item()
+    model = MannWhitneyU(conf_level=0.9).fit(np.array(x), np.array(y))
+    assert expr_result["estimate"] == model.estimate
+    assert expr_result["ci_lower"] == model.conf_int[0]
+    assert expr_result["ci_upper"] == model.conf_int[1]
+
+    d = [((i * 29) % 97) / 10 - 4.6 + 0.013 * i for i in range(40)]
+    d2 = [0.0] * 40
+    df2 = pl.DataFrame({"x": d, "y": d2})
+    expr_result2 = df2.select(
+        ps.wilcoxon_signed_rank("x", "y", conf_level=0.9).alias("r")
+    ).item()
+    model2 = WilcoxonSignedRank(conf_level=0.9).fit(np.array(d), np.array(d2))
+    assert expr_result2["estimate"] == model2.estimate
+    assert expr_result2["ci_lower"] == model2.conf_int[0]
+    assert expr_result2["ci_upper"] == model2.conf_int[1]
+
+
+def test_expression_one_sided_infinite_bound():
+    """Phase 16.2 UPST-07: one-sided alternatives give an infinite CI bound at the
+    expression layer, preserved as +/-inf (never NaN), for both expressions."""
+    df = pl.DataFrame({"x": [1.0, 2.0, 3.0, 4.0, 5.0], "y": [1.2, 2.1, 2.9, 4.3, 4.8]})
+
+    for builder in (ps.mann_whitney_u, ps.wilcoxon_signed_rank):
+        less = df.select(
+            builder("x", "y", alternative="less", conf_level=0.95).alias("r")
+        ).item()
+        assert math.isinf(less["ci_lower"]) and less["ci_lower"] < 0
+        assert math.isfinite(less["ci_upper"])
+
+        greater = df.select(
+            builder("x", "y", alternative="greater", conf_level=0.95).alias("r")
+        ).item()
+        assert math.isinf(greater["ci_upper"]) and greater["ci_upper"] > 0
+        assert math.isfinite(greater["ci_lower"])
 
 
 def test_hodges_lehmann_fixture_integrity():
@@ -244,20 +373,24 @@ def test_tost_wilcoxon_alpha_above_half_does_not_panic():
     assert two_sample["alpha"] == pytest.approx(0.6)
 
 
-def test_expression_schema_mann_whitney_and_wilcoxon_omit_estimate_ci():
-    """The expression layer surfaces only statistic/p_value — a pre-existing gap,
-    unchanged by the 0.4.5/0.4.6 upstream retarget (not part of this delta).
+def test_expression_schema_mann_whitney_and_wilcoxon_estimate_ci():
+    """The expression layer's struct schema is locked to 5 fields.
+
+    superseded by Phase 16.2 UPST-07: the expression now returns the
+    Hodges-Lehmann estimate and interval as trailing fields
+    ["statistic", "p_value", "estimate", "ci_lower", "ci_upper"], not just
+    statistic/p_value (the 16.1 Plan 09 gap this test used to lock).
     """
     df = pl.DataFrame({"x": [1.0, 2.0, 3.0], "y": [1.2, 2.1, 2.9]})
 
-    mw_fields = sorted(
+    mw_fields = list(
         df.select(ps.mann_whitney_u("x", "y", conf_level=0.95).alias("r")).item().keys()
     )
-    assert mw_fields == ["p_value", "statistic"]
+    assert mw_fields == ["statistic", "p_value", "estimate", "ci_lower", "ci_upper"]
 
-    wsr_fields = sorted(
+    wsr_fields = list(
         df.select(ps.wilcoxon_signed_rank("x", "y", conf_level=0.95).alias("r"))
         .item()
         .keys()
     )
-    assert wsr_fields == ["p_value", "statistic"]
+    assert wsr_fields == ["statistic", "p_value", "estimate", "ci_lower", "ci_upper"]
