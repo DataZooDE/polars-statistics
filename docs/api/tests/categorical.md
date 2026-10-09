@@ -18,12 +18,17 @@ ps.binom_test(
     n: int,
     p0: float = 0.5,
     alternative: str = "two-sided",  # "two-sided", "less", "greater"
+    conf_level: float = 0.95,
 ) -> pl.Expr
 ```
 
 **Returns:** `Struct{estimate: Float64, statistic: Float64, p_value: Float64, ci_lower: Float64, ci_upper: Float64, n: UInt32}`
 
 **Null hypothesis:** The true proportion equals p0.
+
+**`conf_level`** (default `0.95`, unchanged behaviour): confidence level of the
+reported `ci_lower`/`ci_upper` interval — see the "Behaviour changes in 0.8.0"
+note below for the exact-interval semantics.
 
 **When to use:**
 - Small sample sizes (n < 30)
@@ -53,12 +58,16 @@ ps.prop_test_one(
     n: int,
     p0: float = 0.5,
     alternative: str = "two-sided",
+    conf_level: float = 0.95,
 ) -> pl.Expr
 ```
 
 **Returns:** `Struct{estimate: Float64, statistic: Float64, p_value: Float64, ci_lower: Float64, ci_upper: Float64, n: UInt32}`
 
 **Null hypothesis:** The true proportion equals p0.
+
+**`conf_level`** (default `0.95`, unchanged behaviour): confidence level of the
+reported interval — see "Behaviour changes in 0.8.0" below.
 
 **Assumptions:**
 - np ≥ 5 and n(1-p) ≥ 5 (rule of thumb for normal approximation)
@@ -84,6 +93,7 @@ ps.prop_test_two(
     n2: int,
     alternative: str = "two-sided",
     correction: bool = False,  # Yates' continuity correction
+    conf_level: float = 0.95,
 ) -> pl.Expr
 ```
 
@@ -93,6 +103,7 @@ ps.prop_test_two(
 
 **Parameters:**
 - `correction=True`: Applies Yates' continuity correction, making the test more conservative. Recommended for small samples.
+- `conf_level` (default `0.95`, unchanged behaviour): confidence level of the reported interval — see "Behaviour changes in 0.8.0" below.
 
 **When to use:**
 - A/B testing (comparing conversion rates)
@@ -225,12 +236,18 @@ Computes exact p-values using the hypergeometric distribution. The gold standard
 ps.fisher_exact(
     a: int, b: int, c: int, d: int,  # 2x2 table cells
     alternative: str = "two-sided",
+    conf_level: float = 0.95,
 ) -> pl.Expr
 ```
 
-**Returns:** `Struct{statistic: Float64 (odds ratio), p_value: Float64}`
+**Returns:** `Struct{statistic: Float64 (odds ratio), p_value: Float64, ci_lower: Float64, ci_upper: Float64}`
 
 **Null hypothesis:** The odds ratio equals 1 (no association).
+
+**`ci_lower`/`ci_upper`** (added in 0.8.0): the two-sided Woolf (logit) interval
+around the reported sample odds ratio (`ad/bc`), at `conf_level` (default `0.95`).
+For R `fisher.test`'s conditional-MLE odds ratio and exact conditional interval
+instead, use [`fisher_exact_conditional`](#fisher_exact_conditional) below.
 
 **Table layout:**
 ```
@@ -254,6 +271,41 @@ ps.fisher_exact(a=8, b=2, c=3, d=7)
 ```
 
 **Note:** Computationally intensive for large counts; use chi-square test for large samples.
+
+---
+
+### `fisher_exact_conditional`
+
+Fisher's exact test for 2x2 tables with full R `fisher.test` semantics.
+
+Unlike [`fisher_exact`](#fisher_exact) (which reports the *sample* odds ratio `ad/bc`
+and a Woolf interval), this reports the conditional maximum-likelihood estimate of
+the odds ratio and the exact conditional confidence interval, exactly as R's
+`fisher.test`.
+
+```python
+ps.fisher_exact_conditional(
+    a: int, b: int, c: int, d: int,  # 2x2 table cells
+    alternative: str = "two-sided",
+    conf_level: float = 0.95,
+) -> pl.Expr
+```
+
+**Returns:** `Struct{statistic: Float64 (conditional MLE odds ratio), p_value: Float64 (identical to fisher_exact), ci_lower: Float64, ci_upper: Float64 (exact conditional interval)}`
+
+**Parameters:**
+- `alternative`: one-sided alternatives give a one-sided interval — `"greater"` gives `ci_upper = +inf`, `"less"` gives `ci_lower = 0.0`.
+- `conf_level` (default `0.95`): confidence level of the reported interval.
+
+**When to use:**
+- You need the same odds ratio and interval R's `fisher.test()` reports (conditional MLE, exact conditional interval), not the sample `ad/bc` ratio.
+
+**Example:**
+```python
+# R fisher.test(matrix(c(18, 9, 7, 16), nrow=2))
+ps.fisher_exact_conditional(a=18, b=7, c=9, d=16)
+# statistic (odds ratio) ~4.4216, ci ~[1.2001, 18.035]
+```
 
 ---
 
@@ -305,9 +357,10 @@ ps.mcnemar_test(a=25, b=5, c=15, d=5)
 
 ### `mcnemar_exact`
 
-McNemar's exact test for paired proportions using binomial distribution.
+McNemar's exact test for paired proportions using the binomial distribution.
 
-Provides exact p-values when discordant cell counts are small.
+Computes the p-value via the binomial CDF (R `binom.test(b, b + c, 0.5)`), where
+`b`/`c` are the discordant cells.
 
 ```python
 ps.mcnemar_exact(
@@ -315,11 +368,16 @@ ps.mcnemar_exact(
 ) -> pl.Expr
 ```
 
-**Returns:** `Struct{statistic: Float64, p_value: Float64}`
+**Returns:** `Struct{statistic: Float64 (= b + c), p_value: Float64}`
 
 **When to use:**
-- Small number of discordant pairs (b + c < 25)
+- Small number of discordant pairs, where the chi-square approximation is unreliable
 - When exact inference is required
+
+**Note (anofox-statistics 0.4.6, 0.8.0):** previously `mcnemar_exact` returned `NaN`
+for very large discordant counts (`b + c` above roughly 1,074). Since 0.4.6 the
+binomial-CDF computation is finite and R-matching for any discordant count (tested
+up to `b + c = 1,000,000`), and the result is symmetric under swapping `b`/`c`.
 
 ---
 
@@ -452,6 +510,30 @@ ps.contingency_coef(
 **Range:** 0 to √((k-1)/k) where k = min(n_rows, n_cols)
 
 **Note:** Cramér's V is generally preferred as it can reach 1.0 regardless of table size.
+
+---
+
+!!! info "Behaviour changes in 0.8.0"
+    The upstream `anofox-statistics` 0.4.3–0.4.6 releases bundled in polars-statistics
+    0.8.0 made the categorical tests R-matching in several ways:
+
+    - **Exact Clopper-Pearson binomial interval.** `binom_test`'s `ci_lower`/`ci_upper`
+      (and its p-value) now match R `binom.test()` exactly, including one-sided
+      intervals for one-sided `alternative` values.
+    - **qnorm-based proportion/Fisher intervals with R's continuity correction.**
+      `prop_test_one`/`prop_test_two`'s intervals now apply the same continuity
+      correction R's `prop.test()` does when `correction=True`.
+    - **One-sided intervals for one-sided alternatives** across `binom_test`,
+      `prop_test_one`, `prop_test_two`, `fisher_exact`, and
+      `fisher_exact_conditional` — e.g. `alternative="greater"` gives
+      `ci_upper = +inf` (or `1.0` for proportions), `"less"` gives `ci_lower = 0.0`.
+    - **R relative tolerance for two-sided exact p-values** — `fisher_exact`'s and
+      `binom_test`'s exact two-sided p-values now use the same relative-tolerance
+      rule R's `fisher.test`/`binom.test` use when summing tail probabilities, so
+      values at the boundary of inclusion match R exactly.
+    - **`mcnemar_exact`'s binomial-CDF fix** (anofox-statistics 0.4.6) — see the
+      note under [`mcnemar_exact`](#mcnemar_exact) above: no more `NaN` for large
+      discordant counts.
 
 ---
 

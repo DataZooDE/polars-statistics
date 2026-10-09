@@ -13,6 +13,16 @@ test.p_value        # float: P-value
 test.summary()      # str: Formatted summary of results
 ```
 
+### Non-finite input handling (anofox-statistics 0.4.4+)
+
+All test classes raise `ValueError` ("non-finite value") on `NaN` input — they
+never silently drop it like the matching expression builders do. `+/-Inf` input is
+**not** rejected: rank-based classes (`MannWhitneyU`, `WilcoxonSignedRank`,
+`KruskalWallis`, `BrunnerMunzel`) rank `+/-Inf` the same way R does. Constant input
+(zero variance) yields a `NaN` `p_value` rather than raising or dividing by zero.
+This differs from the Polars expression builders (`ps.mann_whitney_u`, etc.), which
+filter out non-finite values with `is_finite()` before computing and never raise.
+
 ---
 
 ## Parametric Test Classes
@@ -79,9 +89,26 @@ Mann-Whitney U test (Wilcoxon rank-sum).
 ```python
 from polars_statistics import MannWhitneyU
 
-test = MannWhitneyU()
+test = MannWhitneyU(
+    alternative: str = "two-sided",   # "two-sided", "less", "greater"
+    continuity_correction: bool = True,
+    exact: bool = False,
+    conf_level: float | None = None,  # Hodges-Lehmann CI level, e.g. 0.95
+    mu: float | None = None,          # hypothesized location shift
+)
 test.fit(x, y)
+
+test.estimate   # float | None — Hodges-Lehmann shift estimate
+test.conf_int   # np.ndarray | None — [lower, upper], shape (2,)
 ```
+
+**Hodges-Lehmann `estimate`/`conf_int` (anofox-statistics 0.4.5):** validated on
+126 R `wilcox.test(conf.int = TRUE)` reference cases. The asymptotic interval is
+root-found with the continuity correction applied; one-sided `alternative` values
+give an interval with an infinite bound; `exact=True` is honoured only for
+`n1 * n2 <= 10,000` (above that, the normal approximation is used silently); an
+infinite observation makes `estimate`/`conf_int` `NaN`. Computing the CI on 20,000
+observations per group completes in O(n) memory (previously O(n^2), ~3.2 GB).
 
 ### WilcoxonSignedRank
 
@@ -90,9 +117,24 @@ Wilcoxon signed-rank test for paired samples.
 ```python
 from polars_statistics import WilcoxonSignedRank
 
-test = WilcoxonSignedRank()
+test = WilcoxonSignedRank(
+    alternative: str = "two-sided",
+    continuity_correction: bool = True,
+    exact: bool = False,
+    conf_level: float | None = None,
+    mu: float | None = None,
+)
 test.fit(before, after)
+
+test.estimate   # float | None — Hodges-Lehmann pseudomedian estimate
+test.conf_int   # np.ndarray | None — [lower, upper], shape (2,)
 ```
+
+**Hodges-Lehmann `estimate`/`conf_int` (anofox-statistics 0.4.5):** same R
+`wilcox.test(conf.int = TRUE)` parity as `MannWhitneyU` above. The interval is
+computed on `x - y` (not shifted by `mu`); `exact=True` is honoured only for
+`<= 300` non-zero differences. O(n log n) time, O(n) memory — 100,000 observations
+per group is fine.
 
 ### KruskalWallis
 

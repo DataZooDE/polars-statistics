@@ -14,12 +14,23 @@ Tests whether one distribution is stochastically greater than another. Based on 
 ps.mann_whitney_u(
     x: Union[pl.Expr, str],
     y: Union[pl.Expr, str],
+    alternative: str = "two-sided",  # "two-sided", "less", "greater"
+    continuity_correction: bool = True,
+    exact: bool = False,
+    conf_level: float | None = None,
+    mu: float | None = None,
 ) -> pl.Expr
 ```
 
 **Returns:** `Struct{statistic: Float64, p_value: Float64}`
 
 **Null hypothesis:** The distributions of x and y are equal (P(X > Y) = P(Y > X)).
+
+**Important:** `conf_level` and `mu` feed the hypothesis test (the location-shift null
+and, together with `exact`, which computation path to use) but this expression's
+output struct is **only** `{statistic, p_value}` — the Hodges-Lehmann point
+`estimate` and its confidence interval are available **only** on the
+[`MannWhitneyU` class](../classes/tests.md#mannwhitneyu), not on this expression.
 
 **Assumptions:**
 - Independent observations
@@ -43,6 +54,10 @@ df.group_by("experiment").agg(
 )
 ```
 
+**Effect size:** pair with [`rank_biserial`](effect-sizes.md#rank_biserial) for a
+standardised effect size, or [`rank_biserial_from_u`](effect-sizes.md#rank_biserial_from_u)
+if you already have the `statistic`.
+
 ---
 
 ## `wilcoxon_signed_rank`
@@ -55,12 +70,22 @@ Tests whether the median difference between paired observations is zero. The non
 ps.wilcoxon_signed_rank(
     x: Union[pl.Expr, str],
     y: Union[pl.Expr, str],
+    alternative: str = "two-sided",  # "two-sided", "less", "greater"
+    continuity_correction: bool = True,
+    exact: bool = False,
+    conf_level: float | None = None,
+    mu: float | None = None,
 ) -> pl.Expr
 ```
 
 **Returns:** `Struct{statistic: Float64, p_value: Float64}`
 
 **Null hypothesis:** The median of paired differences is zero.
+
+**Important:** as with `mann_whitney_u`, `conf_level`/`mu` feed the test but this
+expression returns only `{statistic, p_value}` — the Hodges-Lehmann `estimate` and
+`conf_int` are PyModel-only, on the
+[`WilcoxonSignedRank` class](../classes/tests.md#wilcoxonsignedrank).
 
 **Assumptions:**
 - Paired observations
@@ -83,6 +108,9 @@ df.group_by("subject_group").agg(
     ps.wilcoxon_signed_rank("pre_test", "post_test").alias("test")
 )
 ```
+
+**Effect size:** pair with [`matched_pairs_rank_biserial`](effect-sizes.md#matched_pairs_rank_biserial)
+for a standardised paired effect size.
 
 ---
 
@@ -165,6 +193,38 @@ df.select(ps.brunner_munzel("treatment", "control", alternative="greater"))
 
 ---
 
+!!! info "Behaviour changes in 0.8.0"
+    The upstream `anofox-statistics` 0.4.3–0.4.6 releases bundled in polars-statistics
+    0.8.0 changed `mann_whitney_u`/`wilcoxon_signed_rank` (expressions and the
+    `MannWhitneyU`/`WilcoxonSignedRank` classes) in several ways:
+
+    - **Exact two-sided Mann-Whitney p fixed** (0.4.3 #12) — e.g. on
+      `x = [1.83, 0.50, 1.62, 2.48, 1.68, 1.88, 1.55, 3.06, 1.30]`,
+      `y = [0.878, 0.647, 0.598, 2.05, 1.06, 1.29, 1.07, 3.14, 1.28, 4.1]` with
+      `exact=True`, the statistic `W = 58` now gives `p = 0.3154` (previously `1`).
+    - **No continuity correction at the null centre** — `MannWhitneyU` on data whose
+      ranks tie exactly at the centre (or are entirely tied) now correctly reports
+      `p_value == 1.0`, matching R's edge-case behaviour (0.4.3 #13).
+    - **Hodges-Lehmann `estimate`/`conf_int` match R `wilcox.test(conf.int = TRUE)`**
+      (anofox-statistics 0.4.5, validated on 126 R reference cases — see
+      [`MannWhitneyU`/`WilcoxonSignedRank`](../classes/tests.md) for the full
+      semantics: root-finding on the asymptotic path, one-sided intervals with an
+      infinite bound, continuity correction applied to the interval).
+    - **`exact=True` is honoured only below a sample-size threshold** — above
+      `n1 * n2 > 10,000` (rank sum / Mann-Whitney) or `300` non-zero differences
+      (signed rank / Wilcoxon), `exact=True` is silently ignored and the normal
+      approximation is used instead. Below the threshold, exact and asymptotic
+      p-values differ meaningfully; above it they are identical.
+    - **Exact null distributions no longer overflow** for larger samples
+      (previously: `n1 + n2 > ~62` for rank sum, `n >= 64` for signed rank).
+    - **Non-finite input handling**: the expression builders (`ps.mann_whitney_u`,
+      `ps.wilcoxon_signed_rank`) drop non-finite values before computing — they
+      never raise. The `MannWhitneyU`/`WilcoxonSignedRank` **classes** instead rank
+      `+/-Inf` like R and raise `ValueError` on `NaN` input (see
+      [Test Model Classes](../classes/tests.md) for the full non-finite contract).
+
+---
+
 ## Choosing a Test
 
 | Situation | Recommended Test |
@@ -193,3 +253,5 @@ df.select(ps.brunner_munzel("treatment", "control", alternative="greater"))
 - [Parametric Tests](parametric.md) - Tests with distributional assumptions
 - [TOST Equivalence Tests](tost.md) - Non-parametric equivalence tests (`tost_wilcoxon_*`)
 - [Distributional Tests](distributional.md) - Test normality to help choose between parametric/non-parametric
+- [Effect Sizes & Bootstrap CIs](effect-sizes.md) - `rank_biserial`, `matched_pairs_rank_biserial` effect sizes
+- [Test Model Classes](../classes/tests.md) - `MannWhitneyU`/`WilcoxonSignedRank` classes (Hodges-Lehmann `estimate`/`conf_int`)
