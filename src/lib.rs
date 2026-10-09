@@ -68,6 +68,9 @@ fn _polars_statistics(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<pymodels::PyCloglog>()?;
     m.add_class::<pymodels::PyPenalizedGLM>()?;
 
+    // Survival
+    m.add_class::<pymodels::PyAFT>()?;
+
     // Augmented Linear Model
     m.add_class::<pymodels::PyALM>()?;
 

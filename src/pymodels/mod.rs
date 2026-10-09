@@ -40,6 +40,9 @@ mod py_theil_sen;
 mod py_tweedie;
 mod py_wls;
 
+// Survival models
+mod py_aft;
+
 // Statistical test models
 mod py_brown_forsythe;
 mod py_brunner_munzel;
@@ -85,6 +88,9 @@ pub use py_rls::PyRLS;
 pub use py_theil_sen::PyTheilSen;
 pub use py_tweedie::PyTweedie;
 pub use py_wls::PyWLS;
+
+// Survival model exports
+pub use py_aft::PyAFT;
 
 // Statistical test model exports
 pub use py_brown_forsythe::PyBrownForsythe;

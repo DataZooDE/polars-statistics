@@ -20,6 +20,8 @@ from polars_statistics._polars_statistics import (
     Probit,
     Cloglog,
     PenalizedGLM,
+    # Survival
+    AFT,
     # Bootstrap
     StationaryBootstrap,
     CircularBlockBootstrap,
@@ -45,6 +47,8 @@ __all__ = [
     "Probit",
     "Cloglog",
     "PenalizedGLM",
+    # Survival
+    "AFT",
     # Bootstrap
     "StationaryBootstrap",
     "CircularBlockBootstrap",

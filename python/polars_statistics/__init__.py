@@ -7,6 +7,8 @@ from polars_statistics import exprs
 
 # Import Rust bindings
 from polars_statistics._polars_statistics import (
+    # Survival
+    AFT,
     # Augmented Linear Model
     ALM,
     ARD,
@@ -315,6 +317,8 @@ __all__ = [
     "Probit",
     "Cloglog",
     "PenalizedGLM",
+    # Survival
+    "AFT",
     # Augmented Linear Model
     "ALM",
     # Dynamic Linear Model
