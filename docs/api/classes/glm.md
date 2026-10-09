@@ -107,12 +107,33 @@ model = NegativeBinomial(
     estimate_theta: bool = True,
     lambda_: float = 0.0,
     with_intercept: bool = True,
+    estimate_dispersion: bool = False,
 )
 model.fit(X, y)
 
-# Additional property
-model.theta  # Estimated dispersion parameter
+# Additional properties
+model.theta_estimated  # Estimated dispersion parameter (theta)
+model.dispersion       # float — SE-scaling dispersion factor (see below)
 ```
+
+**`estimate_dispersion`** (default `False`): controls the dispersion factor used to
+scale the coefficient standard errors — **not** the negative-binomial `theta`
+(overdispersion) parameter, which is always estimated/used as usual via
+`theta`/`estimate_theta`. With the default `estimate_dispersion=False`,
+`model.dispersion == 1.0` and `std_errors` match R `summary.glm` / `MASS::glm.nb`'s
+default (dispersion fixed at 1). With `estimate_dispersion=True`, `dispersion` is
+the Pearson chi2/df estimate and `std_errors` are scaled by its square root —
+validated against `MASS::glm.nb` 7.3.65 (dispersion `0.8951608253323096`); the
+coefficient point estimates are unaffected either way.
+
+**Behaviour change (anofox-regression 0.5.15 #49):** before this release, standard
+errors were always scaled by the Pearson dispersion when it exceeded 1 — now the
+default (`estimate_dispersion=False`) always uses dispersion 1, matching R's own
+default and requiring the explicit opt-in for the previous behaviour.
+
+**Also changed (0.5.14 #42):** `log_likelihood`/`aic` now match R's `glm`/`glm.nb`
+values (the full negative-binomial log-likelihood, not a Gaussian approximation);
+`aic` counts `theta` as an estimated parameter only when `estimate_theta=True`.
 
 ---
 
@@ -129,7 +150,19 @@ model = Tweedie(
     with_intercept: bool = True,
 )
 model.fit(X, y)
+
+model.std_errors  # np.ndarray | None — Pearson-dispersion SEs
+model.p_values     # np.ndarray | None
+model.aic          # float | None — see note below
+model.bic          # float | None
 ```
+
+**`aic`/`bic` are `NaN` for non-closed-form `var_power`.** A closed-form Tweedie
+density (hence a well-defined likelihood and `aic`/`bic`) exists only for
+`var_power` in `{0.0, 1.0, 2.0, 3.0}` (Gaussian, Poisson, Gamma, Inverse Gaussian).
+The default `var_power=1.5` (compound Poisson-Gamma) has **no** closed-form
+density, so `aic`/`bic` are `NaN` by design — not a bug. `std_errors`/`p_values`
+use the Pearson-dispersion estimate and are populated regardless of `var_power`.
 
 ---
 
@@ -182,16 +215,22 @@ model.fit(X, y)   # y: strictly positive
 # Properties
 model.coefficients      # np.ndarray
 model.intercept         # float or None
-model.deviance          # float
-model.null_deviance     # float
-model.dispersion        # float — estimated dispersion parameter
-model.aic               # float
-model.bic               # float
-model.n_observations    # int
+model.converged         # bool
+model.std_errors        # np.ndarray | None — Pearson-dispersion SEs (matching R summary.glm)
+model.p_values           # np.ndarray | None
+model.aic               # float | None — always closed-form for Gamma (var_power is fixed at 2)
+model.bic               # float | None
 
 # Predict
-predictions = model.predict(X_new)  # Predicted means (exp(X @ coef + intercept))
+predictions = model.predict(X_new)      # Predicted means (exp(X @ coef + intercept))
+eta = model.predict_eta(X_new)           # Linear predictor (log scale)
 ```
+
+**Pearson-dispersion standard errors (anofox-regression 0.5.14 #43):** `std_errors`
+now match R `summary.glm(family = Gamma)`'s Pearson chi2/df dispersion estimate
+(previously a different scaling). Unlike the generic `Tweedie` class, `Gamma` has
+no `var_power` parameter — its variance function is fixed at the Gamma case
+(`var_power = 2`), so `aic`/`bic` are always well-defined (never `NaN`).
 
 **Example:**
 ```python
@@ -203,7 +242,7 @@ y = np.exp(0.5 * X[:, 0] + np.random.normal(0, 0.3, 200))
 
 model = Gamma()
 model.fit(X, y)
-print(f"Dispersion: {model.dispersion:.4f}")
+print(f"AIC: {model.aic:.4f}, std_errors: {model.std_errors}")
 ```
 
 ---
@@ -230,7 +269,20 @@ model.intercept             # float or None
 model.random_effects        # dict — per-group random intercept estimates
 model.n_observations        # int
 model.n_groups              # int
+
+# Wald inference
+model.z_values               # np.ndarray — fixed_effects / std_errors
+model.p_values                # np.ndarray — 2 * (1 - Phi(|z|))
+model.conf_int(level=0.95)   # tuple[np.ndarray, np.ndarray] — (lower, upper)
 ```
+
+**Wald inference** matches `lme4`'s standard inference (validated against `lme4`
+2.0.1): `z_values == fixed_effects / std_errors`; `conf_int(level)`'s midpoint
+equals `fixed_effects` and its half-width equals `z_(1-alpha/2) * std_errors`
+(e.g. `1.959963984540054 * std_errors` for the default `level=0.95`). Invalid
+`level` values (`0.0`, `1.0`, outside `(0, 1)`, or `NaN`) give all-`NaN` bounds.
+`log_likelihood` for non-Gaussian families (`poisson`, `binomial`) now includes
+the saturated-model term, matching `lme4`'s reported log-likelihood exactly.
 
 **Example:**
 ```python

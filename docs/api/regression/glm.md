@@ -88,10 +88,20 @@ ps.negative_binomial(
     theta: float | None = None,  # Dispersion; None = estimate
     lambda_: float = 0.0,        # L2 (Ridge) regularization strength
     with_intercept: bool = True,
+    estimate_dispersion: bool = False,
 ) -> pl.Expr
 ```
 
 **Returns:** See [GLM Output](../outputs.md#glm-output)
+
+**`estimate_dispersion`** (default `False`): scales the coefficient `std_error` by
+the Pearson chi2/df dispersion estimate, matching R `summary.glm` for
+negative-binomial fits (anofox-regression 0.5.15 #49). With the default `False`,
+dispersion is fixed at `1.0` (R's own default). Also available on
+`negative_binomial_summary`, `negative_binomial_predict`, and
+`negative_binomial_formula`. See [NegativeBinomial](../classes/glm.md#negativebinomial)
+for the full R-validated reference values. Note: `negative_binomial_predict` has
+**no** `theta` kwarg — theta is always estimated for the predict path.
 
 ---
 
@@ -119,6 +129,13 @@ ps.tweedie(
 | (1, 2) | Compound Poisson-Gamma |
 | 2 | Gamma |
 | 3 | Inverse Gaussian |
+
+**`aic`/`bic` are `NaN` for non-closed-form `var_power`.** A closed-form Tweedie
+density (and therefore a well-defined likelihood) exists only for `var_power` in
+`{0.0, 1.0, 2.0, 3.0}`. The default `var_power=1.5` (compound Poisson-Gamma) has no
+closed-form density, so `aic`/`bic` are `NaN` by design — this is not a bug. See
+[GLM Output](../outputs.md#glm-output) and [Tweedie](../classes/glm.md#tweedie)
+for the full behaviour.
 
 ---
 

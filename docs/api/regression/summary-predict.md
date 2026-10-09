@@ -13,11 +13,11 @@ ps.ols_summary(y, *x, with_intercept=True) -> pl.Expr
 ps.ridge_summary(y, *x, lambda_=1.0, with_intercept=True) -> pl.Expr
 ps.elastic_net_summary(y, *x, lambda_=1.0, alpha=0.5, with_intercept=True) -> pl.Expr
 ps.wls_summary(y, weights, *x, with_intercept=True) -> pl.Expr
-ps.rls_summary(y, *x, forgetting_factor=0.99, with_intercept=True) -> pl.Expr
+ps.rls_summary(y, *x, forgetting_factor=0.99, with_intercept=True, initial_p_diagonal=1e6) -> pl.Expr
 ps.bls_summary(y, *x, lower_bound=None, upper_bound=None, with_intercept=True) -> pl.Expr
 ps.logistic_summary(y, *x, with_intercept=True) -> pl.Expr
 ps.poisson_summary(y, *x, with_intercept=True) -> pl.Expr
-ps.negative_binomial_summary(y, *x, theta=None, with_intercept=True) -> pl.Expr
+ps.negative_binomial_summary(y, *x, theta=None, with_intercept=True, estimate_dispersion=False) -> pl.Expr
 ps.tweedie_summary(y, *x, var_power=1.5, with_intercept=True) -> pl.Expr
 ps.probit_summary(y, *x, with_intercept=True) -> pl.Expr
 ps.cloglog_summary(y, *x, with_intercept=True) -> pl.Expr
@@ -28,6 +28,22 @@ ps.quantile_summary(y, *x, tau=0.5, with_intercept=True) -> pl.Expr
 Formula variants also available: `ps.ols_formula_summary(formula, ...)`, etc.
 
 **Note on `quantile_summary`:** Quantile regression has no analytic standard errors, so the `std_error`, `statistic`, and `p_value` columns are returned as NaN. The coefficient estimates themselves are still valid.
+
+**Note on `ridge_summary` (`lambda_ > 0`):** `std_error` is the ridge sandwich
+standard error (`sigma^2 * A @ X'X @ A'`, matching R), but `statistic`/`p_value`
+are `NaN` — a classical t-test on shrunken/biased coefficients is not statistically
+valid (anofox-regression 0.5.14 #37). `lambda_ = 0` delegates fully to OLS
+inference (`statistic`/`p_value` populated). See
+[Ridge](../classes/linear.md#ridge) for the class-level equivalent.
+
+**Note on `negative_binomial_summary`'s `estimate_dispersion`:** scales
+`std_error` by the Pearson chi2/df dispersion estimate (R `summary.glm`
+semantics); default `False` keeps dispersion fixed at `1.0`. See
+[NegativeBinomial](../classes/glm.md#negativebinomial).
+
+**Note on `rls_summary`'s `initial_p_diagonal`:** sets the initial covariance
+prior `P0 = initial_p_diagonal * I`; default `1e6` is identical to omitting it.
+See [RLS](../classes/linear.md#rls).
 
 **Returns:** See [Summary Output](../outputs.md#summary-output)
 
@@ -85,6 +101,19 @@ Formula variants also available: `ps.ols_formula_predict(formula, ...)`, etc.
 | `quantile_predict` | Quantile regression intervals require bootstrap (not yet wired through). |
 | `isotonic_predict` | Step-function fit with no parametric uncertainty estimate. |
 | `lm_dynamic_predict` | Predictions use time-averaged coefficients from the dynamic model. |
+
+**`ridge_predict`'s intervals use the sandwich variance factor** (anofox-regression
+0.5.14 #37): `interval="confidence"`/`"prediction"` widths are computed from the
+ridge sandwich covariance (`A @ X'X @ A'`), which is narrower than the pre-0.8.0
+interval width for `lambda_ > 0`.
+
+**`negative_binomial_predict`/`negative_binomial_summary` accept
+`estimate_dispersion`** (default `False`) — see the Summary Functions note above.
+Note: `negative_binomial_predict` itself has no `theta` kwarg (theta is always
+estimated for prediction).
+
+**`rls_predict`/`rls_summary` accept `initial_p_diagonal`** (default `1e6`) — see
+the Summary Functions note above.
 
 ```python
 # Quantile regression predictions
