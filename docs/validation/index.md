@@ -963,6 +963,31 @@ Tests verify both equivalence detection and non-equivalence detection:
 
 ---
 
+## Upstream Refresh (v0.8.0)
+
+New capabilities and R-matching behaviour changes from the `anofox-statistics`
+0.4.2→0.4.6 / `anofox-regression` 0.5.13→0.5.16 upstream refresh, validated
+against R references.
+
+| Capability | R reference | Tolerance |
+|:-----------|:------------|----------:|
+| Cohen's d / rank-biserial | `effectsize::cohens_d()`, `effectsize::rank_biserial()` | 1e-12 |
+| Jarque-Bera normality test | `tseries::jarque.bera.test()` | 1e-10 |
+| Conditional Fisher's exact test | `fisher.test()` (conditional MLE odds ratio) | 1e-3 (OR/CI) |
+| `binom_test` / `prop_test_one` / `prop_test_two` / `fisher_exact` intervals | `binom.test()` / `prop.test()` | 1e-8 |
+| Shapiro-Wilk, n ≤ 11 | `shapiro.test()` (exact `swilk.c` coefficients) | 1e-6 |
+| Kendall's tau tie correction | `cor.test(method = "kendall")` | 1e-8 |
+| Huber robust-regression standard errors | `MASS::rlm(method = "XtX")` | 1e-6 |
+| RANSAC inlier-fit statistics | `summary(lm())` on inlier rows | 1e-8 |
+| Ridge sandwich standard errors | R reference script (sandwich `A X'X A`) | 1e-6 |
+| Negative Binomial standard errors / dispersion | `MASS::glm.nb()` / `summary.glm()` | 1e-5 |
+| Gamma GLM Pearson dispersion | `summary.glm()` | 1e-6 |
+| GLMM Wald inference (`z_values`/`p_values`/`conf_int`) | `lme4` 2.0.1 `confint(method = "Wald")` | 2e-3 |
+| Mann-Whitney / Wilcoxon Hodges-Lehmann estimate + CI | `wilcox.test(conf.int = TRUE)`, 126 reference cases | 1e-12 (exact) / 1e-9 (asymptotic) |
+| `mcnemar_exact` | `binom.test(b, b + c, 0.5)` up to `b + c = 10^6` | 1e-9 (relative) |
+
+---
+
 ## R Packages Used
 
 The full list of R packages referenced in validation:
@@ -974,7 +999,7 @@ The full list of R packages referenced in validation:
 | `lmtest` | `coeftest()` for robust inference |
 | `glmnet` | Ridge (`alpha=0`) and Elastic Net regression |
 | `quantreg` | Quantile regression (`rq()`) |
-| `MASS` | Negative Binomial GLM (`glm.nb()`) |
+| `MASS` | Negative Binomial GLM (`glm.nb()`), Huber robust regression (`rlm(method = "XtX")`) |
 | `statmod` | Tweedie GLM family |
 | `car` | Brown-Forsythe / Levene's test |
 | `WRS2` | Yuen's trimmed means test |
@@ -986,6 +1011,9 @@ The full list of R packages referenced in validation:
 | `irr` | Cohen's kappa |
 | `moments` | D'Agostino K-squared test |
 | `coin` | Permutation tests |
+| `effectsize` | Cohen's d, rank-biserial correlation |
+| `tseries` | Jarque-Bera normality test |
+| `lme4` | GLMM Wald inference (`z_values`/`p_values`/`conf_int`) |
 
 ---
 
@@ -1003,3 +1031,4 @@ The full list of R packages referenced in validation:
 | Prediction intervals | Prediction and confidence intervals at multiple levels | 0.01 to 1.0 |
 | GLMs | Poisson (log/identity/sqrt), Binomial (logit/probit/cloglog), Gamma, Inverse Gaussian, Negative Binomial, Tweedie (4 powers) | 0.01 to 0.5 |
 | Equivalence tests | TOST one-sample, two-sample, paired, proportion, correlation, Wilcoxon, bootstrap | 1e-6 |
+| Upstream refresh (v0.8.0) | Cohen's d/rank-biserial, Jarque-Bera, conditional Fisher, Huber/RANSAC/Ridge inference, NegBin/Gamma GLM dispersion, GLMM Wald, Mann-Whitney/Wilcoxon Hodges-Lehmann, McNemar exact | 1e-3 to 1e-12 |

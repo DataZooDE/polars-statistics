@@ -91,12 +91,23 @@ ps.distance_cor("x", "y")               # Distance correlation (detects nonlinea
 ps.partial_cor("x", "y", ["z1", "z2"])  # Partial correlation
 
 # Categorical tests
-ps.binom_test(successes=7, n=10, p0=0.5)  # Exact binomial test
+ps.binom_test(successes=7, n=10, p0=0.5)  # Exact binomial test (conf_level=0.95)
 ps.chisq_test("counts", n_rows=2, n_cols=2)  # Chi-square independence
-ps.fisher_exact(a=10, b=2, c=3, d=15)   # Fisher's exact test
+ps.fisher_exact(a=10, b=2, c=3, d=15)   # Fisher's exact test (+ ci_lower/ci_upper)
+ps.fisher_exact_conditional(a=10, b=2, c=3, d=15)  # R fisher.test conditional MLE odds ratio
 ps.mcnemar_test(a=45, b=15, c=5, d=35)  # McNemar's test
 ps.cohen_kappa("counts", n_categories=3) # Inter-rater agreement
 ps.cramers_v("counts", n_rows=3, n_cols=3) # Association strength
+
+# Effect sizes
+ps.cohens_d("x", "y")                    # Cohen's d (student/welch/paired)
+ps.rank_biserial("x", "y")                # Rank-biserial correlation (Mann-Whitney effect size)
+
+# Normality
+ps.jarque_bera("x")                       # Jarque-Bera normality test
+
+# Bootstrap confidence intervals
+ps.bootstrap_mean_ci("x", seed=42)        # Percentile bootstrap CI for the mean
 ```
 
 All tests return a struct with `statistic` and `p_value` fields.
@@ -249,9 +260,17 @@ lr.predict_proba(X)
 lr.decision_function(X)
 lr.score(X, y)
 
-# Huber M-estimator (robust to outliers)
-hb = Huber(epsilon=1.35).fit(X, y)
-print(hb.coefficients, hb.n_outliers, hb.scale)
+# Huber M-estimator (robust to outliers), with MASS::rlm-validated inference
+hb = Huber(epsilon=1.35, compute_inference=True, confidence_level=0.95).fit(X, y)
+print(hb.coefficients, hb.n_outliers, hb.scale, hb.std_errors)
+
+# RANSAC: random sample consensus, with inlier-fit statistics
+from polars_statistics import RANSAC
+
+rs = RANSAC(compute_inference=True).fit(X, y)
+print(rs.std_errors, rs.rmse)       # inlier-only inference getters
+inlier_ols = rs.inlier_fit()        # fitted OLS over the inlier rows
+print(inlier_ols.r_squared)
 
 # Partial Least Squares
 pls = PLS(n_components=2).fit(X, y)
@@ -353,9 +372,11 @@ Every Polars expression has a `*_fit` Rust entry point in `polars_statistics::ex
   - Goodness-of-fit: `pearson_chi_squared_logistic_fit`, `pearson_chi_squared_poisson_fit`
   - Influence / leverage: `leverage_fit`, `cooks_distance_fit`, `dffits_fit`, `influential_cooks_fit`, `influential_dffits_fit`, `high_leverage_points_fit`
 - **Summaries / predictions**: `ols_summary_fit`, `ols_predict_fit`, …; plus `quantile_summary_fit`, `quantile_predict_fit`, `isotonic_predict_fit`, `lm_dynamic_predict_fit`
-- **Hypothesis tests**: `ttest_ind_fit`, `ttest_paired_fit`, `mann_whitney_fit`, `wilcoxon_fit`, `kruskal_wallis_fit`, `brunner_munzel_fit`, `brown_forsythe_fit`, `yuen_fit`, `shapiro_wilk_fit`, `dagostino_fit`
+- **Hypothesis tests**: `ttest_ind_fit`, `ttest_paired_fit`, `mann_whitney_fit`, `wilcoxon_fit`, `kruskal_wallis_fit`, `brunner_munzel_fit`, `brown_forsythe_fit`, `yuen_fit`, `shapiro_wilk_fit`, `dagostino_fit`, `jarque_bera_fit`
 - **Correlation**: `pearson_fit`, `spearman_fit`, `kendall_fit`, `distance_cor_fit`, `partial_cor_fit`, `semi_partial_cor_fit`, `icc_fit`
-- **Categorical**: `binom_test_fit`, `prop_test_one_fit`, `prop_test_two_fit`, `chisq_test_fit`, `fisher_exact_fit`, `mcnemar_test_fit`, `cohen_kappa_fit`, `cramers_v_fit`, …
+- **Categorical**: `binom_test_fit`, `prop_test_one_fit`, `prop_test_two_fit`, `chisq_test_fit`, `fisher_exact_fit`, `fisher_exact_conditional_fit`, `mcnemar_test_fit`, `cohen_kappa_fit`, `cramers_v_fit`, … (`binom_test_fit`/`prop_test_one_fit`/`prop_test_two_fit`/`fisher_exact_fit` accept an optional trailing `conf_level` input; old arity still works)
+- **Effect sizes / bootstrap**: `cohens_d_fit`, `cohens_d_one_sample_fit`, `rank_biserial_fit`, `matched_pairs_rank_biserial_fit`, `rank_biserial_from_u_fit`, `bootstrap_mean_ci_fit`, `bootstrap_ci_fit`
+- **Additive GLM-family options** (named kwargs structs, old `*_fit` signatures unchanged): `negative_binomial_fit_with`/`negative_binomial_summary_fit_with` (`NegativeBinomialKwargs`), `negative_binomial_predict_fit_with` (`NegativeBinomialPredictKwargs`), `rls_fit_with`/`rls_summary_fit_with` (`RlsKwargs`), `rls_predict_fit_with` (`RlsPredictKwargs`)
 - **Forecast comparison / TOST / modern**: see `expressions::forecast`, `expressions::tost`, `expressions::modern`.
 
 The input slice layout (which input is `y`, which are scalars, which are `x` columns) is documented above each function — same contract that the Polars plugin uses.
