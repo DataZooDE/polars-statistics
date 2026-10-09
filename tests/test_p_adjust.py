@@ -100,7 +100,7 @@ def test_p_adjust_nan_input():
         got_null = df_null.select(ps.p_adjust("p", method=method))["p"].to_list()
         got_nan = df_nan.select(ps.p_adjust("p", method=method))["p"].to_list()
 
-        for i, (orig, nan_val) in enumerate(zip(p_null, p_nan)):
+        for i, (orig, _nan_val) in enumerate(zip(p_null, p_nan)):
             if orig is None:
                 assert got_nan[i] is not None and math.isnan(got_nan[i]), (
                     f"row case{row['case']}-{method} pos {i}: expected NaN, got {got_nan[i]}"

@@ -189,6 +189,8 @@ from polars_statistics.exprs import (
     nnls,
     nnls_formula,
     nnls_predict,
+    # Post-hoc / p-value adjustment expressions
+    p_adjust,
     # Penalized GLM expressions
     penalized_glm,
     penalized_glm_formula,
@@ -380,6 +382,8 @@ __all__ = [
     # Resampling (bootstrap CI) expressions
     "bootstrap_mean_ci",
     "bootstrap_ci",
+    # Post-hoc / p-value adjustment expressions
+    "p_adjust",
     # Forecast test expressions
     "diebold_mariano",
     "permutation_t_test",

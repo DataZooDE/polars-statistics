@@ -13,6 +13,7 @@ mod nonparametric;
 mod output_types;
 mod parametric;
 mod penalized_glm;
+mod posthoc;
 mod regression;
 mod resampling;
 mod tost;
@@ -38,6 +39,8 @@ pub use output_types::*;
 pub use parametric::*;
 #[allow(unused_imports)]
 pub use penalized_glm::*;
+#[allow(unused_imports)]
+pub use posthoc::*;
 #[allow(unused_imports)]
 pub use regression::*;
 #[allow(unused_imports)]

@@ -79,6 +79,9 @@ from polars_statistics.exprs.resampling import (
     bootstrap_mean_ci,
     bootstrap_ci,
 )
+from polars_statistics.exprs.posthoc import (
+    p_adjust,
+)
 from polars_statistics.exprs.regression import (
     ols,
     ridge,
@@ -252,6 +255,8 @@ __all__ = [
     # Resampling (bootstrap CI) expressions
     "bootstrap_mean_ci",
     "bootstrap_ci",
+    # Post-hoc / p-value adjustment expressions
+    "p_adjust",
     # Forecast tests
     "diebold_mariano",
     "permutation_t_test",
