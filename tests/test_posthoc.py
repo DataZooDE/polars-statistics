@@ -16,10 +16,12 @@ fixture and tests separately.
 import csv
 import hashlib
 import math
+from collections import defaultdict
 from pathlib import Path
 
 import polars as pl
 import polars_statistics as ps
+import pytest
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -28,6 +30,12 @@ PTUKEY_SHA256 = "44e0ba0d0e97b0d399082cd7dec6f799176548dc79e562e7681edddb5c6e8ef
 
 QTUKEY_PATH = FIXTURES / "qtukey_reference.csv"
 QTUKEY_SHA256 = "b36dc2a1a06f0d3add5af29b09fe48d32392a380e49c3aea644161a2d86590eb"
+
+POSTHOC_DATA_PATH = FIXTURES / "posthoc_data.csv"
+POSTHOC_DATA_SHA256 = "f821db9354be652a5b7c13455ccd0cd89d172aab731bc48395f0c48130b5fbff"
+
+POSTHOC_REFERENCE_PATH = FIXTURES / "posthoc_reference.csv"
+POSTHOC_REFERENCE_SHA256 = "39f12d7d61d1489ebb4fe63f43182ab97315da5ccc3626455bc06e9447a7cdec"
 
 
 def _close(a, b, tol: float) -> bool:
@@ -52,6 +60,53 @@ def _load_csv(path: Path):
 
 _PTUKEY_ROWS = _load_csv(PTUKEY_PATH)
 _QTUKEY_ROWS = _load_csv(QTUKEY_PATH)
+_POSTHOC_DATA_ROWS = _load_csv(POSTHOC_DATA_PATH)
+_POSTHOC_REFERENCE_ROWS = _load_csv(POSTHOC_REFERENCE_PATH)
+
+# set -> (values, groups), parsed from posthoc_data.csv's space-separated columns.
+_POSTHOC_SETS = {
+    r["set"]: (
+        [float(v) for v in r["x"].split()],
+        r["g"].split(),
+    )
+    for r in _POSTHOC_DATA_ROWS
+}
+
+# (set, test, pooled, alternative, option) -> [reference rows], preserving
+# upstream row order (R's TukeyHSD row order: B-A, C-A, C-B, ...).
+_POSTHOC_COMBOS: dict = defaultdict(list)
+for _r in _POSTHOC_REFERENCE_ROWS:
+    _key = (_r["set"], _r["test"], _r["pooled"], _r["alternative"], _r["option"])
+    _POSTHOC_COMBOS[_key].append(_r)
+
+
+def _combo_id(key) -> str:
+    set_, test, pooled, alternative, option = key
+    return f"set{set_}-{test}-{pooled}-{alternative}-{option}"
+
+
+def _run_pairwise(test: str, values: list, groups: list, pooled: str, alternative: str, option: str):
+    """Build the (x, g) frame and call the matching ps.* pairwise builder."""
+    df = pl.DataFrame({"x": values, "g": groups})
+    if test == "tukey":
+        expr = ps.tukey_hsd("x", "g", conf_level=float(option))
+    elif test == "pairwise_t":
+        expr = ps.pairwise_t_test(
+            "x",
+            "g",
+            pooled_sd=(pooled == "TRUE"),
+            p_adjust_method=option,
+            alternative=alternative,
+        )
+    else:
+        expr = ps.dunn_test("x", "g", p_adjust_method=option)
+
+    out = df.select(expr.alias("ph")).explode("ph").unnest("ph")
+    return {
+        (row["group1"], row["group2"]): row
+        for row in out.to_dicts()
+        if row["group1"] is not None
+    }
 
 
 def test_ptukey_matches_r():
@@ -181,3 +236,244 @@ def test_tukey_dist_fixture_integrity():
     assert _sha256(PTUKEY_PATH) == PTUKEY_SHA256
     assert len(_QTUKEY_ROWS) == 420
     assert _sha256(QTUKEY_PATH) == QTUKEY_SHA256
+
+
+@pytest.mark.parametrize(
+    "key",
+    list(_POSTHOC_COMBOS.keys()),
+    ids=[_combo_id(k) for k in _POSTHOC_COMBOS],
+)
+def test_pairwise_matches_r(key):
+    """ps.tukey_hsd / ps.pairwise_t_test / ps.dunn_test reproduce R on every
+    upstream reference row for this (set, test, pooled, alternative, option)
+    combination.
+
+    Tolerances per the upstream `tests/posthoc_reference.rs` convention:
+    pairwise_t estimate/statistic/df/p_value/p_adj and tukey
+    estimate/df/ci_lower/ci_upper at 1e-9; tukey p_value/p_adj absolute
+    1e-10; dunn statistic compared to minus the R value (R's `dunn.test`
+    reports the opposite sign) at 1e-9. R's reference does not record a
+    numeric `tukey` statistic or a `dunn` estimate (both "NA" for every
+    row), so those two fields are not compared here.
+    """
+    set_, test, pooled, alternative, option = key
+    values, groups = _POSTHOC_SETS[set_]
+    got = _run_pairwise(test, values, groups, pooled, alternative, option)
+    ref_rows = _POSTHOC_COMBOS[key]
+
+    assert len(got) == len(ref_rows), (
+        f"{key}: got {len(got)} rows, expected {len(ref_rows)}"
+    )
+
+    for ref in ref_rows:
+        pair = (ref["group1"], ref["group2"])
+        assert pair in got, f"{key}: missing pair {pair}"
+        row = got[pair]
+
+        if test == "pairwise_t":
+            assert _close(row["estimate"], float(ref["estimate"]), 1e-9), key
+            assert _close(row["statistic"], float(ref["statistic"]), 1e-9), key
+            assert _close(row["df"], float(ref["df"]), 1e-9), key
+            assert _close(row["p_value"], float(ref["p_value"]), 1e-9), key
+            assert _close(row["p_adj"], float(ref["p_adj"]), 1e-9), key
+            assert math.isnan(row["ci_lower"]), key
+            assert math.isnan(row["ci_upper"]), key
+        elif test == "tukey":
+            assert _close(row["estimate"], float(ref["estimate"]), 1e-9), key
+            assert _close(row["df"], float(ref["df"]), 1e-9), key
+            assert _close(row["ci_lower"], float(ref["conf_low"]), 1e-9), key
+            assert _close(row["ci_upper"], float(ref["conf_high"]), 1e-9), key
+            assert abs(row["p_value"] - float(ref["p_value"])) < 1e-10, key
+            assert abs(row["p_adj"] - float(ref["p_adj"])) < 1e-10, key
+        else:  # dunn
+            assert _close(row["statistic"], -float(ref["statistic"]), 1e-9), key
+            assert _close(row["p_value"], float(ref["p_value"]), 1e-9), key
+            assert _close(row["p_adj"], float(ref["p_adj"]), 1e-9), key
+            assert math.isnan(row["df"]), key
+            assert math.isnan(row["ci_lower"]), key
+            assert math.isnan(row["ci_upper"]), key
+
+
+def test_pairwise_matched_row_count():
+    """The total number of matched upstream reference rows is 1365, and every
+    combination returns k(k-1)/2 rows."""
+    total = 0
+    for key, ref_rows in _POSTHOC_COMBOS.items():
+        set_, test, pooled, alternative, option = key
+        values, groups = _POSTHOC_SETS[set_]
+        k = len(set(groups))
+        expected_pairs = k * (k - 1) // 2
+        assert len(ref_rows) == expected_pairs, key
+        total += len(ref_rows)
+    assert total == 1365
+
+
+def test_pairwise_schema():
+    """The expression's dtype is exactly
+    List[Struct{group1, group2, n1, n2, estimate, statistic, df, p_value,
+    p_adj, ci_lower, ci_upper}] in that order."""
+    df = pl.DataFrame(
+        {"x": [1.0, 2.0, 3.0, 4.0], "g": ["a", "a", "b", "b"]}
+    )
+    for expr in (ps.tukey_hsd("x", "g"), ps.pairwise_t_test("x", "g"), ps.dunn_test("x", "g")):
+        dtype = df.select(expr.alias("ph"))["ph"].dtype
+        assert isinstance(dtype, pl.List)
+        inner = dtype.inner
+        assert isinstance(inner, pl.Struct)
+        names = [f.name for f in inner.fields]
+        assert names == [
+            "group1",
+            "group2",
+            "n1",
+            "n2",
+            "estimate",
+            "statistic",
+            "df",
+            "p_value",
+            "p_adj",
+            "ci_lower",
+            "ci_upper",
+        ]
+        types = {f.name: f.dtype for f in inner.fields}
+        assert types["group1"] == pl.String
+        assert types["group2"] == pl.String
+        assert types["n1"] == pl.UInt32
+        assert types["n2"] == pl.UInt32
+        for f in ("estimate", "statistic", "df", "p_value", "p_adj", "ci_lower", "ci_upper"):
+            assert types[f] == pl.Float64
+
+
+def test_pairwise_order_and_sizes():
+    """4 groups a..d with 3/4/5/6 rows give the TukeyHSD pair order with the
+    correct n1/n2; an integer group column works and labels its own string
+    representation; estimate == mean(group2) - mean(group1) for Tukey."""
+    sizes = {"a": 3, "b": 4, "c": 5, "d": 6}
+    groups = []
+    values = []
+    means = {"a": 1.0, "b": 2.0, "c": 3.0, "d": 4.0}
+    for g, n in sizes.items():
+        groups += [g] * n
+        values += [means[g]] * n
+
+    df = pl.DataFrame({"x": values, "g": groups})
+    out = df.select(ps.tukey_hsd("x", "g").alias("ph")).explode("ph").unnest("ph")
+    rows = out.to_dicts()
+
+    expected_pairs = [
+        ("a", "b"),
+        ("a", "c"),
+        ("a", "d"),
+        ("b", "c"),
+        ("b", "d"),
+        ("c", "d"),
+    ]
+    assert [(r["group1"], r["group2"]) for r in rows] == expected_pairs
+
+    for r in rows:
+        assert r["n1"] == sizes[r["group1"]]
+        assert r["n2"] == sizes[r["group2"]]
+        expected_estimate = means[r["group2"]] - means[r["group1"]]
+        assert abs(r["estimate"] - expected_estimate) < 1e-12
+
+    # Integer group column: labels become "0".."3".
+    int_df = pl.DataFrame({"x": values, "g": [{"a": 0, "b": 1, "c": 2, "d": 3}[g] for g in groups]})
+    int_out = (
+        int_df.select(ps.tukey_hsd("x", "g").alias("ph")).explode("ph").unnest("ph")
+    )
+    int_pairs = {(r["group1"], r["group2"]) for r in int_out.to_dicts()}
+    assert int_pairs == {("0", "1"), ("0", "2"), ("0", "3"), ("1", "2"), ("1", "3"), ("2", "3")}
+
+
+def test_pairwise_na_rows_dropped():
+    """A null x, a NaN x, or a null g gives exactly the result of the frame
+    without those rows."""
+    values = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]
+    groups = ["a", "a", "b", "b", "c", "c"]
+
+    clean = pl.DataFrame({"x": values, "g": groups})
+    expected = (
+        clean.select(ps.pairwise_t_test("x", "g").alias("ph"))
+        .explode("ph")
+        .unnest("ph")
+        .to_dicts()
+    )
+
+    dirty = pl.DataFrame(
+        {
+            "x": values + [None, float("nan"), 7.0],
+            "g": groups + ["a", "b", None],
+        }
+    )
+    got = (
+        dirty.select(ps.pairwise_t_test("x", "g").alias("ph"))
+        .explode("ph")
+        .unnest("ph")
+        .to_dicts()
+    )
+
+    assert got == expected
+
+
+def test_pairwise_degenerate_inputs():
+    """A single group, or an empty frame, returns an empty list without an
+    exception (for all three tests)."""
+    single_group = pl.DataFrame({"x": [1.0, 2.0, 3.0], "g": ["a", "a", "a"]})
+    empty = pl.DataFrame({"x": [], "g": []}, schema={"x": pl.Float64, "g": pl.String})
+
+    for frame in (single_group, empty):
+        for expr in (
+            ps.tukey_hsd("x", "g"),
+            ps.pairwise_t_test("x", "g"),
+            ps.dunn_test("x", "g"),
+        ):
+            out = frame.select(expr.alias("ph"))["ph"][0]
+            assert out is not None
+            assert len(out) == 0
+
+
+def test_pairwise_group_by():
+    """group_by("exp").agg(ps.tukey_hsd(...)) per experiment equals the
+    whole-frame call on that experiment's rows."""
+    exp1 = pl.DataFrame({"x": [1.0, 2.0, 3.0, 4.0], "g": ["a", "a", "b", "b"]})
+    exp2 = pl.DataFrame({"x": [10.0, 11.0, 20.0, 22.0], "g": ["a", "a", "b", "b"]})
+
+    stacked = pl.concat(
+        [exp1.with_columns(exp=pl.lit("e1")), exp2.with_columns(exp=pl.lit("e2"))]
+    )
+
+    expected_e1 = (
+        exp1.select(ps.tukey_hsd("x", "g").alias("ph")).explode("ph").unnest("ph").to_dicts()
+    )
+    expected_e2 = (
+        exp2.select(ps.tukey_hsd("x", "g").alias("ph")).explode("ph").unnest("ph").to_dicts()
+    )
+
+    grouped = stacked.group_by("exp", maintain_order=True).agg(ps.tukey_hsd("x", "g").alias("ph"))
+    got_e1 = grouped.filter(pl.col("exp") == "e1")["ph"][0].to_list()
+    got_e2 = grouped.filter(pl.col("exp") == "e2")["ph"][0].to_list()
+
+    assert got_e1 == expected_e1
+    assert got_e2 == expected_e2
+
+
+def test_pairwise_build_errors():
+    """Build-time ValueError: bad conf_level, p_adjust_method, alternative."""
+    with pytest.raises(ValueError):
+        ps.tukey_hsd("x", "g", conf_level=1.5)
+    with pytest.raises(ValueError):
+        ps.tukey_hsd("x", "g", conf_level=0.0)
+    with pytest.raises(ValueError):
+        ps.pairwise_t_test("x", "g", p_adjust_method="tukey")
+    with pytest.raises(ValueError):
+        ps.pairwise_t_test("x", "g", alternative="sideways")
+    with pytest.raises(ValueError):
+        ps.dunn_test("x", "g", p_adjust_method="tukey")
+
+
+def test_pairwise_fixture_integrity():
+    """posthoc_data.csv has 5 sets, posthoc_reference.csv 1365 rows; sha256
+    values equal the upstream tag's."""
+    assert len(_POSTHOC_DATA_ROWS) == 5
+    assert _sha256(POSTHOC_DATA_PATH) == POSTHOC_DATA_SHA256
+    assert len(_POSTHOC_REFERENCE_ROWS) == 1365
+    assert _sha256(POSTHOC_REFERENCE_PATH) == POSTHOC_REFERENCE_SHA256

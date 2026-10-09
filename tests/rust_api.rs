@@ -50,6 +50,10 @@ fn series_bool(name: &str, vals: &[bool]) -> Series {
     Series::new(name.into(), vals)
 }
 
+fn series_str(name: &str, vals: &[&str]) -> Series {
+    Series::new(name.into(), vals)
+}
+
 fn scalar_bool(name: &str, v: bool) -> Series {
     Series::new(name.into(), &[v])
 }
@@ -3072,4 +3076,81 @@ fn bls_column_pivot_fix_differently_scaled() {
         (c2 - 3.0).abs() < 1e-6,
         "pivot BLS x2 coef: expected 3.0, got {c2}"
     );
+}
+
+#[test]
+fn posthoc_fits() {
+    // p_adjust_fit: p, method
+    {
+        let inputs = vec![
+            series_f64("p", &[0.01, 0.02, 0.03, 0.04]),
+            scalar_str("method", "holm"),
+        ];
+        let out = p_adjust_fit(&inputs).expect("p_adjust_fit failed");
+        assert_eq!(out.len(), 4, "p_adjust_fit output length must equal input length");
+    }
+
+    // ptukey_fit / qtukey_fit: q|p, nmeans, df, nranges, lower_tail
+    {
+        let inputs = vec![
+            series_f64("q", &[1.0, 2.0, 3.0]),
+            scalar_f64("nmeans", 3.0),
+            scalar_f64("df", 10.0),
+            scalar_f64("nranges", 1.0),
+            scalar_bool("lower_tail", true),
+        ];
+        let out = ptukey_fit(&inputs).expect("ptukey_fit failed");
+        assert_eq!(out.len(), 3, "ptukey_fit output length must equal input length");
+    }
+    {
+        let inputs = vec![
+            series_f64("p", &[0.5, 0.9, 0.95]),
+            scalar_f64("nmeans", 3.0),
+            scalar_f64("df", 10.0),
+            scalar_f64("nranges", 1.0),
+            scalar_bool("lower_tail", true),
+        ];
+        let out = qtukey_fit(&inputs).expect("qtukey_fit failed");
+        assert_eq!(out.len(), 3, "qtukey_fit output length must equal input length");
+    }
+
+    // tukey_hsd_fit / pairwise_t_test_fit / dunn_test_fit: values, groups, ...
+    // 3 groups ("a", "b", "c") x 4 values each -> 3 pairwise rows (k(k-1)/2 with k=3).
+    let values: Vec<f64> = vec![
+        1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0,
+    ];
+    let groups = ["a", "a", "a", "a", "b", "b", "b", "b", "c", "c", "c", "c"];
+
+    {
+        let inputs = vec![
+            series_f64("values", &values),
+            series_str("groups", &groups),
+            scalar_f64("conf_level", 0.95),
+        ];
+        let out = tukey_hsd_fit(&inputs).expect("tukey_hsd_fit failed");
+        let rows = out.list().unwrap().get_as_series(0).unwrap();
+        assert_eq!(rows.len(), 3, "3 groups must give 3 pairwise rows");
+    }
+    {
+        let inputs = vec![
+            series_f64("values", &values),
+            series_str("groups", &groups),
+            scalar_bool("pooled_sd", true),
+            scalar_str("p_adjust_method", "holm"),
+            scalar_str("alternative", "two-sided"),
+        ];
+        let out = pairwise_t_test_fit(&inputs).expect("pairwise_t_test_fit failed");
+        let rows = out.list().unwrap().get_as_series(0).unwrap();
+        assert_eq!(rows.len(), 3, "3 groups must give 3 pairwise rows");
+    }
+    {
+        let inputs = vec![
+            series_f64("values", &values),
+            series_str("groups", &groups),
+            scalar_str("p_adjust_method", "holm"),
+        ];
+        let out = dunn_test_fit(&inputs).expect("dunn_test_fit failed");
+        let rows = out.list().unwrap().get_as_series(0).unwrap();
+        assert_eq!(rows.len(), 3, "3 groups must give 3 pairwise rows");
+    }
 }
