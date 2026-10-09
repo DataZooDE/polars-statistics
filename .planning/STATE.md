@@ -5,17 +5,17 @@ milestone_name: Claude Code Skills Plugin
 current_phase: "16.1"
 current_phase_name: Upstream Crate Refresh
 current_plan: 9
-status: executing
-stopped_at: Completed 16.1-07-PLAN.md
-last_updated: "2026-10-09T09:26:32.161Z"
+status: verifying
+stopped_at: Completed 16.1-08-PLAN.md
+last_updated: "2026-10-09T09:33:04.739Z"
 last_activity: 2026-10-08
 last_activity_desc: Phase 16.1 execution resumed (wave continue)
-state_head: 04d1462bd3aa561cd7bb6ed907c45866a1da49d2
+state_head: 1f22dfe885c575b7771fd9ca81a020672ff12aed
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 36
-  completed_plans: 15
+  completed_plans: 16
   percent: 0
 ---
 
@@ -33,7 +33,7 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 Phase: 16.1 (Upstream Crate Refresh) — EXECUTING
 Current Plan: 9
 Total Plans in Phase: 9
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-10-08 — Phase 16.1 execution resumed (wave continue)
 
 ## Milestone Roadmap (v0.8.0)
@@ -108,6 +108,7 @@ Execution order: 13 → 14 → 15 → 16 → 17
 | Phase 16.1 P05 | 20min | 3 tasks | 12 files |
 | Phase 16.1 P06 | 46min | 2 tasks | 5 files |
 | Phase 16.1 P07 | 8min | 3 tasks | 14 files |
+| Phase 16.1 P08 | 8min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -157,6 +158,7 @@ Recent decisions affecting current work:
 - [Phase 16.1]: 16.1-06: Extended hypothesis-tests and regression skill descriptions for the new inference/diagnostics prompt families. — ROUTING.md's new rows route on explicit phrase match rather than loosely-related existing wording.
 - [Phase 16.1]: 16.1-07: Resumed stalled executor (3 task commits present, no SUMMARY) — re-verified every task's verify/acceptance gate against HEAD instead of trusting the stall point; all passed, no fix commits needed
 - [Phase 16.1]: 16.1-07: Did not flip UPST-02/UPST-04 to Complete in REQUIREMENTS.md — both are shared with 16.1-08 (CHANGELOG + README/API_REFERENCE/validation page), which has not executed yet
+- [Phase 16.1]: 16.1-08: Consolidated every new R-validated capability into a single 'Upstream Refresh (v0.8.0)' table in docs/validation/index.md rather than editing each existing per-test prose section individually. — Keeps every new reference/tolerance pair in one place and matches the plan's literal acceptance-criteria greps without restructuring the page's existing narrative style.
 
 ### Pending Todos
 
@@ -190,7 +192,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-10-09T09:26:32.124Z
-Stopped at: Completed 16.1-07-PLAN.md
+Last session: 2026-10-09T09:33:04.703Z
+Stopped at: Completed 16.1-08-PLAN.md
 Resume file: None
 </content>
