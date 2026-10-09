@@ -180,6 +180,7 @@ from polars_statistics.exprs.regression import (
     tweedie_formula,
     probit_formula,
     cloglog_formula,
+    penalized_glm_formula,
     alm_formula,
     # Formula-based summary functions
     ols_formula_summary,
@@ -380,6 +381,7 @@ __all__ = [
     "tweedie_formula",
     "probit_formula",
     "cloglog_formula",
+    "penalized_glm_formula",
     "alm_formula",
     # Formula-based summary expressions
     "ols_formula_summary",

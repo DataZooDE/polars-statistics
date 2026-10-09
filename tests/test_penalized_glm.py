@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib.util
+import math
 import os
 from pathlib import Path
 
@@ -488,3 +489,498 @@ class TestPenalizedGLMModel:
         d = model.to_dict()
         assert "coefficients" in d
         assert "vcov" in d
+
+
+# ============================================================================
+# Full 0.5.22 R matrix on both layers (Task 3)
+# ============================================================================
+
+
+def _expr_fit(y_col: str, **kwargs) -> dict:
+    return DF.select(ps.penalized_glm(y_col, "x1", "x2", tol=1e-10, **kwargs).alias("r"))["r"][0]
+
+
+def _model_fit(y, **kwargs) -> ps.PenalizedGLM:
+    return ps.PenalizedGLM(tol=1e-10, **kwargs).fit(X, np.asarray(y, dtype=float))
+
+
+def _model_fit_offset(y, offset, **kwargs) -> ps.PenalizedGLM:
+    return ps.PenalizedGLM(tol=1e-10, **kwargs).fit(
+        X, np.asarray(y, dtype=float), offset=np.asarray(offset, dtype=float)
+    )
+
+
+def has_valid_numbers(result: pl.DataFrame, col: str = "result", *, nan_ok=()) -> bool:
+    """Check that result column contains valid (non-null, non-NaN) numbers.
+
+    `nan_ok` is a tuple of struct field names whose value is permitted to be
+    NaN (copied locally from tests/test_group_by_over.py per plan 16.2-02).
+    """
+    for row in result[col]:
+        if row is None:
+            return False
+        if isinstance(row, dict):
+            for key, val in row.items():
+                if key in nan_ok:
+                    continue
+                if val is None:
+                    return False
+                if isinstance(val, float) and math.isnan(val):
+                    return False
+                if isinstance(val, list):
+                    for v in val:
+                        if v is None or (isinstance(v, float) and math.isnan(v)):
+                            return False
+    return True
+
+
+class TestPenalizedGlmFamilyPois:
+    def test_family_poisson_sqrt_link(self):
+        row = _expr_fit("y_pois", family="poisson", link="sqrt")
+        assert rel_close(row["intercept"], ref.POIS_SQRT_COEF[0], 1e-6)
+        assert rel_close(row["coefficients"][0], ref.POIS_SQRT_COEF[1], 1e-6)
+        assert rel_close(row["coefficients"][1], ref.POIS_SQRT_COEF[2], 1e-6)
+        assert rel_close(row["deviance"], ref.POIS_SQRT_DEV[0], 1e-7)
+
+        model = _model_fit(ref.Y_POIS, family="poisson", link="sqrt")
+        assert rel_close(model.intercept, ref.POIS_SQRT_COEF[0], 1e-6)
+        assert rel_close(model.coefficients[0], ref.POIS_SQRT_COEF[1], 1e-6)
+        assert rel_close(model.coefficients[1], ref.POIS_SQRT_COEF[2], 1e-6)
+        assert rel_close(model.deviance, ref.POIS_SQRT_DEV[0], 1e-7)
+
+
+_BINOMIAL_LINK_CASES = [
+    ("logit", ref.BIN_LOGIT_COEF, ref.BIN_LOGIT_SE, ref.BIN_LOGIT_DEV, ref.BIN_LOGIT_LL_AIC),
+    ("probit", ref.BIN_PROBIT_COEF, ref.BIN_PROBIT_SE, ref.BIN_PROBIT_DEV, ref.BIN_PROBIT_LL_AIC),
+    (
+        "cloglog",
+        ref.BIN_CLOGLOG_COEF,
+        ref.BIN_CLOGLOG_SE,
+        ref.BIN_CLOGLOG_DEV,
+        ref.BIN_CLOGLOG_LL_AIC,
+    ),
+]
+
+
+class TestPenalizedGlmFamilyBinomial:
+    @pytest.mark.parametrize("link,coef,se,dev,ll_aic", _BINOMIAL_LINK_CASES)
+    def test_family_binomial_links(self, link, coef, se, dev, ll_aic):
+        row = _expr_fit("y_bin", family="binomial", link=link)
+        assert rel_close(row["intercept"], coef[0], 1e-6)
+        for j, c in enumerate(row["coefficients"]):
+            assert rel_close(c, coef[j + 1], 1e-6)
+        assert rel_close(row["deviance"], dev[0], 1e-7)
+        assert rel_close(row["null_deviance"], dev[1], 1e-7)
+        assert rel_close(row["log_likelihood"], ll_aic[0], 1e-7)
+        assert rel_close(row["aic"], ll_aic[1], 1e-7)
+        assert row["has_separation"] is False
+
+        model = _model_fit(ref.Y_BIN, family="binomial", link=link)
+        assert rel_close(model.intercept, coef[0], 1e-6)
+        for j, s in enumerate(model.std_errors):
+            assert rel_close(s, se[j + 1], 1e-5)
+        assert rel_close(model.intercept_std_error, se[0], 1e-5)
+        assert model.has_separation is False
+
+    def test_family_logistic_accuracy(self):
+        row = _expr_fit("y_bin", family="logistic")
+        assert rel_close(row["intercept"], ref.BIN_LOGIT_COEF[0], 1e-6)
+        assert 0.5 <= row["accuracy"] <= 1.0
+
+        model = _model_fit(ref.Y_BIN, family="logistic")
+        assert rel_close(model.intercept, ref.BIN_LOGIT_COEF[0], 1e-6)
+        assert 0.5 <= model.accuracy <= 1.0
+
+    def test_non_logistic_accuracy_is_absent(self):
+        row = _expr_fit("y_pois", family="poisson")
+        assert math.isnan(row["accuracy"])
+        model = _model_fit(ref.Y_POIS, family="poisson")
+        assert model.accuracy is None
+
+    def test_family_binomial_offset(self):
+        row = _expr_fit("y_bin", family="binomial", offset="off")
+        assert rel_close(row["intercept"], ref.BIN_OFF_COEF[0], 1e-6)
+        for j, c in enumerate(row["coefficients"]):
+            assert rel_close(c, ref.BIN_OFF_COEF[j + 1], 1e-6)
+        assert rel_close(row["deviance"], ref.BIN_OFF_DEV[0], 1e-7)
+        assert rel_close(row["null_deviance"], ref.BIN_OFF_DEV[1], 1e-7)
+        assert rel_close(row["log_likelihood"], ref.BIN_OFF_LL_AIC[0], 1e-7)
+        assert rel_close(row["aic"], ref.BIN_OFF_LL_AIC[1], 1e-7)
+        assert rel_close(
+            row["pseudo_r_squared"], 1.0 - ref.BIN_OFF_DEV[0] / ref.BIN_OFF_DEV[1], 1e-9
+        )
+
+        model = _model_fit_offset(ref.Y_BIN, ref.OFFSET, family="binomial")
+        assert rel_close(model.intercept, ref.BIN_OFF_COEF[0], 1e-6)
+
+
+class TestPenalizedGlmFamilyGamma:
+    def test_family_gamma_matches_glm(self):
+        row = _expr_fit("y_gamma", family="gamma")
+        assert rel_close(row["intercept"], ref.GAMMA_COEF[0], 1e-6)
+        for j, c in enumerate(row["coefficients"]):
+            assert rel_close(c, ref.GAMMA_COEF[j + 1], 1e-6)
+        assert rel_close(row["deviance"], ref.GAMMA_DEV[0], 1e-7)
+        assert rel_close(row["null_deviance"], ref.GAMMA_DEV[1], 1e-7)
+
+        model = _model_fit(ref.Y_GAMMA, family="gamma")
+        assert rel_close(model.intercept, ref.GAMMA_COEF[0], 1e-6)
+
+    def test_gamma_log_likelihood_uses_deviance_over_n(self):
+        row = _expr_fit("y_gamma", family="gamma")
+        assert rel_close(row["log_likelihood"], ref.GAMMA_LL_AIC[0], 1e-9)
+        assert rel_close(row["aic"], ref.GAMMA_LL_AIC[1], 1e-9)
+        bic = ref.GAMMA_LL_AIC[1] - 8.0 + 4.0 * math.log(60)
+        assert rel_close(row["bic"], bic, 1e-9)
+
+        model = _model_fit(ref.Y_GAMMA, family="gamma")
+        assert rel_close(model.log_likelihood, ref.GAMMA_LL_AIC[0], 1e-9)
+        assert rel_close(model.aic, ref.GAMMA_LL_AIC[1], 1e-9)
+        assert rel_close(model.bic, bic, 1e-9)
+
+    def test_gamma_offset(self):
+        row = _expr_fit("y_gamma", family="gamma", offset="off")
+        assert rel_close(row["intercept"], ref.GAMMA_OFF_COEF[0], 1e-6)
+        for j, c in enumerate(row["coefficients"]):
+            assert rel_close(c, ref.GAMMA_OFF_COEF[j + 1], 1e-6)
+        assert rel_close(row["deviance"], ref.GAMMA_OFF_DEV[0], 1e-7)
+        assert rel_close(row["null_deviance"], ref.GAMMA_OFF_DEV[1], 1e-7)
+        assert rel_close(
+            row["pseudo_r_squared"], 1.0 - ref.GAMMA_OFF_DEV[0] / ref.GAMMA_OFF_DEV[1], 1e-9
+        )
+
+        model = _model_fit_offset(ref.Y_GAMMA, ref.OFFSET, family="gamma")
+        assert rel_close(model.intercept, ref.GAMMA_OFF_COEF[0], 1e-6)
+
+
+class TestPenalizedGlmTweedie:
+    def test_tweedie_power_two_equals_gamma(self):
+        g = _expr_fit("y_gamma", family="gamma")
+        t = _expr_fit("y_gamma", family="tweedie", power=2.0)
+        for j in range(2):
+            assert rel_close(t["coefficients"][j], g["coefficients"][j], 1e-10)
+
+    def test_tweedie_power_one_equals_poisson_slope(self):
+        t1 = _expr_fit("y_pois", family="tweedie", power=1.0)
+        assert rel_close(t1["coefficients"][0], ref.POIS_COEF[1], 1e-6)
+
+
+class TestPenalizedGlmNullDeviance:
+    """#56: null deviance as R's glm defines it (no-intercept + offset cases)."""
+
+    def test_poisson_no_intercept(self):
+        row = _expr_fit("y_pois", family="poisson", add_intercept=False)
+        for j, c in enumerate(row["coefficients"]):
+            assert rel_close(c, ref.POIS_NOINT_COEF[j], 1e-6)
+        assert rel_close(row["deviance"], ref.POIS_NOINT_DEV[0], 1e-7)
+        assert rel_close(row["null_deviance"], ref.POIS_NOINT_DEV[1], 1e-7)
+        assert rel_close(row["log_likelihood"], ref.POIS_NOINT_LL_AIC[0], 1e-7)
+        assert rel_close(row["aic"], ref.POIS_NOINT_LL_AIC[1], 1e-7)
+
+    def test_poisson_no_intercept_offset(self):
+        row = _expr_fit("y_pois", family="poisson", add_intercept=False, offset="off")
+        for j, c in enumerate(row["coefficients"]):
+            assert rel_close(c, ref.POIS_NOINT_OFF_COEF[j], 1e-6)
+        assert rel_close(row["deviance"], ref.POIS_NOINT_OFF_DEV[0], 1e-7)
+        assert rel_close(row["null_deviance"], ref.POIS_NOINT_OFF_DEV[1], 1e-7)
+        assert rel_close(row["log_likelihood"], ref.POIS_NOINT_OFF_LL_AIC[0], 1e-7)
+        assert rel_close(row["aic"], ref.POIS_NOINT_OFF_LL_AIC[1], 1e-7)
+
+    @pytest.mark.parametrize(
+        "family,y_col,coef,dev,ll_aic",
+        [
+            ("poisson", "y_pois", ref.POIS_OFF_COEF, ref.POIS_OFF_DEV, ref.POIS_OFF_LL_AIC),
+            ("binomial", "y_bin", ref.BIN_OFF_COEF, ref.BIN_OFF_DEV, ref.BIN_OFF_LL_AIC),
+            ("gamma", "y_gamma", ref.GAMMA_OFF_COEF, ref.GAMMA_OFF_DEV, ref.GAMMA_OFF_LL_AIC),
+        ],
+    )
+    def test_offset_with_intercept_pseudo_r2(self, family, y_col, coef, dev, ll_aic):
+        row = _expr_fit(y_col, family=family, offset="off")
+        assert rel_close(row["intercept"], coef[0], 1e-6)
+        assert rel_close(row["deviance"], dev[0], 1e-7)
+        assert rel_close(row["null_deviance"], dev[1], 1e-7)
+        assert rel_close(row["log_likelihood"], ll_aic[0], 1e-7)
+        assert rel_close(row["aic"], ll_aic[1], 1e-7)
+        assert rel_close(row["pseudo_r_squared"], 1.0 - dev[0] / dev[1], 1e-9)
+
+
+class TestPenalizedGlmOverdispersedQuasipoisson:
+    def test_overdispersed_poisson_dispersion_one(self):
+        row = _expr_fit("y_nb", family="poisson")
+        for j, c in enumerate(row["coefficients"]):
+            assert rel_close(c, ref.POIS_OVER_COEF[j + 1], 1e-6)
+        assert rel_close(row["deviance"], ref.POIS_OVER_DEV[0], 1e-7)
+        assert rel_close(row["null_deviance"], ref.POIS_OVER_DEV[1], 1e-7)
+        assert row["dispersion"] == 1.0
+
+    def test_estimate_dispersion_matches_quasipoisson(self):
+        row = _expr_fit("y_nb", family="poisson", estimate_dispersion=True)
+        assert rel_close(row["dispersion"], ref.QPOIS_OVER_DISP, 1e-7)
+        base = _expr_fit("y_nb", family="poisson")
+        assert row["coefficients"] == base["coefficients"]
+
+
+class TestPenalizedGlmNegativeBinomial:
+    def test_negative_binomial_estimated_theta(self):
+        row = _expr_fit("y_nb", family="negative_binomial")
+        assert rel_close(row["intercept"], ref.NB_COEF[0], 1e-6)
+        for j, c in enumerate(row["coefficients"]):
+            assert rel_close(c, ref.NB_COEF[j + 1], 1e-6)
+        assert rel_close(row["deviance"], ref.NB_DEV[0], 1e-7)
+        assert rel_close(row["null_deviance"], ref.NB_DEV[1], 1e-7)
+        assert rel_close(row["log_likelihood"], ref.NB_LL_AIC[0], 1e-7)
+        assert rel_close(row["aic"], ref.NB_LL_AIC[1], 1e-7)
+        assert rel_close(row["theta"], ref.NB_THETA, 1e-5)
+
+        model = _model_fit(ref.Y_NB, family="negative_binomial")
+        assert rel_close(model.theta, ref.NB_THETA, 1e-5)
+        assert rel_close(model.intercept, ref.NB_COEF[0], 1e-6)
+
+    def test_negative_binomial_fixed_theta(self):
+        row = _expr_fit("y_nb", family="negative_binomial", theta=2.5)
+        for j, c in enumerate(row["coefficients"]):
+            assert rel_close(c, ref.NB_FIXED_COEF[j + 1], 1e-6)
+
+        model = _model_fit(ref.Y_NB, family="negative_binomial", theta=2.5)
+        for j, s in enumerate(model.std_errors):
+            assert rel_close(s, ref.NB_FIXED_SE[j + 1], 1e-5)
+
+
+class TestPenalizedGlmPriors:
+    _PRIORS = [None, ("normal", 0.5, 0.5), ("normal", 0.0, 0.25)]
+
+    @pytest.mark.parametrize(
+        "vcov_type,se_ref",
+        [
+            ("laplace", ref.POIS_PRIOR_SE_LAPLACE),
+            ("sandwich", ref.POIS_PRIOR_SE_SANDWICH),
+            ("naive", ref.POIS_PRIOR_SE_NAIVE),
+        ],
+    )
+    def test_prior_coefficients_and_vcov_type_se(self, vcov_type, se_ref):
+        row = DF.select(
+            ps.penalized_glm(
+                "y_pois", "x1", "x2", priors=self._PRIORS, tol=1e-12
+            ).alias("r")
+        )["r"][0]
+        assert rel_close(row["intercept"], ref.POIS_PRIOR_COEF[0], 1e-7)
+        assert rel_close(row["coefficients"][0], ref.POIS_PRIOR_COEF[1], 1e-7)
+        assert rel_close(row["coefficients"][1], ref.POIS_PRIOR_COEF[2], 1e-7)
+
+        model = ps.PenalizedGLM(
+            priors=self._PRIORS, vcov_type=vcov_type, tol=1e-12
+        ).fit(X, np.array(ref.Y_POIS))
+        vcov = model.vcov
+        for j in range(3):
+            assert rel_close(math.sqrt(vcov[j, j]), se_ref[j], 1e-6)
+
+    def test_prior_forms_are_equivalent(self):
+        tuple_priors = [None, ("normal", 0.5, 0.5), ("normal", 0.0, 0.25)]
+        dict_priors = [
+            None,
+            {"kind": "normal", "loc": 0.5, "scale": 0.5},
+            {"kind": "normal", "loc": 0.0, "scale": 0.25},
+        ]
+        list_priors = [None, ["normal", 0.5, 0.5], ["normal", 0.0, 0.25]]
+
+        rows = [
+            DF.select(
+                ps.penalized_glm("y_pois", "x1", "x2", priors=p, tol=1e-12).alias("r")
+            )["r"][0]
+            for p in (tuple_priors, dict_priors, list_priors)
+        ]
+        for r in rows[1:]:
+            assert r["coefficients"] == rows[0]["coefficients"]
+            assert r["intercept"] == rows[0]["intercept"]
+
+    def test_two_entry_priors_no_intercept_entry_accepted(self):
+        # Two entries (no leading intercept prior) for two features.
+        row = DF.select(
+            ps.penalized_glm(
+                "y_pois", "x1", "x2", priors=[("normal", 0.5, 0.5), ("normal", 0.0, 0.25)],
+                tol=1e-12,
+            ).alias("r")
+        )["r"][0]
+        assert math.isfinite(row["intercept"])
+
+    def test_vcov_types_match_without_priors_differ_with_priors(self):
+        models_no_prior = {
+            vt: ps.PenalizedGLM(vcov_type=vt, tol=1e-10).fit(X, np.array(ref.Y_POIS))
+            for vt in ("laplace", "sandwich", "naive")
+        }
+        se_laplace = models_no_prior["laplace"].std_errors
+        se_sandwich = models_no_prior["sandwich"].std_errors
+        se_naive = models_no_prior["naive"].std_errors
+        for a, b in zip(se_laplace, se_sandwich):
+            assert rel_close(a, b, 1e-10)
+        for a, b in zip(se_laplace, se_naive):
+            assert rel_close(a, b, 1e-10)
+
+        models_prior = {
+            vt: ps.PenalizedGLM(priors=self._PRIORS, vcov_type=vt, tol=1e-12).fit(
+                X, np.array(ref.Y_POIS)
+            )
+            for vt in ("laplace", "sandwich")
+        }
+        se_l = models_prior["laplace"].std_errors
+        se_s = models_prior["sandwich"].std_errors
+        assert max(abs(a - b) for a, b in zip(se_l, se_s)) > 1e-6
+
+
+class TestPenalizedGlmLambda:
+    def test_lambda_shrinks_coefficients(self):
+        unpenalized = _expr_fit("y_pois", family="poisson")
+        shrunk = _expr_fit("y_pois", family="poisson", lambda_=4.0)
+        unpen_norm = math.sqrt(sum(c**2 for c in unpenalized["coefficients"]))
+        shrunk_norm = math.sqrt(sum(c**2 for c in shrunk["coefficients"]))
+        assert shrunk_norm < unpen_norm
+
+    def test_lambda_equals_ridge_prior(self):
+        lambda_row = DF.select(
+            ps.penalized_glm(
+                "y_pois", "x1", "x2", family="poisson", lambda_=4.0, tol=1e-12
+            ).alias("r")
+        )["r"][0]
+        prior_row = DF.select(
+            ps.penalized_glm(
+                "y_pois",
+                "x1",
+                "x2",
+                family="poisson",
+                priors=[None, ("normal", 0.0, 0.5), ("normal", 0.0, 0.5)],
+                tol=1e-12,
+            ).alias("r")
+        )["r"][0]
+        # Observed (and confirmed) relation: ridge lambda=4.0 is numerically
+        # identical to a N(0, 1/sqrt(4))=N(0, 0.5) prior on every non-intercept
+        # coefficient, matching the upstream docstring's documented relation
+        # ("ridge lambda == N(0, 1/sqrt(lambda)) prior"). Neither value is in
+        # the upstream R fixture; this is a direct self-consistency check.
+        assert rel_close(lambda_row["intercept"], prior_row["intercept"], 1e-8)
+        for a, b in zip(lambda_row["coefficients"], prior_row["coefficients"]):
+            assert rel_close(a, b, 1e-8)
+
+
+class TestPenalizedGlmLaplacePrior:
+    def test_laplace_prior_soft_thresholds_x1(self):
+        model = ps.PenalizedGLM(
+            priors=[None, ("laplace", 0.0, 1e-3), None], tol=1e-10
+        ).fit(X, np.array(ref.Y_POIS))
+        assert model.coefficients[0] == 0.0
+        assert math.isnan(model.std_errors[0])
+        assert math.isfinite(model.coefficients[1])
+
+
+class TestPenalizedGlmExprModelParity:
+    @pytest.mark.parametrize(
+        "family,y_col,y",
+        [
+            ("poisson", "y_pois", ref.Y_POIS),
+            ("binomial", "y_bin", ref.Y_BIN),
+            ("gamma", "y_gamma", ref.Y_GAMMA),
+            ("negative_binomial", "y_nb", ref.Y_NB),
+        ],
+    )
+    def test_expr_and_model_parity(self, family, y_col, y):
+        row = _expr_fit(y_col, family=family)
+        model = _model_fit(y, family=family)
+        assert rel_close(row["intercept"], model.intercept, 1e-12)
+        for a, b in zip(row["coefficients"], model.coefficients):
+            assert rel_close(a, b, 1e-12)
+        assert rel_close(row["deviance"], model.deviance, 1e-12)
+        assert rel_close(row["null_deviance"], model.null_deviance, 1e-12)
+        assert rel_close(row["log_likelihood"], model.log_likelihood, 1e-12)
+        assert rel_close(row["aic"], model.aic, 1e-12)
+        assert rel_close(row["dispersion"], model.dispersion, 1e-12)
+
+
+class TestPenalizedGlmGroupByOver:
+    @staticmethod
+    def _stacked_df() -> pl.DataFrame:
+        a = DF.with_columns(g=pl.lit("a"))
+        b = DF.with_columns(g=pl.lit("b"))
+        return pl.concat([a, b])
+
+    def test_group_by_matches_whole_frame_fit(self):
+        stacked = self._stacked_df()
+        whole = _expr_fit("y_pois", family="poisson")
+        grouped = stacked.group_by("g").agg(
+            ps.penalized_glm("y_pois", "x1", "x2", family="poisson", tol=1e-10).alias("r")
+        )
+        assert has_valid_numbers(grouped, "r", nan_ok=("theta", "accuracy"))
+        for row in grouped["r"]:
+            assert rel_close(row["intercept"], whole["intercept"], 1e-12)
+            for a, b in zip(row["coefficients"], whole["coefficients"]):
+                assert rel_close(a, b, 1e-12)
+
+    def test_group_by_with_offset(self):
+        stacked = self._stacked_df()
+        whole = _expr_fit("y_pois", family="poisson", offset="off")
+        grouped = stacked.group_by("g").agg(
+            ps.penalized_glm(
+                "y_pois", "x1", "x2", family="poisson", offset="off", tol=1e-10
+            ).alias("r")
+        )
+        for row in grouped["r"]:
+            assert rel_close(row["intercept"], whole["intercept"], 1e-12)
+
+    def test_over_returns_same_struct_every_row(self):
+        result = DF.select(
+            ps.penalized_glm("y_pois", "x1", "x2", family="poisson", tol=1e-10)
+            .over(pl.lit(1))
+            .alias("r")
+        )
+        first = result["r"][0]
+        for row in result["r"]:
+            assert row["intercept"] == first["intercept"]
+            assert row["coefficients"] == first["coefficients"]
+
+
+class TestPenalizedGlmFormula:
+    def test_formula_equals_column_form(self):
+        column_row = _expr_fit("y_nb", family="negative_binomial")
+        formula_row = DF.select(
+            ps.penalized_glm_formula(
+                "y_nb ~ x1 + x2", family="negative_binomial", tol=1e-10
+            ).alias("r")
+        )["r"][0]
+        assert rel_close(column_row["intercept"], formula_row["intercept"], 1e-12)
+        for a, b in zip(column_row["coefficients"], formula_row["coefficients"]):
+            assert rel_close(a, b, 1e-12)
+
+    def test_formula_forwards_offset(self):
+        column_row = _expr_fit("y_pois", family="poisson", offset="off")
+        formula_row = DF.select(
+            ps.penalized_glm_formula(
+                "y_pois ~ x1 + x2", family="poisson", offset="off", tol=1e-10
+            ).alias("r")
+        )["r"][0]
+        assert rel_close(column_row["intercept"], formula_row["intercept"], 1e-12)
+
+
+class TestPenalizedGlmBuildTimeErrors:
+    @pytest.mark.parametrize(
+        "kwargs",
+        [
+            {"family": "poisson", "link": "probit"},
+            {"family": "tweedie", "power": 0.5},
+            {"family": "gamma", "theta": 2.0},
+            {"family": "binomial", "estimate_dispersion": True},
+            {"priors": [("cauchy", 0.0, 1.0)]},
+            {"lambda_": -1.0},
+            {"max_iter": 0},
+        ],
+    )
+    def test_build_time_value_errors(self, kwargs):
+        with pytest.raises(ValueError):
+            ps.penalized_glm("y_pois", "x1", "x2", **kwargs)
+
+    def test_engine_data_errors_give_nan_struct(self):
+        row = DF.select(
+            ps.penalized_glm(
+                (-pl.col("y_pois")).alias("neg_y"), "x1", "x2", family="poisson", tol=1e-10
+            ).alias("r")
+        )["r"][0]
+        assert math.isnan(row["intercept"])
+        assert row["coefficients"] == []
+        assert row["n_observations"] == 0

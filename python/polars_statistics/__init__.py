@@ -176,6 +176,7 @@ from polars_statistics.exprs import (
     nnls_predict,
     # Penalized GLM expressions
     penalized_glm,
+    penalized_glm_formula,
     # Regression expressions
     ols,
     # Formula-based regression expressions
@@ -504,6 +505,7 @@ __all__ = [
     "tweedie_formula",
     "probit_formula",
     "cloglog_formula",
+    "penalized_glm_formula",
     "alm_formula",
     # Formula-based summary expressions
     "ols_formula_summary",

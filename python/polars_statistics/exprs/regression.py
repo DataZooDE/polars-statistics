@@ -4487,6 +4487,61 @@ def cloglog_formula(
     return cloglog(response, *x_exprs, add_intercept=add_intercept)
 
 
+def penalized_glm_formula(
+    formula: str,
+    family: Literal["poisson", "binomial", "logistic", "negative_binomial", "gamma", "tweedie"] = (
+        "poisson"
+    ),
+    link: str | None = None,
+    theta: float | None = None,
+    power: float | None = None,
+    threshold: float = 0.5,
+    lambda_: float = 0.0,
+    estimate_dispersion: bool = False,
+    priors: Sequence[Union[None, str, tuple, dict]] | None = None,
+    offset: Union[pl.Expr, str, None] = None,
+    add_intercept: bool = True,
+    max_iter: int = 100,
+    tol: float = 1e-8,
+) -> pl.Expr:
+    """Family-generic penalized GLM using R-style formula syntax.
+
+    Parameters
+    ----------
+    formula : str
+        R-style formula (see :func:`ols_formula` for syntax).
+    family, link, theta, power, threshold, lambda_, estimate_dispersion, priors,
+    add_intercept, max_iter, tol
+        See :func:`penalized_glm`.
+    offset : pl.Expr, str, or None
+        Offset column or expression, added to the linear predictor on the
+        link scale. R's formula ``offset()`` term is not parsed here — pass
+        the offset as a column/expression directly.
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing penalized GLM results (see :func:`penalized_glm`).
+    """
+    response, x_exprs, _ = _parse_formula(formula)
+    return penalized_glm(
+        response,
+        *x_exprs,
+        family=family,
+        link=link,
+        theta=theta,
+        power=power,
+        threshold=threshold,
+        lambda_=lambda_,
+        estimate_dispersion=estimate_dispersion,
+        priors=priors,
+        offset=offset,
+        add_intercept=add_intercept,
+        max_iter=max_iter,
+        tol=tol,
+    )
+
+
 def alm_formula(
     formula: str,
     distribution: str = "normal",
