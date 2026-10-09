@@ -52,8 +52,8 @@ Requirements for this milestone. Each maps to exactly one roadmap phase.
 - [x] **UPST-03**: New upstream capabilities are exposed via expressions/PyModels: effect sizes (Cohen's d, rank-biserial), Jarque-Bera, bootstrap CIs, conditional Fisher, conf_level for binomial/proportion/Fisher tests, GLMM Wald inference, Huber/RANSAC inference, NegBin estimate_dispersion, RLS initial_p_diagonal
 - [x] **UPST-04**: Stubs, docstrings, mkdocs, CHANGELOG and skill cheat-sheets document the new surface, and the skill-example harness passes
 
-- [ ] **UPST-05**: Crates bumped to anofox-statistics 0.4.7 / anofox-regression 0.5.22 with behaviour changes locked; penalized GLM (`solvers::penalized_glm`, incl. estimate_dispersion) is exposed as a PyModel and Polars expressions, validated against R glm / MASS::glm.nb
-- [ ] **UPST-06**: AFT survival regression (`solvers::aft`) is exposed as a PyModel and Polars expressions, validated against R survival::survreg
+- [x] **UPST-05**: Crates bumped to anofox-statistics 0.4.7 / anofox-regression 0.5.22 with behaviour changes locked; penalized GLM (`solvers::penalized_glm`, incl. estimate_dispersion) is exposed as a PyModel and Polars expressions, validated against R glm / MASS::glm.nb
+- [x] **UPST-06**: AFT survival regression (`solvers::aft`) is exposed as a PyModel and Polars expressions, validated against R survival::survreg
 - [x] **UPST-07**: Mann-Whitney / Wilcoxon expressions return the Hodges-Lehmann estimate and confidence interval (additive fields), and the new 16.2 surface is documented in stubs, mkdocs, CHANGELOG and skills
 
 - [ ] **UPST-08**: Post-hoc tests (Tukey HSD, pairwise t, Dunn), p_adjust and ptukey/qtukey from anofox-statistics 0.4.7 are exposed and match R
@@ -103,8 +103,8 @@ Deferred to future releases.
 | UPST-02 | Phase 16.1 | Complete |
 | UPST-03 | Phase 16.1 | Complete |
 | UPST-04 | Phase 16.1 | Complete |
-| UPST-05 | Phase 16.2 | Pending |
-| UPST-06 | Phase 16.2 | Pending |
+| UPST-05 | Phase 16.2 | Complete |
+| UPST-06 | Phase 16.2 | Complete |
 | UPST-07 | Phase 16.2 | Complete |
 | UPST-08 | Phase 16.3 | Pending |
 | UPST-09 | Phase 16.3 | Pending |

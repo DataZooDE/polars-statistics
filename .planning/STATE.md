@@ -5,17 +5,17 @@ milestone_name: Claude Code Skills Plugin
 current_phase: "16.2"
 current_phase_name: Penalized GLM and AFT Survival Regression
 current_plan: 8
-status: executing
-stopped_at: Completed 16.2-07-PLAN.md
-last_updated: "2026-10-09T16:53:36.554Z"
+status: verifying
+stopped_at: Completed 16.2-08-PLAN.md (phase 16.2 complete)
+last_updated: "2026-10-09T17:04:43.385Z"
 last_activity: 2026-10-09
 last_activity_desc: Phase 16.2 execution started
-state_head: 76340ef74ef8de85b426159a7a3611d1d9b3a14c
+state_head: 99a84a1204789091047172d733eb48669a1ebf0c
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 36
-  completed_plans: 23
+  completed_plans: 24
   percent: 0
 ---
 
@@ -33,7 +33,7 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 Phase: 16.2 (Penalized GLM and AFT Survival Regression) — EXECUTING
 Current Plan: 8
 Total Plans in Phase: 8
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-10-09 — Phase 16.2 execution started
 
 ## Milestone Roadmap (v0.8.0)
@@ -117,6 +117,7 @@ Execution order: 13 → 14 → 15 → 16 → 17
 | Phase 16.2 P05 | 2h 10min | 3 tasks | 12 files |
 | Phase 16.2 P06 | 20min | 3 tasks | 11 files |
 | Phase 16.2 P07 | 16min | 2 tasks | 4 files |
+| Phase 16.2 P08 | 25min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -182,6 +183,7 @@ Recent decisions affecting current work:
 - [Phase 16.2]: 16.2-06: Fixed a wrong double-hyphen anchor guess for the new 'Mann-Whitney / Wilcoxon Output' heading by inspecting the built HTML's id= attribute — mkdocs/pymdownx's slugifier collapses '/' without a double hyphen; guessing would have shipped broken internal links
 - [Phase 16.2]: 16.2-07: README fit-function list split one-name-per-line (not comma-joined) so the literal line-counting acceptance grep for the 9 new Rust *_fit names reaches its threshold
 - [Phase 16.2]: 16.2-07: Added dedicated validation-page subsections (Rank-Deficient Designs lm-aliasing; Intercept Inference and Probit Precision) for the 0.5.19-0.5.21 behaviour changes rather than editing existing rows, sourced directly from tests/test_upstream_regression_parity_v0521.py
+- [Phase 16.2]: 16.2-08: Corrected a pre-existing stale '43 PyModel classes' count in the results skill to 44/45, confirmed via gen_stubs.py's own class count. — Pre-existing documentation bug adjacent to this plan's struct-table edits; the live .pyi already had 45 classes before this plan.
 
 ### Pending Todos
 
@@ -217,7 +219,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-10-09T16:53:31.590Z
-Stopped at: Completed 16.2-07-PLAN.md
+Last session: 2026-10-09T17:04:43.339Z
+Stopped at: Completed 16.2-08-PLAN.md (phase 16.2 complete)
 Resume file: None
 </content>
