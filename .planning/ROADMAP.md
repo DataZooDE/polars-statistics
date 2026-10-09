@@ -192,7 +192,7 @@ real API, bundled into the wheel, and shipped as 0.8.0 on PyPI.
   3. `ps.mann_whitney_u` / `ps.wilcoxon_signed_rank` expression outputs gain trailing `estimate`, `ci_lower` and `ci_upper` fields (additive), so `conf_level` takes effect.
   4. `.pyi` stubs (drift guard green), docstrings, mkdocs, CHANGELOG and the regression/hypothesis skill cheat-sheets cover the new surface. The skill-example harness and all CI gates (clippy, fmt, ruff on new files, pytest) are green.
 
-**Plans**: 4/8 plans executed
+**Plans**: 5/8 plans executed
 
 **Wave 1**
 
@@ -209,7 +209,7 @@ real API, bundled into the wheel, and shipped as 0.8.0 on PyPI.
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 16.2-05-PLAN.md — AFT survival regression: PyModel + expressions vs survreg (Wave 4)
+- [x] 16.2-05-PLAN.md — AFT survival regression: PyModel + expressions vs survreg (Wave 4)
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
