@@ -192,7 +192,7 @@ real API, bundled into the wheel, and shipped as 0.8.0 on PyPI.
   3. `ps.mann_whitney_u` / `ps.wilcoxon_signed_rank` expression outputs gain trailing `estimate`, `ci_lower` and `ci_upper` fields (additive), so `conf_level` takes effect.
   4. `.pyi` stubs (drift guard green), docstrings, mkdocs, CHANGELOG and the regression/hypothesis skill cheat-sheets cover the new surface. The skill-example harness and all CI gates (clippy, fmt, ruff on new files, pytest) are green.
 
-**Plans**: 6/8 plans executed
+**Plans**: 7/8 plans executed
 
 **Wave 1**
 
@@ -214,7 +214,7 @@ real API, bundled into the wheel, and shipped as 0.8.0 on PyPI.
 **Wave 5** *(blocked on Wave 4 completion)*
 
 - [x] 16.2-06-PLAN.md — mkdocs API pages (Wave 5)
-- [ ] 16.2-07-PLAN.md — CHANGELOG (incl. 0.5.19–0.5.21 behaviour changes) / README / API_REFERENCE / validation page (Wave 5)
+- [x] 16.2-07-PLAN.md — CHANGELOG (incl. 0.5.19–0.5.21 behaviour changes) / README / API_REFERENCE / validation page (Wave 5)
 - [ ] 16.2-08-PLAN.md — Skills + ROUTING + full phase gate (Wave 5)
 
 ### Phase 16.3: Upstream API Wave 2 (INSERTED)
