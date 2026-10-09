@@ -228,7 +228,32 @@ real API, bundled into the wheel, and shipped as 0.8.0 on PyPI.
   3. Any newly exposed or explicitly opted-out item is recorded in COVERAGE.md with a reason. This includes `TestResult`, which is a Rust-side unification and may have no Python counterpart, and the AID heuristic.
   4. Stubs (drift guard green), docstrings, mkdocs, CHANGELOG and skills cover the new surface; skill harness and CI gates green.
 
-**Plans**: TBD
+**Plans**: 11 plans
+
+**Wave 1**
+- [ ] 16.3-01-PLAN.md — Post-hoc tests (tukey_hsd / pairwise_t_test / dunn_test), p_adjust, ptukey / qtukey expressions vs R (Wave 1)
+- [ ] 16.3-02-PLAN.md — GLM / OLS / WLS intercept-inference and CI getters + inference kwargs vs R summary.glm / lm (Wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 16.3-03-PLAN.md — GLMM NegBin / Gamma / Tweedie families, offset, per-factor random slopes + accessors vs lme4 (Wave 2)
+- [ ] 16.3-04-PLAN.md — eb_shrink expression vs metafor (Wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 16.3-05-PLAN.md — augment: combined expression for all models + OLS / WLS .augment(), vs R / broom, cross-checked (Wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 16.3-06-PLAN.md — .augment() on the eight GLM model classes (Wave 4)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+- [ ] 16.3-07-PLAN.md — OLS / WLS alias_tolerance (classes + expressions + Rust *_fit_with) and LARS fit-statistic getters (Wave 5)
+
+**Wave 6** *(blocked on Wave 5 completion)*
+- [ ] 16.3-08-PLAN.md — ModelInfo: model_info getter on all 30 model classes (Wave 6)
+
+**Wave 7** *(blocked on Wave 6 completion)*
+- [ ] 16.3-09-PLAN.md — mkdocs pages (post-hoc, shrinkage, augment, class pages, outputs) (Wave 7)
+- [ ] 16.3-10-PLAN.md — CHANGELOG / README / API_REFERENCE / validation page (Wave 7)
+- [ ] 16.3-11-PLAN.md — Skills + ROUTING + COVERAGE check + full phase gate (Wave 7)
 
 ### Phase 17: Release 0.8.0
 
