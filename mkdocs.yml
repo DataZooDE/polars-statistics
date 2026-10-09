@@ -78,6 +78,8 @@ nav:
   - Regression:
       - Linear Models: api/regression/linear.md
       - GLM: api/regression/glm.md
+      - Penalized GLM: api/regression/penalized-glm.md
+      - Survival (AFT): api/regression/survival.md
       - ALM: api/regression/alm.md
       - Formula Syntax: api/regression/formula.md
       - Summary & Prediction: api/regression/summary-predict.md
@@ -87,6 +89,7 @@ nav:
   - Model Classes:
       - Linear: api/classes/linear.md
       - GLM: api/classes/glm.md
+      - Survival (AFT): api/classes/survival.md
       - ALM: api/classes/alm.md
       - AID: api/classes/aid.md
       - Test Classes: api/classes/tests.md
