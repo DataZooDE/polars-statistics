@@ -174,7 +174,7 @@ Every PyModel class (fitted or unfitted) exposes three universal introspection m
 | `.to_dict()` | `dict` | Machine-readable mapping of all result fields |
 | `.is_fitted()` | `bool` | Returns `True` if `.fit()` has been called; `False` otherwise |
 
-These are available on all 43 PyModel classes including `OLS`, `Ridge`, `ElasticNet`,
+These are available on all 44 PyModel classes including `OLS`, `Ridge`, `ElasticNet`,
 `TTestInd`, `MannWhitneyU`, `Logistic`, `ALM`, `Aid`, and every other class in the library.
 
 **Guarding fitted-property access:**
@@ -210,7 +210,7 @@ if m.is_fitted():                 # safe guard
 |------------|-------------------|
 | `ttest_ind`, `ttest_paired` | `statistic`, `p_value` |
 | `brown_forsythe`, `yuen_test` | `statistic`, `p_value` |
-| `mann_whitney_u`, `wilcoxon_signed_rank` | `statistic`, `p_value` |
+| `mann_whitney_u`, `wilcoxon_signed_rank` | `statistic`, `p_value`, `estimate`, `ci_lower`, `ci_upper` (`estimate`/`ci_lower`/`ci_upper` are `NaN` unless `conf_level` is given) |
 | `kruskal_wallis`, `brunner_munzel` | `statistic`, `p_value` |
 | `shapiro_wilk`, `dagostino` | `statistic`, `p_value` |
 | `pearson`, `spearman`, `kendall` | `estimate`, `statistic`, `p_value`, `ci_lower`, `ci_upper`, `n` |
@@ -231,6 +231,11 @@ if m.is_fitted():                 # safe guard
 | `ols` | `intercept`, `coefficients`, `r_squared`, `adj_r_squared`, `mse`, `rmse`, `f_statistic`, `f_pvalue`, `aic`, `bic`, `n_observations` |
 | `ols_predict` | `ols_prediction`, `ols_lower`, `ols_upper` (prefix customizable with `name=`) |
 | `ols_summary` | `List[Struct{term, estimate, std_error, statistic, p_value}]` — use `.explode().unnest()` |
+| `penalized_glm` | `intercept`, `coefficients`, `deviance`, `null_deviance`, `pseudo_r_squared`, `log_likelihood`, `aic`, `bic`, `dispersion`, `theta`, `accuracy`, `has_separation`, `iterations`, `converged`, `n_observations` (15 fields) |
+| `penalized_glm_summary`, `aft_summary` | `List[Struct{term, estimate, std_error, statistic, p_value, ci_lower, ci_upper}]` (widened 7-field tidy summary; `aft_summary` rows are `intercept`/`x1..xp`/`log_scale`, the last omitted for `distribution="exponential"`) — use `.explode().unnest()` |
+| `aft` | `intercept`, `coefficients`, `scale`, `log_likelihood`, `null_log_likelihood`, `aic`, `bic`, `iterations`, `converged`, `n_observations`, `n_events`, `n_censored` (12 fields) |
+| `penalized_glm_predict` | `penalized_glm_prediction`, `penalized_glm_lower`, `penalized_glm_upper` (prefix customizable with `name=`; `lower`/`upper` always `NaN` — no interval-prediction method upstream) |
+| `aft_predict_quantile`, `aft_predict_median`, `aft_predict_survival`, `aft_predict_cdf` | `{name}_prediction`, `{name}_lower`, `{name}_upper` (default `name` is the function name, e.g. `aft_predict_survival_prediction`; `lower`/`upper` always `NaN`) |
 
 **Note on `ols_predict` naming:** the prefix of the three prediction fields matches the
 `name=` kwarg you pass: `ps.ols_predict("y", "x", name="fitted")` produces
@@ -241,7 +246,7 @@ if m.is_fitted():                 # safe guard
 ### Typed `.pyi` API
 
 The file `python/polars_statistics/_polars_statistics.pyi` contains complete type stubs
-for all 43 PyModel classes. It is the authoritative source for:
+for all 45 PyModel classes. It is the authoritative source for:
 
 - Property return types (e.g. `.coefficients -> numpy.ndarray`, `.r_squared -> float`)
 - Method signatures including optional vs. required parameters

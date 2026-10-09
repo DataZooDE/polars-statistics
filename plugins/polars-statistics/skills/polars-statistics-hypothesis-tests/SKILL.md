@@ -114,7 +114,18 @@ ps.brunner_munzel(x, y, alternative="two-sided", alpha=None)
 - `kruskal_wallis` accepts two or more group columns as positional arguments (wide format — one
   column per group). See the gotchas section about stacked / long data.
 
-**Output struct fields:** `statistic`, `p_value` for all Group B functions.
+**Output struct fields:**
+
+| Function | Fields |
+|----------|--------|
+| `mann_whitney_u`, `wilcoxon_signed_rank` | `statistic`, `p_value`, `estimate`, `ci_lower`, `ci_upper` |
+| `kruskal_wallis`, `brunner_munzel` | `statistic`, `p_value` |
+
+`estimate` is the Hodges-Lehmann location-shift estimate; `estimate`/`ci_lower`/`ci_upper` are
+`NaN` unless `conf_level` is given, matching R's `wilcox.test`, which only reports
+`estimate`/`conf.int` when `conf.int = TRUE`. A one-sided `alternative` ("less"/"greater") may
+give an infinite bound. Values match R `wilcox.test(..., conf.int = TRUE)` exactly (confirmed
+against the live `df.select(...).schema`: both expressions return a 5-field struct).
 
 ---
 
@@ -597,8 +608,11 @@ df = pl.DataFrame({
 # With Hodges-Lehmann confidence interval
 result = df.select(
     ps.mann_whitney_u("before", "after", alternative="less", conf_level=0.95).alias("mwu")
-)
-print(result.unnest("mwu"))  # statistic, p_value
+).unnest("mwu")
+print(result)  # statistic, p_value, estimate, ci_lower, ci_upper
+
+row = result.row(0, named=True)
+assert row["ci_lower"] <= row["estimate"] <= row["ci_upper"]
 ```
 
 ### Example 3: Normality test (Shapiro-Wilk)
@@ -865,12 +879,20 @@ Since anofox-statistics 0.4.5/0.4.6:
   differences (signed-rank) — larger samples silently fall back to the normal
   approximation (the exact null distribution no longer overflows below these thresholds,
   but is not computed above them).
-- The `ps.mann_whitney_u` / `ps.wilcoxon_signed_rank` **expressions** return only
-  `struct{statistic, p_value}` — use the PyModel classes for the Hodges-Lehmann
-  `estimate`/`conf_int` (the expression layer does not expose them).
 - `ps.mcnemar_exact` is exact and finite for any `b + c` (previously NaN for large
   discordant-pair counts) — it computes the R `binom.test(b, b+c, 0.5)` p-value via the
   binomial CDF rather than enumerating the binomial PMF.
+
+### Mann-Whitney / Wilcoxon expressions now return the Hodges-Lehmann estimate + CI (0.8.0, UPST-07)
+
+Since this release, `ps.mann_whitney_u` / `ps.wilcoxon_signed_rank` return a 5-field struct —
+`{statistic, p_value, estimate, ci_lower, ci_upper}` — on **both** the expression layer and the
+`MannWhitneyU` / `WilcoxonSignedRank` PyModel classes. `estimate`/`ci_lower`/`ci_upper` are `NaN`
+unless `conf_level` is passed (matching R's `wilcox.test`, which only reports
+`estimate`/`conf.int` when `conf.int = TRUE`); both layers are validated against R
+`wilcox.test(conf.int = TRUE)` on the same 126-case reference fixture, including infinite
+one-sided bounds. The PyModel classes additionally expose `null_value` (the hypothesized
+location shift under H0, i.e. `mu`). No layer is limited to `{statistic, p_value}` anymore.
 
 ### Scalar-argument categorical functions (`binom_test`, `fisher_exact`, etc.)
 

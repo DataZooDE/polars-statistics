@@ -28,6 +28,7 @@ description edits.
 | "What's the difference between the expression API and PyModel classes?" | `polars-statistics-getting-started` | CORRECT — "understand the two API styles" matches exactly |
 | "Which model should I use for my problem?" | `polars-statistics-getting-started` | CORRECT — "choose the right model with the decision matrix" |
 | "How do I migrate from sklearn Ridge to polars-statistics?" | `polars-statistics-getting-started` | CORRECT — "migrate from sklearn" explicit in description |
+| "Which model for time-to-event data with censoring?" | `polars-statistics-getting-started` | CORRECT — "choose the right model with the decision matrix" explicit; the Model Selection Matrix routes survival/censoring rows to `AFT`/`ps.aft` |
 
 ### Family: Hypothesis Tests
 
@@ -45,6 +46,7 @@ description edits.
 | "Jarque-Bera normality test" | `polars-statistics-hypothesis-tests` | CORRECT — "Jarque-Bera normality" explicit |
 | "Bootstrap confidence interval for the mean of a time series" | `polars-statistics-hypothesis-tests` | CORRECT — "bootstrap confidence intervals" explicit; `block_length` handles the time-series/dependent-data case |
 | "Conditional (R fisher.test) odds ratio" | `polars-statistics-hypothesis-tests` | CORRECT — "Fisher's exact" family; `fisher_exact_conditional` documented in the API reference |
+| "Hodges-Lehmann confidence interval for a Mann-Whitney test in group_by" | `polars-statistics-hypothesis-tests` | CORRECT — "Mann-Whitney" explicit; `conf_level` / Hodges-Lehmann `estimate`/`ci_lower`/`ci_upper` documented in the API reference |
 
 ### Family: ANOVA
 

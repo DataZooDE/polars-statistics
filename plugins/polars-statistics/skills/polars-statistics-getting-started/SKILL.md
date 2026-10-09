@@ -186,6 +186,8 @@ Every PyModel class shares this interface:
 | Effect size for a group comparison | `ps.cohens_d("a","b")` / `ps.rank_biserial("a","b")` | — | see polars-statistics-hypothesis-tests |
 | Bootstrap CI for a mean (incl. dependent data) | `ps.bootstrap_mean_ci("x", block_length=...)` | — | `block_length=0` IID, `>0` time-series; see polars-statistics-hypothesis-tests |
 | Count data | `ps.poisson("y","x")` / `ps.negative_binomial("y","x")` | `Poisson`, `NegativeBinomial` | NB for overdispersion |
+| Count data with exposure / prior-regularised GLM | `ps.penalized_glm("y","x", family="poisson", offset="log_exposure")` | `PenalizedGLM` | priors as tuples, e.g. `priors=[None, ("normal", 0.0, 1.0)]`; see polars-statistics-regression |
+| Survival / time-to-event with censoring | `ps.aft("time","event","x")` | `AFT` | `distribution=` weibull / lognormal / loglogistic / exponential; see polars-statistics-regression |
 | Binary outcome | `ps.logistic("y","x")` | `Logistic`, `LogisticRegression` | `Logistic`=lower-level; `LogisticRegression`=sklearn-style |
 | Flexible GLM (25 families) | `ps.alm("y","x", distribution="normal")` | `ALM` | Augmented Linear Model |
 | Mixed effects | — | `GLMM()` | not available as expression |
