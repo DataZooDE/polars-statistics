@@ -66,6 +66,7 @@ fn _polars_statistics(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<pymodels::PyTweedie>()?;
     m.add_class::<pymodels::PyProbit>()?;
     m.add_class::<pymodels::PyCloglog>()?;
+    m.add_class::<pymodels::PyPenalizedGLM>()?;
 
     // Augmented Linear Model
     m.add_class::<pymodels::PyALM>()?;

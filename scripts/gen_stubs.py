@@ -33,6 +33,9 @@ RUST_TO_PY = {
     "Option<(f64, f64)>": "tuple[float, float] | None",
     "Py<PyOLS>": '"OLS"',
     "Option<Bound<'py, PyArray2<f64>>>": "numpy.ndarray | None",
+    "Vec<usize>": "list[int]",
+    "Option<String>": "str | None",
+    "Option<Vec<Option<usize>>>": "list[int | None] | None",
 }
 
 name_re = re.compile(r'#\[pyclass\s*\(\s*name\s*=\s*"([^"]+)"', re.S)

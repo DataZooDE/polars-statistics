@@ -19,6 +19,7 @@ from polars_statistics._polars_statistics import (
     Tweedie,
     Probit,
     Cloglog,
+    PenalizedGLM,
     # Bootstrap
     StationaryBootstrap,
     CircularBlockBootstrap,
@@ -43,6 +44,7 @@ __all__ = [
     "Tweedie",
     "Probit",
     "Cloglog",
+    "PenalizedGLM",
     # Bootstrap
     "StationaryBootstrap",
     "CircularBlockBootstrap",

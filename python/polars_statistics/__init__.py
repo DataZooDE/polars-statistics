@@ -44,6 +44,8 @@ from polars_statistics._polars_statistics import (
     MomentAccumulator,
     NegativeBinomial,
     PassiveAggressive,
+    # Penalized GLM
+    PenalizedGLM,
     Poisson,
     Probit,
     # Smoothers
@@ -305,6 +307,7 @@ __all__ = [
     "Tweedie",
     "Probit",
     "Cloglog",
+    "PenalizedGLM",
     # Augmented Linear Model
     "ALM",
     # Dynamic Linear Model
