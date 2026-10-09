@@ -83,6 +83,49 @@ pub fn fisher_output(
     .map(|ca| ca.into_series())
 }
 
+/// Output dtype for the Jarque-Bera normality test:
+/// struct{statistic: f64, p_value: f64, skewness: f64, kurtosis: f64, n: u32}
+pub fn jarque_bera_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
+    let fields = vec![
+        Field::new("statistic".into(), DataType::Float64),
+        Field::new("p_value".into(), DataType::Float64),
+        Field::new("skewness".into(), DataType::Float64),
+        Field::new("kurtosis".into(), DataType::Float64),
+        Field::new("n".into(), DataType::UInt32),
+    ];
+    Ok(Field::new("jarque_bera".into(), DataType::Struct(fields)))
+}
+
+/// Create output Series for the Jarque-Bera normality test.
+pub fn jarque_bera_output(
+    statistic: f64,
+    p_value: f64,
+    skewness: f64,
+    kurtosis: f64,
+    n: u32,
+    name: &str,
+) -> PolarsResult<Series> {
+    let stat_series = Series::new("statistic".into(), vec![statistic]);
+    let pval_series = Series::new("p_value".into(), vec![p_value]);
+    let skew_series = Series::new("skewness".into(), vec![skewness]);
+    let kurt_series = Series::new("kurtosis".into(), vec![kurtosis]);
+    let n_series = Series::new("n".into(), vec![n]);
+
+    StructChunked::from_series(
+        name.into(),
+        stat_series.len(),
+        [
+            &stat_series,
+            &pval_series,
+            &skew_series,
+            &kurt_series,
+            &n_series,
+        ]
+        .into_iter(),
+    )
+    .map(|ca| ca.into_series())
+}
+
 /// Output dtype for TOST equivalence tests
 pub fn tost_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
     let fields = vec![

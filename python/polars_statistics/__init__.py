@@ -132,6 +132,7 @@ from polars_statistics.exprs import (
     influential_dffits,
     isotonic,
     isotonic_predict,
+    jarque_bera,
     kendall,
     kruskal_wallis,
     lasso,
@@ -346,6 +347,7 @@ __all__ = [
     # Distributional test expressions
     "shapiro_wilk",
     "dagostino",
+    "jarque_bera",
     # Forecast test expressions
     "diebold_mariano",
     "permutation_t_test",

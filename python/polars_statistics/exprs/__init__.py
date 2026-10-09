@@ -23,6 +23,7 @@ from polars_statistics.exprs.nonparametric import (
 from polars_statistics.exprs.distributional import (
     shapiro_wilk,
     dagostino,
+    jarque_bera,
 )
 from polars_statistics.exprs.forecast import (
     diebold_mariano,
@@ -223,6 +224,7 @@ __all__ = [
     # Distributional tests
     "shapiro_wilk",
     "dagostino",
+    "jarque_bera",
     # Forecast tests
     "diebold_mariano",
     "permutation_t_test",
