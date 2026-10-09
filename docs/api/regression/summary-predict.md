@@ -45,6 +45,15 @@ semantics); default `False` keeps dispersion fixed at `1.0`. See
 prior `P0 = initial_p_diagonal * I`; default `1e6` is identical to omitting it.
 See [RLS](../classes/linear.md#rls).
 
+**GLM intercept inference since 0.8.0 (anofox-regression 0.5.20 #66):** every GLM
+`*_summary` (`logistic_summary`, `poisson_summary`, `negative_binomial_summary`,
+`tweedie_summary`, `probit_summary`, `cloglog_summary`) now reports the intercept
+row's `std_error`/`statistic`/`p_value` (previously `NaN`). `tweedie_summary`
+additionally reports t-based statistics/p-values (t on the residual df, as R's
+`summary.glm`) for every row, where they previously could be `NaN`. The `Gamma`
+PyModel's `std_errors`/`p_values` getters gained the same t-based values (no
+`gamma_summary` expression exists yet).
+
 **Returns:** See [Summary Output](../outputs.md#summary-output)
 
 ### Example

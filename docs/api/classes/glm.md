@@ -164,6 +164,11 @@ The default `var_power=1.5` (compound Poisson-Gamma) has **no** closed-form
 density, so `aic`/`bic` are `NaN` by design — not a bug. `std_errors`/`p_values`
 use the Pearson-dispersion estimate and are populated regardless of `var_power`.
 
+**`p_values` since 0.8.0 (anofox-regression 0.5.20 #66):** every Wald `p_value`
+(Tweedie and Gamma included) is a t-statistic on the residual df, exactly as R's
+`summary.glm`, computed via the survival function so it never underflows to
+exactly 0. Previously Tweedie/Gamma `p_values` could be `None`/`NaN`.
+
 ---
 
 ## Probit
@@ -179,6 +184,12 @@ model = Probit(
 )
 model.fit(X, y)  # y: binary (0/1)
 ```
+
+**Standard error precision since 0.8.0 (anofox-regression 0.5.20 #66):** the probit
+link now uses `statrs`'s `erfc`/`erfc_inv` instead of an Abramowitz-Stegun
+approximation, so `std_errors` (and the derived `t_statistics`/`p_values`) match
+R's `summary.glm(binomial(link = "probit"))` to full precision — previously off in
+the 5th digit.
 
 ---
 

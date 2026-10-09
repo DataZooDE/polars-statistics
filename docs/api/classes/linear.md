@@ -72,6 +72,25 @@ model = OLS(with_intercept=True, compute_inference=True)
 model.fit_from_accumulator(accumulator)  # accumulator: MomentAccumulator
 ```
 
+### Rank-deficient designs (OLS, WLS)
+
+Since 0.8.0 (anofox-regression 0.5.21 #64), OLS and WLS alias rank-deficient designs
+like R's `lm`: columns are kept in their given order, and a column that is a linear
+combination of the intercept and the earlier kept columns gets a `NaN` coefficient
+(`coefficients[j] = NaN`) and is excluded from `rank`/`n_parameters`. When two or more
+columns are collinear, the **later** column in argument order is aliased — this holds
+for every `solve_method` (`"qr"`, `"svd"`, `"cholesky"`) and is independent of column
+scaling (a scaled copy, e.g. `x2 = 2 * x1`, aliases exactly like an exact duplicate).
+
+Previously, `solve_method="svd"` silently returned a minimum-norm split of collinear
+columns with no `NaN` flag, and `"qr"` aliased the *earlier* column of a collinear
+pair — both now match `"cholesky"` and R's `dqrdc2` convention.
+
+```python
+model = OLS(solve_method="qr").fit(X, y)   # X columns 1 and 2 are collinear
+model.coefficients  # e.g. [1.49, nan] — column 2 (the later one) is aliased
+```
+
 ---
 
 ## Ridge
@@ -596,6 +615,12 @@ model = LARS(n_nonzero_coefs=5)
 model.fit(X, y)
 print(f"Active features: {(model.coefficients != 0).sum()}")
 ```
+
+**Collinear columns** (anofox-regression 0.5.19 #62): when two feature columns are
+exactly collinear (e.g. `x2 = 2 * x1`), LARS aliases the *later* column — its
+coefficient is `NaN` and the fit equals the reduced model without it — instead of a
+platform-dependent result that could previously raise on one architecture and fit on
+another.
 
 ---
 
