@@ -193,6 +193,9 @@ from polars_statistics.exprs import (
     p_adjust,
     ptukey,
     qtukey,
+    tukey_hsd,
+    pairwise_t_test,
+    dunn_test,
     # Penalized GLM expressions
     penalized_glm,
     penalized_glm_formula,
@@ -388,6 +391,9 @@ __all__ = [
     "p_adjust",
     "ptukey",
     "qtukey",
+    "tukey_hsd",
+    "pairwise_t_test",
+    "dunn_test",
     # Forecast test expressions
     "diebold_mariano",
     "permutation_t_test",

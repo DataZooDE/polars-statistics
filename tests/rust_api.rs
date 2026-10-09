@@ -3087,7 +3087,11 @@ fn posthoc_fits() {
             scalar_str("method", "holm"),
         ];
         let out = p_adjust_fit(&inputs).expect("p_adjust_fit failed");
-        assert_eq!(out.len(), 4, "p_adjust_fit output length must equal input length");
+        assert_eq!(
+            out.len(),
+            4,
+            "p_adjust_fit output length must equal input length"
+        );
     }
 
     // ptukey_fit / qtukey_fit: q|p, nmeans, df, nranges, lower_tail
@@ -3100,7 +3104,11 @@ fn posthoc_fits() {
             scalar_bool("lower_tail", true),
         ];
         let out = ptukey_fit(&inputs).expect("ptukey_fit failed");
-        assert_eq!(out.len(), 3, "ptukey_fit output length must equal input length");
+        assert_eq!(
+            out.len(),
+            3,
+            "ptukey_fit output length must equal input length"
+        );
     }
     {
         let inputs = vec![
@@ -3111,7 +3119,11 @@ fn posthoc_fits() {
             scalar_bool("lower_tail", true),
         ];
         let out = qtukey_fit(&inputs).expect("qtukey_fit failed");
-        assert_eq!(out.len(), 3, "qtukey_fit output length must equal input length");
+        assert_eq!(
+            out.len(),
+            3,
+            "qtukey_fit output length must equal input length"
+        );
     }
 
     // tukey_hsd_fit / pairwise_t_test_fit / dunn_test_fit: values, groups, ...

@@ -53,6 +53,22 @@ def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _rows_equal(got: list, expected: list) -> bool:
+    """Compare lists of pairwise-row dicts, treating NaN == NaN (unlike `==`)."""
+    if len(got) != len(expected):
+        return False
+    for g_row, e_row in zip(got, expected):
+        if g_row.keys() != e_row.keys():
+            return False
+        for k in g_row:
+            gv, ev = g_row[k], e_row[k]
+            if isinstance(gv, float) and isinstance(ev, float) and math.isnan(gv) and math.isnan(ev):
+                continue
+            if gv != ev:
+                return False
+    return True
+
+
 def _load_csv(path: Path):
     with open(path, newline="") as f:
         return list(csv.DictReader(f))
@@ -411,7 +427,7 @@ def test_pairwise_na_rows_dropped():
         .to_dicts()
     )
 
-    assert got == expected
+    assert _rows_equal(got, expected)
 
 
 def test_pairwise_degenerate_inputs():
@@ -452,8 +468,8 @@ def test_pairwise_group_by():
     got_e1 = grouped.filter(pl.col("exp") == "e1")["ph"][0].to_list()
     got_e2 = grouped.filter(pl.col("exp") == "e2")["ph"][0].to_list()
 
-    assert got_e1 == expected_e1
-    assert got_e2 == expected_e2
+    assert _rows_equal(got_e1, expected_e1)
+    assert _rows_equal(got_e2, expected_e2)
 
 
 def test_pairwise_build_errors():

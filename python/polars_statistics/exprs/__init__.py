@@ -83,6 +83,9 @@ from polars_statistics.exprs.posthoc import (
     p_adjust,
     ptukey,
     qtukey,
+    tukey_hsd,
+    pairwise_t_test,
+    dunn_test,
 )
 from polars_statistics.exprs.regression import (
     ols,
@@ -261,6 +264,9 @@ __all__ = [
     "p_adjust",
     "ptukey",
     "qtukey",
+    "tukey_hsd",
+    "pairwise_t_test",
+    "dunn_test",
     # Forecast tests
     "diebold_mariano",
     "permutation_t_test",

@@ -16,6 +16,7 @@ from polars.plugins import register_plugin_function
 LIB = Path(__file__).parent.parent
 
 _P_ADJUST_METHODS = ("holm", "hochberg", "hommel", "bonferroni", "bh", "fdr", "by", "none")
+_ALTERNATIVES = ("two-sided", "two_sided", "two.sided", "less", "greater")
 
 
 def _check_p_adjust_method(method: str) -> str:
@@ -34,6 +35,14 @@ def _as_float_expr(v: pl.Expr | str | int | float) -> pl.Expr:
     elif isinstance(v, (int, float)):
         v = pl.lit(float(v))
     return v.cast(pl.Float64)
+
+
+def _check_alternative(alternative: str) -> None:
+    """Validate an alternative-hypothesis string."""
+    if alternative not in _ALTERNATIVES:
+        raise ValueError(
+            f"alternative must be one of {_ALTERNATIVES!r}, got {alternative!r}"
+        )
 
 
 def p_adjust(p: pl.Expr | str, method: str = "holm") -> pl.Expr:
@@ -207,4 +216,232 @@ def qtukey(
         ],
         returns_scalar=False,
         is_elementwise=True,
+    )
+
+
+def tukey_hsd(
+    values: pl.Expr | str,
+    groups: pl.Expr | str,
+    conf_level: float = 0.95,
+) -> pl.Expr:
+    """
+    Tukey's honest significant difference: all pairwise mean differences,
+    matching R's ``TukeyHSD(aov(values ~ factor(groups)), conf.level = conf_level)``.
+
+    Long format: one flat ``values`` column plus one ``groups`` label
+    column (not one column per group, unlike ``ps.one_way_anova``).
+
+    Parameters
+    ----------
+    values : pl.Expr or str
+        Observations, or a column name.
+    groups : pl.Expr or str
+        Group labels, or a column name. Cast to ``pl.String``; numeric
+        group columns are compared as strings (zero-pad if numeric sort
+        order matters).
+    conf_level : float, default 0.95
+        Family-wise confidence level for ``ci_lower`` / ``ci_upper``.
+
+    Returns
+    -------
+    pl.Expr
+        Expression returning
+        ``List[Struct{group1, group2, n1, n2, estimate, statistic, df,
+        p_value, p_adj, ci_lower, ci_upper}]`` (one row per call, exploded
+        to one row per pairwise comparison with
+        ``.explode("col").struct.unnest()``). ``estimate`` is
+        ``mean(group2) - mean(group1)``. For k groups there are k(k-1)/2
+        rows, ordered as R's ``TukeyHSD`` (B-A, C-A, C-B, ...).
+
+    Notes
+    -----
+    Rows with a null/NaN value or a null group are dropped first (R's
+    ``NA`` row-drop semantics). Fewer than 2 usable groups give an empty
+    list, never an exception. Inside ``group_by().agg()``, each group is
+    analysed independently (same caveat as ``ps.one_way_anova``).
+
+    Raises
+    ------
+    ValueError
+        If ``conf_level`` is not in (0, 1).
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> import polars_statistics as ps
+    >>>
+    >>> df = pl.DataFrame(
+    ...     {"x": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0], "g": ["a", "a", "b", "b", "c", "c"]}
+    ... )
+    >>> df.select(ps.tukey_hsd("x", "g").alias("ph")).select(
+    ...     pl.col("ph").explode().struct.unnest()
+    ... )
+    """
+    if not (0.0 < conf_level < 1.0):
+        raise ValueError(f"conf_level must be in (0, 1), got {conf_level!r}")
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_tukey_hsd",
+        args=[
+            _as_float_expr(values),
+            (pl.col(groups) if isinstance(groups, str) else groups).cast(pl.String),
+            pl.lit(conf_level, dtype=pl.Float64),
+        ],
+        returns_scalar=True,
+    )
+
+
+def pairwise_t_test(
+    values: pl.Expr | str,
+    groups: pl.Expr | str,
+    pooled_sd: bool = True,
+    p_adjust_method: str = "holm",
+    alternative: str = "two-sided",
+) -> pl.Expr:
+    """
+    Pairwise t-tests with p-value adjustment, matching R's
+    ``pairwise.t.test(values, groups, p.adjust.method, pool.sd, alternative)``.
+
+    Long format: one flat ``values`` column plus one ``groups`` label column.
+
+    Parameters
+    ----------
+    values : pl.Expr or str
+        Observations, or a column name.
+    groups : pl.Expr or str
+        Group labels, or a column name. Cast to ``pl.String``; numeric
+        group columns are compared as strings (zero-pad if numeric sort
+        order matters).
+    pooled_sd : bool, default True
+        If True, every comparison uses the standard deviation pooled over
+        all groups (R's default). If False, a Welch two-sample t-test per
+        pair.
+    p_adjust_method : str, default "holm"
+        One of ``"holm"``, ``"hochberg"``, ``"hommel"``, ``"bonferroni"``,
+        ``"BH"`` (alias ``"fdr"``), ``"BY"``, ``"none"`` (case-insensitive).
+    alternative : {"two-sided", "two_sided", "two.sided", "less", "greater"}, default "two-sided"
+        Alternative hypothesis for ``group2 - group1``.
+
+    Returns
+    -------
+    pl.Expr
+        Expression returning
+        ``List[Struct{group1, group2, n1, n2, estimate, statistic, df,
+        p_value, p_adj, ci_lower, ci_upper}]`` (``ci_lower``/``ci_upper``
+        are NaN: R computes no confidence intervals for
+        ``pairwise.t.test``). Use ``.explode("col").struct.unnest()``.
+
+    Notes
+    -----
+    Rows with a null/NaN value or a null group are dropped first (R's
+    ``NA`` row-drop semantics). Fewer than 2 usable groups give an empty
+    list, never an exception. Inside ``group_by().agg()``, each group is
+    analysed independently (same caveat as ``ps.one_way_anova``).
+
+    Raises
+    ------
+    ValueError
+        If ``p_adjust_method`` or ``alternative`` is not one of the
+        allowed names.
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> import polars_statistics as ps
+    >>>
+    >>> df = pl.DataFrame(
+    ...     {"x": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0], "g": ["a", "a", "b", "b", "c", "c"]}
+    ... )
+    >>> df.select(ps.pairwise_t_test("x", "g").alias("ph")).select(
+    ...     pl.col("ph").explode().struct.unnest()
+    ... )
+    """
+    p_adjust_method = _check_p_adjust_method(p_adjust_method)
+    _check_alternative(alternative)
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_pairwise_t_test",
+        args=[
+            _as_float_expr(values),
+            (pl.col(groups) if isinstance(groups, str) else groups).cast(pl.String),
+            pl.lit(pooled_sd, dtype=pl.Boolean),
+            pl.lit(p_adjust_method, dtype=pl.String),
+            pl.lit(alternative, dtype=pl.String),
+        ],
+        returns_scalar=True,
+    )
+
+
+def dunn_test(
+    values: pl.Expr | str,
+    groups: pl.Expr | str,
+    p_adjust_method: str = "holm",
+) -> pl.Expr:
+    """
+    Dunn's (1964) pairwise rank-mean comparison after Kruskal-Wallis,
+    matching ``dunn.test::dunn.test(values, groups, method, altp = TRUE)``
+    / ``FSA::dunnTest``.
+
+    Long format: one flat ``values`` column plus one ``groups`` label column.
+
+    Parameters
+    ----------
+    values : pl.Expr or str
+        Observations, or a column name.
+    groups : pl.Expr or str
+        Group labels, or a column name. Cast to ``pl.String``; numeric
+        group columns are compared as strings (zero-pad if numeric sort
+        order matters).
+    p_adjust_method : str, default "holm"
+        One of ``"holm"``, ``"hochberg"``, ``"hommel"``, ``"bonferroni"``,
+        ``"BH"`` (alias ``"fdr"``), ``"BY"``, ``"none"`` (case-insensitive).
+
+    Returns
+    -------
+    pl.Expr
+        Expression returning
+        ``List[Struct{group1, group2, n1, n2, estimate, statistic, df,
+        p_value, p_adj, ci_lower, ci_upper}]`` (``df``/``ci_lower``/``ci_upper``
+        are NaN). ``estimate`` is the difference in mean ranks
+        (``group2 - group1``); note that ``dunn.test``/``FSA`` report the
+        opposite sign for their own ``z`` statistic. Use
+        ``.explode("col").struct.unnest()``.
+
+    Notes
+    -----
+    Rows with a null/NaN value or a null group are dropped first (R's
+    ``NA`` row-drop semantics). Fewer than 2 usable groups give an empty
+    list, never an exception. Inside ``group_by().agg()``, each group is
+    analysed independently (same caveat as ``ps.one_way_anova``).
+
+    Raises
+    ------
+    ValueError
+        If ``p_adjust_method`` is not one of the allowed names.
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> import polars_statistics as ps
+    >>>
+    >>> df = pl.DataFrame(
+    ...     {"x": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0], "g": ["a", "a", "b", "b", "c", "c"]}
+    ... )
+    >>> df.select(ps.dunn_test("x", "g").alias("ph")).select(
+    ...     pl.col("ph").explode().struct.unnest()
+    ... )
+    """
+    p_adjust_method = _check_p_adjust_method(p_adjust_method)
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_dunn_test",
+        args=[
+            _as_float_expr(values),
+            (pl.col(groups) if isinstance(groups, str) else groups).cast(pl.String),
+            pl.lit(p_adjust_method, dtype=pl.String),
+        ],
+        returns_scalar=True,
     )
