@@ -192,7 +192,7 @@ real API, bundled into the wheel, and shipped as 0.8.0 on PyPI.
   3. `ps.mann_whitney_u` / `ps.wilcoxon_signed_rank` expression outputs gain trailing `estimate`, `ci_lower` and `ci_upper` fields (additive), so `conf_level` takes effect.
   4. `.pyi` stubs (drift guard green), docstrings, mkdocs, CHANGELOG and the regression/hypothesis skill cheat-sheets cover the new surface. The skill-example harness and all CI gates (clippy, fmt, ruff on new files, pytest) are green.
 
-**Plans**: 1/8 plans executed
+**Plans**: 2/8 plans executed
 
 **Wave 1**
 
@@ -200,7 +200,7 @@ real API, bundled into the wheel, and shipped as 0.8.0 on PyPI.
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 16.2-02-PLAN.md — Penalized GLM engine: PyModel + fit expression + formula incl. estimate_dispersion, validated on the 0.5.22 R fixture (Wave 2)
+- [x] 16.2-02-PLAN.md — Penalized GLM engine: PyModel + fit expression + formula incl. estimate_dispersion, validated on the 0.5.22 R fixture (Wave 2)
 - [ ] 16.2-03-PLAN.md — Mann-Whitney/Wilcoxon expression estimate + CI, schema lock updated (Wave 2)
 
 **Wave 3** *(blocked on Wave 2 completion)*

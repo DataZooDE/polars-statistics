@@ -4,18 +4,18 @@ milestone: v0.8.0
 milestone_name: Claude Code Skills Plugin
 current_phase: "16.2"
 current_phase_name: Penalized GLM and AFT Survival Regression
-current_plan: 2
+current_plan: 3
 status: executing
-stopped_at: Completed 16.2-01-PLAN.md
-last_updated: "2026-10-09T12:33:31.631Z"
+stopped_at: Completed 16.2-02-PLAN.md
+last_updated: "2026-10-09T13:09:27.362Z"
 last_activity: 2026-10-09
 last_activity_desc: Phase 16.2 execution started
-state_head: 63f35531c8eed62f204d4686a43ce043d776c71d
+state_head: 6183271baf72f32501cc0d8279239966908ac8b6
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 36
-  completed_plans: 17
+  completed_plans: 18
   percent: 0
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 ## Current Position
 
 Phase: 16.2 (Penalized GLM and AFT Survival Regression) — EXECUTING
-Current Plan: 2
+Current Plan: 3
 Total Plans in Phase: 8
 Status: Ready to execute
 Last activity: 2026-10-09 — Phase 16.2 execution started
@@ -111,6 +111,7 @@ Execution order: 13 → 14 → 15 → 16 → 17
 | Phase 16.1 P07 | 8min | 3 tasks | 14 files |
 | Phase 16.1 P08 | 8min | 2 tasks | 4 files |
 | Phase 16.2 P01 | 45min | 3 tasks | 7 files |
+| Phase 16.2 P02 | 50min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -164,6 +165,9 @@ Recent decisions affecting current work:
 - [Phase 16.2]: 16.2-01: Single combined cargo update -p call (not two sequential --precise calls) avoids reproducible windows-sys lockfile churn from re-querying the crates.io index twice
 - [Phase 16.2]: 16.2-01: Set git.allow_default_branch_commits=true to formalize this project's existing trunk-based (branching_strategy: none) workflow
 - [Phase 16.2]: 16.2-01: Version bump to 0.4.7/0.5.22 caused zero test failures; behaviour-change inventory proven by 11 new R-reference tests, not by fixing broken assertions
+- [Phase 16.2]: 16.2-02: PenalizedGLM PyModel stores pre-parsed typed fields (PenalizedGlmFamily/Vec<PriorSpec>/VcovType) and replicates build_penalized_glm's option chain directly rather than re-parsing a PenalizedGlmKwargs at fit time, since the PyModel validates eagerly at construction (immediate ValueError), while the expression's kwargs struct necessarily re-parses per row-group fit.
+- [Phase 16.2]: 16.2-02: vcov getter scaled by penalized_glm_covariance_scale (1.0 for NegativeBinomial, fitted.dispersion() otherwise) so sqrt(diag(vcov)) always equals the reported std_errors -- confirmed exactly (rel 1e-12) for Gamma, NegativeBinomial, and quasipoisson Poisson.
+- [Phase 16.2]: 16.2-02: Ridge lambda_=4.0 confirmed numerically IDENTICAL to a N(0, 1/sqrt(4)) prior and the Laplace prior proximal soft-threshold confirmed to zero the coefficient exactly with a NaN SE -- both matched the plan's assumed behaviour exactly, no fallback/deviation needed.
 
 ### Pending Todos
 
@@ -199,7 +203,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-10-09T12:33:31.588Z
-Stopped at: Completed 16.2-01-PLAN.md
+Last session: 2026-10-09T13:09:27.239Z
+Stopped at: Completed 16.2-02-PLAN.md
 Resume file: None
 </content>
