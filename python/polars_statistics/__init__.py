@@ -177,6 +177,9 @@ from polars_statistics.exprs import (
     # Penalized GLM expressions
     penalized_glm,
     penalized_glm_formula,
+    penalized_glm_formula_predict,
+    penalized_glm_formula_summary,
+    penalized_glm_predict,
     penalized_glm_summary,
     # Regression expressions
     ols,
@@ -491,6 +494,7 @@ __all__ = [
     "tweedie_predict",
     "probit_predict",
     "cloglog_predict",
+    "penalized_glm_predict",
     "alm_predict",
     # Formula-based regression expressions
     "ols_formula",
@@ -516,6 +520,7 @@ __all__ = [
     "lasso_formula_summary",
     "logistic_formula_summary",
     "poisson_formula_summary",
+    "penalized_glm_formula_summary",
     "alm_formula_summary",
     # Formula-based prediction expressions
     "ols_formula_predict",
@@ -524,6 +529,7 @@ __all__ = [
     "lasso_formula_predict",
     "logistic_formula_predict",
     "poisson_formula_predict",
+    "penalized_glm_formula_predict",
     "alm_formula_predict",
     # AID and Dynamic Linear Model expressions
     "aid",

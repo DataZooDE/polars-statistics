@@ -1078,6 +1078,124 @@ class TestPenalizedGlmSummary:
         assert flat.columns == ["term", "estimate", "std_error", "statistic", "p_value"]
 
 
+class TestPenalizedGlmPredict:
+    """`ps.penalized_glm_predict` — phase 16.2 plan 04 (UPST-05)."""
+
+    def test_predict_matches_pymodel_fitted_values(self):
+        pred_df = DF.with_columns(
+            ps.penalized_glm_predict("y_pois", "x1", "x2", offset="off", tol=1e-10).alias("p")
+        ).unnest("p")
+        model = ps.PenalizedGLM(tol=1e-10).fit(
+            X, np.array(ref.Y_POIS), offset=np.array(ref.OFFSET)
+        )
+        for pred, fv in zip(pred_df["penalized_glm_prediction"], model.fitted_values):
+            assert rel_close(pred, fv, 1e-12)
+        assert pred_df["penalized_glm_lower"].is_nan().all()
+        assert pred_df["penalized_glm_upper"].is_nan().all()
+
+    def test_predict_link_scale_is_log_of_response_for_poisson(self):
+        resp_df = DF.with_columns(
+            ps.penalized_glm_predict("y_pois", "x1", "x2", tol=1e-10).alias("resp")
+        ).unnest("resp")
+        link_df = DF.with_columns(
+            ps.penalized_glm_predict(
+                "y_pois", "x1", "x2", tol=1e-10, type="link"
+            ).alias("link")
+        ).unnest("link")
+        for resp, link in zip(
+            resp_df["penalized_glm_prediction"], link_df["penalized_glm_prediction"]
+        ):
+            assert rel_close(link, math.log(resp), 1e-12)
+
+    def test_predict_binomial_response_in_unit_interval(self):
+        pred_df = DF.with_columns(
+            ps.penalized_glm_predict(
+                "y_bin", "x1", "x2", family="binomial", tol=1e-10
+            ).alias("p")
+        ).unnest("p")
+        for p in pred_df["penalized_glm_prediction"]:
+            assert 0.0 < p < 1.0
+
+    def test_predict_estimate_dispersion_leaves_predictions_unchanged(self):
+        base = DF.with_columns(
+            ps.penalized_glm_predict("y_nb", "x1", "x2", family="poisson", tol=1e-10).alias("p")
+        ).unnest("p")
+        disp = DF.with_columns(
+            ps.penalized_glm_predict(
+                "y_nb", "x1", "x2", family="poisson", estimate_dispersion=True, tol=1e-10
+            ).alias("p")
+        ).unnest("p")
+        for a, b in zip(base["penalized_glm_prediction"], disp["penalized_glm_prediction"]):
+            assert rel_close(a, b, 1e-12)
+
+    def test_predict_custom_name_prefix(self):
+        pred_df = DF.with_columns(
+            ps.penalized_glm_predict("y_pois", "x1", "x2", tol=1e-10, name="m1").alias("p")
+        ).unnest("p")
+        assert set(pred_df.columns) >= {"m1_prediction", "m1_lower", "m1_upper"}
+
+    def test_predict_null_policy(self):
+        y_list = list(ref.Y_POIS)
+        y_list[3] = None
+        x1_list = list(ref.X1)
+        x1_list[7] = None
+        off_list = list(ref.OFFSET)
+        off_list[9] = None
+        df = pl.DataFrame(
+            {"x1": x1_list, "x2": ref.X2, "off": off_list, "y_pois": y_list}
+        )
+        n = df.height
+
+        drop = df.with_columns(
+            ps.penalized_glm_predict(
+                "y_pois", "x1", "x2", offset="off", tol=1e-10, null_policy="drop"
+            ).alias("p")
+        ).unnest("p")
+        for i in range(n):
+            if i in (3, 7, 9):
+                assert math.isnan(drop["penalized_glm_prediction"][i]), i
+            else:
+                assert math.isfinite(drop["penalized_glm_prediction"][i]), i
+
+        dyzx = df.with_columns(
+            ps.penalized_glm_predict(
+                "y_pois", "x1", "x2", offset="off", tol=1e-10, null_policy="drop_y_zero_x"
+            ).alias("p")
+        ).unnest("p")
+        assert math.isfinite(dyzx["penalized_glm_prediction"][3])
+        assert math.isfinite(dyzx["penalized_glm_prediction"][7])
+        assert math.isnan(dyzx["penalized_glm_prediction"][9])
+
+    def test_predict_group_by_over_matches_whole_frame(self):
+        stacked = pl.concat(
+            [DF.with_columns(g=pl.lit("a")), DF.with_columns(g=pl.lit("b"))]
+        )
+        whole = (
+            DF.with_columns(
+                ps.penalized_glm_predict("y_pois", "x1", "x2", tol=1e-10).alias("p")
+            )
+            .unnest("p")["penalized_glm_prediction"]
+            .to_list()
+        )
+        result = stacked.with_columns(
+            ps.penalized_glm_predict("y_pois", "x1", "x2", tol=1e-10)
+            .over("g")
+            .alias("p")
+        ).unnest("p")
+        n = len(whole)
+        for i in range(n):
+            assert rel_close(result["penalized_glm_prediction"][i], whole[i], 1e-10)
+            assert rel_close(result["penalized_glm_prediction"][i + n], whole[i], 1e-10)
+
+    def test_predict_invalid_type_raises(self):
+        with pytest.raises(ValueError):
+            ps.penalized_glm_predict("y_pois", "x1", "x2", type="bogus")
+
+    def test_predict_invalid_null_policy_raises(self):
+        with pytest.raises(ValueError):
+            ps.penalized_glm_predict("y_pois", "x1", "x2", null_policy="bogus")
+
+
 class TestPenalizedGlmFormula:
     def test_formula_equals_column_form(self):
         column_row = _expr_fit("y_nb", family="negative_binomial")
@@ -1098,6 +1216,48 @@ class TestPenalizedGlmFormula:
             ).alias("r")
         )["r"][0]
         assert rel_close(column_row["intercept"], formula_row["intercept"], 1e-12)
+
+    def test_formula_summary_equals_column_form(self):
+        column_flat = (
+            DF.select(
+                ps.penalized_glm_summary(
+                    "y_gamma", "x1", "x2", family="gamma", tol=1e-10
+                ).alias("s")
+            )
+            .explode("s")
+            .unnest("s")
+        )
+        formula_flat = (
+            DF.select(
+                ps.penalized_glm_formula_summary(
+                    "y_gamma ~ x1 + x2", family="gamma", tol=1e-10
+                ).alias("s")
+            )
+            .explode("s")
+            .unnest("s")
+        )
+        for col in column_flat.columns:
+            if column_flat[col].dtype == pl.Utf8:
+                assert column_flat[col].to_list() == formula_flat[col].to_list()
+            else:
+                for a, b in zip(column_flat[col], formula_flat[col]):
+                    assert rel_close(a, b, 1e-12)
+
+    def test_formula_predict_equals_column_form(self):
+        column_df = DF.with_columns(
+            ps.penalized_glm_predict(
+                "y_pois", "x1", "x2", offset="off", tol=1e-10
+            ).alias("p")
+        ).unnest("p")
+        formula_df = DF.with_columns(
+            ps.penalized_glm_formula_predict(
+                "y_pois ~ x1 + x2", offset="off", tol=1e-10
+            ).alias("p")
+        ).unnest("p")
+        for a, b in zip(
+            column_df["penalized_glm_prediction"], formula_df["penalized_glm_prediction"]
+        ):
+            assert rel_close(a, b, 1e-12)
 
 
 class TestPenalizedGlmBuildTimeErrors:

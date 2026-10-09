@@ -27,7 +27,10 @@ use anofox_regression::solvers::penalized_glm::{
     FittedPenalizedGlm, PenalizedGlmFamily, PenalizedGlmRegressor, PriorSpec, VcovType,
 };
 
-use crate::expressions::regression::build_term_names;
+use crate::expressions::regression::{
+    build_term_names, build_xy_with_null_policy, predict_output_dtype_with_prefix,
+    prediction_nan_output_with_prefix, prediction_output_with_prefix, PredictKwargs,
+};
 
 /// Default prior scale (`+inf`, i.e. flat) used when a [`PriorKwarg`] omits
 /// `scale`.
@@ -754,4 +757,133 @@ pub fn penalized_glm_summary_fit(
 #[polars_expr(output_type_func=inference_summary_output_dtype)]
 fn pl_penalized_glm_summary(inputs: &[Series], kwargs: PenalizedGlmKwargs) -> PolarsResult<Series> {
     penalized_glm_summary_fit(inputs, &kwargs)
+}
+
+// ============================================================================
+// Prediction (response / link scale, offset, null_policy)
+// ============================================================================
+
+/// Output dtype for `pl_penalized_glm_predict` — delegates to the shared
+/// prefix-based prediction schema (`{prefix}_prediction`/`_lower`/`_upper`).
+fn penalized_glm_predict_output_dtype(
+    input_fields: &[Field],
+    kwargs: PenalizedGlmKwargs,
+) -> PolarsResult<Field> {
+    predict_output_dtype_with_prefix(
+        input_fields,
+        PredictKwargs {
+            prefix: kwargs.prefix,
+        },
+    )
+}
+
+/// Public Rust-callable variant. Same input contract as [`penalized_glm_fit`]
+/// (`[y, offset, *x]`); additionally reads `kwargs.predict_type`
+/// (`"response"` / `"link"`) and `kwargs.null_policy` (`"drop"` /
+/// `"drop_y_zero_x"`).
+///
+/// Refits per group/row-batch with the same options as `penalized_glm_fit`,
+/// then predicts on every row. A null offset forces that row's target to
+/// `None` before the null-policy split runs — so an offset-null row is
+/// excluded from the fit under *both* policies — while the raw offset
+/// (null -> NaN) feeds every row's prediction, so a null offset always
+/// yields a NaN prediction regardless of `null_policy`.
+pub fn penalized_glm_predict_fit(
+    inputs: &[Series],
+    kwargs: &PenalizedGlmKwargs,
+) -> PolarsResult<Series> {
+    let n_rows = inputs[0].len();
+    let prefix = &kwargs.prefix;
+
+    let predict_type = kwargs.predict_type.to_lowercase();
+    if predict_type != "response" && predict_type != "link" {
+        return Err(polars_err!(
+            ComputeError: "penalized_glm_predict: predict_type must be \"response\" or \"link\" (got \"{}\")",
+            kwargs.predict_type
+        ));
+    }
+
+    let offset_col = resolve_offset(&inputs[1], n_rows)?;
+    let offset_full = col_to_vec(&offset_col);
+
+    // Null `y` wherever a non-scalar offset is null, so the null-policy split
+    // below excludes that row from the fit under every policy (the offset
+    // itself is handled separately via `offset_full`, which preserves NaN at
+    // that row for the prediction step regardless of `null_policy`).
+    let offset_ca = inputs[1].f64()?;
+    let offset_is_scalar = offset_ca.len() == 1;
+    let offset_null_mask: Vec<bool> = (0..n_rows)
+        .map(|i| !offset_is_scalar && offset_ca.get(i).is_none())
+        .collect();
+    let y_ca = inputs[0].f64()?;
+    let modified_y: Vec<Option<f64>> = (0..n_rows)
+        .map(|i| {
+            if offset_null_mask[i] {
+                None
+            } else {
+                y_ca.get(i)
+            }
+        })
+        .collect();
+    let mut processed_inputs: Vec<Series> = inputs.to_vec();
+    processed_inputs[0] = Series::new(inputs[0].name().clone(), modified_y);
+
+    let (x_fit, y_fit, valid_mask, x_pred) =
+        match build_xy_with_null_policy(&processed_inputs, 0, 2, &kwargs.null_policy) {
+            Ok(data) => data,
+            Err(_) => return prediction_nan_output_with_prefix(n_rows, prefix),
+        };
+
+    let valid_indices: Vec<usize> = (0..n_rows).filter(|&i| valid_mask[i]).collect();
+    let offset_fit = Col::from_fn(valid_indices.len(), |i| offset_full[valid_indices[i]]);
+
+    let regressor = build_penalized_glm(kwargs, false, Some(offset_fit))
+        .map_err(|e| polars_err!(ComputeError: "{}", e))?;
+
+    match regressor.fit(&x_fit, &y_fit) {
+        Ok(fitted) => {
+            let offset_pred = Col::from_fn(n_rows, |i| offset_full[i]);
+            let raw: Vec<f64> = if predict_type == "link" {
+                let eta = fitted.predict_linear(&x_pred);
+                (0..n_rows).map(|i| eta[i] + offset_pred[i]).collect()
+            } else {
+                col_to_vec(&fitted.predict_with_offset(&x_pred, &offset_pred))
+            };
+
+            // A null offset always yields a NaN prediction, under either
+            // null_policy — relying on NaN arithmetic propagation through the
+            // family's inverse-link is NOT safe here: some inverse links
+            // (e.g. Poisson log, see `PoissonLink::link_inverse`) clamp for
+            // numerical stability via `f64::max`, which silently replaces a
+            // NaN operand with the clamp floor instead of propagating it.
+            let predictions: Vec<f64> = (0..n_rows)
+                .map(|i| {
+                    let drop_masked = kwargs.null_policy == "drop" && !valid_mask[i];
+                    if offset_null_mask[i] || drop_masked {
+                        f64::NAN
+                    } else {
+                        raw[i]
+                    }
+                })
+                .collect();
+
+            prediction_output_with_prefix(
+                predictions,
+                vec![f64::NAN; n_rows],
+                vec![f64::NAN; n_rows],
+                prefix,
+            )
+        }
+        Err(_) => prediction_nan_output_with_prefix(n_rows, prefix),
+    }
+}
+
+/// Penalized GLM prediction expression (`ps.penalized_glm_predict`). Same
+/// input contract as `pl_penalized_glm`. kwargs: see [`PenalizedGlmKwargs`]
+/// (`prefix` / `predict_type` / `null_policy` are read here). `lower`/`upper`
+/// are always NaN — `FittedPenalizedGlm` has no interval-prediction method
+/// (COVERAGE OPT-OUT).
+#[polars_expr(output_type_func_with_kwargs=penalized_glm_predict_output_dtype)]
+fn pl_penalized_glm_predict(inputs: &[Series], kwargs: PenalizedGlmKwargs) -> PolarsResult<Series> {
+    penalized_glm_predict_fit(inputs, &kwargs)
 }

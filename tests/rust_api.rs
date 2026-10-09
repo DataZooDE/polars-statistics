@@ -941,6 +941,53 @@ fn glm_fits() {
         let out = alm_predict_fit(&inputs, kwargs()).expect("alm_predict_fit failed");
         assert_eq!(out.len(), y_pos.len());
     }
+
+    // penalized_glm_*_fit: y, offset, x... + PenalizedGlmKwargs (phase 16.2 plan 04, UPST-05)
+    {
+        let inputs = vec![
+            series_f64("y", &y_cnt),
+            scalar_f64("offset", 0.0),
+            series_f64("x1", &x_cnt),
+        ];
+        let poisson_kwargs = PenalizedGlmKwargs {
+            family: "poisson".to_string(),
+            ..Default::default()
+        };
+
+        let out = penalized_glm_fit(&inputs, &poisson_kwargs).expect("penalized_glm_fit failed");
+        assert_n_obs_nonzero(&out, "n_observations");
+
+        let summary = penalized_glm_summary_fit(&inputs, &poisson_kwargs)
+            .expect("penalized_glm_summary_fit failed");
+        let summary_list = summary
+            .list()
+            .expect("summary must be List type")
+            .get_as_series(0)
+            .expect("summary list must have one element");
+        assert!(
+            !summary_list.is_empty(),
+            "expected a non-empty penalized_glm_summary_fit list"
+        );
+
+        let predict = penalized_glm_predict_fit(&inputs, &poisson_kwargs)
+            .expect("penalized_glm_predict_fit failed");
+        assert_eq!(predict.len(), y_cnt.len());
+
+        // Err (no panic) for an invalid family.
+        let bad_family = PenalizedGlmKwargs {
+            family: "poison".to_string(),
+            ..Default::default()
+        };
+        assert!(penalized_glm_fit(&inputs, &bad_family).is_err());
+
+        // Err (no panic) for estimate_dispersion on a non-Poisson family.
+        let bad_dispersion = PenalizedGlmKwargs {
+            family: "gamma".to_string(),
+            estimate_dispersion: true,
+            ..Default::default()
+        };
+        assert!(penalized_glm_fit(&inputs, &bad_dispersion).is_err());
+    }
 }
 
 // =============================================================================

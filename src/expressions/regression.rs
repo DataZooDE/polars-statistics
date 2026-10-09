@@ -3851,7 +3851,7 @@ pub struct PredictKwargs {
 }
 
 /// Output type for prediction with intervals - uses prefix from kwargs
-fn predict_output_dtype_with_prefix(
+pub(crate) fn predict_output_dtype_with_prefix(
     _input_fields: &[Field],
     kwargs: PredictKwargs,
 ) -> PolarsResult<Field> {
@@ -3868,7 +3868,7 @@ fn predict_output_dtype_with_prefix(
 }
 
 /// Create prediction output with prefixed field names
-fn prediction_output_with_prefix(
+pub(crate) fn prediction_output_with_prefix(
     predictions: Vec<f64>,
     lower: Vec<f64>,
     upper: Vec<f64>,
@@ -3890,7 +3890,7 @@ fn prediction_output_with_prefix(
 }
 
 /// Create empty prediction output with prefixed field names
-fn prediction_nan_output_with_prefix(n: usize, prefix: &str) -> PolarsResult<Series> {
+pub(crate) fn prediction_nan_output_with_prefix(n: usize, prefix: &str) -> PolarsResult<Series> {
     prediction_output_with_prefix(
         vec![f64::NAN; n],
         vec![f64::NAN; n],
@@ -3901,7 +3901,7 @@ fn prediction_nan_output_with_prefix(n: usize, prefix: &str) -> PolarsResult<Ser
 
 /// Build X matrix and y vector with null handling based on policy.
 /// Returns (X, y, valid_mask) where valid_mask indicates which original rows were used.
-fn build_xy_with_null_policy(
+pub(crate) fn build_xy_with_null_policy(
     inputs: &[Series],
     y_idx: usize,
     x_start_idx: usize,

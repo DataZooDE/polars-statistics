@@ -165,6 +165,7 @@ from polars_statistics.exprs.regression import (
     tweedie_predict,
     probit_predict,
     cloglog_predict,
+    penalized_glm_predict,
     alm_predict,
     # Formula-based regression functions
     ols_formula,
@@ -190,6 +191,7 @@ from polars_statistics.exprs.regression import (
     lasso_formula_summary,
     logistic_formula_summary,
     poisson_formula_summary,
+    penalized_glm_formula_summary,
     alm_formula_summary,
     # Formula-based prediction functions
     ols_formula_predict,
@@ -198,6 +200,7 @@ from polars_statistics.exprs.regression import (
     lasso_formula_predict,
     logistic_formula_predict,
     poisson_formula_predict,
+    penalized_glm_formula_predict,
     alm_formula_predict,
     # AID and Dynamic Linear Model
     aid,
@@ -367,6 +370,7 @@ __all__ = [
     "tweedie_predict",
     "probit_predict",
     "cloglog_predict",
+    "penalized_glm_predict",
     "alm_predict",
     # Formula-based regression expressions
     "ols_formula",
@@ -392,6 +396,7 @@ __all__ = [
     "lasso_formula_summary",
     "logistic_formula_summary",
     "poisson_formula_summary",
+    "penalized_glm_formula_summary",
     "alm_formula_summary",
     # Formula-based prediction expressions
     "ols_formula_predict",
@@ -400,6 +405,7 @@ __all__ = [
     "lasso_formula_predict",
     "logistic_formula_predict",
     "poisson_formula_predict",
+    "penalized_glm_formula_predict",
     "alm_formula_predict",
     # AID and Dynamic Linear Model
     "aid",

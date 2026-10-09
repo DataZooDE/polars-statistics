@@ -4059,6 +4059,115 @@ def cloglog_predict(
     )
 
 
+def penalized_glm_predict(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    family: Literal["poisson", "binomial", "logistic", "negative_binomial", "gamma", "tweedie"] = (
+        "poisson"
+    ),
+    link: str | None = None,
+    theta: float | None = None,
+    power: float | None = None,
+    threshold: float = 0.5,
+    lambda_: float = 0.0,
+    estimate_dispersion: bool = False,
+    priors: Sequence[Union[None, str, tuple, dict]] | None = None,
+    offset: Union[pl.Expr, str, None] = None,
+    add_intercept: bool = True,
+    max_iter: int = 100,
+    tol: float = 1e-8,
+    type: Literal["response", "link"] = "response",
+    null_policy: Literal["drop", "drop_y_zero_x"] = "drop",
+    name: str | None = None,
+) -> pl.Expr:
+    """Family-generic penalized GLM predictions (response or link scale).
+
+    Refits per group/`.over()` partition with the same options used for
+    :func:`penalized_glm`, then predicts on every row.
+
+    Parameters
+    ----------
+    y, x, family, link, theta, power, threshold, lambda_, estimate_dispersion,
+    priors, offset, add_intercept, max_iter, tol
+        See :func:`penalized_glm`.
+    type : {"response", "link"}, default "response"
+        Prediction scale: ``"response"`` applies the family's inverse link to
+        the linear predictor plus offset; ``"link"`` returns the linear
+        predictor plus offset directly (no inverse link).
+    null_policy : {"drop", "drop_y_zero_x"}, default "drop"
+        - ``"drop"``: rows with a null/non-finite value in ``y``, any
+          feature, or the offset get a NaN prediction.
+        - ``"drop_y_zero_x"``: rows with a null target are excluded from the
+          fit but still predicted (null features zero-filled). A null offset
+          still yields a NaN prediction under either policy — the engine has
+          no way to guess a missing offset.
+    name : str, optional
+        Custom prefix for output column names. Defaults to ``"penalized_glm"``.
+
+    Returns
+    -------
+    pl.Expr
+        Struct with ``{name}_prediction``/``{name}_lower``/``{name}_upper``
+        per row. ``lower``/``upper`` are always NaN: `FittedPenalizedGlm` has
+        no interval-prediction method (COVERAGE OPT-OUT).
+
+    Examples
+    --------
+    >>> df.with_columns(
+    ...     ps.penalized_glm_predict("y", "x1", "x2", offset="exposure")
+    ...         .over("group").alias("pred")
+    ... ).unnest("pred")
+    """
+    if type not in ("response", "link"):
+        raise ValueError(f'type must be "response" or "link", got {type!r}')
+    if null_policy not in ("drop", "drop_y_zero_x"):
+        raise ValueError(
+            f'null_policy must be "drop" or "drop_y_zero_x", got {null_policy!r}'
+        )
+
+    prefix = name if name is not None else "penalized_glm"
+    kwargs = _penalized_glm_kwargs(
+        family=family,
+        link=link,
+        theta=theta,
+        power=power,
+        threshold=threshold,
+        lambda_=lambda_,
+        estimate_dispersion=estimate_dispersion,
+        priors=priors,
+        vcov_type="laplace",
+        add_intercept=add_intercept,
+        max_iter=max_iter,
+        tol=tol,
+        prefix=prefix,
+        predict_type=type,
+        null_policy=null_policy,
+    )
+
+    if isinstance(y, str):
+        y = pl.col(y)
+    if offset is None:
+        offset_expr = pl.lit(0.0, dtype=pl.Float64)
+    elif isinstance(offset, str):
+        offset_expr = pl.col(offset).cast(pl.Float64)
+    else:
+        offset_expr = offset.cast(pl.Float64)
+
+    x_exprs = []
+    for xi in x:
+        if isinstance(xi, str):
+            xi = pl.col(xi)
+        x_exprs.append(xi.cast(pl.Float64))
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_penalized_glm_predict",
+        args=[y.cast(pl.Float64), offset_expr, *x_exprs],
+        kwargs=kwargs,
+        returns_scalar=False,
+    )
+
+
 def alm_predict(
     y: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
@@ -4768,6 +4877,50 @@ def poisson_formula_summary(
     return poisson_summary(response, *x_exprs, add_intercept=add_intercept)
 
 
+def penalized_glm_formula_summary(
+    formula: str,
+    family: Literal["poisson", "binomial", "logistic", "negative_binomial", "gamma", "tweedie"] = (
+        "poisson"
+    ),
+    link: str | None = None,
+    theta: float | None = None,
+    power: float | None = None,
+    threshold: float = 0.5,
+    lambda_: float = 0.0,
+    estimate_dispersion: bool = False,
+    priors: Sequence[Union[None, str, tuple, dict]] | None = None,
+    vcov_type: Literal["laplace", "sandwich", "naive"] = "laplace",
+    conf_level: float = 0.95,
+    offset: Union[pl.Expr, str, None] = None,
+    add_intercept: bool = True,
+    max_iter: int = 100,
+    tol: float = 1e-8,
+) -> pl.Expr:
+    """Penalized GLM coefficient summary using R-style formula syntax.
+
+    See :func:`penalized_glm_summary` for parameter semantics.
+    """
+    response, x_exprs, _ = _parse_formula(formula)
+    return penalized_glm_summary(
+        response,
+        *x_exprs,
+        family=family,
+        link=link,
+        theta=theta,
+        power=power,
+        threshold=threshold,
+        lambda_=lambda_,
+        estimate_dispersion=estimate_dispersion,
+        priors=priors,
+        vcov_type=vcov_type,
+        conf_level=conf_level,
+        offset=offset,
+        add_intercept=add_intercept,
+        max_iter=max_iter,
+        tol=tol,
+    )
+
+
 def alm_formula_summary(
     formula: str,
     distribution: str = "normal",
@@ -4951,6 +5104,52 @@ def poisson_formula_predict(
         add_intercept=add_intercept,
         interval=interval,
         level=level,
+        null_policy=null_policy,
+        name=name,
+    )
+
+
+def penalized_glm_formula_predict(
+    formula: str,
+    family: Literal["poisson", "binomial", "logistic", "negative_binomial", "gamma", "tweedie"] = (
+        "poisson"
+    ),
+    link: str | None = None,
+    theta: float | None = None,
+    power: float | None = None,
+    threshold: float = 0.5,
+    lambda_: float = 0.0,
+    estimate_dispersion: bool = False,
+    priors: Sequence[Union[None, str, tuple, dict]] | None = None,
+    offset: Union[pl.Expr, str, None] = None,
+    add_intercept: bool = True,
+    max_iter: int = 100,
+    tol: float = 1e-8,
+    type: Literal["response", "link"] = "response",
+    null_policy: Literal["drop", "drop_y_zero_x"] = "drop",
+    name: str | None = None,
+) -> pl.Expr:
+    """Penalized GLM predictions using R-style formula syntax.
+
+    See :func:`penalized_glm_predict` for parameter semantics.
+    """
+    response, x_exprs, _ = _parse_formula(formula)
+    return penalized_glm_predict(
+        response,
+        *x_exprs,
+        family=family,
+        link=link,
+        theta=theta,
+        power=power,
+        threshold=threshold,
+        lambda_=lambda_,
+        estimate_dispersion=estimate_dispersion,
+        priors=priors,
+        offset=offset,
+        add_intercept=add_intercept,
+        max_iter=max_iter,
+        tol=tol,
+        type=type,
         null_policy=null_policy,
         name=name,
     )
