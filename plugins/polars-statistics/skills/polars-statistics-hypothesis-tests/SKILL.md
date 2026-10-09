@@ -1,16 +1,19 @@
 ---
 name: polars-statistics-hypothesis-tests
-description: Use polars-statistics hypothesis tests — run t-tests, Mann-Whitney, Kruskal-Wallis, normality tests, correlation tests, chi-square, Fisher's exact, TOST equivalence tests, MMD, or energy distance as Polars expressions.
+description: Use polars-statistics hypothesis tests — run t-tests, Mann-Whitney, Kruskal-Wallis, normality tests, correlation tests, chi-square, Fisher's exact, TOST equivalence tests, MMD, energy distance, effect sizes (Cohen's d, rank-biserial), Jarque-Bera normality, or bootstrap confidence intervals as Polars expressions.
 version: "0.8.0"
 user-invocable: false
 ---
 
 ## Overview
 
-polars-statistics exposes 44 hypothesis-test expression functions across seven families plus
-10 PyModel imperative classes. Expression functions integrate with Polars `group_by`,
-`over`, and lazy pipelines; PyModel classes follow an sklearn-style `.fit(x, y)` interface
-on NumPy arrays.
+polars-statistics exposes 52 hypothesis-test expression functions across eight families plus
+10 PyModel imperative classes (count: every public function in `exprs/parametric.py`,
+`nonparametric.py`, `distributional.py`, `correlation.py`, `categorical.py`, `modern.py`,
+`tost.py`, and `resampling.py`, excluding the three ANOVA builders documented under
+polars-statistics-anova and the private `_to_expr` helper). Expression functions integrate
+with Polars `group_by`, `over`, and lazy pipelines; PyModel classes follow an sklearn-style
+`.fit(x, y)` interface on NumPy arrays.
 
 - **Expression API**: `df.select(ps.ttest_ind("a", "b"))` or `df.group_by("cohort").agg(ps.pearson("x", "y"))`
 - **PyModel API**: `from polars_statistics import TTestInd; m = TTestInd().fit(x, y)`
@@ -35,7 +38,11 @@ Route here when the user asks to:
 - Measure agreement (`cohen_kappa`, `cramers_v`, `phi_coefficient`)
 - Compare distributions with a modern kernel method (`mmd_test`, `energy_distance`, `energy_distance_nd`)
 - Run equivalence or TOST tests (`tost_t_test_one_sample`, `tost_bootstrap`, etc.)
-- Use any of the keywords: hypothesis test, p-value, statistical significance, nonparametric, normality, correlation coefficient, equivalence, two-one-sided test, chi-square, Fisher exact
+- Compute an effect size (`cohens_d`, `cohens_d_one_sample`, `rank_biserial`, `matched_pairs_rank_biserial`, `rank_biserial_from_u`)
+- Test for normality via Jarque-Bera (`jarque_bera`)
+- Build a bootstrap confidence interval for a mean, median, or standard deviation (`bootstrap_mean_ci`, `bootstrap_ci`)
+- Get a conditional (R `fisher.test`-style) odds ratio (`fisher_exact_conditional`)
+- Use any of the keywords: hypothesis test, p-value, statistical significance, nonparametric, normality, correlation coefficient, equivalence, two-one-sided test, chi-square, Fisher exact, effect size, Cohen's d, rank-biserial, Jarque-Bera, bootstrap confidence interval
 
 **Do NOT route here for:**
 - ANOVA (one-way, two-way, repeated-measures) -> polars-statistics-anova
@@ -117,13 +124,21 @@ ps.brunner_munzel(x, y, alternative="two-sided", alpha=None)
 # verify: skip -- function signature reference (not runnable Python; type annotations in call context)
 ps.shapiro_wilk(x)
 ps.dagostino(x)
+ps.jarque_bera(x)
 ```
 
 **Notes:**
 - `shapiro_wilk`: tests normality using the Shapiro-Wilk W statistic. Appropriate for
-  `n = 3..5000`. Returns `struct{statistic: f64, p_value: f64}`.
+  `n = 3..5000`. Returns `struct{statistic: f64, p_value: f64}`. Since anofox-statistics
+  0.4.3, `n <= 11` p-values are computed from the R-exact small-sample distribution
+  (previously an asymptotic approximation for all `n`).
 - `dagostino`: D'Agostino-Pearson K² omnibus test combining skewness and kurtosis.
   Requires `n >= 20`. Returns `struct{statistic: f64, p_value: f64}`.
+- `jarque_bera`: asymptotic chi-squared(2) test on sample skewness and excess kurtosis,
+  matching R `tseries::jarque.bera.test`. Returns
+  `struct{statistic: f64, p_value: f64, skewness: f64, kurtosis: f64, n: u32}`. Requires
+  at least 3 finite, non-constant values; fewer values, non-finite input, or constant
+  data degrade to an all-NaN struct with `n == 0` (never an exception).
 
 ---
 
@@ -212,17 +227,33 @@ These functions take scalar integer values, not column references. Call them in
 
 ```python
 # verify: skip -- function signature reference (not runnable Python; successes: int, a: int etc. use type annotation syntax)
-ps.binom_test(successes: int, n: int, p0=0.5, alternative="two-sided")
-ps.prop_test_one(successes: int, n: int, p0=0.5, alternative="two-sided")
-ps.prop_test_two(successes1: int, n1: int, successes2: int, n2: int, alternative="two-sided", correction=False)
-ps.fisher_exact(a: int, b: int, c: int, d: int, alternative="two-sided")
+ps.binom_test(successes: int, n: int, p0=0.5, alternative="two-sided", conf_level=0.95)
+ps.prop_test_one(successes: int, n: int, p0=0.5, alternative="two-sided", conf_level=0.95)
+ps.prop_test_two(successes1: int, n1: int, successes2: int, n2: int, alternative="two-sided", correction=False, conf_level=0.95)
+ps.fisher_exact(a: int, b: int, c: int, d: int, alternative="two-sided", conf_level=0.95)
+ps.fisher_exact_conditional(a: int, b: int, c: int, d: int, alternative="two-sided", conf_level=0.95)
 ps.mcnemar_test(a: int, b: int, c: int, d: int, correction=False)
 ps.mcnemar_exact(a: int, b: int, c: int, d: int)
 ps.phi_coefficient(a: int, b: int, c: int, d: int)
 ```
 
-For `fisher_exact`, `mcnemar_test`, `mcnemar_exact`, and `phi_coefficient`, `a`, `b`, `c`,
-`d` are the four cells of a 2x2 contingency table in row-major order: `[[a, b], [c, d]]`.
+For `fisher_exact`, `fisher_exact_conditional`, `mcnemar_test`, `mcnemar_exact`, and
+`phi_coefficient`, `a`, `b`, `c`, `d` are the four cells of a 2x2 contingency table in
+row-major order: `[[a, b], [c, d]]`.
+
+**`conf_level` (default `0.95`, unchanged behaviour at the default):** controls the
+reported interval on `binom_test` (Clopper-Pearson), `prop_test_one`/`prop_test_two`
+(Wilson score), and `fisher_exact`/`fisher_exact_conditional`. One-sided `alternative`
+values (`"less"`/`"greater"`) give a one-sided interval on all of these, matching R's
+`binom.test`/`prop.test`/`fisher.test`. An invalid `conf_level` (outside `(0, 1)`) yields
+a NaN interval, never an exception.
+
+**`fisher_exact` vs `fisher_exact_conditional`:** `fisher_exact` reports the *sample* odds
+ratio (`ad/bc`) with a two-sided Woolf (logit) interval at `conf_level` — fast, but not
+full R `fisher.test` semantics. `fisher_exact_conditional` reports R `fisher.test`'s
+conditional maximum-likelihood odds ratio and the exact conditional interval (one-sided
+for one-sided `alternative`: `"greater"` gives `ci_upper = +inf`, `"less"` gives
+`ci_lower = 0.0`). The two share the same `p_value`.
 
 #### Contingency-table column functions
 
@@ -259,7 +290,8 @@ Pass an explicit `expected` column for non-uniform expected frequencies.
 |----------|--------|
 | `binom_test`, `prop_test_one`, `prop_test_two` | `estimate`, `statistic`, `p_value`, `ci_lower`, `ci_upper`, `n` |
 | `chisq_test`, `g_test`, `mcnemar_test` | `statistic`, `p_value`, `df`, `n` |
-| `fisher_exact` | `statistic` (odds ratio), `p_value` |
+| `fisher_exact` | `statistic` (sample odds ratio `ad/bc`), `p_value`, `ci_lower`, `ci_upper` (Woolf interval) |
+| `fisher_exact_conditional` | `statistic` (conditional MLE odds ratio), `p_value`, `ci_lower`, `ci_upper` (exact conditional interval) |
 | `mcnemar_exact` | `statistic`, `p_value` |
 | `phi_coefficient`, `cramers_v`, `cohen_kappa`, `contingency_coef` | `estimate`, `statistic`, `p_value` |
 
@@ -335,6 +367,57 @@ ps.tost_yuen(x, y, trim=0.2, bounds_type="symmetric", delta=0.5, lower=-0.5, upp
 
 - `equivalent`: boolean — `True` if TOST concludes equivalence at level `alpha`.
 - `tost_p_value`: the larger of the two one-sided p-values (equivalence requires both less than `alpha`).
+
+---
+
+### Group I — Effect Sizes & Bootstrap CIs (`exprs/parametric.py`, `nonparametric.py`, `resampling.py`)
+
+```python
+# verify: skip -- function signature reference (not runnable Python; type annotations in call context)
+ps.cohens_d(x, y, kind="student", mu=0.0)
+ps.cohens_d_one_sample(x, mu=0.0)
+ps.rank_biserial(x, y, mu=None)
+ps.matched_pairs_rank_biserial(x, y, mu=None)
+ps.rank_biserial_from_u(u1, n1, n2)
+ps.bootstrap_mean_ci(x, n_bootstrap=1000, conf_level=0.95, block_length=0, seed=None)
+ps.bootstrap_ci(x, statistic="mean", n_bootstrap=1000, conf_level=0.95, seed=None)
+```
+
+**Parameters:**
+
+| Parameter | Type | Values / Notes | Default |
+|-----------|------|---------------|---------|
+| `kind` (`cohens_d`) | str | `"student"` (pooled-SD), `"welch"` (unequal-variance), `"paired"` (`d_z` on `x - y`, jointly filtered) | `"student"` |
+| `mu` | float or None | null value of the mean / location-shift difference | `0.0` (Cohen's d) / `None` (rank-biserial) |
+| `block_length` (`bootstrap_mean_ci`) | int | `0` = IID bootstrap, `1` = stationary bootstrap, `>1` = circular block bootstrap (dependent/time-series data) | `0` |
+| `statistic` (`bootstrap_ci`) | str | `"mean"`, `"median"`, `"std"` (sample SD, `n - 1` denominator) — fixed dispatch only, no Python callables | `"mean"` |
+| `n_bootstrap` | int | number of bootstrap resamples | `1000` |
+| `conf_level` | float | confidence level for the percentile interval | `0.95` |
+| `seed` | int or None | RNG seed; omit for non-deterministic resamples | `None` |
+
+**Output struct fields:**
+
+| Function | Fields |
+|----------|--------|
+| `cohens_d`, `cohens_d_one_sample`, `rank_biserial`, `matched_pairs_rank_biserial`, `rank_biserial_from_u` | `estimate` |
+| `bootstrap_mean_ci`, `bootstrap_ci` | `estimate`, `se`, `ci_lower`, `ci_upper`, `conf_level`, `n_bootstrap` |
+
+**Notes:**
+- `cohens_d`: `"student"` matches R `effectsize::cohens_d(x, y, pooled_sd = TRUE)`;
+  `"welch"` matches `pooled_sd = FALSE`; `"paired"` matches
+  `effectsize::cohens_d(x, y, paired = TRUE)`. Returns NaN when the standardiser is zero
+  or a sample has fewer than 2 observations.
+- `cohens_d_one_sample`: `d = (mean(x) - mu) / sd(x)`, matching
+  `effectsize::cohens_d(x, mu = mu)`.
+- `rank_biserial` / `matched_pairs_rank_biserial` / `rank_biserial_from_u`: see the sign-
+  convention gotcha below. `rank_biserial_from_u` takes a precomputed Mann-Whitney U
+  statistic (e.g. `MannWhitneyU().fit(x, y).statistic`) instead of raw samples —
+  O(1) instead of O(n1 * n2).
+- `bootstrap_mean_ci` / `bootstrap_ci`: both drop non-finite values before resampling;
+  `statistic="mean"` on `bootstrap_ci` is bit-identical to
+  `bootstrap_mean_ci(block_length=0)` for the same seed (same Rust mean closure).
+  Invalid parameters (`n_bootstrap < 2`, `conf_level` outside `(0, 1)`, fewer than 2
+  finite observations) degrade to an all-NaN struct, never an exception.
 
 ---
 
@@ -643,6 +726,41 @@ print(f"statistic={m.statistic:.4f}, p={m.p_value:.4f}")
 print(m.to_dict())
 ```
 
+### Example 9: Effect sizes, Jarque-Bera and a bootstrap CI
+
+```python
+import polars as pl
+import polars_statistics as ps
+import numpy as np
+
+rng = np.random.default_rng(42)
+df = pl.DataFrame({
+    "control": rng.normal(0.0, 1.0, 30).tolist(),
+    "treatment": rng.normal(0.5, 1.0, 30).tolist(),
+})
+
+# Cohen's d: negative because treatment tends to be larger than control
+d = df.select(ps.cohens_d("control", "treatment").alias("d"))
+assert d.unnest("d")["estimate"][0] < 0.0
+
+# Rank-biserial effect size for the same comparison (opposite sign convention vs
+# R's effectsize::rank_biserial -- positive here means treatment tends to be larger)
+rb = df.select(ps.rank_biserial("control", "treatment").alias("rb"))
+print(rb.unnest("rb"))
+
+# Jarque-Bera normality test on the control sample
+jb = df.select(ps.jarque_bera("control").alias("jb"))
+print(jb.unnest("jb"))  # statistic, p_value, skewness, kurtosis, n
+
+# Bootstrap confidence interval for the control mean (reproducible via seed)
+bc = df.select(ps.bootstrap_mean_ci("control", seed=42).alias("bc"))
+print(bc.unnest("bc"))  # estimate, se, ci_lower, ci_upper, conf_level, n_bootstrap
+
+# Conditional (R fisher.test) odds ratio for a 2x2 table
+fe = pl.select(ps.fisher_exact_conditional(18, 7, 9, 16).alias("fe"))
+print(fe.unnest("fe"))  # statistic, p_value, ci_lower, ci_upper
+```
+
 ---
 
 ## Gotchas / Notes
@@ -702,6 +820,57 @@ df_wide.select(ps.kruskal_wallis("ctrl", "treat_a", "treat_b"))
 Passing `conf_level=None` (the default) skips computing the Hodges-Lehmann location
 estimator and confidence interval, which improves performance for large samples. Pass a
 float (e.g., `0.95`) only when you need the CI.
+
+### Rank-biserial sign convention is opposite R's `effectsize::rank_biserial`
+
+`rank_biserial`, `matched_pairs_rank_biserial`, and `rank_biserial_from_u` report `r > 0`
+when the *second* sample (`y`) tends to be larger than the first (`x`). R's
+`effectsize::rank_biserial` reports the opposite sign for the same comparison. Negate the
+estimate when porting an R-authored analysis.
+
+### Expression builders drop non-finite values; PyModel test classes rank them like R
+
+`ps.mann_whitney_u`, `ps.wilcoxon_signed_rank`, `ps.kruskal_wallis`, and the other Group A/B
+expression builders silently filter non-finite (`NaN`/`Inf`) rows before computing. The
+corresponding PyModel classes (`MannWhitneyU`, `WilcoxonSignedRank`, `KruskalWallis`, ...)
+instead rank `+Inf`/`-Inf` as the largest/smallest values (matching R's own `rank()`
+behaviour, anofox-statistics 0.4.4) and raise `ValueError` if a `NaN` is present — they do
+not silently drop rows. Pick the PyModel class when you need R-matching treatment of
+infinite values.
+
+### `bootstrap_ci` supports only `"mean"` / `"median"` / `"std"` — no Python callables
+
+The upstream `anofox_statistics::bootstrap_ci` is generic over a native Rust closure, which
+cannot cross the Python FFI boundary (and calling back into Python from a Polars worker
+thread risks a GIL-reentrancy deadlock). Only the fixed `{"mean", "median", "std"}`
+dispatch is exposed. For any other statistic, resample manually in Python/NumPy.
+
+### One-sided `alternative` gives a one-sided interval on `binom_test` / `prop_test_*` / `fisher_exact*`
+
+Since this plan, passing `alternative="less"` or `alternative="greater"` to `binom_test`,
+`prop_test_one`, `prop_test_two`, `fisher_exact`, or `fisher_exact_conditional` returns a
+one-sided interval (e.g. `ci_upper = +inf` for `"greater"`), matching R's
+`binom.test`/`prop.test`/`fisher.test`. Only `alternative="two-sided"` (the default) gives
+a conventional two-sided interval.
+
+### Mann-Whitney / Wilcoxon 0.4.5-0.4.6 retarget — R `wilcox.test` parity, exact gating, `mcnemar_exact`
+
+Since anofox-statistics 0.4.5/0.4.6:
+- The `MannWhitneyU` / `WilcoxonSignedRank` PyModel classes' `estimate` and `conf_int` now
+  follow R `wilcox.test(conf.int = TRUE)` exactly: a root-finding interval, continuity
+  correction applied to the interval (not only the test statistic), one-sided alternatives
+  give an interval with an infinite bound, and the signed-rank interval is computed on
+  `x - y`.
+- `exact=True` is honoured only for `n1 * n2 <= 10,000` (rank-sum) or `<= 300` non-zero
+  differences (signed-rank) — larger samples silently fall back to the normal
+  approximation (the exact null distribution no longer overflows below these thresholds,
+  but is not computed above them).
+- The `ps.mann_whitney_u` / `ps.wilcoxon_signed_rank` **expressions** return only
+  `struct{statistic, p_value}` — use the PyModel classes for the Hodges-Lehmann
+  `estimate`/`conf_int` (the expression layer does not expose them).
+- `ps.mcnemar_exact` is exact and finite for any `b + c` (previously NaN for large
+  discordant-pair counts) — it computes the R `binom.test(b, b+c, 0.5)` p-value via the
+  binomial CDF rather than enumerating the binomial PMF.
 
 ### Scalar-argument categorical functions (`binom_test`, `fisher_exact`, etc.)
 

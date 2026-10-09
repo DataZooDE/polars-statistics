@@ -218,7 +218,11 @@ if m.is_fitted():                 # safe guard
 | `icc` | `icc`, `f_value`, `df1`, `df2`, `p_value`, `ci_lower`, `ci_upper`, `n_subjects`, `n_raters` |
 | `binom_test`, `prop_test_one`, `prop_test_two` | `estimate`, `statistic`, `p_value`, `ci_lower`, `ci_upper`, `n` |
 | `chisq_test`, `g_test`, `mcnemar_test` | `statistic`, `p_value`, `df`, `n` |
-| `fisher_exact` | `statistic` (odds ratio), `p_value` |
+| `fisher_exact` | `statistic` (sample odds ratio `ad/bc`), `p_value`, `ci_lower`, `ci_upper` (Woolf interval) |
+| `fisher_exact_conditional` | `statistic` (conditional MLE odds ratio), `p_value`, `ci_lower`, `ci_upper` (exact conditional interval) |
+| `cohens_d`, `cohens_d_one_sample`, `rank_biserial`, `matched_pairs_rank_biserial`, `rank_biserial_from_u` | `estimate` |
+| `jarque_bera` | `statistic`, `p_value`, `skewness`, `kurtosis`, `n` |
+| `bootstrap_mean_ci`, `bootstrap_ci` | `estimate`, `se`, `ci_lower`, `ci_upper`, `conf_level`, `n_bootstrap` |
 | `mmd_test`, `energy_distance` | `statistic`, `p_value` |
 | TOST functions | `estimate`, `ci_lower`, `ci_upper`, `bound_lower`, `bound_upper`, `tost_p_value`, `equivalent`, `alpha`, `n` |
 | `one_way_anova` | `statistic`, `df_between`, `df_within`, `p_value`, `ss_between`, `ss_within`, `ms_between`, `ms_within`, `eta_squared`, `n_groups` |

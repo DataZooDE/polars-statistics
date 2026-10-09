@@ -11,7 +11,7 @@ description edits.
 | Skill | `description` |
 |-------|---------------|
 | `polars-statistics-getting-started` | Get started with polars-statistics — install the package, understand the two API styles (expressions vs. PyModel classes), choose the right model with the decision matrix, and migrate from sklearn. |
-| `polars-statistics-hypothesis-tests` | Use polars-statistics hypothesis tests — run t-tests, Mann-Whitney, Kruskal-Wallis, normality tests, correlation tests, chi-square, Fisher's exact, TOST equivalence tests, MMD, or energy distance as Polars expressions. |
+| `polars-statistics-hypothesis-tests` | Use polars-statistics hypothesis tests — run t-tests, Mann-Whitney, Kruskal-Wallis, normality tests, correlation tests, chi-square, Fisher's exact, TOST equivalence tests, MMD, energy distance, effect sizes (Cohen's d, rank-biserial), Jarque-Bera normality, or bootstrap confidence intervals as Polars expressions. |
 | `polars-statistics-anova` | Use polars-statistics ANOVA — run one-way ANOVA (Fisher or Welch), two-way ANOVA, repeated-measures ANOVA, or intraclass correlation coefficient (ICC) as Polars expressions. |
 | `polars-statistics-regression` | Use polars-statistics regression — fit OLS, Ridge, Lasso, Elastic Net, WLS, RLS, BLS, NNLS, Quantile, Huber, PLS, ALM, or any GLM (logistic, Poisson, Negative Binomial, Tweedie, Probit, Cloglog) as Polars expressions or as PyModel classes; use R-style formulas with interactions and polynomial terms. |
 | `polars-statistics-results` | Consume polars-statistics expression results — extract struct fields, unnest result columns, call to_dict() and summary() on PyModel classes, handle PyRuntimeError for unfitted models, or work with the typed .pyi API. |
@@ -40,6 +40,11 @@ description edits.
 | "Fisher's exact test on a 2x2 contingency table" | `polars-statistics-hypothesis-tests` | CORRECT — "Fisher's exact" explicit |
 | "Are these two samples equivalent? (TOST)" | `polars-statistics-hypothesis-tests` | CORRECT — "TOST equivalence tests" explicit |
 | "Compare distribution shapes with MMD or energy distance" | `polars-statistics-hypothesis-tests` | CORRECT — "MMD, energy distance" explicit |
+| "Compute Cohen's d between two groups" | `polars-statistics-hypothesis-tests` | CORRECT — "effect sizes (Cohen's d...)" explicit |
+| "Rank-biserial effect size for a Mann-Whitney test" | `polars-statistics-hypothesis-tests` | CORRECT — "rank-biserial" explicit |
+| "Jarque-Bera normality test" | `polars-statistics-hypothesis-tests` | CORRECT — "Jarque-Bera normality" explicit |
+| "Bootstrap confidence interval for the mean of a time series" | `polars-statistics-hypothesis-tests` | CORRECT — "bootstrap confidence intervals" explicit; `block_length` handles the time-series/dependent-data case |
+| "Conditional (R fisher.test) odds ratio" | `polars-statistics-hypothesis-tests` | CORRECT — "Fisher's exact" family; `fisher_exact_conditional` documented in the API reference |
 
 ### Family: ANOVA
 
