@@ -71,9 +71,10 @@ real API, bundled into the wheel, and shipped as 0.8.0 on PyPI.
 - [x] **Phase 14: Skill Cheat-Sheet Authoring** - Author the five capability-family `SKILL.md` cheat-sheets with correct frontmatter and consistent structure, examples checked live while writing (completed 2026-09-21)
 - [x] **Phase 15: Accuracy Verification Pass** - Run every skill example against the real API and audit each skill's description so Claude auto-surfaces the right one (completed 2026-09-21)
 - [ ] **Phase 16: Wheel Bundling** - Bundle the skill files into the built wheel via maturin package data so they ship on `pip install`
-- [ ] **Phase 16.1: Upstream Crate Refresh** (INSERTED) - Bump to anofox-statistics 0.4.6 / anofox-regression 0.5.16, adapt to R-matching fixes, expose new API, update stubs/docs/skills
+- [x] **Phase 16.1: Upstream Crate Refresh** (INSERTED) - Bump to anofox-statistics 0.4.6 / anofox-regression 0.5.16, adapt to R-matching fixes, expose new API, update stubs/docs/skills (completed 2026-10-09)
 - [ ] **Phase 16.2: Penalized GLM and AFT Survival Regression** (INSERTED) - Bump to anofox-statistics 0.4.7 / anofox-regression 0.5.22; expose anofox-regression 0.5.16's penalized GLM engine and AFT survival regression; add estimate/CI to the Mann-Whitney/Wilcoxon expressions
 - [ ] **Phase 16.3: Upstream API Wave 2** (INSERTED) - Expose anofox-statistics 0.4.7 / anofox-regression 0.5.17–0.5.21 additions: post-hoc tests, p_adjust, augment diagnostics, GLMM families, EB shrinkage
+- [ ] **Phase 16.4: Ruff Cleanup** (INSERTED) - Make `ruff check .` green repo-wide and enforce it in CI
 - [ ] **Phase 17: Release 0.8.0** - Bump 0.7.0→0.8.0 across every version source and publish to production PyPI via the OIDC pipeline
 
 ## Phase Details
@@ -262,6 +263,20 @@ real API, bundled into the wheel, and shipped as 0.8.0 on PyPI.
 - [ ] 16.3-10-PLAN.md — CHANGELOG / README / API_REFERENCE / validation page (Wave 7)
 - [ ] 16.3-11-PLAN.md — Skills + ROUTING + COVERAGE check + full phase gate (Wave 7)
 
+### Phase 16.4: Ruff Cleanup (INSERTED)
+
+**Goal**: `ruff check .` is green for the whole repository and CI enforces it, so the "ruff" merge gate in CLAUDE.md is real.
+**Depends on**: Phase 16.3 (runs after all upstream-surface work so the cleanup covers its files)
+**Requirements**: QUAL-01
+**Success Criteria** (what must be TRUE):
+
+  1. `uv run ruff check .` exits 0 (line length 100, py39 target, rules E/F/W/I/UP/B/C4 as configured in pyproject.toml). Fixes are behaviour-neutral: annotation-style modernisation compatible with Python 3.9 (via `from __future__ import annotations` where needed), import sorting, and specific exception types instead of `pytest.raises(Exception)`.
+  2. Any rule that cannot be satisfied without a behaviour or public-API change is disabled per-file or per-rule in pyproject.toml, with a comment giving the reason.
+  3. `.github/workflows/ci.yml` runs `ruff check .` (and `ruff format --check` only if the repo is already formatted that way) in the lint job.
+  4. Full pytest suite, stub drift guard, skill harness and mkdocs --strict stay green.
+
+**Plans**: TBD
+
 ### Phase 17: Release 0.8.0
 
 **Goal**: polars-statistics 0.8.0 — carrying the plugin, the five verified skills, and the wheel bundling — is built, published to production PyPI via the existing OIDC pipeline, and confirmed installable with skills present.
@@ -278,7 +293,7 @@ real API, bundled into the wheel, and shipped as 0.8.0 on PyPI.
 ## Progress
 
 **Execution Order:**
-Phases execute in order: 13 → 14 → 15 → 16.1 → 16.2 → 16.3 → 16 → 17 (16.1–16.3 update the skills before 16 bundles them into the wheel)
+Phases execute in order: 13 → 14 → 15 → 16.1 → 16.2 → 16.3 → 16.4 → 16 → 17 (16.1–16.3 update the skills before 16 bundles them into the wheel)
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|

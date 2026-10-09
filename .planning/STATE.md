@@ -2,21 +2,21 @@
 gsd_state_version: "1.0"
 milestone: v0.8.0
 milestone_name: Claude Code Skills Plugin
-current_phase: "16.1"
-current_phase_name: Upstream Crate Refresh
-current_plan: 9
-status: verifying
-stopped_at: Completed 16.1-08-PLAN.md
-last_updated: "2026-10-09T09:45:25.812Z"
-last_activity: 2026-10-08
-last_activity_desc: Phase 16.1 execution resumed (wave continue)
-state_head: 060148e33a4c2623237084357ee238f3d8b09fda
+current_phase: 16
+current_phase_name: Wheel Bundling
+current_plan: Not started
+status: planning
+stopped_at: Phase 16.1 complete, ready to plan Phase 16
+last_updated: "2026-10-09T11:45:13.906Z"
+last_activity: 2026-10-09
+last_activity_desc: Phase 16.1 complete, transitioned to Phase 16
+state_head: 229074ce3f48a573987fb3fdeb1de3d822ce7970
 progress:
-  total_phases: 8
-  completed_phases: 0
+  total_phases: 9
+  completed_phases: 1
   total_plans: 36
   completed_plans: 16
-  percent: 0
+  percent: 11
 ---
 
 # Project State
@@ -30,11 +30,11 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 
 ## Current Position
 
-Phase: 16.1 (Upstream Crate Refresh) — EXECUTING
-Current Plan: 9
+Phase: 16 — Wheel Bundling
+Current Plan: Not started
 Total Plans in Phase: 9
-Status: Phase complete — ready for verification
-Last activity: 2026-10-08 — Phase 16.1 execution resumed (wave continue)
+Status: Ready to plan
+Last activity: 2026-10-09 — Phase 16.1 complete, transitioned to Phase 16
 
 ## Milestone Roadmap (v0.8.0)
 
@@ -52,7 +52,7 @@ Execution order: 13 → 14 → 15 → 16 → 17
 
 **Velocity:**
 
-- Total plans completed: 29
+- Total plans completed: 38
 - Average duration: — min
 - Total execution time: 0.0 hours
 
@@ -69,6 +69,7 @@ Execution order: 13 → 14 → 15 → 16 → 17
 | 13 | 1 | - | - |
 | 14 | 5 | - | - |
 | 15 | 1 | - | - |
+| 16.1 | 9 | - | - |
 
 **Recent Trend:**
 
@@ -182,6 +183,7 @@ None yet.
 - Phase 16.1 inserted after Phase 16: Upstream crate refresh: anofox-statistics 0.4.4 + anofox-regression 0.5.15 — bump, adapt to R-matching behaviour changes, expose new API, update stubs/docs/CHANGELOG/skills (URGENT)
 - Phase 16.2 inserted after Phase 16.1: Penalized GLM + AFT survival regression from anofox-regression 0.5.16; Mann-Whitney/Wilcoxon expression estimate+CI (URGENT)
 - Phase 16.3 inserted after Phase 16.2: Upstream API wave 2: anofox-statistics 0.4.7 + anofox-regression 0.5.17–0.5.21; 16.2 retargeted to bump to 0.4.7/0.5.21 (URGENT)
+- Phase 16.4 inserted after Phase 16.3: Ruff cleanup + CI ruff gate (16.1 ruff criterion accepted via override)
 
 ## Deferred Items
 
@@ -194,6 +196,6 @@ Items acknowledged and carried forward from previous milestone close:
 ## Session Continuity
 
 Last session: 2026-10-09T09:33:04.703Z
-Stopped at: Completed 16.1-08-PLAN.md
+Stopped at: Phase 16.1 complete, ready to plan Phase 16
 Resume file: None
 </content>

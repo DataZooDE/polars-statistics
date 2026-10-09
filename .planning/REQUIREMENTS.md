@@ -60,6 +60,10 @@ Requirements for this milestone. Each maps to exactly one roadmap phase.
 - [ ] **UPST-09**: anofox-regression 0.5.17–0.5.21 additions (augment diagnostics, ModelInfo, GLM intercept inference, GLMM NegBin/Gamma/Tweedie + offset + per-factor random slopes, alias_tolerance, LARS fit-statistic getters, EB shrinkage) are exposed and match R
 - [ ] **UPST-10**: The 16.3 surface is documented in stubs, mkdocs, CHANGELOG and skills, with opt-outs recorded in COVERAGE.md
 
+### Code Quality
+
+- [ ] **QUAL-01**: `ruff check .` is green repo-wide and enforced in CI
+
 ## v2 Requirements
 
 Deferred to future releases.
@@ -105,13 +109,14 @@ Deferred to future releases.
 | UPST-08 | Phase 16.3 | Pending |
 | UPST-09 | Phase 16.3 | Pending |
 | UPST-10 | Phase 16.3 | Pending |
+| QUAL-01 | Phase 16.4 | Pending |
 | REL-07 | Phase 17 | Pending |
 | REL-08 | Phase 17 | Pending |
 
 **Coverage:**
 
-- v1 requirements: 24 total
-- Mapped to phases: 24 ✓
+- v1 requirements: 25 total
+- Mapped to phases: 25 ✓
 - Unmapped: 0 ✓
 
 ---
