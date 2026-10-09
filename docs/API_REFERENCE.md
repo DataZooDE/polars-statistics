@@ -31,6 +31,14 @@ new builders and PyModel options:
 - **GLM-family options** — `NegativeBinomial(estimate_dispersion=True)`,
   `RLS(initial_p_diagonal=...)`, `GLMM.z_values`/`p_values`/`conf_int(level)`.
   See [GLM Models](api/classes/glm.md).
+- **Penalized GLM and survival regression** (`anofox-regression` 0.5.16,
+  bumped to 0.5.22) — `PenalizedGLM`/`ps.penalized_glm*` (priors, ridge,
+  offsets, 6 families) and `AFT`/`ps.aft*` (Weibull/exponential/log-normal/
+  log-logistic, right censoring). See
+  [Penalized GLM](api/regression/penalized-glm.md),
+  [Survival Regression (AFT)](api/regression/survival.md),
+  [GLM Model Classes](api/classes/glm.md), and
+  [Survival Model Classes](api/classes/survival.md).
 
 ---
 
@@ -193,10 +201,14 @@ Mann-Whitney U test (Wilcoxon rank-sum test).
 ps.mann_whitney_u(
     x: Union[pl.Expr, str],
     y: Union[pl.Expr, str],
+    conf_level: Optional[float] = None,
 ) -> pl.Expr
 ```
 
-**Returns:** `Struct{statistic: Float64, p_value: Float64}`
+**Returns:** `Struct{statistic: Float64, p_value: Float64, estimate: Float64,
+ci_lower: Float64, ci_upper: Float64}` — *New in 0.8.0:* the trailing
+Hodges-Lehmann `estimate`/`ci_lower`/`ci_upper` fields are `NaN` unless
+`conf_level` is given, matching R `wilcox.test(conf.int = TRUE)`.
 
 ---
 
@@ -208,10 +220,14 @@ Wilcoxon signed-rank test for paired samples.
 ps.wilcoxon_signed_rank(
     x: Union[pl.Expr, str],
     y: Union[pl.Expr, str],
+    conf_level: Optional[float] = None,
 ) -> pl.Expr
 ```
 
-**Returns:** `Struct{statistic: Float64, p_value: Float64}`
+**Returns:** `Struct{statistic: Float64, p_value: Float64, estimate: Float64,
+ci_lower: Float64, ci_upper: Float64}` — *New in 0.8.0:* the trailing
+Hodges-Lehmann `estimate`/`ci_lower`/`ci_upper` fields are `NaN` unless
+`conf_level` is given, matching R `wilcox.test(conf.int = TRUE)`.
 
 ---
 

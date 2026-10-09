@@ -161,6 +161,12 @@ ps.logistic("y", "x1", "x2", lambda_=0.1)             # Binary classification (B
 ps.logistic_regression("y", "x1", "x2", penalty="l2", C=1.0)  # sklearn-style logistic
 ps.poisson("y", "x1", "x2")                            # Count data
 
+# Penalized GLM - priors, ridge, offsets, 6 families
+ps.penalized_glm("claims", "age", "risk", family="poisson", offset="log_exposure")
+
+# AFT - accelerated failure time survival regression (right censoring)
+ps.aft("time", "event", "age", distribution="weibull")
+
 # ALM - 25 distributions, loss/link/extra_parameter exposed
 ps.alm("y", "x1", "x2", distribution="laplace", loss="mle")
 ```
@@ -286,6 +292,8 @@ alm = ALM.laplace().fit(X, y)  # Robust to outliers
 Available model classes:
 - **Linear / robust**: `OLS`, `Ridge`, `ElasticNet`, `WLS`, `RLS`, `BLS`, `Quantile`, `Isotonic`, `Huber`, `PLS`
 - **GLMs**: `Logistic`, `LogisticRegression` (sklearn-style), `Poisson`, `NegativeBinomial`, `Tweedie`, `Probit`, `Cloglog`
+- **PenalizedGLM**: penalized / prior-regularized GLM (6 families, Normal/Laplace priors, ridge, offsets)
+- **AFT**: accelerated failure time survival regression (Weibull, exponential, log-normal, log-logistic; right censoring)
 - **Augmented**: `ALM` (25 distributions), `LmDynamic`, `Aid`
 
 ## Test Model Classes
@@ -380,6 +388,17 @@ Every Polars expression has a `*_fit` Rust entry point in `polars_statistics::ex
 - **Categorical**: `binom_test_fit`, `prop_test_one_fit`, `prop_test_two_fit`, `chisq_test_fit`, `fisher_exact_fit`, `fisher_exact_conditional_fit`, `mcnemar_test_fit`, `cohen_kappa_fit`, `cramers_v_fit`, … (`binom_test_fit`/`prop_test_one_fit`/`prop_test_two_fit`/`fisher_exact_fit` accept an optional trailing `conf_level` input; old arity still works)
 - **Effect sizes / bootstrap**: `cohens_d_fit`, `cohens_d_one_sample_fit`, `rank_biserial_fit`, `matched_pairs_rank_biserial_fit`, `rank_biserial_from_u_fit`, `bootstrap_mean_ci_fit`, `bootstrap_ci_fit`
 - **Additive GLM-family options** (named kwargs structs, old `*_fit` signatures unchanged): `negative_binomial_fit_with`/`negative_binomial_summary_fit_with` (`NegativeBinomialKwargs`), `negative_binomial_predict_fit_with` (`NegativeBinomialPredictKwargs`), `rls_fit_with`/`rls_summary_fit_with` (`RlsKwargs`), `rls_predict_fit_with` (`RlsPredictKwargs`)
+- **Penalized GLM** (`PenalizedGlmKwargs`, `PriorKwarg`):
+  - `penalized_glm_fit`
+  - `penalized_glm_summary_fit`
+  - `penalized_glm_predict_fit`
+- **AFT survival regression** (`AftKwargs`):
+  - `aft_fit`
+  - `aft_summary_fit`
+  - `aft_predict_quantile_fit`
+  - `aft_predict_median_fit`
+  - `aft_predict_survival_fit`
+  - `aft_predict_cdf_fit`
 - **Forecast comparison / TOST / modern**: see `expressions::forecast`, `expressions::tost`, `expressions::modern`.
 
 The input slice layout (which input is `y`, which are scalars, which are `x` columns) is documented above each function — same contract that the Polars plugin uses.
