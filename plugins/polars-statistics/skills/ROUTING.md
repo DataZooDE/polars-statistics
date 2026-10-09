@@ -13,7 +13,7 @@ description edits.
 | `polars-statistics-getting-started` | Get started with polars-statistics — install the package, understand the two API styles (expressions vs. PyModel classes), choose the right model with the decision matrix, and migrate from sklearn. |
 | `polars-statistics-hypothesis-tests` | Use polars-statistics hypothesis tests — run t-tests, Mann-Whitney, Kruskal-Wallis, normality tests, correlation tests, chi-square, Fisher's exact, TOST equivalence tests, MMD, energy distance, effect sizes (Cohen's d, rank-biserial), Jarque-Bera normality, or bootstrap confidence intervals as Polars expressions. |
 | `polars-statistics-anova` | Use polars-statistics ANOVA — run one-way ANOVA (Fisher or Welch), two-way ANOVA, repeated-measures ANOVA, or intraclass correlation coefficient (ICC) as Polars expressions. |
-| `polars-statistics-regression` | Use polars-statistics regression — fit OLS, Ridge, Lasso, Elastic Net, WLS, RLS, BLS, NNLS, Quantile, Huber, PLS, ALM, or any GLM (logistic, Poisson, Negative Binomial, Tweedie, Probit, Cloglog) as Polars expressions or as PyModel classes; use R-style formulas with interactions and polynomial terms; get standard errors and p-values for Huber/RANSAC robust fits and GLMM fixed effects, or leverage/variance diagnostics for OLS/WLS/Ridge. |
+| `polars-statistics-regression` | Use polars-statistics regression — fit OLS, Ridge, Lasso, Elastic Net, WLS, RLS, BLS, NNLS, Quantile, Huber, PLS, ALM, or any GLM (logistic, Poisson, Negative Binomial, Tweedie, Probit, Cloglog, penalized GLM with priors and offsets), AFT survival regression with censoring, as Polars expressions or as PyModel classes; use R-style formulas with interactions and polynomial terms; get standard errors and p-values for Huber/RANSAC robust fits and GLMM fixed effects, or leverage/variance diagnostics for OLS/WLS/Ridge. |
 | `polars-statistics-results` | Consume polars-statistics expression results — extract struct fields, unnest result columns, call to_dict() and summary() on PyModel classes, handle PyRuntimeError for unfitted models, or work with the typed .pyi API. |
 
 ---
@@ -70,6 +70,10 @@ description edits.
 | "Get standard errors for a Huber regression" | `polars-statistics-regression` | CORRECT — "standard errors...for Huber/RANSAC robust fits" explicit |
 | "p-values for GLMM fixed effects" | `polars-statistics-regression` | CORRECT — "p-values for...GLMM fixed effects" explicit |
 | "Leverage of new observations for an OLS fit" | `polars-statistics-regression` | CORRECT — "leverage/variance diagnostics for OLS/WLS/Ridge" explicit |
+| "Fit a Weibull survival model with right-censored times" | `polars-statistics-regression` | CORRECT — "AFT survival regression with censoring" explicit |
+| "Poisson regression with an exposure offset" | `polars-statistics-regression` | CORRECT — "penalized GLM with priors and offsets" explicit |
+| "Bayesian-style GLM with a normal prior on a coefficient" | `polars-statistics-regression` | CORRECT — "penalized GLM with priors" explicit |
+| "Predict median survival time per customer" | `polars-statistics-regression` | CORRECT — "AFT survival regression" explicit; `predict_median`/`aft_predict_median` documented in the API reference |
 
 ### Family: Results
 

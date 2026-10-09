@@ -1,6 +1,6 @@
 ---
 name: polars-statistics-regression
-description: Use polars-statistics regression — fit OLS, Ridge, Lasso, Elastic Net, WLS, RLS, BLS, NNLS, Quantile, Huber, PLS, ALM, or any GLM (logistic, Poisson, Negative Binomial, Tweedie, Probit, Cloglog) as Polars expressions or as PyModel classes; use R-style formulas with interactions and polynomial terms; get standard errors and p-values for Huber/RANSAC robust fits and GLMM fixed effects, or leverage/variance diagnostics for OLS/WLS/Ridge.
+description: Use polars-statistics regression — fit OLS, Ridge, Lasso, Elastic Net, WLS, RLS, BLS, NNLS, Quantile, Huber, PLS, ALM, or any GLM (logistic, Poisson, Negative Binomial, Tweedie, Probit, Cloglog, penalized GLM with priors and offsets), AFT survival regression with censoring, as Polars expressions or as PyModel classes; use R-style formulas with interactions and polynomial terms; get standard errors and p-values for Huber/RANSAC robust fits and GLMM fixed effects, or leverage/variance diagnostics for OLS/WLS/Ridge.
 version: "0.8.0"
 user-invocable: false
 ---
@@ -18,14 +18,16 @@ All expression families have fit, tidy-summary, per-row predict, and R-formula v
 
 Route here when the task involves:
 
-- Fitting or predicting with any regression model (linear, regularized, robust, GLM, mixed, demand)
-- Calling any PyModel class: OLS, Ridge, ElasticNet, WLS, RLS, BLS, Logistic, Poisson, NegativeBinomial, Tweedie, Probit, Cloglog, Gamma, ALM, GLMM, Quantile, Huber, PLS, Isotonic, TheilSen, RANSAC, BayesianRidge, ARD, LARS, PassiveAggressive, LmDynamic, Aid, MomentAccumulator, StationaryBootstrap, CircularBlockBootstrap, PSpline
-- Using any regression expression: ols, ridge, elastic_net, lasso, wls, rls, expanding_ols, bls, nnls, quantile, pls, huber, isotonic, logistic, logistic_regression, poisson, negative_binomial, tweedie, probit, cloglog, alm, lm_dynamic, aid, aid_anomalies
+- Fitting or predicting with any regression model (linear, regularized, robust, GLM, mixed, demand, survival)
+- Calling any PyModel class: OLS, Ridge, ElasticNet, WLS, RLS, BLS, Logistic, Poisson, NegativeBinomial, Tweedie, Probit, Cloglog, Gamma, PenalizedGLM, AFT, ALM, GLMM, Quantile, Huber, PLS, Isotonic, TheilSen, RANSAC, BayesianRidge, ARD, LARS, PassiveAggressive, LmDynamic, Aid, MomentAccumulator, StationaryBootstrap, CircularBlockBootstrap, PSpline
+- Using any regression expression: ols, ridge, elastic_net, lasso, wls, rls, expanding_ols, bls, nnls, quantile, pls, huber, isotonic, logistic, logistic_regression, poisson, negative_binomial, tweedie, probit, cloglog, penalized_glm, alm, aft, lm_dynamic, aid, aid_anomalies
 - R-style formula strings: `"y ~ x1 + x2"`, `"y ~ x1 * x2"`, `"y ~ poly(x, 2)"`
 - Diagnostics: VIF, condition_number, leverage, Cook's distance, dffits, residual outliers, GLM residuals
 - Summary (tidy coefficient tables): `*_summary` expressions
 - Predictions with confidence/prediction intervals: `*_predict` expressions
 - sklearn-to-polars migration for any regression class
+- Survival / time-to-event data with right censoring (AFT: Weibull, log-normal, log-logistic, exponential)
+- Count data with an exposure offset, or a Bayesian-style (Gaussian/Laplace) prior on a GLM coefficient (penalized GLM)
 
 ## API Reference
 
@@ -441,6 +443,36 @@ Gamma(
   .predict(x) -> np.ndarray
   .predict_eta(x) -> np.ndarray          # linear predictor
   .coefficients, .intercept, .aic, .bic, .p_values, .std_errors, .converged
+
+PenalizedGLM(
+    family: str = "poisson",              # "poisson"|"binomial"|"logistic"|"negative_binomial"|"gamma"|"tweedie"
+    link: str | None = None,              # None = family's canonical link
+    theta: float | None = None,           # negative_binomial only; None = ML-estimated
+    power: float | None = None,           # tweedie only; variance power in [1, 2], default 1.5
+    threshold: float = 0.5,               # logistic only; classification threshold
+    lambda_: float = 0.0,                 # uniform L2 ridge penalty (composes with priors)
+    estimate_dispersion: bool = False,    # Poisson-only quasipoisson SEs; ValueError on other families
+    priors: list | None = None,           # per-coefficient priors — see Priors gotcha below
+    vcov_type: str = "laplace",           # "laplace" | "sandwich" | "naive"
+    add_intercept: bool = True,
+    max_iter: int = 100,
+    tol: float = 1e-8,
+    compute_inference: bool = True,
+    confidence_level: float = 0.95,
+)
+  .fit(x, y, offset=None) -> PenalizedGLM   # offset: array on the link scale, or None (= 0.0)
+  .predict(x, offset=None) -> np.ndarray
+  .predict_linear(x) -> np.ndarray
+  .coefficients, .intercept, .family, .link
+  .deviance, .null_deviance, .pseudo_r_squared, .log_likelihood, .aic, .bic
+  .dispersion, .theta, .accuracy, .converged, .iterations, .n_observations
+  .std_errors, .p_values, .z_values                         # None unless compute_inference=True
+  .conf_interval_lower, .conf_interval_upper
+  .intercept_std_error, .intercept_z_value, .intercept_p_value, .intercept_conf_interval
+  .vcov, .information                    # scaled so sqrt(diag(vcov)) == std_errors
+  .matrix_parameters                     # list[int | None] | None — solver-internal shapes
+  .has_separation, .separated_predictors, .separation_warning
+  .fitted_values, .valid_rows            # row indices kept after null/non-finite drop
 ```
 
 ---
@@ -571,6 +603,38 @@ CircularBlockBootstrap(
 
 ---
 
+### Group 9 — Survival (AFT)
+
+```python
+# verify: skip -- PyModel class reference (constructor type annotations and indented method chaining are illustrative, not valid Python)
+AFT(
+    distribution: str = "weibull",        # "weibull"|"exponential"|"lognormal"|"loglogistic" (+ aliases, see Gotchas)
+    priors: list | None = None,           # same format as PenalizedGLM's priors
+    vcov_type: str = "laplace",           # "laplace" | "sandwich" | "naive"
+    add_intercept: bool = True,
+    max_iter: int = 100,
+    tol: float = 1e-9,
+    compute_inference: bool = True,
+    confidence_level: float = 0.95,
+)
+  .fit(x, time, event) -> AFT            # event: right-censoring indicator (bool or 0/1)
+  .predict_quantile(x, p=0.5) -> np.ndarray
+  .predict_median(x) -> np.ndarray
+  .predict_survival(x, t) -> np.ndarray  # S(t|x) = P(T > t | x); t required, keyword-only on the expression
+  .predict_cdf(x, t) -> np.ndarray       # F(t|x) = 1 - S(t|x)
+  .predict_linear(x) -> np.ndarray
+  .coefficients, .intercept, .scale, .distribution
+  .log_likelihood, .null_log_likelihood, .aic, .bic
+  .converged, .iterations, .n_observations, .n_events, .n_censored
+  .std_errors, .p_values, .z_values      # None unless compute_inference=True
+  .conf_interval_lower, .conf_interval_upper
+  .intercept_std_error, .intercept_z_value, .intercept_p_value, .intercept_conf_interval
+  .log_scale_std_error                   # SE of log(scale); None for exponential (scale fixed at 1)
+  .vcov, .information                    # scaled so sqrt(diag(vcov)) == std_errors
+```
+
+---
+
 ### Regression Expression — Core Fit
 
 All fit expressions return a Polars Struct containing regression results. Use inside `group_by(...).agg(...)` for per-group fitting, or `.select(...)` for whole-frame.
@@ -600,7 +664,11 @@ ps.negative_binomial(y, *x, theta=None, lambda_=0.0, add_intercept=None, with_in
 ps.tweedie(y, *x, var_power=1.5, lambda_=0.0, add_intercept=None, with_intercept=None)
 ps.probit(y, *x, lambda_=0.0, add_intercept=None, with_intercept=None)
 ps.cloglog(y, *x, lambda_=0.0, add_intercept=None, with_intercept=None)
+ps.penalized_glm(y, *x, family="poisson", link=None, theta=None, power=None, threshold=0.5, lambda_=0.0, estimate_dispersion=False, priors=None, offset=None, add_intercept=True, max_iter=100, tol=1e-8)
 ps.alm(y, *x, distribution="normal", link=None, loss="likelihood", role_trim=None, extra_parameter=None, add_intercept=None, with_intercept=None)
+
+# Survival
+ps.aft(time, event, *x, distribution="weibull", priors=None, add_intercept=True, max_iter=100, tol=1e-9)
 
 # Dynamic / Demand
 ps.lm_dynamic(y, *x, ic="aicc", distribution="normal", lowess_span=0.3, max_models=64, add_intercept=None, with_intercept=None)
@@ -609,6 +677,10 @@ ps.aid_anomalies(y, intermittent_threshold=0.3)
 ```
 
 **OLS output struct fields:** `intercept, coefficients, r_squared, adj_r_squared, mse, rmse, f_statistic, f_pvalue, aic, bic, n_observations`
+
+**`ps.penalized_glm` output struct fields:** `intercept, coefficients, deviance, null_deviance, pseudo_r_squared, log_likelihood, aic, bic, dispersion, theta, accuracy, has_separation, iterations, converged, n_observations` (15 fields; confirmed via live `df.select(...).schema`).
+
+**`ps.aft` output struct fields:** `intercept, coefficients, scale, log_likelihood, null_log_likelihood, aic, bic, iterations, converged, n_observations, n_events, n_censored` (12 fields; confirmed via live `df.select(...).schema`).
 
 ---
 
@@ -637,7 +709,19 @@ ps.tweedie_summary(y, *x, var_power=1.5, lambda_=0.0, add_intercept=None, with_i
 ps.probit_summary(y, *x, lambda_=0.0, add_intercept=None, with_intercept=None)
 ps.cloglog_summary(y, *x, lambda_=0.0, add_intercept=None, with_intercept=None)
 ps.alm_summary(y, *x, distribution="normal", add_intercept=None, with_intercept=None)
+
+ps.penalized_glm_summary(y, *x, family="poisson", link=None, theta=None, power=None, threshold=0.5, lambda_=0.0, estimate_dispersion=False, priors=None, vcov_type="laplace", conf_level=0.95, offset=None, add_intercept=True, max_iter=100, tol=1e-8)
+ps.aft_summary(time, event, *x, distribution="weibull", priors=None, vcov_type="laplace", conf_level=0.95, add_intercept=True, max_iter=100, tol=1e-9)
 ```
+
+**`ps.penalized_glm_summary` / `ps.aft_summary` return a widened 7-field schema** —
+`List[Struct{term, estimate, std_error, statistic, p_value, ci_lower, ci_upper}]` — unlike
+every other `*_summary` expression above, which share the 5-field
+`{term, estimate, std_error, statistic, p_value}` schema (the shared `summary_output_dtype` and
+every other `*_summary` expression are unchanged). The `intercept` row is read directly from the
+upstream engine's own intercept inference, never recomputed locally. For `aft_summary`, rows are
+`intercept` (when `add_intercept=True`), `x1..xp`, then `log_scale` (omitted for
+`distribution="exponential"`, whose scale is fixed at 1 and not estimated).
 
 ---
 
@@ -679,6 +763,19 @@ ps.probit_predict(y, *x, lambda_=0.0, add_intercept=True, interval=None, level=0
 ps.cloglog_predict(y, *x, lambda_=0.0, add_intercept=True, interval=None, level=0.95, null_policy="drop", name=None)
 ps.alm_predict(y, *x, distribution="normal", add_intercept=True, interval=None, level=0.95, null_policy="drop", name=None)
 
+ps.penalized_glm_predict(y, *x, family="poisson", link=None, theta=None, power=None, threshold=0.5, lambda_=0.0, estimate_dispersion=False, priors=None, offset=None, add_intercept=True, max_iter=100, tol=1e-8, type="response", null_policy="drop", name=None)
+# Note: type="response" applies the family's inverse link (+ offset); type="link" returns the
+# linear predictor + offset directly. lower/upper are always NaN (no interval-prediction method
+# upstream). A null offset always yields a NaN prediction, regardless of null_policy.
+
+ps.aft_predict_quantile(time, event, *x, p=0.5, distribution="weibull", priors=None, add_intercept=True, max_iter=100, tol=1e-9, null_policy="drop", name=None)
+ps.aft_predict_median(time, event, *x, distribution="weibull", priors=None, add_intercept=True, max_iter=100, tol=1e-9, null_policy="drop", name=None)
+ps.aft_predict_survival(time, event, *x, t, distribution="weibull", priors=None, add_intercept=True, max_iter=100, tol=1e-9, null_policy="drop", name=None)
+ps.aft_predict_cdf(time, event, *x, t, distribution="weibull", priors=None, add_intercept=True, max_iter=100, tol=1e-9, null_policy="drop", name=None)
+# Note: t= is keyword-only and required for aft_predict_survival/_cdf (must be finite and > 0).
+# lower/upper are always NaN (no interval-prediction method upstream). Default output prefix is
+# the function name (e.g. "aft_predict_quantile"), not "aft".
+
 ps.lm_dynamic_predict(y, *x, ic="aicc", distribution="normal", lowess_span=0.3, max_models=64, add_intercept=True, null_policy="drop", name=None)
 # Note: lm_dynamic_predict lower/upper are NaN (no analytic intervals for time-varying mixture)
 ```
@@ -713,6 +810,10 @@ ps.tweedie_formula(formula: str, var_power=1.5, add_intercept=None, with_interce
 ps.probit_formula(formula: str, add_intercept=None, with_intercept=None)
 ps.cloglog_formula(formula: str, add_intercept=None, with_intercept=None)
 ps.alm_formula(formula: str, distribution="normal", add_intercept=None, with_intercept=None)
+ps.penalized_glm_formula(formula: str, family="poisson", link=None, theta=None, power=None, threshold=0.5, lambda_=0.0, estimate_dispersion=False, priors=None, offset=None, add_intercept=True, max_iter=100, tol=1e-8)
+# Note: R's formula offset() term is not parsed — pass offset= as a column/expression directly.
+ps.aft_formula(formula: str, event, distribution="weibull", priors=None, add_intercept=True, max_iter=100, tol=1e-9)
+# Note: formula's left-hand side is the time column; event is passed separately (not formula syntax).
 ```
 
 **Formula summary variants** (return `List[Struct{term,estimate,std_error,statistic,p_value}]`):
@@ -726,6 +827,10 @@ ps.lasso_formula_summary(formula: str, lambda_=1.0, add_intercept=None, with_int
 ps.logistic_formula_summary(formula: str, add_intercept=None, with_intercept=None)
 ps.poisson_formula_summary(formula: str, add_intercept=None, with_intercept=None)
 ps.alm_formula_summary(formula: str, distribution="normal", add_intercept=None, with_intercept=None)
+ps.penalized_glm_formula_summary(formula: str, family="poisson", link=None, theta=None, power=None, threshold=0.5, lambda_=0.0, estimate_dispersion=False, priors=None, vcov_type="laplace", conf_level=0.95, offset=None, add_intercept=True, max_iter=100, tol=1e-8)
+# Note: returns the widened 7-field {term, estimate, std_error, statistic, p_value, ci_lower, ci_upper}
+ps.aft_formula_summary(formula: str, event, distribution="weibull", priors=None, vcov_type="laplace", conf_level=0.95, add_intercept=True, max_iter=100, tol=1e-9)
+# Note: same widened 7-field schema; no aft_formula_predict exists — use aft_predict_* directly.
 ```
 
 **Formula predict variants** (same `interval`/`level`/`null_policy`/`name` kwargs as base predict):
@@ -739,6 +844,7 @@ ps.lasso_formula_predict(formula: str, lambda_=1.0, add_intercept=True, interval
 ps.logistic_formula_predict(formula: str, add_intercept=True, interval=None, level=0.95, null_policy="drop", name=None)
 ps.poisson_formula_predict(formula: str, add_intercept=True, interval=None, level=0.95, null_policy="drop", name=None)
 ps.alm_formula_predict(formula: str, distribution="normal", add_intercept=True, interval=None, level=0.95, null_policy="drop", name=None)
+ps.penalized_glm_formula_predict(formula: str, family="poisson", link=None, theta=None, power=None, threshold=0.5, lambda_=0.0, estimate_dispersion=False, priors=None, offset=None, add_intercept=True, max_iter=100, tol=1e-8, type="response", null_policy="drop", name=None)
 ```
 
 ---
@@ -1050,6 +1156,72 @@ ols = OLS(add_intercept=True).fit(X, y)
 print(ols.leverage_new(X[:3]))   # one leverage value per new row
 ```
 
+### Example 10: Penalized Poisson with an exposure offset and priors; AFT with censoring
+
+```python
+import numpy as np
+import polars as pl
+import polars_statistics as ps
+from polars_statistics import AFT
+
+rng = np.random.default_rng(3)
+n = 100
+group = ["A"] * 50 + ["B"] * 50
+x1 = rng.normal(0, 1, n)
+log_exposure = rng.normal(0, 0.3, n)
+mu = np.exp(0.2 + 0.5 * x1 + log_exposure)
+y = rng.poisson(mu).astype(float)
+
+df = pl.DataFrame({"group": group, "y": y, "x1": x1, "log_exposure": log_exposure})
+
+# Penalized Poisson with an exposure offset and a Gaussian prior on x1, per group
+glm_result = df.group_by("group").agg(
+    ps.penalized_glm(
+        "y", "x1",
+        family="poisson",
+        offset="log_exposure",
+        priors=[None, ("normal", 0.0, 1.0)],   # flat on the intercept, N(0, 1) on x1
+    ).alias("model")
+)
+print(glm_result.unnest("model").select("group", "coefficients", "dispersion"))
+
+# Tidy summary with confidence intervals (7-field widened schema)
+glm_summary = (
+    df.select(
+        ps.penalized_glm_summary(
+            "y", "x1", family="poisson", offset="log_exposure",
+            priors=[None, ("normal", 0.0, 1.0)],
+        ).alias("s")
+    )
+    .explode("s")
+    .unnest("s")
+)
+print(glm_summary)
+assert "ci_lower" in glm_summary.columns
+
+# AFT: Weibull survival model with right censoring
+time_scale = 0.7
+eta = 1.0 + 0.5 * x1
+log_t = eta + time_scale * rng.gumbel(size=n)   # extreme-value errors -> Weibull AFT
+time = np.exp(log_t)
+censor_time = rng.exponential(scale=np.median(time) * 1.5, size=n)
+observed_time = np.minimum(time, censor_time)
+event = (time <= censor_time).astype(float)
+
+aft_df = pl.DataFrame({"time": observed_time.tolist(), "event": event.tolist(), "x1": x1.tolist()})
+
+X = aft_df.select("x1").to_numpy()
+m = AFT(distribution="weibull").fit(X, aft_df["time"].to_numpy(), aft_df["event"].to_numpy())
+print(m.predict_median(X[:5]))   # predicted median survival time per row
+assert m.coefficients.shape[0] == 1
+
+# Expression form: predicted survival probability S(t=5.0 | x)
+survival_df = aft_df.select(
+    ps.aft_predict_survival("time", "event", "x1", t=5.0).alias("pred")
+).unnest("pred")
+assert "aft_predict_survival_prediction" in survival_df.columns
+```
+
 ## Gotchas / Notes
 
 **Intercept kwarg deprecation.** Use `add_intercept=True/False` in all new code. The old parameter name emits `FutureWarning` at runtime. Both names are accepted for backward compatibility, but `add_intercept=` is the current name.
@@ -1097,6 +1269,36 @@ print(ols.leverage_new(X[:3]))   # one leverage value per new row
 **Huber/RANSAC inference is PyModel-only — no expression form.** `compute_inference`/`confidence_level` and the inference getters exist only on the `Huber`/`RANSAC` PyModel classes. `ps.huber(...)` (the expression) does not expose them.
 
 **Rust `rlib` callers: new NegBin/RLS options arrive via additive `*_fit_with` functions.** If you consume `polars-statistics` as a Rust `rlib` (not through Python), `estimate_dispersion` and `initial_p_diagonal` are reachable through new `negative_binomial_fit_with`/`rls_fit_with` (and their `_summary`/`_predict` counterparts), which take an additional named kwargs struct. Every pre-existing `pub fn *_fit` signature is unchanged — this is purely additive.
+
+### Penalized GLM / AFT: new-surface gotchas
+
+**Priors are plain data, not a Python class.** `priors=` on `penalized_glm`/`penalized_glm_summary`/`penalized_glm_formula*`, `AFT`, and `aft`/`aft_summary`/`aft_formula*` accepts a sequence of `None`/`"flat"`, a `(kind, loc, scale)` tuple/list (or `(kind,)`/`(kind, loc)`), or a dict `{"kind", "loc", "scale"}` — `kind` is `"flat"`, `"normal"`, or `"laplace"`. A **leading** entry is optional and applies to the intercept, so `priors` may have `p` entries (one per feature) or `p + 1` entries (intercept first). `"normal"` is a ridge-like L2 prior; `"laplace"` is an L1 prior that can proximal-soft-threshold a coefficient to exactly `0.0` with `NaN` in its `std_errors`/`ci_lower`/`ci_upper` (no curvature SE for an inactive L1 coefficient).
+
+**`offset=` is a column on the link scale, not a formula term.** `penalized_glm`'s `offset` (and `penalized_glm_summary`/`penalized_glm_predict`/`penalized_glm_formula*`) is a plain column/expression added to the linear predictor (e.g. `log(exposure)` precomputed yourself) — R's formula `offset()` syntax is **not** parsed by `penalized_glm_formula`; pass the offset as a separate argument. A null offset always produces a `NaN` prediction from `penalized_glm_predict`, regardless of `null_policy`.
+
+**Poisson dispersion is fixed at `1.0` unless `estimate_dispersion=True` (Poisson only).** Matches R's `glm(family = poisson)` default. Pass `estimate_dispersion=True` to scale the covariance by the Pearson chi2/df dispersion estimate (R's `quasipoisson`) — every other family rejects this option with `ValueError` at build/construction time (Gamma and Tweedie always use their own Pearson-dispersion rule).
+
+**`penalized_glm_summary`'s `statistic` is a Wald z (normal reference), not R's t.** R's `summary.glm` uses a t-reference for estimated-dispersion families (Gamma, Tweedie, quasipoisson); this library always reports the normal-reference Wald statistic/p-value for `penalized_glm_summary`, even for those families.
+
+**`vcov` is scaled so `sqrt(diag(vcov)) == std_errors`, on both `PenalizedGLM` and `AFT`.** Matches R's `vcov(glm(...))` convention (for `NegativeBinomial`'s `theta` is a dispersion-unrelated shape parameter, so its scale factor is `1.0`, not `dispersion()`).
+
+**AFT `event` must be boolean or 0/1 — R's 1/2 coding is rejected.** `aft`/`aft_summary`/`aft_predict_*`/`AFT.fit` accept a Boolean column/array directly, or a numeric column/array containing **only** `0`/`1`. Any other value (including R `survival::Surv`'s `1`/`2` censoring code) fails the whole fit rather than being silently misread — on the expression layer this is an all-`NaN` struct; on the `AFT` PyModel it is a `ValueError`. `time` must be strictly positive; a null `time` or a null `event` drops that row from the **fit**, but under `null_policy="drop_y_zero_x"` the four `aft_predict_*` expressions still **predict** that row (unlike `penalized_glm`'s `offset`, `event` is fit-only data, not required predict-input).
+
+**`penalized_glm_predict` / `aft_predict_*` `lower`/`upper` are always `NaN`.** Neither `FittedPenalizedGlm` nor `FittedAft` has an interval-prediction method upstream — there is no bootstrap or analytic interval to compute. Only the point `*_prediction` field is populated.
+
+**Use `tol=1e-10` on `AFT`/`aft*` to reproduce R `survival::survreg` to 1e-6.** The library's convergence tolerance defaults (`tol=1e-9` on the expression, `tol=1e-9` on the `AFT` constructor) are already tight; the plan's own R-reference tests tighten further to `tol=1e-10` to match `survreg`'s coefficients/scale to 1e-6 and log-likelihoods to 1e-7.
+
+**Full `vcov`/`information` are PyModel-only.** `PenalizedGLM.vcov`/`.information` and `AFT.vcov`/`.information` expose the full covariance/information matrices; no expression returns them (`penalized_glm_summary`/`aft_summary` return only the diagonal-derived `std_error`/`ci_lower`/`ci_upper` per term).
+
+### 0.5.19-0.5.21 upstream behaviour changes (anofox-regression bump)
+
+**OLS/WLS alias the LATER collinear column, for every `solve_method` (0.5.21 #64).** Since this bump, `ps.ols`/`ps.wls`/`OLS`/`WLS` give a `NaN` coefficient to the **later** of two (or more) exactly collinear columns — matching R's `lm`'s `dqrdc2` convention — for `solve_method` in `{"qr", "svd", "cholesky"}` alike, and independent of column scaling (a scaled duplicate aliases exactly like an exact duplicate). Previously, `"svd"` silently returned a minimum-norm split with no `NaN` flag, and `"qr"` aliased the *earlier* column of a collinear pair.
+
+**Every GLM `*_summary` now reports intercept inference (0.5.20 #66).** `logistic_summary`, `poisson_summary`, `negative_binomial_summary`, `tweedie_summary`, `probit_summary`, `cloglog_summary` (and the new `penalized_glm_summary`/`aft_summary`, whose intercept row this plan documents above) all report the intercept row's `std_error`/`statistic`/`p_value` — previously `NaN`. GLM Wald p-values are computed via the survival function, so they never underflow to exactly `0.0`.
+
+**Tweedie / Gamma statistics are t-based (summary.glm convention, 0.5.20 #66).** `tweedie_summary` reports t-based statistics/p-values (t on the residual df, as R's `summary.glm`) for every row, where they previously could be `NaN`; the `Gamma` PyModel's `std_errors`/`p_values` gained the same t-based values. `Probit`'s standard errors now use `statrs`'s `erfc`/`erfc_inv` (full precision, matching R `summary.glm(binomial(link = "probit"))` exactly — previously off in the 5th digit).
+
+**LARS aliases exactly collinear LATER columns (0.5.19 #62).** `LARS`/`LassoLars` now alias the **later** of two exactly collinear columns with a `NaN` coefficient (the fit equals the reduced model without it) instead of a platform-dependent result.
 
 ## See also
 
