@@ -326,6 +326,47 @@ impl PyGLMM {
         Ok(PyArray1::from_slice(py, fitted.std_errors()))
     }
 
+    /// Wald z statistics beta/SE of the fixed effects, intercept first —
+    /// lme4 `summary()` `z value` column.
+    #[getter]
+    fn z_values<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyArray1<f64>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("GLMM"))?;
+        Ok(PyArray1::from_vec(py, fitted.z_values()))
+    }
+
+    /// Two-sided asymptotic normal p-values `2*(1-Phi(|z|))` of the fixed
+    /// effects. For a Gaussian LMM this is the large-sample approximation —
+    /// lme4's `lmer` prints none.
+    #[getter]
+    fn p_values<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyArray1<f64>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("GLMM"))?;
+        Ok(PyArray1::from_vec(py, fitted.p_values()))
+    }
+
+    /// Wald confidence intervals for the fixed effects at `level` (default
+    /// 0.95), as ``(lower, upper)`` — matches R `confint(method = "Wald")`.
+    /// Returns all-NaN bounds when `level` is not in `(0, 1)`.
+    #[pyo3(signature = (level=0.95))]
+    #[allow(clippy::type_complexity)]
+    fn conf_int<'py>(
+        &self,
+        py: Python<'py>,
+        level: f64,
+    ) -> PyResult<(Bound<'py, PyArray1<f64>>, Bound<'py, PyArray1<f64>>)> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("GLMM"))?;
+        let (lower, upper) = fitted.conf_int(level);
+        Ok((PyArray1::from_vec(py, lower), PyArray1::from_vec(py, upper)))
+    }
+
     /// Fitted intercept, or None when with_intercept=False.
     #[getter]
     fn intercept(&self) -> PyResult<Option<f64>> {
