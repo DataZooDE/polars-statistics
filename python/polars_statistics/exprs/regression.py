@@ -2990,6 +2990,103 @@ def cloglog_summary(
     )
 
 
+def penalized_glm_summary(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    family: Literal["poisson", "binomial", "logistic", "negative_binomial", "gamma", "tweedie"] = (
+        "poisson"
+    ),
+    link: str | None = None,
+    theta: float | None = None,
+    power: float | None = None,
+    threshold: float = 0.5,
+    lambda_: float = 0.0,
+    estimate_dispersion: bool = False,
+    priors: Sequence[Union[None, str, tuple, dict]] | None = None,
+    vcov_type: Literal["laplace", "sandwich", "naive"] = "laplace",
+    conf_level: float = 0.95,
+    offset: Union[pl.Expr, str, None] = None,
+    add_intercept: bool = True,
+    max_iter: int = 100,
+    tol: float = 1e-8,
+) -> pl.Expr:
+    """Penalized GLM coefficient summary in tidy format, with confidence intervals.
+
+    Unlike every other ``*_summary`` expression (which share the 5-field
+    ``{term, estimate, std_error, statistic, p_value}`` schema), this returns a
+    widened 7-field schema that additionally carries ``ci_lower``/``ci_upper``
+    (CONTEXT resolution 3) — the shared ``summary_output_dtype`` and every
+    other ``*_summary`` expression are unchanged.
+
+    Parameters
+    ----------
+    y, x, family, link, theta, power, threshold, lambda_, estimate_dispersion,
+    priors, offset, add_intercept, max_iter, tol
+        See :func:`penalized_glm`.
+    vcov_type : {"laplace", "sandwich", "naive"}, default "laplace"
+        Covariance at the mode used for the standard errors / CIs below.
+    conf_level : float, default 0.95
+        Confidence level for ``ci_lower``/``ci_upper``, in ``(0, 1)``.
+
+    Returns
+    -------
+    pl.Expr
+        List of structs with columns ``term``, ``estimate``, ``std_error``,
+        ``statistic`` (Wald z, normal reference — R's ``summary.glm`` uses a
+        t-reference for estimated-dispersion families: Gamma, Tweedie,
+        quasipoisson), ``p_value``, ``ci_lower``, ``ci_upper``. The intercept
+        row (when ``add_intercept=True``) is read directly from upstream's
+        ``GlmInferenceResult`` intercept fields, never recomputed locally.
+
+    Examples
+    --------
+    >>> df.select(
+    ...     ps.penalized_glm_summary("y", "x1", "x2", family="poisson").alias("s")
+    ... ).explode("s").unnest("s")
+    """
+    if not (0.0 < conf_level < 1.0):
+        raise ValueError(f"conf_level must be in (0, 1), got {conf_level}")
+
+    kwargs = _penalized_glm_kwargs(
+        family=family,
+        link=link,
+        theta=theta,
+        power=power,
+        threshold=threshold,
+        lambda_=lambda_,
+        estimate_dispersion=estimate_dispersion,
+        priors=priors,
+        vcov_type=vcov_type,
+        add_intercept=add_intercept,
+        max_iter=max_iter,
+        tol=tol,
+        conf_level=conf_level,
+    )
+
+    if isinstance(y, str):
+        y = pl.col(y)
+    if offset is None:
+        offset_expr = pl.lit(0.0, dtype=pl.Float64)
+    elif isinstance(offset, str):
+        offset_expr = pl.col(offset).cast(pl.Float64)
+    else:
+        offset_expr = offset.cast(pl.Float64)
+
+    x_exprs = []
+    for xi in x:
+        if isinstance(xi, str):
+            xi = pl.col(xi)
+        x_exprs.append(xi.cast(pl.Float64))
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_penalized_glm_summary",
+        args=[y.cast(pl.Float64), offset_expr, *x_exprs],
+        kwargs=kwargs,
+        returns_scalar=True,
+    )
+
+
 def alm_summary(
     y: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],

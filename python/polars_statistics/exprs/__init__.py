@@ -148,6 +148,7 @@ from polars_statistics.exprs.regression import (
     tweedie_summary,
     probit_summary,
     cloglog_summary,
+    penalized_glm_summary,
     alm_summary,
     # Prediction functions
     ols_predict,
@@ -349,6 +350,7 @@ __all__ = [
     "tweedie_summary",
     "probit_summary",
     "cloglog_summary",
+    "penalized_glm_summary",
     "alm_summary",
     # Prediction expressions
     "ols_predict",

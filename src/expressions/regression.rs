@@ -2921,7 +2921,7 @@ fn pl_alm(inputs: &[Series]) -> PolarsResult<Series> {
 // ============================================================================
 
 /// Helper to build term names for coefficients
-fn build_term_names(n_features: usize, with_intercept: bool) -> Vec<String> {
+pub(crate) fn build_term_names(n_features: usize, with_intercept: bool) -> Vec<String> {
     let mut terms = Vec::with_capacity(n_features + if with_intercept { 1 } else { 0 });
     if with_intercept {
         terms.push("intercept".to_string());

@@ -27,6 +27,8 @@ use anofox_regression::solvers::penalized_glm::{
     FittedPenalizedGlm, PenalizedGlmFamily, PenalizedGlmRegressor, PriorSpec, VcovType,
 };
 
+use crate::expressions::regression::build_term_names;
+
 /// Default prior scale (`+inf`, i.e. flat) used when a [`PriorKwarg`] omits
 /// `scale`.
 fn default_prior_scale() -> f64 {
@@ -582,4 +584,174 @@ pub fn penalized_glm_fit(inputs: &[Series], kwargs: &PenalizedGlmKwargs) -> Pola
 #[polars_expr(output_type_func=penalized_glm_output_dtype)]
 fn pl_penalized_glm(inputs: &[Series], kwargs: PenalizedGlmKwargs) -> PolarsResult<Series> {
     penalized_glm_fit(inputs, &kwargs)
+}
+
+// ============================================================================
+// Coefficient Summary (tidy format, with confidence intervals)
+// ============================================================================
+
+/// Output type for the CI-carrying tidy summary (`ps.penalized_glm_summary`,
+/// and the Plan 05 AFT summary). Separate from the shared 5-field
+/// `summary_output_dtype` in `regression.rs`, which stays untouched (CONTEXT
+/// resolution 3).
+pub fn inference_summary_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
+    let fields = vec![
+        Field::new("term".into(), DataType::String),
+        Field::new("estimate".into(), DataType::Float64),
+        Field::new("std_error".into(), DataType::Float64),
+        Field::new("statistic".into(), DataType::Float64),
+        Field::new("p_value".into(), DataType::Float64),
+        Field::new("ci_lower".into(), DataType::Float64),
+        Field::new("ci_upper".into(), DataType::Float64),
+    ];
+    Ok(Field::new(
+        "summary".into(),
+        DataType::List(Box::new(DataType::Struct(fields))),
+    ))
+}
+
+/// Build the 7-column tidy summary output as List[Struct] (one row per term).
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn inference_summary_output(
+    terms: Vec<String>,
+    estimates: Vec<f64>,
+    std_errors: Vec<f64>,
+    statistics: Vec<f64>,
+    p_values: Vec<f64>,
+    ci_lower: Vec<f64>,
+    ci_upper: Vec<f64>,
+) -> PolarsResult<Series> {
+    let n = terms.len();
+
+    let term_s = Series::new("term".into(), terms);
+    let estimate_s = Series::new("estimate".into(), estimates);
+    let std_error_s = Series::new("std_error".into(), std_errors);
+    let statistic_s = Series::new("statistic".into(), statistics);
+    let p_value_s = Series::new("p_value".into(), p_values);
+    let ci_lower_s = Series::new("ci_lower".into(), ci_lower);
+    let ci_upper_s = Series::new("ci_upper".into(), ci_upper);
+
+    let struct_ca = StructChunked::from_series(
+        "item".into(),
+        n,
+        [
+            &term_s,
+            &estimate_s,
+            &std_error_s,
+            &statistic_s,
+            &p_value_s,
+            &ci_lower_s,
+            &ci_upper_s,
+        ]
+        .into_iter(),
+    )?;
+
+    let struct_series = struct_ca.into_series();
+    Ok(Series::new("summary".into(), &[struct_series]))
+}
+
+/// Empty summary output (config or engine error).
+pub(crate) fn inference_summary_nan_output() -> PolarsResult<Series> {
+    inference_summary_output(vec![], vec![], vec![], vec![], vec![], vec![], vec![])
+}
+
+/// Public Rust-callable variant. Same input contract as [`penalized_glm_fit`]
+/// (`[y, offset, *x]`); always fits with `compute_inference = true` regardless
+/// of the caller's intent, since this is the summary expression.
+///
+/// Rows are `intercept` (when `kwargs.with_intercept`) then `x1..xp`
+/// ([`build_term_names`]). The intercept row's std_error/statistic/p_value/CI
+/// come straight from upstream's `GlmInferenceResult::intercept_*` fields
+/// (anofox-regression 0.5.20+) — never recomputed locally. Feature rows come
+/// from the parallel `std_errors`/`z_values`/`p_values`/`ci_lower`/`ci_upper`
+/// vectors, which upstream already pads to feature length (`NaN` for an
+/// aliased or inactive-Laplace-prior column).
+pub fn penalized_glm_summary_fit(
+    inputs: &[Series],
+    kwargs: &PenalizedGlmKwargs,
+) -> PolarsResult<Series> {
+    let y_series = inputs[0].f64()?;
+    let n = y_series.len();
+    let n_features = inputs.len() - 2;
+
+    let offset_col = resolve_offset(&inputs[1], n)?;
+    let x = build_penalized_glm_x(inputs, 2, n)?;
+    let y_vec = series_to_vec_nan(&inputs[0])?;
+    let y = Col::from_fn(n, |i| y_vec[i]);
+
+    let regressor = build_penalized_glm(kwargs, true, Some(offset_col))
+        .map_err(|e| polars_err!(ComputeError: "{}", e))?;
+
+    match regressor.fit(&x, &y) {
+        Ok(fitted) => {
+            let with_intercept = kwargs.with_intercept;
+            let terms = build_term_names(n_features, with_intercept);
+            let inference = fitted.inference();
+
+            let mut estimates = Vec::with_capacity(terms.len());
+            let mut std_errors = Vec::with_capacity(terms.len());
+            let mut statistics = Vec::with_capacity(terms.len());
+            let mut p_values = Vec::with_capacity(terms.len());
+            let mut ci_lower = Vec::with_capacity(terms.len());
+            let mut ci_upper = Vec::with_capacity(terms.len());
+
+            if with_intercept {
+                estimates.push(fitted.intercept().unwrap_or(f64::NAN));
+                std_errors.push(
+                    inference
+                        .and_then(|i| i.intercept_std_error)
+                        .unwrap_or(f64::NAN),
+                );
+                statistics.push(
+                    inference
+                        .and_then(|i| i.intercept_z_value)
+                        .unwrap_or(f64::NAN),
+                );
+                p_values.push(
+                    inference
+                        .and_then(|i| i.intercept_p_value)
+                        .unwrap_or(f64::NAN),
+                );
+                ci_lower.push(
+                    inference
+                        .and_then(|i| i.intercept_ci_lower)
+                        .unwrap_or(f64::NAN),
+                );
+                ci_upper.push(
+                    inference
+                        .and_then(|i| i.intercept_ci_upper)
+                        .unwrap_or(f64::NAN),
+                );
+            }
+
+            estimates.extend(col_to_vec(fitted.coefficients()));
+
+            if let Some(inf) = inference {
+                std_errors.extend(inf.std_errors.iter().copied());
+                statistics.extend(inf.z_values.iter().copied());
+                p_values.extend(inf.p_values.iter().copied());
+                ci_lower.extend(inf.ci_lower.iter().copied());
+                ci_upper.extend(inf.ci_upper.iter().copied());
+            } else {
+                std_errors.extend(vec![f64::NAN; n_features]);
+                statistics.extend(vec![f64::NAN; n_features]);
+                p_values.extend(vec![f64::NAN; n_features]);
+                ci_lower.extend(vec![f64::NAN; n_features]);
+                ci_upper.extend(vec![f64::NAN; n_features]);
+            }
+
+            inference_summary_output(
+                terms, estimates, std_errors, statistics, p_values, ci_lower, ci_upper,
+            )
+        }
+        Err(_) => inference_summary_nan_output(),
+    }
+}
+
+/// Penalized GLM coefficient summary expression (`ps.penalized_glm_summary`).
+/// Same input contract as `pl_penalized_glm`. kwargs: see [`PenalizedGlmKwargs`]
+/// (`conf_level` / `vcov_type` / `estimate_dispersion` are read here).
+#[polars_expr(output_type_func=inference_summary_output_dtype)]
+fn pl_penalized_glm_summary(inputs: &[Series], kwargs: PenalizedGlmKwargs) -> PolarsResult<Series> {
+    penalized_glm_summary_fit(inputs, &kwargs)
 }

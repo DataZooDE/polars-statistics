@@ -936,6 +936,148 @@ class TestPenalizedGlmGroupByOver:
             assert row["coefficients"] == first["coefficients"]
 
 
+class TestPenalizedGlmSummary:
+    """`ps.penalized_glm_summary` — phase 16.2 plan 04 (UPST-05, CONTEXT resolution 3)."""
+
+    @staticmethod
+    def _summary_df(y_col: str, tol: float = 1e-10, **kwargs) -> pl.DataFrame:
+        return (
+            DF.select(
+                ps.penalized_glm_summary(y_col, "x1", "x2", tol=tol, **kwargs).alias("s")
+            )
+            .explode("s")
+            .unnest("s")
+        )
+
+    def test_summary_columns_and_poisson_se_match_r(self):
+        flat = self._summary_df("y_pois", family="poisson")
+        assert flat.columns == [
+            "term",
+            "estimate",
+            "std_error",
+            "statistic",
+            "p_value",
+            "ci_lower",
+            "ci_upper",
+        ]
+        assert flat["term"].to_list() == ["intercept", "x1", "x2"]
+        for i in range(3):
+            assert rel_close(flat["estimate"][i], ref.POIS_COEF[i], 1e-6)
+            assert rel_close(flat["std_error"][i], ref.POIS_SE[i], 1e-5)
+
+    def test_summary_gamma_se_matches_r(self):
+        flat = self._summary_df("y_gamma", family="gamma")
+        for i in range(3):
+            assert rel_close(flat["std_error"][i], ref.GAMMA_SE[i], 1e-5)
+
+    def test_summary_negative_binomial_se_matches_r(self):
+        flat = self._summary_df("y_nb", family="negative_binomial")
+        for i in range(3):
+            assert rel_close(flat["std_error"][i], ref.NB_SE[i], 1e-5)
+
+    def test_summary_quasipoisson_se_matches_r(self):
+        flat_over = self._summary_df("y_nb", family="poisson")
+        for i in range(3):
+            assert rel_close(flat_over["std_error"][i], ref.POIS_OVER_SE[i], 1e-5)
+
+        flat_qpois = self._summary_df("y_nb", family="poisson", estimate_dispersion=True)
+        for i in range(3):
+            assert rel_close(flat_qpois["std_error"][i], ref.QPOIS_OVER_SE[i], 1e-5)
+
+    def test_summary_equals_pymodel_inference(self):
+        flat = self._summary_df("y_pois", family="poisson")
+        model = ps.PenalizedGLM(family="poisson", tol=1e-10).fit(X, np.array(ref.Y_POIS))
+
+        assert rel_close(flat["statistic"][0], model.intercept_z_value, 1e-10)
+        assert rel_close(flat["p_value"][0], model.intercept_p_value, 1e-10)
+        ci_lo, ci_hi = model.intercept_conf_interval
+        assert rel_close(flat["ci_lower"][0], ci_lo, 1e-10)
+        assert rel_close(flat["ci_upper"][0], ci_hi, 1e-10)
+
+        for j in range(2):
+            assert rel_close(flat["statistic"][j + 1], model.z_values[j], 1e-10)
+            assert rel_close(flat["p_value"][j + 1], model.p_values[j], 1e-10)
+            assert rel_close(flat["ci_lower"][j + 1], model.conf_interval_lower[j], 1e-10)
+            assert rel_close(flat["ci_upper"][j + 1], model.conf_interval_upper[j], 1e-10)
+
+    def test_summary_conf_level_narrows_interval(self):
+        flat = self._summary_df("y_pois", family="poisson", conf_level=0.9)
+        z90 = 1.6448536269514722
+        for i in range(3):
+            ratio = (flat["ci_upper"][i] - flat["ci_lower"][i]) / flat["std_error"][i]
+            assert rel_close(ratio, 2 * z90, 1e-9)
+
+    @pytest.mark.parametrize(
+        "vcov_type,se_ref",
+        [
+            ("laplace", ref.POIS_PRIOR_SE_LAPLACE),
+            ("sandwich", ref.POIS_PRIOR_SE_SANDWICH),
+            ("naive", ref.POIS_PRIOR_SE_NAIVE),
+        ],
+    )
+    def test_summary_priors_vcov_type_se(self, vcov_type, se_ref):
+        flat = self._summary_df(
+            "y_pois",
+            family="poisson",
+            priors=[None, ("normal", 0.5, 0.5), ("normal", 0.0, 0.25)],
+            vcov_type=vcov_type,
+            tol=1e-12,
+        )
+        for i in range(3):
+            assert rel_close(flat["std_error"][i], se_ref[i], 1e-6)
+
+    def test_summary_no_intercept(self):
+        flat = self._summary_df("y_pois", family="poisson", add_intercept=False)
+        assert flat["term"].to_list() == ["x1", "x2"]
+        for i in range(2):
+            assert rel_close(flat["std_error"][i], ref.POIS_NOINT_SE[i], 1e-5)
+
+    def test_summary_engine_error_gives_empty_list(self):
+        row = DF.select(
+            ps.penalized_glm_summary(
+                (-pl.col("y_pois")).alias("neg_y"), "x1", "x2", family="poisson", tol=1e-10
+            ).alias("s")
+        )["s"][0]
+        assert len(row) == 0
+
+    def test_summary_group_by_matches_whole_frame(self):
+        stacked = pl.concat(
+            [DF.with_columns(g=pl.lit("a")), DF.with_columns(g=pl.lit("b"))]
+        )
+        whole = self._summary_df("y_pois", family="poisson").sort("term")
+        grouped = (
+            stacked.group_by("g")
+            .agg(
+                ps.penalized_glm_summary(
+                    "y_pois", "x1", "x2", family="poisson", tol=1e-10
+                ).alias("s")
+            )
+            .explode("s")
+            .unnest("s")
+        )
+        for g in ("a", "b"):
+            sub = grouped.filter(pl.col("g") == g).sort("term")
+            for i in range(3):
+                assert rel_close(sub["estimate"][i], whole["estimate"][i], 1e-10)
+
+    def test_summary_invalid_vcov_type_raises(self):
+        with pytest.raises(ValueError):
+            ps.penalized_glm_summary("y_pois", "x1", "x2", vcov_type="bogus")
+
+    def test_summary_invalid_conf_level_raises(self):
+        with pytest.raises(ValueError):
+            ps.penalized_glm_summary("y_pois", "x1", "x2", conf_level=1.5)
+
+    def test_negative_binomial_summary_schema_unchanged(self):
+        """The shared 5-field summary schema (CONTEXT: additive only) stays untouched."""
+        flat = (
+            DF.select(ps.negative_binomial_summary("y_nb", "x1", "x2").alias("s"))
+            .explode("s")
+            .unnest("s")
+        )
+        assert flat.columns == ["term", "estimate", "std_error", "statistic", "p_value"]
+
+
 class TestPenalizedGlmFormula:
     def test_formula_equals_column_form(self):
         column_row = _expr_fit("y_nb", family="negative_binomial")
