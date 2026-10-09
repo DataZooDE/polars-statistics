@@ -428,6 +428,70 @@ print(result)
 
 ---
 
+## `aft_formula_predict_quantile` / `_median` / `_survival` / `_cdf`
+
+```text
+ps.aft_formula_predict_quantile(
+    formula: str,
+    event: Union[pl.Expr, str],
+    p: float = 0.5,
+    distribution: Literal["weibull", "exponential", "lognormal", "loglogistic"] = "weibull",
+    priors: Sequence[None | str | tuple | dict] | None = None,
+    add_intercept: bool = True,
+    max_iter: int = 100,
+    tol: float = 1e-9,
+    null_policy: Literal["drop", "drop_y_zero_x"] = "drop",
+    name: str | None = None,
+) -> pl.Expr
+
+ps.aft_formula_predict_median(formula, event, distribution="weibull", priors=None, add_intercept=True, max_iter=100, tol=1e-9, null_policy="drop", name=None) -> pl.Expr
+
+ps.aft_formula_predict_survival(formula, event, *, t: float, distribution="weibull", priors=None, add_intercept=True, max_iter=100, tol=1e-9, null_policy="drop", name=None) -> pl.Expr
+
+ps.aft_formula_predict_cdf(formula, event, *, t: float, distribution="weibull", priors=None, add_intercept=True, max_iter=100, tol=1e-9, null_policy="drop", name=None) -> pl.Expr
+```
+
+R-style formula wrappers for `aft_predict_quantile`/`_median`/`_survival`/`_cdf`, mirroring
+`penalized_glm_formula_predict`'s precedent for the penalized GLM family. The formula's
+left-hand side is the `time` column; `event` is **not** part of the formula syntax and is
+passed separately (same convention as `aft_formula`). `t` is required, keyword-only, and must
+be finite and `> 0` for `_survival`/`_cdf`. See [`aft_predict_quantile`](#aft_predict_quantile)
+for the remaining parameter semantics.
+
+```python
+import numpy as np
+import polars as pl
+import polars_statistics as ps
+
+np.random.seed(1)
+n = 80
+x1 = np.random.normal(0, 1, n)
+x2 = np.random.normal(0, 1, n)
+scale = 0.7
+eta = 1.0 + 0.5 * x1 - 0.3 * x2
+log_t = eta + scale * np.random.gumbel(size=n)
+time = np.exp(log_t)
+censor_time = np.random.exponential(scale=np.median(time) * 1.5, size=n)
+observed_time = np.minimum(time, censor_time)
+event = (time <= censor_time).astype(float)
+
+df = pl.DataFrame({"time": observed_time, "event": event, "x1": x1, "x2": x2})
+
+median = df.select(
+    ps.aft_formula_predict_median("time ~ x1 + x2", "event", distribution="weibull").alias("pred")
+).unnest("pred")
+print(median.head(3))
+
+survival = df.select(
+    ps.aft_formula_predict_survival(
+        "time ~ x1 + x2", "event", t=5.0, distribution="weibull"
+    ).alias("pred")
+).unnest("pred")
+print(survival.head(3))
+```
+
+---
+
 ## Validated against R `survival::survreg`
 
 Coefficients/scale (`1e-6`), log-likelihoods (`1e-7`), and intercept/coefficient/log(scale)

@@ -831,7 +831,7 @@ ps.alm_formula_summary(formula: str, distribution="normal", add_intercept=None, 
 ps.penalized_glm_formula_summary(formula: str, family="poisson", link=None, theta=None, power=None, threshold=0.5, lambda_=0.0, estimate_dispersion=False, priors=None, vcov_type="laplace", conf_level=0.95, offset=None, add_intercept=True, max_iter=100, tol=1e-8)
 # Note: returns the widened 7-field {term, estimate, std_error, statistic, p_value, ci_lower, ci_upper}
 ps.aft_formula_summary(formula: str, event, distribution="weibull", priors=None, vcov_type="laplace", conf_level=0.95, add_intercept=True, max_iter=100, tol=1e-9)
-# Note: same widened 7-field schema; no aft_formula_predict exists — use aft_predict_* directly.
+# Note: same widened 7-field schema.
 ```
 
 **Formula predict variants** (same `interval`/`level`/`null_policy`/`name` kwargs as base predict):
@@ -846,6 +846,12 @@ ps.logistic_formula_predict(formula: str, add_intercept=True, interval=None, lev
 ps.poisson_formula_predict(formula: str, add_intercept=True, interval=None, level=0.95, null_policy="drop", name=None)
 ps.alm_formula_predict(formula: str, distribution="normal", add_intercept=True, interval=None, level=0.95, null_policy="drop", name=None)
 ps.penalized_glm_formula_predict(formula: str, family="poisson", link=None, theta=None, power=None, threshold=0.5, lambda_=0.0, estimate_dispersion=False, priors=None, offset=None, add_intercept=True, max_iter=100, tol=1e-8, predict_type="response", null_policy="drop", name=None)
+ps.aft_formula_predict_quantile(formula: str, event, p=0.5, distribution="weibull", priors=None, add_intercept=True, max_iter=100, tol=1e-9, null_policy="drop", name=None)
+ps.aft_formula_predict_median(formula: str, event, distribution="weibull", priors=None, add_intercept=True, max_iter=100, tol=1e-9, null_policy="drop", name=None)
+ps.aft_formula_predict_survival(formula: str, event, *, t, distribution="weibull", priors=None, add_intercept=True, max_iter=100, tol=1e-9, null_policy="drop", name=None)
+ps.aft_formula_predict_cdf(formula: str, event, *, t, distribution="weibull", priors=None, add_intercept=True, max_iter=100, tol=1e-9, null_policy="drop", name=None)
+# Note: formula's left-hand side is the time column; event is passed separately (not formula
+# syntax). t= is keyword-only and required for _survival/_cdf (must be finite and > 0).
 ```
 
 ---

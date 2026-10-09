@@ -5729,6 +5729,145 @@ def alm_formula_predict(
     )
 
 
+def aft_formula_predict_quantile(
+    formula: str,
+    event: Union[pl.Expr, str],
+    p: float = 0.5,
+    distribution: Literal["weibull", "exponential", "lognormal", "loglogistic"] = "weibull",
+    priors: Sequence[Union[None, str, tuple, dict]] | None = None,
+    add_intercept: bool = True,
+    max_iter: int = 100,
+    tol: float = 1e-9,
+    null_policy: Literal["drop", "drop_y_zero_x"] = "drop",
+    name: str | None = None,
+) -> pl.Expr:
+    """AFT predicted `p`-quantile of the survival time, using R-style formula syntax.
+
+    See :func:`aft_predict_quantile` for parameter semantics; the formula's
+    left-hand side is the ``time`` column and ``event`` is passed separately
+    (see :func:`aft_formula`).
+    """
+    response, x_exprs, _ = _parse_formula(formula)
+    return aft_predict_quantile(
+        response,
+        event,
+        *x_exprs,
+        p=p,
+        distribution=distribution,
+        priors=priors,
+        add_intercept=add_intercept,
+        max_iter=max_iter,
+        tol=tol,
+        null_policy=null_policy,
+        name=name,
+    )
+
+
+def aft_formula_predict_median(
+    formula: str,
+    event: Union[pl.Expr, str],
+    distribution: Literal["weibull", "exponential", "lognormal", "loglogistic"] = "weibull",
+    priors: Sequence[Union[None, str, tuple, dict]] | None = None,
+    add_intercept: bool = True,
+    max_iter: int = 100,
+    tol: float = 1e-9,
+    null_policy: Literal["drop", "drop_y_zero_x"] = "drop",
+    name: str | None = None,
+) -> pl.Expr:
+    """AFT predicted median survival time, using R-style formula syntax
+    (``aft_formula_predict_quantile`` at ``p=0.5``).
+
+    See :func:`aft_predict_median` for parameter semantics; the formula's
+    left-hand side is the ``time`` column and ``event`` is passed separately
+    (see :func:`aft_formula`).
+    """
+    response, x_exprs, _ = _parse_formula(formula)
+    return aft_predict_median(
+        response,
+        event,
+        *x_exprs,
+        distribution=distribution,
+        priors=priors,
+        add_intercept=add_intercept,
+        max_iter=max_iter,
+        tol=tol,
+        null_policy=null_policy,
+        name=name,
+    )
+
+
+def aft_formula_predict_survival(
+    formula: str,
+    event: Union[pl.Expr, str],
+    *,
+    t: float,
+    distribution: Literal["weibull", "exponential", "lognormal", "loglogistic"] = "weibull",
+    priors: Sequence[Union[None, str, tuple, dict]] | None = None,
+    add_intercept: bool = True,
+    max_iter: int = 100,
+    tol: float = 1e-9,
+    null_policy: Literal["drop", "drop_y_zero_x"] = "drop",
+    name: str | None = None,
+) -> pl.Expr:
+    """AFT predicted survival probability ``S(t | x) = P(T > t | x)``, using
+    R-style formula syntax.
+
+    See :func:`aft_predict_survival` for parameter semantics; the formula's
+    left-hand side is the ``time`` column and ``event`` is passed separately
+    (see :func:`aft_formula`). ``t`` is keyword-only and required.
+    """
+    response, x_exprs, _ = _parse_formula(formula)
+    return aft_predict_survival(
+        response,
+        event,
+        *x_exprs,
+        t=t,
+        distribution=distribution,
+        priors=priors,
+        add_intercept=add_intercept,
+        max_iter=max_iter,
+        tol=tol,
+        null_policy=null_policy,
+        name=name,
+    )
+
+
+def aft_formula_predict_cdf(
+    formula: str,
+    event: Union[pl.Expr, str],
+    *,
+    t: float,
+    distribution: Literal["weibull", "exponential", "lognormal", "loglogistic"] = "weibull",
+    priors: Sequence[Union[None, str, tuple, dict]] | None = None,
+    add_intercept: bool = True,
+    max_iter: int = 100,
+    tol: float = 1e-9,
+    null_policy: Literal["drop", "drop_y_zero_x"] = "drop",
+    name: str | None = None,
+) -> pl.Expr:
+    """AFT predicted failure probability ``F(t | x) = 1 - S(t | x)``, using
+    R-style formula syntax.
+
+    See :func:`aft_predict_cdf` for parameter semantics; the formula's
+    left-hand side is the ``time`` column and ``event`` is passed separately
+    (see :func:`aft_formula`). ``t`` is keyword-only and required.
+    """
+    response, x_exprs, _ = _parse_formula(formula)
+    return aft_predict_cdf(
+        response,
+        event,
+        *x_exprs,
+        t=t,
+        distribution=distribution,
+        priors=priors,
+        add_intercept=add_intercept,
+        max_iter=max_iter,
+        tol=tol,
+        null_policy=null_policy,
+        name=name,
+    )
+
+
 # ============================================================================
 # AID (Automatic Identification of Demand) Expression
 # ============================================================================

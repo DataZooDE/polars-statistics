@@ -652,3 +652,68 @@ class TestAftFormula:
             .unnest("s")
         )
         assert a["estimate"].to_list() == pytest.approx(b["estimate"].to_list())
+
+
+# ============================================================================
+# aft_formula_predict_quantile / _median / _survival / _cdf (WR-01)
+# ============================================================================
+
+
+class TestAftFormulaPredict:
+    """`aft_formula_predict_*` mirrors `penalized_glm_formula_predict`'s
+    formula-wrapper precedent: delegates to the matching `aft_predict_*`
+    column-based builder and must produce identical results."""
+
+    def test_formula_predict_quantile_equals_column_form(self):
+        df = _fixture_df()
+        column = df.select(
+            ps.aft_predict_quantile("time", "event", "x1", "x2", p=0.25).alias("r")
+        ).unnest("r")
+        formula = df.select(
+            ps.aft_formula_predict_quantile("time ~ x1 + x2", event="event", p=0.25).alias("r")
+        ).unnest("r")
+        assert column["aft_predict_quantile_prediction"].to_list() == pytest.approx(
+            formula["aft_predict_quantile_prediction"].to_list()
+        )
+
+    def test_formula_predict_median_equals_column_form(self):
+        df = _fixture_df()
+        column = df.select(
+            ps.aft_predict_median("time", "event", "x1", "x2").alias("r")
+        ).unnest("r")
+        formula = df.select(
+            ps.aft_formula_predict_median("time ~ x1 + x2", event="event").alias("r")
+        ).unnest("r")
+        assert column["aft_predict_median_prediction"].to_list() == pytest.approx(
+            formula["aft_predict_median_prediction"].to_list()
+        )
+
+    def test_formula_predict_survival_equals_column_form(self):
+        df = _fixture_df()
+        column = df.select(
+            ps.aft_predict_survival("time", "event", "x1", "x2", t=5.0).alias("r")
+        ).unnest("r")
+        formula = df.select(
+            ps.aft_formula_predict_survival("time ~ x1 + x2", event="event", t=5.0).alias("r")
+        ).unnest("r")
+        assert column["aft_predict_survival_prediction"].to_list() == pytest.approx(
+            formula["aft_predict_survival_prediction"].to_list()
+        )
+
+    def test_formula_predict_cdf_equals_column_form(self):
+        df = _fixture_df()
+        column = df.select(
+            ps.aft_predict_cdf("time", "event", "x1", "x2", t=5.0).alias("r")
+        ).unnest("r")
+        formula = df.select(
+            ps.aft_formula_predict_cdf("time ~ x1 + x2", event="event", t=5.0).alias("r")
+        ).unnest("r")
+        assert column["aft_predict_cdf_prediction"].to_list() == pytest.approx(
+            formula["aft_predict_cdf_prediction"].to_list()
+        )
+
+    def test_formula_predict_survival_cdf_require_t_keyword(self):
+        with pytest.raises(TypeError):
+            ps.aft_formula_predict_survival("time ~ x1 + x2", "event", 5.0)
+        with pytest.raises(TypeError):
+            ps.aft_formula_predict_cdf("time ~ x1 + x2", "event", 5.0)

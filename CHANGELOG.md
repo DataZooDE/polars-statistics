@@ -83,8 +83,9 @@ survival engines `anofox-regression` added in 0.5.16.
   "exponential"|"lognormal"|"loglogistic"`, right censoring via an event
   indicator, priors, `vcov_type`, inference, `predict_quantile`/`_median`/
   `_survival`/`_cdf`) and `ps.aft`, `ps.aft_summary`, `ps.aft_predict_quantile`/
-  `_median`/`_survival`/`_cdf`, `ps.aft_formula`, `ps.aft_formula_summary`;
-  validated against R `survival::survreg`.
+  `_median`/`_survival`/`_cdf`, `ps.aft_formula`, `ps.aft_formula_summary`,
+  `ps.aft_formula_predict_quantile`/`_median`/`_survival`/`_cdf`; validated
+  against R `survival::survreg`.
 
 ### Changed
 

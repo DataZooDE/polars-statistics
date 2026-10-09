@@ -210,6 +210,10 @@ from polars_statistics.exprs.regression import (
     logistic_formula_predict,
     poisson_formula_predict,
     penalized_glm_formula_predict,
+    aft_formula_predict_quantile,
+    aft_formula_predict_median,
+    aft_formula_predict_survival,
+    aft_formula_predict_cdf,
     alm_formula_predict,
     # AID and Dynamic Linear Model
     aid,
@@ -424,6 +428,10 @@ __all__ = [
     "logistic_formula_predict",
     "poisson_formula_predict",
     "penalized_glm_formula_predict",
+    "aft_formula_predict_quantile",
+    "aft_formula_predict_median",
+    "aft_formula_predict_survival",
+    "aft_formula_predict_cdf",
     "alm_formula_predict",
     # AID and Dynamic Linear Model
     "aid",

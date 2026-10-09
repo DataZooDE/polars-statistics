@@ -59,7 +59,7 @@
 | aft: AftInference vcov / information | INTEGRATE | AFT.vcov / .information (PyModel only — CONTEXT resolution 3) — Plan 05 |
 | aft: FittedAft predict_quantile / _median / _survival / _cdf | INTEGRATE | PyModel methods + four expressions aft_predict_quantile / _median / _survival / _cdf (CONTEXT resolution 2) — Plan 05 |
 | aft: FittedAft predict_linear | INTEGRATE | AFT.predict_linear (PyModel); the four time-scale expressions cover the expression layer — Plan 05 |
-| aft: formula interface | INTEGRATE | aft_formula / aft_formula_summary (time ~ x, event= column) — Plan 05 |
+| aft: formula interface | INTEGRATE | aft_formula / aft_formula_summary / aft_formula_predict_quantile / _median / _survival / _cdf (time ~ x, event= column) — Plan 05; the four formula predict wrappers were added as a code-review fix (16.2-REVIEW WR-01) mirroring the `penalized_glm_formula_predict` precedent |
 | aft: column-major fit_aft / AftOptions / AftResult | OPT-OUT | not needed: CONTEXT locks the builder entry point; upstream asserts fit_aft equals the builder |
 | aft: AftRegressor::options() | OPT-OUT | not needed: echoes the configuration the AFT PyModel already stores from its constructor |
 | aft: AftDistribution raw distribution functions and derivatives | OPT-OUT | not needed: raw (eta, sigma) functions behind the predict_* methods; the derivatives are Newton-Raphson internals (see note 3) |
