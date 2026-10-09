@@ -7,10 +7,10 @@ current_phase_name: Upstream Crate Refresh
 current_plan: 9
 status: verifying
 stopped_at: Completed 16.1-08-PLAN.md
-last_updated: "2026-10-09T09:33:04.739Z"
+last_updated: "2026-10-09T09:45:25.812Z"
 last_activity: 2026-10-08
 last_activity_desc: Phase 16.1 execution resumed (wave continue)
-state_head: 1f22dfe885c575b7771fd9ca81a020672ff12aed
+state_head: 060148e33a4c2623237084357ee238f3d8b09fda
 progress:
   total_phases: 8
   completed_phases: 0
@@ -175,6 +175,7 @@ None yet.
 |---|-------------|------|--------|-----------|
 | 260818-rj2 | Add Examples section to README linking runnable examples/ scripts and docs/examples cookbook (fixes #36) | 2026-08-18 | b5e8e16 | [260818-rj2-add-examples-section-to-readme-linking-r](./quick/260818-rj2-add-examples-section-to-readme-linking-r/) |
 | 260819-jkj | Fix stuck v0.6.0 PyPI release — bumped python __version__ to 0.6.0, re-triggered publish | 2026-08-19 | (pending) | [260819-jkj-fix-v0.6.0-pypi-release](./quick/260819-jkj-fix-v0.6.0-pypi-release/) |
+| 3 | README: Claude Code plugin badge + install section | 2026-10-09 | 060148e | — |
 
 ### Roadmap Evolution
 
