@@ -4,18 +4,18 @@ milestone: v0.8.0
 milestone_name: Claude Code Skills Plugin
 current_phase: "16.1"
 current_phase_name: Upstream Crate Refresh
-current_plan: 5
+current_plan: 6
 status: executing
-stopped_at: Completed 16.1-09-PLAN.md
-last_updated: "2026-10-09T06:48:46.707Z"
+stopped_at: Completed 16.1-04-PLAN.md
+last_updated: "2026-10-09T07:19:14.506Z"
 last_activity: 2026-10-08
 last_activity_desc: Phase 16.1 execution resumed (wave continue)
-state_head: 620aaf3b6b482880938bb019d898945b8a64f4b1
+state_head: 47e02749413783dcc4c1a9d578cbe588966e1388
 progress:
   total_phases: 8
   completed_phases: 3
-  total_plans: 24
-  completed_plans: 11
+  total_plans: 25
+  completed_plans: 12
   percent: 38
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 ## Current Position
 
 Phase: 16.1 (Upstream Crate Refresh) — EXECUTING
-Current Plan: 5
+Current Plan: 6
 Total Plans in Phase: 9
 Status: Ready to execute
 Last activity: 2026-10-08 — Phase 16.1 execution resumed (wave continue)
@@ -104,6 +104,7 @@ Execution order: 13 → 14 → 15 → 16 → 17
 | Phase 16.1 P02 | 25min | 3 tasks | 10 files |
 | Phase 16.1 P03 | 55min | 3 tasks | 10 files |
 | Phase 16.1 P09 | 10min | 2 tasks | 2 files |
+| Phase 16.1 P04 | 42min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -145,6 +146,7 @@ Recent decisions affecting current work:
 - [Phase 16.1]: 16.1-03: Tasks 1/2 edits to shared files temporarily set aside/restored per-task (not git stash) to keep each commit's rebuild+verify scoped to only that task's code
 - [Phase 16.1]: 16.1-09: Fixture copied byte-identically from upstream release commit 3ab3bec exactly as the plan specified; no fallback commit needed.
 - [Phase 16.1]: 16.1-09: Split the plan's single test file into two commits aligned with the plan's two <task> blocks to keep per-task git history atomic.
+- [Phase 16.1]: 16.1-04: bootstrap_mean_ci/bootstrap_ci Python builders cast x to Float64 before the non-finite filter (int64 columns otherwise fail the plugin's Float64 dtype check), matching exprs/modern.py's existing pattern.
 
 ### Pending Todos
 
@@ -178,7 +180,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-10-09T06:21:45.031Z
-Stopped at: Completed 16.1-09-PLAN.md
+Last session: 2026-10-09T07:19:14.461Z
+Stopped at: Completed 16.1-04-PLAN.md
 Resume file: None
 </content>
