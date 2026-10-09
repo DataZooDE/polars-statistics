@@ -672,6 +672,23 @@ fn glm_fits() {
         assert_n_obs_nonzero(&out, "n_observations");
         let _ =
             negative_binomial_summary_fit(&inputs).expect("negative_binomial_summary_fit failed");
+
+        // Additive `_with` variants (#16.1-03): old contract == new default.
+        let default_kwargs = NegativeBinomialKwargs::default();
+        let out_with = negative_binomial_fit_with(&inputs, &default_kwargs)
+            .expect("negative_binomial_fit_with failed");
+        assert_eq!(
+            out, out_with,
+            "negative_binomial_fit must equal fit_with at default kwargs"
+        );
+
+        let dispersion_kwargs = NegativeBinomialKwargs {
+            estimate_dispersion: true,
+        };
+        let _ = negative_binomial_fit_with(&inputs, &dispersion_kwargs)
+            .expect("negative_binomial_fit_with(estimate_dispersion=true) failed");
+        let _ = negative_binomial_summary_fit_with(&inputs, &dispersion_kwargs)
+            .expect("negative_binomial_summary_fit_with(estimate_dispersion=true) failed");
     }
 
     // tweedie_fit: y, var_power, lambda, with_intercept, x...
@@ -791,6 +808,29 @@ fn glm_fits() {
         let out = negative_binomial_predict_fit(&inputs, kwargs())
             .expect("negative_binomial_predict_fit failed");
         assert_eq!(out.len(), y_cnt.len());
+
+        let out_with = negative_binomial_predict_fit_with(
+            &inputs,
+            NegativeBinomialPredictKwargs {
+                prefix: "p".to_string(),
+                estimate_dispersion: false,
+            },
+        )
+        .expect("negative_binomial_predict_fit_with failed");
+        assert_eq!(
+            out, out_with,
+            "negative_binomial_predict_fit must equal predict_fit_with at default kwargs"
+        );
+
+        let out_dispersion = negative_binomial_predict_fit_with(
+            &inputs,
+            NegativeBinomialPredictKwargs {
+                prefix: "p".to_string(),
+                estimate_dispersion: true,
+            },
+        )
+        .expect("negative_binomial_predict_fit_with(estimate_dispersion=true) failed");
+        assert_eq!(out_dispersion.len(), y_cnt.len());
     }
 
     // tweedie_predict: y, lambda, with_intercept, interval, level, null_policy, var_power, x...

@@ -26,6 +26,11 @@ use crate::utils::{IntoNumpy, ToFaer};
 ///     Maximum number of IRLS iterations.
 /// tol : float, default 1e-6
 ///     Convergence tolerance.
+/// estimate_dispersion : bool, default False
+///     Whether to scale the coefficient covariance by the Pearson chi2/df
+///     dispersion estimate, matching R's ``summary.glm`` for
+///     ``family = negative.binomial(theta)``. When False (the default),
+///     dispersion is fixed at 1.0 (``MASS::glm.nb`` convention).
 #[pyclass(name = "NegativeBinomial")]
 pub struct PyNegativeBinomial {
     theta: Option<f64>,
@@ -34,13 +39,14 @@ pub struct PyNegativeBinomial {
     max_iter: usize,
     tol: f64,
     lambda_: f64,
+    estimate_dispersion: bool,
     fitted: Option<FittedNegativeBinomial>,
 }
 
 #[pymethods]
 impl PyNegativeBinomial {
     #[new]
-    #[pyo3(signature = (theta=None, estimate_theta=true, add_intercept=None, with_intercept=None, max_iter=100, tol=1e-6, lambda_=0.0))]
+    #[pyo3(signature = (theta=None, estimate_theta=true, add_intercept=None, with_intercept=None, max_iter=100, tol=1e-6, lambda_=0.0, estimate_dispersion=false))]
     #[allow(clippy::too_many_arguments)]
     fn new(
         py: Python<'_>,
@@ -51,6 +57,7 @@ impl PyNegativeBinomial {
         max_iter: usize,
         tol: f64,
         lambda_: f64,
+        estimate_dispersion: bool,
     ) -> PyResult<Self> {
         let with_intercept =
             crate::pymodels::errors::resolve_intercept(py, add_intercept, with_intercept, true)?;
@@ -61,6 +68,7 @@ impl PyNegativeBinomial {
             max_iter,
             tol,
             lambda_,
+            estimate_dispersion,
             fitted: None,
         })
     }
@@ -79,7 +87,8 @@ impl PyNegativeBinomial {
             .estimate_theta(slf.estimate_theta)
             .max_iterations(slf.max_iter)
             .tolerance(slf.tol)
-            .lambda(slf.lambda_);
+            .lambda(slf.lambda_)
+            .estimate_dispersion(slf.estimate_dispersion);
 
         if let Some(theta) = slf.theta {
             builder = builder.theta(theta);
@@ -143,6 +152,20 @@ impl PyNegativeBinomial {
             .ok_or_else(|| crate::pymodels::errors::not_fitted_err("NegativeBinomial"))?;
 
         Ok(fitted.theta)
+    }
+
+    /// Dispersion used for the coefficient covariance: 1.0 by default
+    /// (``MASS::glm.nb`` convention); the Pearson chi2/df estimate when
+    /// ``estimate_dispersion=True`` (matches R ``summary.glm`` for
+    /// ``family = negative.binomial(theta)``).
+    #[getter]
+    fn dispersion(&self) -> PyResult<f64> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("NegativeBinomial"))?;
+
+        Ok(fitted.dispersion)
     }
 
     #[getter]

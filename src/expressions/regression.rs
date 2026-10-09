@@ -2529,8 +2529,41 @@ fn pl_gamma_standardized_deviance_residuals(inputs: &[Series]) -> PolarsResult<S
     gamma_standardized_deviance_residuals_fit(inputs)
 }
 
+/// Named kwargs for the Negative Binomial fit/summary shims (additive — default
+/// matches the pre-existing behaviour of dispersion fixed at 1.0).
+#[derive(Deserialize, Default, Clone, Debug)]
+pub struct NegativeBinomialKwargs {
+    /// Whether to scale the coefficient covariance by the Pearson chi2/df
+    /// dispersion estimate (R `summary.glm` convention for
+    /// `family = negative.binomial(theta)`). Default `false` keeps dispersion
+    /// fixed at 1.0 (`MASS::glm.nb` convention).
+    #[serde(default)]
+    pub estimate_dispersion: bool,
+}
+
+/// Named kwargs for the Negative Binomial predict shim: output-column `prefix`
+/// plus the `estimate_dispersion` option (affects interval width only, not the
+/// point prediction).
+#[derive(Deserialize, Clone, Debug)]
+pub struct NegativeBinomialPredictKwargs {
+    /// Prefix for output column names.
+    pub prefix: String,
+    /// See [`NegativeBinomialKwargs::estimate_dispersion`].
+    #[serde(default)]
+    pub estimate_dispersion: bool,
+}
+
 /// Public Rust-callable variant. Same input contract as the `pl_negative_binomial` expression shim.
 pub fn negative_binomial_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    negative_binomial_fit_with(inputs, &NegativeBinomialKwargs::default())
+}
+
+/// Additive variant of [`negative_binomial_fit`] taking the named
+/// `estimate_dispersion` option. Same positional input contract.
+pub fn negative_binomial_fit_with(
+    inputs: &[Series],
+    kwargs: &NegativeBinomialKwargs,
+) -> PolarsResult<Series> {
     let theta = inputs[1].f64()?.get(0);
     let lambda = inputs[2].f64()?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[3].bool()?.get(0).unwrap_or(true);
@@ -2540,7 +2573,9 @@ pub fn negative_binomial_fit(inputs: &[Series]) -> PolarsResult<Series> {
         Err(_) => return glm_nan_output(),
     };
 
-    let mut builder = NegativeBinomialRegressor::builder().with_intercept(with_intercept);
+    let mut builder = NegativeBinomialRegressor::builder()
+        .with_intercept(with_intercept)
+        .estimate_dispersion(kwargs.estimate_dispersion);
 
     if let Some(t) = theta {
         builder = builder.theta(t);
@@ -2571,9 +2606,10 @@ pub fn negative_binomial_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Negative Binomial regression expression.
 /// inputs[0] = y, inputs[1] = theta (optional), inputs[2] = lambda (L2 regularization), inputs[3] = with_intercept, inputs[4..] = x columns
+/// kwargs: `estimate_dispersion` (named, additive — see [`NegativeBinomialKwargs`]).
 #[polars_expr(output_type_func=glm_output_dtype)]
-fn pl_negative_binomial(inputs: &[Series]) -> PolarsResult<Series> {
-    negative_binomial_fit(inputs)
+fn pl_negative_binomial(inputs: &[Series], kwargs: NegativeBinomialKwargs) -> PolarsResult<Series> {
+    negative_binomial_fit_with(inputs, &kwargs)
 }
 
 /// Public Rust-callable variant. Same input contract as the `pl_tweedie` expression shim.
@@ -3453,6 +3489,15 @@ fn pl_poisson_summary(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_negative_binomial_summary` expression shim.
 pub fn negative_binomial_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    negative_binomial_summary_fit_with(inputs, &NegativeBinomialKwargs::default())
+}
+
+/// Additive variant of [`negative_binomial_summary_fit`] taking the named
+/// `estimate_dispersion` option. Same positional input contract.
+pub fn negative_binomial_summary_fit_with(
+    inputs: &[Series],
+    kwargs: &NegativeBinomialKwargs,
+) -> PolarsResult<Series> {
     let theta = inputs[1].f64()?.get(0);
     let lambda = inputs[2].f64()?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[3].bool()?.get(0).unwrap_or(true);
@@ -3463,7 +3508,9 @@ pub fn negative_binomial_summary_fit(inputs: &[Series]) -> PolarsResult<Series> 
         Err(_) => return summary_nan_output(),
     };
 
-    let mut builder = NegativeBinomialRegressor::builder().with_intercept(with_intercept);
+    let mut builder = NegativeBinomialRegressor::builder()
+        .with_intercept(with_intercept)
+        .estimate_dispersion(kwargs.estimate_dispersion);
 
     if let Some(t) = theta {
         builder = builder.theta(t);
@@ -3523,9 +3570,13 @@ pub fn negative_binomial_summary_fit(inputs: &[Series]) -> PolarsResult<Series> 
 
 /// Negative Binomial summary expression
 /// inputs[0] = y, inputs[1] = theta, inputs[2] = lambda (L2 regularization), inputs[3] = with_intercept, inputs[4..] = x columns
+/// kwargs: `estimate_dispersion` (named, additive — see [`NegativeBinomialKwargs`]).
 #[polars_expr(output_type_func=summary_output_dtype)]
-fn pl_negative_binomial_summary(inputs: &[Series]) -> PolarsResult<Series> {
-    negative_binomial_summary_fit(inputs)
+fn pl_negative_binomial_summary(
+    inputs: &[Series],
+    kwargs: NegativeBinomialKwargs,
+) -> PolarsResult<Series> {
+    negative_binomial_summary_fit_with(inputs, &kwargs)
 }
 
 /// Public Rust-callable variant. Same input contract as the `pl_tweedie_summary` expression shim.
@@ -4688,6 +4739,22 @@ pub fn negative_binomial_predict_fit(
     inputs: &[Series],
     kwargs: PredictKwargs,
 ) -> PolarsResult<Series> {
+    negative_binomial_predict_fit_with(
+        inputs,
+        NegativeBinomialPredictKwargs {
+            prefix: kwargs.prefix,
+            estimate_dispersion: false,
+        },
+    )
+}
+
+/// Additive variant of [`negative_binomial_predict_fit`] taking the named
+/// `estimate_dispersion` option (affects interval width, not the point prediction).
+/// Same positional input contract.
+pub fn negative_binomial_predict_fit_with(
+    inputs: &[Series],
+    kwargs: NegativeBinomialPredictKwargs,
+) -> PolarsResult<Series> {
     let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let interval = inputs[3].str()?.get(0);
@@ -4703,7 +4770,9 @@ pub fn negative_binomial_predict_fit(
         Err(_) => return prediction_nan_output_with_prefix(n_rows, prefix),
     };
 
-    let mut builder = NegativeBinomialRegressor::builder().with_intercept(with_intercept);
+    let mut builder = NegativeBinomialRegressor::builder()
+        .with_intercept(with_intercept)
+        .estimate_dispersion(kwargs.estimate_dispersion);
     if lambda > 0.0 {
         builder = builder.lambda(lambda);
     }
@@ -4759,12 +4828,30 @@ pub fn negative_binomial_predict_fit(
     }
 }
 
+/// Output dtype for `pl_negative_binomial_predict` — delegates to the shared
+/// prefix-based prediction schema (`estimate_dispersion` does not affect shape).
+fn negative_binomial_predict_output_dtype(
+    input_fields: &[Field],
+    kwargs: NegativeBinomialPredictKwargs,
+) -> PolarsResult<Field> {
+    predict_output_dtype_with_prefix(
+        input_fields,
+        PredictKwargs {
+            prefix: kwargs.prefix,
+        },
+    )
+}
+
 /// Negative Binomial prediction expression
 /// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3] = interval, inputs[4] = level,
 /// inputs[5] = null_policy, inputs[6..] = x columns
-#[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
-fn pl_negative_binomial_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
-    negative_binomial_predict_fit(inputs, kwargs)
+/// kwargs: `prefix`, `estimate_dispersion` (named, additive — see [`NegativeBinomialPredictKwargs`]).
+#[polars_expr(output_type_func_with_kwargs=negative_binomial_predict_output_dtype)]
+fn pl_negative_binomial_predict(
+    inputs: &[Series],
+    kwargs: NegativeBinomialPredictKwargs,
+) -> PolarsResult<Series> {
+    negative_binomial_predict_fit_with(inputs, kwargs)
 }
 
 /// Public Rust-callable variant. Same input contract as the `pl_tweedie_predict` expression shim.

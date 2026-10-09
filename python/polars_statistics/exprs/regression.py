@@ -1861,6 +1861,7 @@ def negative_binomial(
     lambda_: float = 0.0,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
+    estimate_dispersion: bool = False,
 ) -> pl.Expr:
     """Negative Binomial regression as a Polars expression.
 
@@ -1876,6 +1877,14 @@ def negative_binomial(
         L2 (Ridge) regularization strength.
     add_intercept : bool, default True
         Whether to include an intercept term.
+    estimate_dispersion : bool, default False
+        Whether to scale the coefficient covariance by the Pearson chi2/df
+        dispersion estimate, matching R ``summary.glm`` for
+        ``family = negative.binomial(theta)``. When False (the default),
+        dispersion is fixed at 1.0 (``MASS::glm.nb`` convention, since 0.8.0 —
+        previously ``max(1, chi2/df)``). Coefficients are unaffected; only
+        standard errors (and therefore intervals/p-values) scale by
+        ``sqrt(dispersion)``.
 
     Returns
     -------
@@ -1904,6 +1913,7 @@ def negative_binomial(
             pl.lit(add_intercept, dtype=pl.Boolean),
             *x_exprs,
         ],
+        kwargs={"estimate_dispersion": estimate_dispersion},
         returns_scalar=True,
     )
 
@@ -2501,8 +2511,19 @@ def negative_binomial_summary(
     lambda_: float = 0.0,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
+    estimate_dispersion: bool = False,
 ) -> pl.Expr:
-    """Negative Binomial regression coefficient summary in tidy format."""
+    """Negative Binomial regression coefficient summary in tidy format.
+
+    Parameters
+    ----------
+    estimate_dispersion : bool, default False
+        Whether to scale the coefficient covariance by the Pearson chi2/df
+        dispersion estimate, matching R ``summary.glm`` for
+        ``family = negative.binomial(theta)``. When False (the default),
+        dispersion is fixed at 1.0 (``MASS::glm.nb`` convention). Estimates
+        are unaffected; only ``std_error``/``statistic``/``p_value`` scale.
+    """
     add_intercept = _resolve_intercept(add_intercept, with_intercept)
     if isinstance(y, str):
         y = pl.col(y)
@@ -2525,6 +2546,7 @@ def negative_binomial_summary(
             pl.lit(add_intercept, dtype=pl.Boolean),
             *x_exprs,
         ],
+        kwargs={"estimate_dispersion": estimate_dispersion},
         returns_scalar=True,
     )
 
@@ -3338,6 +3360,7 @@ def negative_binomial_predict(
     level: float = 0.95,
     null_policy: str = "drop",
     name: str | None = None,
+    estimate_dispersion: bool = False,
 ) -> pl.Expr:
     """Negative Binomial regression predictions with optional intervals.
 
@@ -3359,6 +3382,11 @@ def negative_binomial_predict(
         "drop" or "drop_y_zero_x".
     name : str or None, default None
         Custom prefix for output column names. If None, uses "negative_binomial".
+    estimate_dispersion : bool, default False
+        Whether to scale interval width by the Pearson chi2/df dispersion
+        estimate, matching R ``summary.glm`` for
+        ``family = negative.binomial(theta)``. The point prediction is
+        unaffected; only interval width changes.
 
     Returns
     -------
@@ -3389,7 +3417,7 @@ def negative_binomial_predict(
             pl.lit(null_policy, dtype=pl.String),
             *x_exprs,
         ],
-        kwargs={"prefix": prefix},
+        kwargs={"prefix": prefix, "estimate_dispersion": estimate_dispersion},
         returns_scalar=False,
     )
 
@@ -4000,6 +4028,7 @@ def negative_binomial_formula(
     theta: float | None = None,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
+    estimate_dispersion: bool = False,
 ) -> pl.Expr:
     """Negative Binomial regression using R-style formula syntax.
 
@@ -4011,6 +4040,8 @@ def negative_binomial_formula(
         Dispersion parameter. If None, estimated from data.
     add_intercept : bool, default True
         Whether to include an intercept term.
+    estimate_dispersion : bool, default False
+        See :func:`negative_binomial`.
 
     Returns
     -------
@@ -4019,7 +4050,13 @@ def negative_binomial_formula(
     """
     add_intercept = _resolve_intercept(add_intercept, with_intercept)
     response, x_exprs, _ = _parse_formula(formula)
-    return negative_binomial(response, *x_exprs, theta=theta, add_intercept=add_intercept)
+    return negative_binomial(
+        response,
+        *x_exprs,
+        theta=theta,
+        add_intercept=add_intercept,
+        estimate_dispersion=estimate_dispersion,
+    )
 
 
 def tweedie_formula(
