@@ -192,11 +192,11 @@ real API, bundled into the wheel, and shipped as 0.8.0 on PyPI.
   3. `ps.mann_whitney_u` / `ps.wilcoxon_signed_rank` expression outputs gain trailing `estimate`, `ci_lower` and `ci_upper` fields (additive), so `conf_level` takes effect.
   4. `.pyi` stubs (drift guard green), docstrings, mkdocs, CHANGELOG and the regression/hypothesis skill cheat-sheets cover the new surface. The skill-example harness and all CI gates (clippy, fmt, ruff on new files, pytest) are green.
 
-**Plans**: 8 plans
+**Plans**: 1/8 plans executed
 
 **Wave 1**
 
-- [ ] 16.2-01-PLAN.md — Bump to anofox-statistics 0.4.7 / anofox-regression 0.5.22; lock the 0.5.19–0.5.21 behaviour changes (lm aliasing, GLM intercept inference, probit, LARS) with R references; adapt tests and affected docs (Wave 1)
+- [x] 16.2-01-PLAN.md — Bump to anofox-statistics 0.4.7 / anofox-regression 0.5.22; lock the 0.5.19–0.5.21 behaviour changes (lm aliasing, GLM intercept inference, probit, LARS) with R references; adapt tests and affected docs (Wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 

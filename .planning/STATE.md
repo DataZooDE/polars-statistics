@@ -4,19 +4,19 @@ milestone: v0.8.0
 milestone_name: Claude Code Skills Plugin
 current_phase: "16.2"
 current_phase_name: Penalized GLM and AFT Survival Regression
-current_plan: 1
+current_plan: 2
 status: executing
-stopped_at: Phase 16.1 complete, ready to plan Phase 16
-last_updated: "2026-10-09T11:45:24.945Z"
+stopped_at: Completed 16.2-01-PLAN.md
+last_updated: "2026-10-09T12:33:31.631Z"
 last_activity: 2026-10-09
 last_activity_desc: Phase 16.2 execution started
-state_head: ca8504cdc8cf919bceedcd6c0fa1d9061de4a8e2
+state_head: 63f35531c8eed62f204d4686a43ce043d776c71d
 progress:
   total_phases: 9
-  completed_phases: 1
+  completed_phases: 0
   total_plans: 36
-  completed_plans: 16
-  percent: 11
+  completed_plans: 17
+  percent: 0
 ---
 
 # Project State
@@ -31,9 +31,9 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 ## Current Position
 
 Phase: 16.2 (Penalized GLM and AFT Survival Regression) — EXECUTING
-Current Plan: 1
+Current Plan: 2
 Total Plans in Phase: 8
-Status: Executing Phase 16.2
+Status: Ready to execute
 Last activity: 2026-10-09 — Phase 16.2 execution started
 
 ## Milestone Roadmap (v0.8.0)
@@ -110,6 +110,7 @@ Execution order: 13 → 14 → 15 → 16 → 17
 | Phase 16.1 P06 | 46min | 2 tasks | 5 files |
 | Phase 16.1 P07 | 8min | 3 tasks | 14 files |
 | Phase 16.1 P08 | 8min | 2 tasks | 4 files |
+| Phase 16.2 P01 | 45min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -160,6 +161,9 @@ Recent decisions affecting current work:
 - [Phase 16.1]: 16.1-07: Resumed stalled executor (3 task commits present, no SUMMARY) — re-verified every task's verify/acceptance gate against HEAD instead of trusting the stall point; all passed, no fix commits needed
 - [Phase 16.1]: 16.1-07: Did not flip UPST-02/UPST-04 to Complete in REQUIREMENTS.md — both are shared with 16.1-08 (CHANGELOG + README/API_REFERENCE/validation page), which has not executed yet
 - [Phase 16.1]: 16.1-08: Consolidated every new R-validated capability into a single 'Upstream Refresh (v0.8.0)' table in docs/validation/index.md rather than editing each existing per-test prose section individually. — Keeps every new reference/tolerance pair in one place and matches the plan's literal acceptance-criteria greps without restructuring the page's existing narrative style.
+- [Phase 16.2]: 16.2-01: Single combined cargo update -p call (not two sequential --precise calls) avoids reproducible windows-sys lockfile churn from re-querying the crates.io index twice
+- [Phase 16.2]: 16.2-01: Set git.allow_default_branch_commits=true to formalize this project's existing trunk-based (branching_strategy: none) workflow
+- [Phase 16.2]: 16.2-01: Version bump to 0.4.7/0.5.22 caused zero test failures; behaviour-change inventory proven by 11 new R-reference tests, not by fixing broken assertions
 
 ### Pending Todos
 
@@ -195,7 +199,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-10-09T09:33:04.703Z
-Stopped at: Phase 16.1 complete, ready to plan Phase 16
+Last session: 2026-10-09T12:33:31.588Z
+Stopped at: Completed 16.2-01-PLAN.md
 Resume file: None
 </content>
