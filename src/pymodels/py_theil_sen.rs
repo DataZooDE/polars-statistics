@@ -29,6 +29,11 @@ use crate::utils::{IntoNumpy, ToFaer};
 ///     Convergence tolerance for the Weiszfeld algorithm.
 /// random_state : int, default 0
 ///     Seed for reproducible subsample draws.
+/// univariate_pairwise : bool, default True
+///     True (default): one-feature fits with an intercept use the classical
+///     median of pairwise slopes (Sen 1968, R); False: sklearn's
+///     spatial-median-over-subsamples estimator. Linearly dependent columns
+///     are aliased (NaN coefficient) like OLS.
 ///
 /// Examples
 /// --------
@@ -51,13 +56,14 @@ pub struct PyTheilSen {
     max_iter: usize,
     tol: f64,
     random_state: u64,
+    univariate_pairwise: bool,
     fitted: Option<FittedTheilSen>,
 }
 
 #[pymethods]
 impl PyTheilSen {
     #[new]
-    #[pyo3(signature = (add_intercept=None, with_intercept=None, max_subpopulation=10000, n_subsamples=None, max_iter=300, tol=1e-3, random_state=0))]
+    #[pyo3(signature = (add_intercept=None, with_intercept=None, max_subpopulation=10000, n_subsamples=None, max_iter=300, tol=1e-3, random_state=0, univariate_pairwise=true))]
     #[allow(clippy::too_many_arguments)]
     fn new(
         py: Python<'_>,
@@ -68,6 +74,7 @@ impl PyTheilSen {
         max_iter: usize,
         tol: f64,
         random_state: u64,
+        univariate_pairwise: bool,
     ) -> PyResult<Self> {
         let with_intercept =
             crate::pymodels::errors::resolve_intercept(py, add_intercept, with_intercept, true)?;
@@ -78,6 +85,7 @@ impl PyTheilSen {
             max_iter,
             tol,
             random_state,
+            univariate_pairwise,
             fitted: None,
         })
     }
@@ -109,7 +117,8 @@ impl PyTheilSen {
             .max_subpopulation(slf.max_subpopulation)
             .max_iter(slf.max_iter)
             .tolerance(slf.tol)
-            .random_state(slf.random_state);
+            .random_state(slf.random_state)
+            .univariate_pairwise(slf.univariate_pairwise);
         if let Some(ns) = slf.n_subsamples {
             b = b.n_subsamples(ns);
         }

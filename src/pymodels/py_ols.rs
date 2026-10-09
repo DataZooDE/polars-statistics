@@ -561,3 +561,25 @@ impl PyOLS {
         crate::pymodels::ergonomics::to_dict(slf.as_any())
     }
 }
+
+impl PyOLS {
+    /// Wrap an already-fitted [`FittedOls`] as a `PyOLS` instance.
+    ///
+    /// Used by `RANSAC.inlier_fit()` to hand back the inlier-rows OLS fit as a
+    /// real `OLS` object (`solve_method` is unknown for an already-fitted
+    /// model, so it is left `None`).
+    pub(crate) fn from_fitted(
+        fitted: FittedOls,
+        with_intercept: bool,
+        compute_inference: bool,
+        confidence_level: f64,
+    ) -> Self {
+        Self {
+            with_intercept,
+            compute_inference,
+            confidence_level,
+            solve_method: None,
+            fitted: Some(fitted),
+        }
+    }
+}
