@@ -579,8 +579,8 @@ fn aft_predict_impl(
             let ca = casted.f64()?;
             for i in 0..n_rows {
                 match ca.get(i) {
-                    Some(v) if v == 0.0 => event_bool[i] = Some(false),
-                    Some(v) if v == 1.0 => event_bool[i] = Some(true),
+                    Some(0.0) => event_bool[i] = Some(false),
+                    Some(1.0) => event_bool[i] = Some(true),
                     Some(_) => return prediction_nan_output_with_prefix(n_rows, prefix),
                     None => event_null_mask[i] = true,
                 }
