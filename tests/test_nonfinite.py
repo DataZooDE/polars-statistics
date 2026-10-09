@@ -210,4 +210,6 @@ def test_mann_whitney_u_expression_nonfinite_matches_filtered_columns():
         ps.mann_whitney_u(pl.col("x").drop_nulls(), pl.col("y").drop_nulls()).alias("r")
     ).item()
 
-    assert result_raw == result_filtered
+    # Phase 16.2 UPST-07: the struct now carries estimate/ci_lower/ci_upper, which are
+    # NaN here (no conf_level requested) -- nan_ok=True so NaN == NaN compares equal.
+    assert result_raw == pytest.approx(result_filtered, nan_ok=True)

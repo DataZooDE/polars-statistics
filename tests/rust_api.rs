@@ -1263,6 +1263,10 @@ fn nonparametric_tests() {
     let (a, b) = two_samples();
 
     // mann_whitney_u_fit: x, y, alternative, continuity_correction, exact, conf_level, mu
+    //
+    // Phase 16.2 UPST-07: the struct widened to statistic/p_value/estimate/ci_lower/ci_upper.
+    // Assert the field-name contract and that `estimate` is finite with conf_level set and
+    // NaN without it.
     {
         let inputs = vec![
             series_f64("x", &a),
@@ -1273,10 +1277,60 @@ fn nonparametric_tests() {
             scalar_f64("conf_level", 0.95),
             scalar_f64("mu", 0.0),
         ];
-        let _ = mann_whitney_u_fit(&inputs).expect("mann_whitney_u_fit failed");
+        let out = mann_whitney_u_fit(&inputs).expect("mann_whitney_u_fit failed");
+        let st = out.struct_().expect("expected struct series");
+        let field_names: Vec<String> = st
+            .struct_fields()
+            .iter()
+            .map(|f| f.name().to_string())
+            .collect();
+        assert_eq!(
+            field_names,
+            vec!["statistic", "p_value", "estimate", "ci_lower", "ci_upper"],
+            "mann_whitney_u_fit struct field names changed"
+        );
+        let estimate_val = st
+            .field_by_name("estimate")
+            .unwrap()
+            .f64()
+            .unwrap()
+            .get(0)
+            .unwrap();
+        assert!(
+            estimate_val.is_finite(),
+            "mann_whitney_u_fit estimate should be finite with conf_level set, got {estimate_val}"
+        );
+
+        let inputs_no_conf = vec![
+            series_f64("x", &a),
+            series_f64("y", &b),
+            scalar_str("alternative", "two-sided"),
+            scalar_bool("continuity_correction", true),
+            scalar_bool("exact", false),
+            scalar_f64_null("conf_level"),
+            scalar_f64("mu", 0.0),
+        ];
+        let out_no_conf = mann_whitney_u_fit(&inputs_no_conf).expect("mann_whitney_u_fit failed");
+        let estimate_no_conf = out_no_conf
+            .struct_()
+            .unwrap()
+            .field_by_name("estimate")
+            .unwrap()
+            .f64()
+            .unwrap()
+            .get(0)
+            .unwrap();
+        assert!(
+            estimate_no_conf.is_nan(),
+            "mann_whitney_u_fit estimate should be NaN without conf_level, got {estimate_no_conf}"
+        );
     }
 
     // wilcoxon_signed_rank_fit: x, y, alternative, continuity_correction, exact, conf_level, mu
+    //
+    // Phase 16.2 UPST-07: the struct widened to statistic/p_value/estimate/ci_lower/ci_upper.
+    // Assert the field-name contract and that `estimate` is finite with conf_level set and
+    // NaN without it.
     {
         let inputs = vec![
             series_f64("x", &a),
@@ -1287,7 +1341,54 @@ fn nonparametric_tests() {
             scalar_f64("conf_level", 0.95),
             scalar_f64("mu", 0.0),
         ];
-        let _ = wilcoxon_signed_rank_fit(&inputs).expect("wilcoxon_signed_rank_fit failed");
+        let out = wilcoxon_signed_rank_fit(&inputs).expect("wilcoxon_signed_rank_fit failed");
+        let st = out.struct_().expect("expected struct series");
+        let field_names: Vec<String> = st
+            .struct_fields()
+            .iter()
+            .map(|f| f.name().to_string())
+            .collect();
+        assert_eq!(
+            field_names,
+            vec!["statistic", "p_value", "estimate", "ci_lower", "ci_upper"],
+            "wilcoxon_signed_rank_fit struct field names changed"
+        );
+        let estimate_val = st
+            .field_by_name("estimate")
+            .unwrap()
+            .f64()
+            .unwrap()
+            .get(0)
+            .unwrap();
+        assert!(
+            estimate_val.is_finite(),
+            "wilcoxon_signed_rank_fit estimate should be finite with conf_level set, got {estimate_val}"
+        );
+
+        let inputs_no_conf = vec![
+            series_f64("x", &a),
+            series_f64("y", &b),
+            scalar_str("alternative", "two-sided"),
+            scalar_bool("continuity_correction", true),
+            scalar_bool("exact", false),
+            scalar_f64_null("conf_level"),
+            scalar_f64("mu", 0.0),
+        ];
+        let out_no_conf =
+            wilcoxon_signed_rank_fit(&inputs_no_conf).expect("wilcoxon_signed_rank_fit failed");
+        let estimate_no_conf = out_no_conf
+            .struct_()
+            .unwrap()
+            .field_by_name("estimate")
+            .unwrap()
+            .f64()
+            .unwrap()
+            .get(0)
+            .unwrap();
+        assert!(
+            estimate_no_conf.is_nan(),
+            "wilcoxon_signed_rank_fit estimate should be NaN without conf_level, got {estimate_no_conf}"
+        );
     }
 
     // kruskal_wallis_fit: each input series is a separate group.
