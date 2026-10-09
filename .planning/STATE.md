@@ -4,19 +4,19 @@ milestone: v0.8.0
 milestone_name: Claude Code Skills Plugin
 current_phase: "16.3"
 current_phase_name: Upstream API Wave 2
-current_plan: 1
+current_plan: 2
 status: executing
-stopped_at: Phase 16.2 complete, ready to plan Phase 16
-last_updated: "2026-10-09T17:41:37.959Z"
+stopped_at: Completed 16.3-01-PLAN.md
+last_updated: "2026-10-09T18:26:02.468Z"
 last_activity: 2026-10-09
 last_activity_desc: Phase 16.3 execution started
-state_head: 508fbce560d4a3d4fd9807d0d1727791324d06a0
+state_head: a4356b86f9d5fb90c7d6e54dc70766a6ef059244
 progress:
   total_phases: 9
-  completed_phases: 1
+  completed_phases: 0
   total_plans: 36
-  completed_plans: 24
-  percent: 11
+  completed_plans: 25
+  percent: 0
 ---
 
 # Project State
@@ -31,9 +31,9 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 ## Current Position
 
 Phase: 16.3 (Upstream API Wave 2) — EXECUTING
-Current Plan: 1
+Current Plan: 2
 Total Plans in Phase: 11
-Status: Executing Phase 16.3
+Status: Ready to execute
 Last activity: 2026-10-09 — Phase 16.3 execution started
 
 ## Milestone Roadmap (v0.8.0)
@@ -119,6 +119,7 @@ Execution order: 13 → 14 → 15 → 16 → 17
 | Phase 16.2 P06 | 20min | 3 tasks | 11 files |
 | Phase 16.2 P07 | 16min | 2 tasks | 4 files |
 | Phase 16.2 P08 | 25min | 2 tasks | 5 files |
+| Phase 16.3 P01 | 40min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -185,6 +186,9 @@ Recent decisions affecting current work:
 - [Phase 16.2]: 16.2-07: README fit-function list split one-name-per-line (not comma-joined) so the literal line-counting acceptance grep for the 9 new Rust *_fit names reaches its threshold
 - [Phase 16.2]: 16.2-07: Added dedicated validation-page subsections (Rank-Deficient Designs lm-aliasing; Intercept Inference and Probit Precision) for the 0.5.19-0.5.21 behaviour changes rather than editing existing rows, sourced directly from tests/test_upstream_regression_parity_v0521.py
 - [Phase 16.2]: 16.2-08: Corrected a pre-existing stale '43 PyModel classes' count in the results skill to 44/45, confirmed via gen_stubs.py's own class count. — Pre-existing documentation bug adjacent to this plan's struct-table edits; the live .pyi already had 45 classes before this plan.
+- [Phase 16.3]: 16.3-01: Post-hoc tests (tukey_hsd/pairwise_t_test/dunn_test) are long-format (values, groups) expressions, not the existing N-separate-columns ANOVA convention, to preserve real group labels in group1/group2.
+- [Phase 16.3]: 16.3-01: p_adjust/ptukey/qtukey use a bare Float64 output dtype (no Struct wrapper) -- first use of this dtype shape in the codebase.
+- [Phase 16.3]: 16.3-01: ptukey(qtukey(p)) round-trip test tolerance relaxed from 1e-8 to 1e-6 -- qtukey's Newton-Raphson solver converges to its own EPS=1e-4 criterion, not an implementation bug.
 
 ### Pending Todos
 
@@ -220,7 +224,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-10-09T17:04:43.339Z
-Stopped at: Phase 16.2 complete, ready to plan Phase 16
+Last session: 2026-10-09T18:26:02.418Z
+Stopped at: Completed 16.3-01-PLAN.md
 Resume file: None
 </content>

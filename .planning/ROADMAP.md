@@ -229,11 +229,11 @@ real API, bundled into the wheel, and shipped as 0.8.0 on PyPI.
   3. Any newly exposed or explicitly opted-out item is recorded in COVERAGE.md with a reason. This includes `TestResult`, which is a Rust-side unification and may have no Python counterpart, and the AID heuristic.
   4. Stubs (drift guard green), docstrings, mkdocs, CHANGELOG and skills cover the new surface; skill harness and CI gates green.
 
-**Plans**: 11 plans
+**Plans**: 1/11 plans executed
 
 **Wave 1**
 
-- [ ] 16.3-01-PLAN.md — Post-hoc tests (tukey_hsd / pairwise_t_test / dunn_test), p_adjust, ptukey / qtukey expressions vs R (Wave 1)
+- [x] 16.3-01-PLAN.md — Post-hoc tests (tukey_hsd / pairwise_t_test / dunn_test), p_adjust, ptukey / qtukey expressions vs R (Wave 1)
 - [ ] 16.3-02-PLAN.md — GLM / OLS / WLS intercept-inference and CI getters + inference kwargs vs R summary.glm / lm (Wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
