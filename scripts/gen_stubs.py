@@ -30,6 +30,9 @@ RUST_TO_PY = {
     "Vec<Bound<'py, PyDict>>": "list[dict]",
     "PyAidResult": '"AidResult"',
     "(Bound<'py, PyArray1<f64>>, Bound<'py, PyArray1<f64>>)": "tuple[numpy.ndarray, numpy.ndarray]",
+    "Option<(f64, f64)>": "tuple[float, float] | None",
+    "Py<PyOLS>": '"OLS"',
+    "Option<Bound<'py, PyArray2<f64>>>": "numpy.ndarray | None",
 }
 
 name_re = re.compile(r'#\[pyclass\s*\(\s*name\s*=\s*"([^"]+)"', re.S)

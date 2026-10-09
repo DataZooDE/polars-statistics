@@ -26,6 +26,13 @@ use crate::utils::{IntoNumpy, ToFaer};
 ///     Maximum IRLS iterations.
 /// tol : float, default 1e-5
 ///     Convergence tolerance on the max coefficient change between iterations.
+/// compute_inference : bool, default False
+///     Whether to compute standard errors / t-statistics / p-values / confidence
+///     intervals. Covariance matches MASS ``summary.rlm(method = "XtX")``; the
+///     L2 ``alpha`` is not part of it.
+/// confidence_level : float, default 0.95
+///     Confidence level for confidence intervals (used only when
+///     ``compute_inference=True``).
 #[pyclass(name = "Huber")]
 pub struct PyHuber {
     epsilon: f64,
@@ -33,13 +40,16 @@ pub struct PyHuber {
     with_intercept: bool,
     max_iter: usize,
     tol: f64,
+    compute_inference: bool,
+    confidence_level: f64,
     fitted: Option<FittedHuber>,
 }
 
 #[pymethods]
 impl PyHuber {
     #[new]
-    #[pyo3(signature = (epsilon=1.35, alpha=0.0001, add_intercept=None, with_intercept=None, max_iter=100, tol=1e-5))]
+    #[pyo3(signature = (epsilon=1.35, alpha=0.0001, add_intercept=None, with_intercept=None, max_iter=100, tol=1e-5, compute_inference=false, confidence_level=0.95))]
+    #[allow(clippy::too_many_arguments)]
     fn new(
         py: Python<'_>,
         epsilon: f64,
@@ -48,6 +58,8 @@ impl PyHuber {
         with_intercept: Option<bool>,
         max_iter: usize,
         tol: f64,
+        compute_inference: bool,
+        confidence_level: f64,
     ) -> PyResult<Self> {
         let with_intercept =
             crate::pymodels::errors::resolve_intercept(py, add_intercept, with_intercept, true)?;
@@ -57,6 +69,8 @@ impl PyHuber {
             with_intercept,
             max_iter,
             tol,
+            compute_inference,
+            confidence_level,
             fitted: None,
         })
     }
@@ -77,6 +91,8 @@ impl PyHuber {
             .with_intercept(slf.with_intercept)
             .max_iterations(slf.max_iter)
             .tolerance(slf.tol)
+            .compute_inference(slf.compute_inference)
+            .confidence_level(slf.confidence_level)
             .build();
 
         let fitted = model
@@ -226,6 +242,134 @@ impl PyHuber {
             .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Huber"))?;
 
         Ok(fitted.result().n_observations)
+    }
+
+    /// Standard errors of coefficients (``None`` unless ``compute_inference=True``).
+    #[getter]
+    fn std_errors<'py>(&self, py: Python<'py>) -> PyResult<Option<Bound<'py, PyArray1<f64>>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Huber"))?;
+
+        Ok(fitted
+            .result()
+            .std_errors
+            .as_ref()
+            .map(|se| se.into_numpy(py)))
+    }
+
+    /// t-statistics for coefficients (``None`` unless ``compute_inference=True``).
+    #[getter]
+    fn t_statistics<'py>(&self, py: Python<'py>) -> PyResult<Option<Bound<'py, PyArray1<f64>>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Huber"))?;
+
+        Ok(fitted
+            .result()
+            .t_statistics
+            .as_ref()
+            .map(|ts| ts.into_numpy(py)))
+    }
+
+    /// P-values for coefficient significance tests (``None`` unless ``compute_inference=True``).
+    #[getter]
+    fn p_values<'py>(&self, py: Python<'py>) -> PyResult<Option<Bound<'py, PyArray1<f64>>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Huber"))?;
+
+        Ok(fitted
+            .result()
+            .p_values
+            .as_ref()
+            .map(|pv| pv.into_numpy(py)))
+    }
+
+    /// Lower bounds of coefficient confidence intervals (``None`` unless
+    /// ``compute_inference=True``).
+    #[getter]
+    fn conf_interval_lower<'py>(
+        &self,
+        py: Python<'py>,
+    ) -> PyResult<Option<Bound<'py, PyArray1<f64>>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Huber"))?;
+
+        Ok(fitted
+            .result()
+            .conf_interval_lower
+            .as_ref()
+            .map(|ci| ci.into_numpy(py)))
+    }
+
+    /// Upper bounds of coefficient confidence intervals (``None`` unless
+    /// ``compute_inference=True``).
+    #[getter]
+    fn conf_interval_upper<'py>(
+        &self,
+        py: Python<'py>,
+    ) -> PyResult<Option<Bound<'py, PyArray1<f64>>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Huber"))?;
+
+        Ok(fitted
+            .result()
+            .conf_interval_upper
+            .as_ref()
+            .map(|ci| ci.into_numpy(py)))
+    }
+
+    /// Standard error of the intercept (``None`` unless ``compute_inference=True``).
+    #[getter]
+    fn intercept_std_error(&self) -> PyResult<Option<f64>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Huber"))?;
+
+        Ok(fitted.result().intercept_std_error)
+    }
+
+    /// t-statistic for the intercept (``None`` unless ``compute_inference=True``).
+    #[getter]
+    fn intercept_t_statistic(&self) -> PyResult<Option<f64>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Huber"))?;
+
+        Ok(fitted.result().intercept_t_statistic)
+    }
+
+    /// P-value for the intercept (``None`` unless ``compute_inference=True``).
+    #[getter]
+    fn intercept_p_value(&self) -> PyResult<Option<f64>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Huber"))?;
+
+        Ok(fitted.result().intercept_p_value)
+    }
+
+    /// Confidence interval for the intercept, as ``(lower, upper)`` (``None``
+    /// unless ``compute_inference=True``).
+    #[getter]
+    fn intercept_conf_interval(&self) -> PyResult<Option<(f64, f64)>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Huber"))?;
+
+        Ok(fitted.result().intercept_conf_interval)
     }
     /// Informative repr: class name plus key state; never panics if unfitted.
     fn __repr__(slf: &Bound<'_, Self>) -> PyResult<String> {

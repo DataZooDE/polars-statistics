@@ -76,6 +76,92 @@ class TestHuber:
         )
 
 
+class TestHuberInference:
+    """R reference: MASS::rlm(y ~ x, psi = psi.huber, k = 1.35, scale.est = "MAD"),
+    summary(method = "XtX"); anofox-regression tests/issue36_huber_inference.rs."""
+
+    def _data(self):
+        xv = np.array([k + 1 for k in range(20)], dtype=float)
+        y = np.array(
+            [1 + 2 * x + (((x * 7) % 5) - 2) * 0.4 for x in xv], dtype=float
+        )
+        y[5] = 40.0
+        y[14] = 5.0
+        return xv.reshape(-1, 1), y
+
+    def test_default_inference_is_none(self):
+        x, y = self._data()
+        m = Huber().fit(x, y)
+        assert m.std_errors is None
+        assert m.t_statistics is None
+        assert m.p_values is None
+        assert m.conf_interval_lower is None
+        assert m.conf_interval_upper is None
+        assert m.intercept_std_error is None
+        assert m.intercept_t_statistic is None
+        assert m.intercept_p_value is None
+        assert m.intercept_conf_interval is None
+
+    def test_compute_inference_matches_mass_rlm(self):
+        x, y = self._data()
+        m = Huber(
+            epsilon=1.35, alpha=0.0, max_iter=500, tol=1e-12, compute_inference=True
+        ).fit(x, y)
+
+        assert m.coefficients[0] == pytest.approx(1.9769296831089778, abs=1e-6)
+        assert m.intercept == pytest.approx(1.2866827718001757, abs=1e-5)
+        assert m.std_errors[0] == pytest.approx(0.029647934601485383, abs=1e-6)
+        assert m.intercept_std_error == pytest.approx(
+            0.355157012812956197, abs=1e-5
+        )
+        assert m.t_statistics[0] == pytest.approx(
+            m.coefficients[0] / m.std_errors[0], rel=1e-9
+        )
+        # |t| ~= 66.7 with df=18 underflows the two-sided p-value to exactly 0.0
+        # in f64 (astronomically significant) rather than a representable
+        # positive float — assert the valid-probability range, not strict > 0.
+        assert 0.0 <= m.p_values[0] < 1.0
+
+    def test_confidence_level_narrows_interval(self):
+        x, y = self._data()
+        m95 = Huber(
+            epsilon=1.35, alpha=0.0, max_iter=500, tol=1e-12, compute_inference=True
+        ).fit(x, y)
+        m90 = Huber(
+            epsilon=1.35,
+            alpha=0.0,
+            max_iter=500,
+            tol=1e-12,
+            compute_inference=True,
+            confidence_level=0.90,
+        ).fit(x, y)
+
+        width95 = m95.conf_interval_upper[0] - m95.conf_interval_lower[0]
+        width90 = m90.conf_interval_upper[0] - m90.conf_interval_lower[0]
+        assert width90 < width95
+
+        mid95 = (m95.conf_interval_upper[0] + m95.conf_interval_lower[0]) / 2
+        mid90 = (m90.conf_interval_upper[0] + m90.conf_interval_lower[0]) / 2
+        assert mid95 == pytest.approx(m95.coefficients[0], abs=1e-9)
+        assert mid90 == pytest.approx(m90.coefficients[0], abs=1e-9)
+
+    def test_unfitted_inference_getters_raise(self):
+        m = Huber()
+        for attr in (
+            "std_errors",
+            "t_statistics",
+            "p_values",
+            "conf_interval_lower",
+            "conf_interval_upper",
+            "intercept_std_error",
+            "intercept_t_statistic",
+            "intercept_p_value",
+            "intercept_conf_interval",
+        ):
+            with pytest.raises(Exception):
+                getattr(m, attr)
+
+
 class TestLogisticRegression:
     def _data(self, n=300, seed=42):
         rng = np.random.default_rng(seed)
