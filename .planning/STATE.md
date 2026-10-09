@@ -4,18 +4,18 @@ milestone: v0.8.0
 milestone_name: Claude Code Skills Plugin
 current_phase: "16.2"
 current_phase_name: Penalized GLM and AFT Survival Regression
-current_plan: 6
+current_plan: 7
 status: executing
-stopped_at: Completed 16.2-05-PLAN.md
-last_updated: "2026-10-09T16:31:01.500Z"
+stopped_at: Completed 16.2-06-PLAN.md
+last_updated: "2026-10-09T16:43:36.354Z"
 last_activity: 2026-10-09
 last_activity_desc: Phase 16.2 execution started
-state_head: 6196ae638935ede85f8a64777bc275f3d0c598b6
+state_head: 7e2f6aa6856bd667bebba362eb6496fb6e4fa6fe
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 36
-  completed_plans: 21
+  completed_plans: 22
   percent: 0
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 ## Current Position
 
 Phase: 16.2 (Penalized GLM and AFT Survival Regression) — EXECUTING
-Current Plan: 6
+Current Plan: 7
 Total Plans in Phase: 8
 Status: Ready to execute
 Last activity: 2026-10-09 — Phase 16.2 execution started
@@ -115,6 +115,7 @@ Execution order: 13 → 14 → 15 → 16 → 17
 | Phase 16.2 P03 | 22min | 2 tasks | 7 files |
 | Phase 16.2 P04 | 50min | 2 tasks | 7 files |
 | Phase 16.2 P05 | 2h 10min | 3 tasks | 12 files |
+| Phase 16.2 P06 | 20min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -176,6 +177,8 @@ Recent decisions affecting current work:
 - [Phase 16.2]: 16.2-04: A null offset always forces a NaN prediction via an explicit offset_null_mask, never by relying on NaN arithmetic propagating through a family's inverse-link — PoissonLink::link_inverse clamps via f64::max for numerical stability, which silently replaces a NaN operand with the clamp floor (1e-14) instead of propagating it -- found via a failing test during Task 2.
 - [Phase 16.2]: 16.2-05: log_scale_wald reproduces upstream's laplace::inference Wald formula for the AFT summary's log_scale row only; the intercept and feature rows are read directly from upstream's AftInference fields, never recomputed — verified identical on upstream's module-doc example via a crate unit test.
 - [Phase 16.2]: 16.2-05: A null event, under null_policy=drop_y_zero_x, excludes the row from the AFT fit (via the masked-time null-policy split) but still predicts it, since the four predict methods only read x — unlike penalized_glm's offset, which is required by every prediction and always forces NaN.
+- [Phase 16.2]: 16.2-06: Converted four illustrative-but-non-runnable python fences on classes/survival.md to text fences after the tracer exec gate caught undefined-name references — Only genuinely self-contained, runnable examples stay as python blocks on the three new pages, per the plan's execution contract
+- [Phase 16.2]: 16.2-06: Fixed a wrong double-hyphen anchor guess for the new 'Mann-Whitney / Wilcoxon Output' heading by inspecting the built HTML's id= attribute — mkdocs/pymdownx's slugifier collapses '/' without a double hyphen; guessing would have shipped broken internal links
 
 ### Pending Todos
 
@@ -211,7 +214,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-10-09T16:31:01.457Z
-Stopped at: Completed 16.2-05-PLAN.md
+Last session: 2026-10-09T16:43:36.309Z
+Stopped at: Completed 16.2-06-PLAN.md
 Resume file: None
 </content>
