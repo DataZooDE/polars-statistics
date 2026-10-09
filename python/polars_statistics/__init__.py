@@ -70,6 +70,8 @@ from polars_statistics.exprs import (
     # AID and Dynamic Linear Model expressions
     aid,
     aid_anomalies,
+    # Survival (AFT) expressions
+    aft,
     alm,
     alm_formula,
     alm_formula_predict,
@@ -463,6 +465,8 @@ __all__ = [
     "alm",
     # Penalized GLM expressions
     "penalized_glm",
+    # Survival (AFT) expressions
+    "aft",
     # Summary expressions
     "ols_summary",
     "ridge_summary",

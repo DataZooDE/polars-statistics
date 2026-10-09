@@ -3,6 +3,7 @@
 //! These functions use the #[polars_expr] macro to create expressions
 //! that work with group_by and over operations.
 
+mod aft;
 mod categorical;
 mod correlation;
 mod distributional;
@@ -17,6 +18,8 @@ mod resampling;
 mod tost;
 
 // Re-exports for polars plugin FFI - these are used via Python
+#[allow(unused_imports)]
+pub use aft::*;
 #[allow(unused_imports)]
 pub use categorical::*;
 #[allow(unused_imports)]

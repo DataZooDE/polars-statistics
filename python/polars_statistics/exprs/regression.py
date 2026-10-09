@@ -2403,6 +2403,177 @@ def penalized_glm(
 
 
 # ============================================================================
+# Survival (AFT) Expressions
+# ============================================================================
+
+_AFT_DISTRIBUTION_ALIASES = (
+    "weibull",
+    "lognormal",
+    "log_normal",
+    "log-normal",
+    "loglogistic",
+    "log_logistic",
+    "log-logistic",
+    "exponential",
+    "exp",
+)
+
+
+def _validate_aft_distribution(distribution: str) -> None:
+    """Mirror ``parse_aft_distribution`` (Rust, via upstream's
+    ``AftDistribution::from_name``) so an unknown distribution raises
+    ``ValueError`` when the expression is built, not at collect time."""
+    if str(distribution).lower() not in _AFT_DISTRIBUTION_ALIASES:
+        raise ValueError(
+            f"unknown AFT distribution {distribution!r} (expected one of "
+            f'"weibull", "lognormal" (or "log_normal"/"log-normal"), '
+            f'"loglogistic" (or "log_logistic"/"log-logistic"), '
+            f'"exponential" (or "exp"))'
+        )
+
+
+def _aft_kwargs(
+    distribution: str,
+    priors: Sequence[Union[None, str, tuple, dict]] | None,
+    vcov_type: str,
+    add_intercept: bool,
+    max_iter: int,
+    tol: float,
+    conf_level: float = 0.95,
+    prefix: str = "aft",
+    p: float = 0.5,
+    t: float | None = None,
+    null_policy: str = "drop",
+) -> dict:
+    """Validate and assemble the kwargs dict shared by every AFT expression
+    (fit here; summary/predict reuse the same shape in Plan 05 Task 3)."""
+    distribution_lc = str(distribution).lower()
+    _validate_aft_distribution(distribution_lc)
+    if max_iter < 1:
+        raise ValueError(f"max_iter must be >= 1, got {max_iter}")
+    if tol <= 0.0:
+        raise ValueError(f"tol must be > 0, got {tol}")
+    vcov_type_lc = str(vcov_type).lower()
+    if vcov_type_lc not in ("laplace", "sandwich", "naive"):
+        raise ValueError(
+            f"unknown vcov_type {vcov_type!r} (expected one of 'laplace', 'sandwich', 'naive')"
+        )
+    if not (0.0 <= p <= 1.0):
+        raise ValueError(f"p must be in [0, 1], got {p}")
+    return {
+        "distribution": distribution_lc,
+        "priors": _normalize_priors(priors),
+        "vcov_type": vcov_type_lc,
+        "with_intercept": bool(add_intercept),
+        "max_iter": int(max_iter),
+        "tol": float(tol),
+        "conf_level": float(conf_level),
+        "prefix": str(prefix),
+        "p": float(p),
+        "t": float(t) if t is not None else float("nan"),
+        "null_policy": str(null_policy),
+    }
+
+
+def aft(
+    time: Union[pl.Expr, str],
+    event: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    distribution: Literal["weibull", "exponential", "lognormal", "loglogistic"] = "weibull",
+    priors: Sequence[Union[None, str, tuple, dict]] | None = None,
+    add_intercept: bool = True,
+    max_iter: int = 100,
+    tol: float = 1e-9,
+) -> pl.Expr:
+    """Accelerated failure time (AFT) survival regression as a Polars expression.
+
+    Models ``log T = x'beta + sigma * W`` for a fixed error distribution ``W``
+    (the parametrisation of R's ``survival::survreg``), with right censoring.
+    Works with ``group_by`` and ``.over``.
+
+    Parameters
+    ----------
+    time : pl.Expr or str
+        Event or censoring time. Must be strictly positive; a non-positive or
+        non-finite time fails the whole fit (returned as all-NaN).
+    event : pl.Expr or str
+        Right-censoring indicator: ``True``/``1`` for an observed event,
+        ``False``/``0`` for a right-censored observation. Accepts a Boolean
+        column directly, or a numeric column containing only ``0``/``1``
+        (any other value, e.g. R's ``1``/``2`` coding, fails the whole fit
+        rather than being silently misread). A null time or a null event
+        drops that row from the fit.
+    *x : pl.Expr or str
+        Feature variables (one or more).
+    distribution : {"weibull", "exponential", "lognormal", "loglogistic"}
+        Error distribution for ``T`` (see upstream's ``AftDistribution``).
+        Aliases ``"log_normal"``/``"log-normal"`` and
+        ``"log_logistic"``/``"log-logistic"`` are also accepted; invalid for
+        every distribution raises ``ValueError`` when the expression is
+        built.
+    priors : sequence, optional
+        Per-coefficient priors, positionally aligned with ``x``. Same format
+        as :func:`penalized_glm`'s ``priors``.
+    add_intercept : bool, default True
+        Whether to include an intercept term.
+    max_iter : int, default 100
+        Maximum Newton iterations.
+    tol : float, default 1e-9
+        Convergence tolerance on the log-likelihood.
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing: intercept, coefficients, scale, log_likelihood,
+        null_log_likelihood, aic, bic, iterations, converged, n_observations,
+        n_events, n_censored.
+
+    Notes
+    -----
+    Rows with a null/non-finite value in ``time``, the event indicator, or
+    any feature are dropped before fitting. Validated against R
+    ``survival::survreg`` on the `anofox-regression` 0.5.22 R reference
+    fixture (all four distributions).
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> import polars_statistics as ps
+    >>>
+    >>> df.group_by("group").agg(
+    ...     ps.aft("time", "event", "x1", "x2", distribution="weibull").alias("model")
+    ... )
+    """
+    kwargs = _aft_kwargs(
+        distribution=distribution,
+        priors=priors,
+        vcov_type="laplace",
+        add_intercept=add_intercept,
+        max_iter=max_iter,
+        tol=tol,
+    )
+
+    if isinstance(time, str):
+        time = pl.col(time)
+    if isinstance(event, str):
+        event = pl.col(event)
+
+    x_exprs = []
+    for xi in x:
+        if isinstance(xi, str):
+            xi = pl.col(xi)
+        x_exprs.append(xi.cast(pl.Float64))
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_aft",
+        args=[time.cast(pl.Float64), event, *x_exprs],
+        kwargs=kwargs,
+        returns_scalar=True,
+    )
+
+
+# ============================================================================
 # ALM Expressions
 # ============================================================================
 

@@ -133,6 +133,8 @@ from polars_statistics.exprs.regression import (
     cloglog,
     # Penalized GLM
     penalized_glm,
+    # Survival (AFT)
+    aft,
     alm,
     # Summary functions
     ols_summary,
@@ -339,6 +341,8 @@ __all__ = [
     "alm",
     # Penalized GLM expressions
     "penalized_glm",
+    # Survival (AFT) expressions
+    "aft",
     # Summary expressions
     "ols_summary",
     "ridge_summary",
