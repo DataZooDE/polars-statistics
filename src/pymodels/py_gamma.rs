@@ -1,6 +1,7 @@
 //! PyO3 wrapper for Gamma regression.
 
 use numpy::{PyArray1, PyReadonlyArray1, PyReadonlyArray2};
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
 use anofox_regression::solvers::{FittedGamma, FittedRegressor, GammaRegressor, Regressor};
@@ -23,6 +24,10 @@ use crate::utils::{IntoNumpy, ToFaer};
 ///     Convergence tolerance for the IRLS algorithm.
 /// lambda_ : float, default 0.0
 ///     L2 regularisation strength (0.0 = no regularisation).
+/// compute_inference : bool, default True
+///     Whether to compute statistical inference.
+/// confidence_level : float, default 0.95
+///     Confidence level for confidence intervals.
 ///
 /// Examples
 /// --------
@@ -42,13 +47,16 @@ pub struct PyGamma {
     max_iter: usize,
     tol: f64,
     lambda_: f64,
+    compute_inference: bool,
+    confidence_level: f64,
     fitted: Option<FittedGamma>,
 }
 
 #[pymethods]
 impl PyGamma {
     #[new]
-    #[pyo3(signature = (add_intercept=None, with_intercept=None, max_iter=25, tol=1e-8, lambda_=0.0))]
+    #[pyo3(signature = (add_intercept=None, with_intercept=None, max_iter=25, tol=1e-8, lambda_=0.0, compute_inference=true, confidence_level=0.95))]
+    #[allow(clippy::too_many_arguments)]
     fn new(
         py: Python<'_>,
         add_intercept: Option<bool>,
@@ -56,7 +64,14 @@ impl PyGamma {
         max_iter: usize,
         tol: f64,
         lambda_: f64,
+        compute_inference: bool,
+        confidence_level: f64,
     ) -> PyResult<Self> {
+        if !(confidence_level > 0.0 && confidence_level < 1.0) {
+            return Err(PyValueError::new_err(format!(
+                "confidence_level must be in (0, 1), got {confidence_level}"
+            )));
+        }
         let with_intercept =
             crate::pymodels::errors::resolve_intercept(py, add_intercept, with_intercept, true)?;
         Ok(Self {
@@ -64,6 +79,8 @@ impl PyGamma {
             max_iter,
             tol,
             lambda_,
+            compute_inference,
+            confidence_level,
             fitted: None,
         })
     }
@@ -95,6 +112,8 @@ impl PyGamma {
             .max_iterations(slf.max_iter)
             .tolerance(slf.tol)
             .lambda(slf.lambda_)
+            .compute_inference(slf.compute_inference)
+            .confidence_level(slf.confidence_level)
             .build();
 
         let fitted = model
@@ -214,6 +233,102 @@ impl PyGamma {
             .p_values
             .as_ref()
             .map(|pv| pv.into_numpy(py)))
+    }
+
+    /// t statistics for the slope coefficients, or None when inference is disabled.
+    #[getter]
+    fn t_statistics<'py>(&self, py: Python<'py>) -> PyResult<Option<Bound<'py, PyArray1<f64>>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Gamma"))?;
+
+        Ok(fitted
+            .result()
+            .t_statistics
+            .as_ref()
+            .map(|ts| ts.into_numpy(py)))
+    }
+
+    /// Lower bounds of coefficient confidence intervals, or None when inference is disabled.
+    #[getter]
+    fn conf_interval_lower<'py>(
+        &self,
+        py: Python<'py>,
+    ) -> PyResult<Option<Bound<'py, PyArray1<f64>>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Gamma"))?;
+
+        Ok(fitted
+            .result()
+            .conf_interval_lower
+            .as_ref()
+            .map(|ci| ci.into_numpy(py)))
+    }
+
+    /// Upper bounds of coefficient confidence intervals, or None when inference is disabled.
+    #[getter]
+    fn conf_interval_upper<'py>(
+        &self,
+        py: Python<'py>,
+    ) -> PyResult<Option<Bound<'py, PyArray1<f64>>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Gamma"))?;
+
+        Ok(fitted
+            .result()
+            .conf_interval_upper
+            .as_ref()
+            .map(|ci| ci.into_numpy(py)))
+    }
+
+    /// Standard error of the intercept, or None when inference is disabled.
+    #[getter]
+    fn intercept_std_error(&self) -> PyResult<Option<f64>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Gamma"))?;
+
+        Ok(fitted.result().intercept_std_error)
+    }
+
+    /// t statistic for the intercept (R ``summary.glm``).
+    #[getter]
+    fn intercept_t_statistic(&self) -> PyResult<Option<f64>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Gamma"))?;
+
+        Ok(fitted.result().intercept_t_statistic)
+    }
+
+    /// P-value for the intercept, or None when inference is disabled.
+    #[getter]
+    fn intercept_p_value(&self) -> PyResult<Option<f64>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Gamma"))?;
+
+        Ok(fitted.result().intercept_p_value)
+    }
+
+    /// Confidence interval of the intercept at ``confidence_level`` (R
+    /// ``confint.default``), as ``(lower, upper)``, or None when inference is disabled.
+    #[getter]
+    fn intercept_conf_interval(&self) -> PyResult<Option<(f64, f64)>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("Gamma"))?;
+
+        Ok(fitted.result().intercept_conf_interval)
     }
 
     /// Akaike Information Criterion.

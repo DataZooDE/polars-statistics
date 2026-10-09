@@ -188,6 +188,134 @@ impl PyWLS {
         Ok(fitted.r_squared())
     }
 
+    /// Standard errors of coefficients (``None`` unless ``compute_inference=True``).
+    #[getter]
+    fn std_errors<'py>(&self, py: Python<'py>) -> PyResult<Option<Bound<'py, PyArray1<f64>>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("WLS"))?;
+
+        Ok(fitted
+            .result()
+            .std_errors
+            .as_ref()
+            .map(|se| se.into_numpy(py)))
+    }
+
+    /// t-statistics for coefficients (``None`` unless ``compute_inference=True``).
+    #[getter]
+    fn t_statistics<'py>(&self, py: Python<'py>) -> PyResult<Option<Bound<'py, PyArray1<f64>>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("WLS"))?;
+
+        Ok(fitted
+            .result()
+            .t_statistics
+            .as_ref()
+            .map(|ts| ts.into_numpy(py)))
+    }
+
+    /// P-values for coefficient significance tests (``None`` unless ``compute_inference=True``).
+    #[getter]
+    fn p_values<'py>(&self, py: Python<'py>) -> PyResult<Option<Bound<'py, PyArray1<f64>>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("WLS"))?;
+
+        Ok(fitted
+            .result()
+            .p_values
+            .as_ref()
+            .map(|pv| pv.into_numpy(py)))
+    }
+
+    /// Lower bounds of coefficient confidence intervals (``None`` unless
+    /// ``compute_inference=True``).
+    #[getter]
+    fn conf_interval_lower<'py>(
+        &self,
+        py: Python<'py>,
+    ) -> PyResult<Option<Bound<'py, PyArray1<f64>>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("WLS"))?;
+
+        Ok(fitted
+            .result()
+            .conf_interval_lower
+            .as_ref()
+            .map(|ci| ci.into_numpy(py)))
+    }
+
+    /// Upper bounds of coefficient confidence intervals (``None`` unless
+    /// ``compute_inference=True``).
+    #[getter]
+    fn conf_interval_upper<'py>(
+        &self,
+        py: Python<'py>,
+    ) -> PyResult<Option<Bound<'py, PyArray1<f64>>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("WLS"))?;
+
+        Ok(fitted
+            .result()
+            .conf_interval_upper
+            .as_ref()
+            .map(|ci| ci.into_numpy(py)))
+    }
+
+    /// Standard error of the intercept (``None`` unless ``compute_inference=True``).
+    #[getter]
+    fn intercept_std_error(&self) -> PyResult<Option<f64>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("WLS"))?;
+
+        Ok(fitted.result().intercept_std_error)
+    }
+
+    /// t-statistic for the intercept (``None`` unless ``compute_inference=True``).
+    #[getter]
+    fn intercept_t_statistic(&self) -> PyResult<Option<f64>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("WLS"))?;
+
+        Ok(fitted.result().intercept_t_statistic)
+    }
+
+    /// P-value for the intercept (``None`` unless ``compute_inference=True``).
+    #[getter]
+    fn intercept_p_value(&self) -> PyResult<Option<f64>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("WLS"))?;
+
+        Ok(fitted.result().intercept_p_value)
+    }
+
+    /// Confidence interval of the intercept, as ``(lower, upper)`` (``None``
+    /// unless ``compute_inference=True``).
+    #[getter]
+    fn intercept_conf_interval(&self) -> PyResult<Option<(f64, f64)>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("WLS"))?;
+
+        Ok(fitted.result().intercept_conf_interval)
+    }
+
     /// Compute HC (heteroskedasticity-consistent) standard errors.
     ///
     /// **Not implemented for WLS.** Always raises ``NotImplementedError``.

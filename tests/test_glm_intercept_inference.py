@@ -27,11 +27,16 @@ from statistics import NormalDist
 import numpy as np
 import pytest
 from polars_statistics import (
+    OLS,
+    WLS,
     Cloglog,
+    Gamma,
     Logistic,
     LogisticRegression,
+    NegativeBinomial,
     Poisson,
     Probit,
+    Tweedie,
 )
 
 _FIXTURE_PATH = Path(__file__).parent / "fixtures" / "m1a_reference.py"
@@ -473,6 +478,235 @@ class TestPoissonMatchesR:
             "intercept_conf_interval",
         ):
             with pytest.raises(RuntimeError, match="Poisson"):
+                getattr(m, attr)
+
+
+# ============================================================================
+# NegativeBinomial: MASS::glm.nb(breaks ~ wool + tension, warpbreaks)
+# ============================================================================
+
+
+class TestNegativeBinomialMatchesR:
+    def _fit(self, **kwargs):
+        x = np.column_stack([WB_WOOLB, WB_TM, WB_TH])
+        return NegativeBinomial(tol=1e-12, max_iter=100, **kwargs).fit(x, WB_BREAKS)
+
+    def test_negbin_matches_r(self):
+        m = self._fit()
+        assert m.theta_estimated == pytest.approx(ref.NB_THETA, rel=1e-4)
+        assert m.intercept == pytest.approx(ref.NB_EST[0], rel=1e-6)
+        assert m.intercept_std_error == pytest.approx(ref.NB_SE[0], rel=1e-6)
+        assert m.intercept_t_statistic == pytest.approx(ref.NB_STAT[0], rel=1e-6)
+        assert m.intercept_p_value == pytest.approx(ref.NB_P[0], rel=1e-6)
+        ci = m.intercept_conf_interval
+        assert ci[0] == pytest.approx(ref.NB_CI_LO[0], rel=1e-6)
+        assert ci[1] == pytest.approx(ref.NB_CI_HI[0], rel=1e-6)
+
+        for i in range(3):
+            assert m.coefficients[i] == pytest.approx(ref.NB_EST[i + 1], rel=1e-6)
+            assert m.std_errors[i] == pytest.approx(ref.NB_SE[i + 1], rel=1e-6)
+            assert m.t_statistics[i] == pytest.approx(ref.NB_STAT[i + 1], rel=1e-6)
+            assert m.p_values[i] == pytest.approx(ref.NB_P[i + 1], rel=1e-6)
+            assert m.conf_interval_lower[i] == pytest.approx(ref.NB_CI_LO[i + 1], rel=1e-6)
+            assert m.conf_interval_upper[i] == pytest.approx(ref.NB_CI_HI[i + 1], rel=1e-6)
+
+    def test_negbin_no_inference_kwargs(self):
+        m = self._fit(compute_inference=False)
+        for attr in (
+            "std_errors",
+            "t_statistics",
+            "p_values",
+            "conf_interval_lower",
+            "conf_interval_upper",
+            "intercept_std_error",
+            "intercept_t_statistic",
+            "intercept_p_value",
+            "intercept_conf_interval",
+        ):
+            assert getattr(m, attr) is None
+
+    def test_negbin_confidence_level_narrows(self):
+        m90 = self._fit(confidence_level=0.90)
+        m95 = self._fit()
+        ci90 = m90.intercept_conf_interval
+        ci95 = m95.intercept_conf_interval
+        assert ci95[0] < ci90[0] < ci90[1] < ci95[1]
+
+    def test_negbin_confidence_level_out_of_range_raises(self):
+        with pytest.raises(ValueError):
+            NegativeBinomial(confidence_level=1.5)
+
+
+# ============================================================================
+# Gamma / Tweedie: glm(mpg ~ wt + hp, Gamma(log)); Tweedie(var_power=2) wraps it
+# ============================================================================
+
+
+class TestGammaTweedieMatchesR:
+    def _x(self):
+        return np.column_stack([MT_WT, MT_HP])
+
+    def test_gamma_matches_r(self):
+        m = Gamma(max_iter=100, tol=1e-12).fit(self._x(), MT_MPG)
+        assert m.intercept == pytest.approx(ref.GAMMA_EST[0], rel=1e-6)
+        assert m.intercept_std_error == pytest.approx(ref.GAMMA_SE[0], rel=1e-6)
+        assert m.intercept_t_statistic == pytest.approx(ref.GAMMA_STAT[0], rel=1e-6)
+        assert m.intercept_p_value == pytest.approx(ref.GAMMA_P[0], rel=1e-6)
+        ci = m.intercept_conf_interval
+        assert ci[0] == pytest.approx(ref.GAMMA_CI_LO[0], rel=1e-6)
+        assert ci[1] == pytest.approx(ref.GAMMA_CI_HI[0], rel=1e-6)
+
+        for i in range(2):
+            assert m.coefficients[i] == pytest.approx(ref.GAMMA_EST[i + 1], rel=1e-6)
+            assert m.std_errors[i] == pytest.approx(ref.GAMMA_SE[i + 1], rel=1e-6)
+            assert m.t_statistics[i] == pytest.approx(ref.GAMMA_STAT[i + 1], rel=1e-6)
+            assert m.p_values[i] == pytest.approx(ref.GAMMA_P[i + 1], rel=1e-6)
+            assert m.conf_interval_lower[i] == pytest.approx(ref.GAMMA_CI_LO[i + 1], rel=1e-6)
+            assert m.conf_interval_upper[i] == pytest.approx(ref.GAMMA_CI_HI[i + 1], rel=1e-6)
+
+    def test_tweedie_gamma_wrapper_matches_r(self):
+        m = Tweedie(var_power=2.0, link_power=0.0, max_iter=100, tol=1e-12).fit(
+            self._x(), MT_MPG
+        )
+        assert m.intercept == pytest.approx(ref.GAMMA_EST[0], rel=1e-6)
+        assert m.intercept_std_error == pytest.approx(ref.GAMMA_SE[0], rel=1e-6)
+        assert m.intercept_t_statistic == pytest.approx(ref.GAMMA_STAT[0], rel=1e-6)
+        assert m.intercept_p_value == pytest.approx(ref.GAMMA_P[0], rel=1e-6)
+
+    def test_tweedie_var_power_1_5_wald_identities(self):
+        m = Tweedie(var_power=1.5, link_power=0.0, max_iter=100, tol=1e-12).fit(
+            self._x(), MT_MPG
+        )
+        z = m.intercept / m.intercept_std_error
+        assert m.intercept_t_statistic == pytest.approx(z, rel=1e-12)
+        assert 0.0 < m.intercept_p_value < 1.0
+        ci = m.intercept_conf_interval
+        mid = (ci[0] + ci[1]) / 2.0
+        assert mid == pytest.approx(m.intercept, rel=1e-10)
+
+    def test_gamma_no_inference_kwargs(self):
+        m = Gamma(compute_inference=False).fit(self._x(), MT_MPG)
+        for attr in (
+            "std_errors",
+            "t_statistics",
+            "p_values",
+            "conf_interval_lower",
+            "conf_interval_upper",
+            "intercept_std_error",
+            "intercept_t_statistic",
+            "intercept_p_value",
+            "intercept_conf_interval",
+        ):
+            assert getattr(m, attr) is None
+
+    def test_tweedie_gamma_factory_no_inference_kwargs(self):
+        m = Tweedie.gamma(compute_inference=False).fit(self._x(), MT_MPG)
+        for attr in (
+            "std_errors",
+            "t_statistics",
+            "p_values",
+            "conf_interval_lower",
+            "conf_interval_upper",
+            "intercept_std_error",
+            "intercept_t_statistic",
+            "intercept_p_value",
+            "intercept_conf_interval",
+        ):
+            assert getattr(m, attr) is None
+
+    def test_gamma_confidence_level_out_of_range_raises(self):
+        with pytest.raises(ValueError):
+            Gamma(confidence_level=1.5)
+
+    def test_tweedie_confidence_level_out_of_range_raises(self):
+        with pytest.raises(ValueError):
+            Tweedie(confidence_level=1.5)
+        with pytest.raises(ValueError):
+            Tweedie.gaussian(confidence_level=0.0)
+        with pytest.raises(ValueError):
+            Tweedie.gamma(confidence_level=0.0)
+        with pytest.raises(ValueError):
+            Tweedie.inverse_gaussian(confidence_level=0.0)
+
+
+# ============================================================================
+# OLS / WLS: lm(mpg ~ wt + hp, mtcars) / lm(..., weights = 1/cyl)
+# ============================================================================
+
+
+class TestOlsWlsMatchR:
+    def _x(self):
+        return np.column_stack([MT_WT, MT_HP])
+
+    def test_ols_matches_r(self):
+        m = OLS().fit(self._x(), MT_MPG)
+        assert m.intercept_std_error == pytest.approx(ref.OLS_SE[0], rel=1e-8)
+        assert m.intercept_t_statistic == pytest.approx(ref.OLS_STAT[0], rel=1e-8)
+        assert m.intercept_p_value == pytest.approx(ref.OLS_P[0], rel=1e-8)
+        ci = m.intercept_conf_interval
+        assert ci[0] == pytest.approx(ref.OLS_CI_LO[0], rel=1e-8)
+        assert ci[1] == pytest.approx(ref.OLS_CI_HI[0], rel=1e-8)
+
+        for i in range(2):
+            assert m.conf_interval_lower[i] == pytest.approx(ref.OLS_CI_LO[i + 1], rel=1e-8)
+            assert m.conf_interval_upper[i] == pytest.approx(ref.OLS_CI_HI[i + 1], rel=1e-8)
+
+    def test_wls_matches_r(self):
+        m = WLS().fit(self._x(), MT_MPG, MT_W)
+        assert m.std_errors[0] == pytest.approx(ref.WLS_SE[1], rel=1e-8)
+        assert m.t_statistics[0] == pytest.approx(ref.WLS_STAT[1], rel=1e-8)
+        assert m.p_values[0] == pytest.approx(ref.WLS_P[1], rel=1e-8)
+        assert m.conf_interval_lower[0] == pytest.approx(ref.WLS_CI_LO[1], rel=1e-8)
+        assert m.conf_interval_upper[0] == pytest.approx(ref.WLS_CI_HI[1], rel=1e-8)
+
+        assert m.intercept_std_error == pytest.approx(ref.WLS_SE[0], rel=1e-8)
+        assert m.intercept_t_statistic == pytest.approx(ref.WLS_STAT[0], rel=1e-8)
+        assert m.intercept_p_value == pytest.approx(ref.WLS_P[0], rel=1e-8)
+        ci = m.intercept_conf_interval
+        assert ci[0] == pytest.approx(ref.WLS_CI_LO[0], rel=1e-8)
+        assert ci[1] == pytest.approx(ref.WLS_CI_HI[0], rel=1e-8)
+
+    def test_ols_no_inference_kwargs(self):
+        m = OLS(compute_inference=False).fit(self._x(), MT_MPG)
+        for attr in (
+            "conf_interval_lower",
+            "conf_interval_upper",
+            "intercept_std_error",
+            "intercept_t_statistic",
+            "intercept_p_value",
+            "intercept_conf_interval",
+        ):
+            assert getattr(m, attr) is None
+
+    def test_wls_no_inference_kwargs(self):
+        m = WLS(compute_inference=False).fit(self._x(), MT_MPG, MT_W)
+        for attr in (
+            "std_errors",
+            "t_statistics",
+            "p_values",
+            "conf_interval_lower",
+            "conf_interval_upper",
+            "intercept_std_error",
+            "intercept_t_statistic",
+            "intercept_p_value",
+            "intercept_conf_interval",
+        ):
+            assert getattr(m, attr) is None
+
+    def test_wls_unfitted_raises(self):
+        m = WLS()
+        for attr in (
+            "std_errors",
+            "t_statistics",
+            "p_values",
+            "conf_interval_lower",
+            "conf_interval_upper",
+            "intercept_std_error",
+            "intercept_t_statistic",
+            "intercept_p_value",
+            "intercept_conf_interval",
+        ):
+            with pytest.raises(RuntimeError, match="WLS"):
                 getattr(m, attr)
 
 
