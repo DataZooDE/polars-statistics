@@ -12,7 +12,7 @@
 use polars::prelude::*;
 use pyo3_polars::derive::polars_expr;
 
-use anofox_statistics::{p_adjust, PAdjustMethod};
+use anofox_statistics::{p_adjust, ptukey, qtukey, PAdjustMethod};
 
 /// Parse an R `p.adjust` method name (case-insensitive; `"fdr"` aliases `"BH"`).
 ///
@@ -55,4 +55,85 @@ pub fn p_adjust_fit(inputs: &[Series]) -> PolarsResult<Series> {
 #[polars_expr(output_type=Float64)]
 fn pl_p_adjust(inputs: &[Series]) -> PolarsResult<Series> {
     p_adjust_fit(inputs)
+}
+
+/// Elementwise application of a 4-argument scalar function over `inputs`
+/// (exactly 4 Series), broadcasting any length-1 argument against the
+/// others. A null in any argument gives a null output row; the output takes
+/// the name of `inputs[0]`.
+///
+/// # Errors
+/// If any argument's length is neither 1 nor the maximum length among all
+/// four arguments.
+fn elementwise4(inputs: &[Series], f: impl Fn(f64, f64, f64, f64) -> f64) -> PolarsResult<Series> {
+    let name = inputs[0].name().clone();
+    let cols = [
+        inputs[0].f64()?,
+        inputs[1].f64()?,
+        inputs[2].f64()?,
+        inputs[3].f64()?,
+    ];
+    let n = cols.iter().map(|c| c.len()).max().unwrap_or(0);
+    for c in &cols {
+        if c.len() != 1 && c.len() != n {
+            return Err(
+                polars_err!(ComputeError: "elementwise4: every argument must have length 1 or {} (got {})", n, c.len()),
+            );
+        }
+    }
+    let get = |c: &Float64Chunked, i: usize| -> Option<f64> {
+        if c.len() == 1 {
+            c.get(0)
+        } else {
+            c.get(i)
+        }
+    };
+    let out: Vec<Option<f64>> = (0..n)
+        .map(|i| {
+            let a = get(cols[0], i)?;
+            let b = get(cols[1], i)?;
+            let c = get(cols[2], i)?;
+            let d = get(cols[3], i)?;
+            Some(f(a, b, c, d))
+        })
+        .collect();
+    Ok(Series::new(name, out))
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_ptukey`
+/// expression shim.
+///
+/// # Input contract
+/// `inputs[0..4]`: q, nmeans, df, nranges (f64, each length 1 or n).
+/// `inputs[4]`: lower_tail (bool scalar, default true).
+pub fn ptukey_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    let lower_tail = inputs[4].bool()?.get(0).unwrap_or(true);
+    elementwise4(&inputs[0..4], |q, nmeans, df, nranges| {
+        ptukey(q, nmeans, df, nranges, lower_tail)
+    })
+}
+
+/// R `ptukey`: studentized-range distribution CDF.
+#[polars_expr(output_type=Float64)]
+fn pl_ptukey(inputs: &[Series]) -> PolarsResult<Series> {
+    ptukey_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_qtukey`
+/// expression shim.
+///
+/// # Input contract
+/// `inputs[0..4]`: p, nmeans, df, nranges (f64, each length 1 or n).
+/// `inputs[4]`: lower_tail (bool scalar, default true).
+pub fn qtukey_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    let lower_tail = inputs[4].bool()?.get(0).unwrap_or(true);
+    elementwise4(&inputs[0..4], |p, nmeans, df, nranges| {
+        qtukey(p, nmeans, df, nranges, lower_tail)
+    })
+}
+
+/// R `qtukey`: studentized-range distribution quantile function.
+#[polars_expr(output_type=Float64)]
+fn pl_qtukey(inputs: &[Series]) -> PolarsResult<Series> {
+    qtukey_fit(inputs)
 }

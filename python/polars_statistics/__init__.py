@@ -191,6 +191,8 @@ from polars_statistics.exprs import (
     nnls_predict,
     # Post-hoc / p-value adjustment expressions
     p_adjust,
+    ptukey,
+    qtukey,
     # Penalized GLM expressions
     penalized_glm,
     penalized_glm_formula,
@@ -384,6 +386,8 @@ __all__ = [
     "bootstrap_ci",
     # Post-hoc / p-value adjustment expressions
     "p_adjust",
+    "ptukey",
+    "qtukey",
     # Forecast test expressions
     "diebold_mariano",
     "permutation_t_test",

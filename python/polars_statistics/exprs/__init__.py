@@ -81,6 +81,8 @@ from polars_statistics.exprs.resampling import (
 )
 from polars_statistics.exprs.posthoc import (
     p_adjust,
+    ptukey,
+    qtukey,
 )
 from polars_statistics.exprs.regression import (
     ols,
@@ -257,6 +259,8 @@ __all__ = [
     "bootstrap_ci",
     # Post-hoc / p-value adjustment expressions
     "p_adjust",
+    "ptukey",
+    "qtukey",
     # Forecast tests
     "diebold_mariano",
     "permutation_t_test",

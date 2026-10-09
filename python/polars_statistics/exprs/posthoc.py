@@ -84,3 +84,127 @@ def p_adjust(p: pl.Expr | str, method: str = "holm") -> pl.Expr:
         args=[_as_float_expr(p), pl.lit(method, dtype=pl.String)],
         returns_scalar=False,
     )
+
+
+def ptukey(
+    q: pl.Expr | str | float,
+    nmeans: pl.Expr | str | float,
+    df: pl.Expr | str | float,
+    nranges: pl.Expr | str | float = 1,
+    lower_tail: bool = True,
+) -> pl.Expr:
+    """
+    Studentized range distribution CDF, matching R's ``ptukey(q, nmeans, df, nranges)``.
+
+    Used by Tukey's HSD to convert the studentized range statistic to a
+    p-value. Agrees with R to within 1e-10.
+
+    Parameters
+    ----------
+    q : pl.Expr, str, or float
+        Studentized range quantile, column name, expression, or scalar.
+    nmeans : pl.Expr, str, or float
+        Number of means in the range.
+    df : pl.Expr, str, or float
+        Degrees of freedom.
+    nranges : pl.Expr, str, or float, default 1
+        Number of ranges.
+    lower_tail : bool, default True
+        If True, return P(Q <= q); if False, return P(Q > q).
+
+    Returns
+    -------
+    pl.Expr
+        Float64 expression. Each argument may be a scalar (broadcasts
+        against the others) or a column (all columns must share the same
+        length).
+
+    Notes
+    -----
+    Returns NaN (never an exception) for NaN arguments or invalid
+    parameters (``df < 2``, ``nranges < 1``, ``nmeans < 2``).
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> import polars_statistics as ps
+    >>>
+    >>> df = pl.DataFrame({"q": [2.0, 3.0, 4.0]})
+    >>> df.select(ps.ptukey("q", nmeans=3, df=10))
+    """
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_ptukey",
+        args=[
+            _as_float_expr(q),
+            _as_float_expr(nmeans),
+            _as_float_expr(df),
+            _as_float_expr(nranges),
+            pl.lit(lower_tail, dtype=pl.Boolean),
+        ],
+        returns_scalar=False,
+        is_elementwise=True,
+    )
+
+
+def qtukey(
+    p: pl.Expr | str | float,
+    nmeans: pl.Expr | str | float,
+    df: pl.Expr | str | float,
+    nranges: pl.Expr | str | float = 1,
+    lower_tail: bool = True,
+) -> pl.Expr:
+    """
+    Studentized range distribution quantile function, matching R's
+    ``qtukey(p, nmeans, df, nranges)``.
+
+    The inverse of :func:`ptukey`; used by Tukey's HSD to compute the
+    critical value for a given confidence level. Agrees with R to within
+    1e-8.
+
+    Parameters
+    ----------
+    p : pl.Expr, str, or float
+        Probability in [0, 1], column name, expression, or scalar.
+    nmeans : pl.Expr, str, or float
+        Number of means in the range.
+    df : pl.Expr, str, or float
+        Degrees of freedom.
+    nranges : pl.Expr, str, or float, default 1
+        Number of ranges.
+    lower_tail : bool, default True
+        If True, ``p`` is P(Q <= q); if False, ``p`` is P(Q > q).
+
+    Returns
+    -------
+    pl.Expr
+        Float64 expression. Each argument may be a scalar (broadcasts
+        against the others) or a column (all columns must share the same
+        length).
+
+    Notes
+    -----
+    Returns NaN (never an exception) for NaN arguments, invalid parameters
+    (``df < 2``, ``nranges < 1``, ``nmeans < 2``), or ``p`` outside [0, 1].
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> import polars_statistics as ps
+    >>>
+    >>> df = pl.DataFrame({"p": [0.9, 0.95, 0.99]})
+    >>> df.select(ps.qtukey("p", nmeans=3, df=10))
+    """
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_qtukey",
+        args=[
+            _as_float_expr(p),
+            _as_float_expr(nmeans),
+            _as_float_expr(df),
+            _as_float_expr(nranges),
+            pl.lit(lower_tail, dtype=pl.Boolean),
+        ],
+        returns_scalar=False,
+        is_elementwise=True,
+    )
