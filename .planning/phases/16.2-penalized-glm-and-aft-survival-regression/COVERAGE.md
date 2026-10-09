@@ -39,7 +39,7 @@
 | pglm: vcov() + GlmInferenceResult information / matrix_parameters | INTEGRATE | PenalizedGLM.vcov (scaled, see note 2) / .information / .matrix_parameters (PyModel only — CONTEXT resolution 3) — Plan 02 |
 | pglm: FittedPenalizedGlm separation() (SeparationCheck) | INTEGRATE | has_separation / separated_predictors / separation_warning getters; has_separation in the fit struct — Plan 02 |
 | pglm: FittedPenalizedGlm fitted_values() + result().valid_rows | INTEGRATE | fitted_values / valid_rows getters — Plan 02 |
-| pglm: FittedPenalizedGlm predict / predict_with_offset / predict_linear | INTEGRATE | PenalizedGLM.predict(x, offset=) / predict_linear(x); ps.penalized_glm_predict(type="response" or "link") — Plans 02, 04 |
+| pglm: FittedPenalizedGlm predict / predict_with_offset / predict_linear | INTEGRATE | PenalizedGLM.predict(x, offset=) / predict_linear(x); ps.penalized_glm_predict(predict_type="response" or "link") — Plans 02, 04 |
 | pglm: formula interface (existing Poisson / logistic precedent) | INTEGRATE | penalized_glm_formula / _formula_summary / _formula_predict — Plans 02, 04 |
 | pglm: column-major fit_* family functions + option / result structs | OPT-OUT | not needed: CONTEXT locks the builder entry point; upstream asserts the column-major functions give identical coefficients (see note 3) |
 | pglm: low-level engine building blocks | OPT-OUT | not needed: internal pieces the builder composes, incl. 0.5.17 engine::null_deviance; none is configurable via the builder API (see note 3) |

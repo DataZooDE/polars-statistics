@@ -763,10 +763,11 @@ ps.probit_predict(y, *x, lambda_=0.0, add_intercept=True, interval=None, level=0
 ps.cloglog_predict(y, *x, lambda_=0.0, add_intercept=True, interval=None, level=0.95, null_policy="drop", name=None)
 ps.alm_predict(y, *x, distribution="normal", add_intercept=True, interval=None, level=0.95, null_policy="drop", name=None)
 
-ps.penalized_glm_predict(y, *x, family="poisson", link=None, theta=None, power=None, threshold=0.5, lambda_=0.0, estimate_dispersion=False, priors=None, offset=None, add_intercept=True, max_iter=100, tol=1e-8, type="response", null_policy="drop", name=None)
-# Note: type="response" applies the family's inverse link (+ offset); type="link" returns the
-# linear predictor + offset directly. lower/upper are always NaN (no interval-prediction method
-# upstream). A null offset always yields a NaN prediction, regardless of null_policy.
+ps.penalized_glm_predict(y, *x, family="poisson", link=None, theta=None, power=None, threshold=0.5, lambda_=0.0, estimate_dispersion=False, priors=None, offset=None, add_intercept=True, max_iter=100, tol=1e-8, predict_type="response", null_policy="drop", name=None)
+# Note: predict_type="response" applies the family's inverse link (+ offset); predict_type="link"
+# returns the linear predictor + offset directly. lower/upper are always NaN (no
+# interval-prediction method upstream). A null offset always yields a NaN prediction, regardless
+# of null_policy.
 
 ps.aft_predict_quantile(time, event, *x, p=0.5, distribution="weibull", priors=None, add_intercept=True, max_iter=100, tol=1e-9, null_policy="drop", name=None)
 ps.aft_predict_median(time, event, *x, distribution="weibull", priors=None, add_intercept=True, max_iter=100, tol=1e-9, null_policy="drop", name=None)
@@ -844,7 +845,7 @@ ps.lasso_formula_predict(formula: str, lambda_=1.0, add_intercept=True, interval
 ps.logistic_formula_predict(formula: str, add_intercept=True, interval=None, level=0.95, null_policy="drop", name=None)
 ps.poisson_formula_predict(formula: str, add_intercept=True, interval=None, level=0.95, null_policy="drop", name=None)
 ps.alm_formula_predict(formula: str, distribution="normal", add_intercept=True, interval=None, level=0.95, null_policy="drop", name=None)
-ps.penalized_glm_formula_predict(formula: str, family="poisson", link=None, theta=None, power=None, threshold=0.5, lambda_=0.0, estimate_dispersion=False, priors=None, offset=None, add_intercept=True, max_iter=100, tol=1e-8, type="response", null_policy="drop", name=None)
+ps.penalized_glm_formula_predict(formula: str, family="poisson", link=None, theta=None, power=None, threshold=0.5, lambda_=0.0, estimate_dispersion=False, priors=None, offset=None, add_intercept=True, max_iter=100, tol=1e-8, predict_type="response", null_policy="drop", name=None)
 ```
 
 ---

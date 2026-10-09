@@ -1099,7 +1099,7 @@ class TestPenalizedGlmPredict:
         ).unnest("resp")
         link_df = DF.with_columns(
             ps.penalized_glm_predict(
-                "y_pois", "x1", "x2", tol=1e-10, type="link"
+                "y_pois", "x1", "x2", tol=1e-10, predict_type="link"
             ).alias("link")
         ).unnest("link")
         for resp, link in zip(
@@ -1189,7 +1189,7 @@ class TestPenalizedGlmPredict:
 
     def test_predict_invalid_type_raises(self):
         with pytest.raises(ValueError):
-            ps.penalized_glm_predict("y_pois", "x1", "x2", type="bogus")
+            ps.penalized_glm_predict("y_pois", "x1", "x2", predict_type="bogus")
 
     def test_predict_invalid_null_policy_raises(self):
         with pytest.raises(ValueError):

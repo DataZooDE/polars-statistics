@@ -110,7 +110,7 @@ All models have prediction functions:
 - `tweedie_predict`, `probit_predict`, `cloglog_predict`
 - `alm_predict`
 - `quantile_predict`, `isotonic_predict`, `lm_dynamic_predict`
-- `penalized_glm_predict` (`type="response"` or `"link"`)
+- `penalized_glm_predict` (`predict_type="response"` or `"link"`)
 - `aft_predict_quantile`, `aft_predict_median`, `aft_predict_survival`, `aft_predict_cdf`
 
 Formula variants also available: `ps.ols_formula_predict(formula, ...)`, etc.
@@ -119,7 +119,7 @@ Formula variants also available: `ps.ols_formula_predict(formula, ...)`, etc.
 always `NaN`; neither `FittedPenalizedGlm` nor `FittedAft` has an interval-prediction method
 upstream. See [Penalized GLM](penalized-glm.md#penalized_glm_predict) and
 [Survival Regression (AFT)](survival.md#aft_predict_quantile) for the full parameter lists
-(`type`/`null_policy` for the former; `p`/`t`/`null_policy` for the latter's four variants).
+(`predict_type`/`null_policy` for the former; `p`/`t`/`null_policy` for the latter's four variants).
 
 **Models without analytic intervals.** The following predictors return `lower` / `upper` as NaN — point predictions only:
 

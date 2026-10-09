@@ -4556,7 +4556,7 @@ def penalized_glm_predict(
     add_intercept: bool = True,
     max_iter: int = 100,
     tol: float = 1e-8,
-    type: Literal["response", "link"] = "response",
+    predict_type: Literal["response", "link"] = "response",
     null_policy: Literal["drop", "drop_y_zero_x"] = "drop",
     name: str | None = None,
 ) -> pl.Expr:
@@ -4570,7 +4570,7 @@ def penalized_glm_predict(
     y, x, family, link, theta, power, threshold, lambda_, estimate_dispersion,
     priors, offset, add_intercept, max_iter, tol
         See :func:`penalized_glm`.
-    type : {"response", "link"}, default "response"
+    predict_type : {"response", "link"}, default "response"
         Prediction scale: ``"response"`` applies the family's inverse link to
         the linear predictor plus offset; ``"link"`` returns the linear
         predictor plus offset directly (no inverse link).
@@ -4598,8 +4598,8 @@ def penalized_glm_predict(
     ...         .over("group").alias("pred")
     ... ).unnest("pred")
     """
-    if type not in ("response", "link"):
-        raise ValueError(f'type must be "response" or "link", got {type!r}')
+    if predict_type not in ("response", "link"):
+        raise ValueError(f'predict_type must be "response" or "link", got {predict_type!r}')
     if null_policy not in ("drop", "drop_y_zero_x"):
         raise ValueError(
             f'null_policy must be "drop" or "drop_y_zero_x", got {null_policy!r}'
@@ -4620,7 +4620,7 @@ def penalized_glm_predict(
         max_iter=max_iter,
         tol=tol,
         prefix=prefix,
-        predict_type=type,
+        predict_type=predict_type,
         null_policy=null_policy,
     )
 
@@ -5676,7 +5676,7 @@ def penalized_glm_formula_predict(
     add_intercept: bool = True,
     max_iter: int = 100,
     tol: float = 1e-8,
-    type: Literal["response", "link"] = "response",
+    predict_type: Literal["response", "link"] = "response",
     null_policy: Literal["drop", "drop_y_zero_x"] = "drop",
     name: str | None = None,
 ) -> pl.Expr:
@@ -5700,7 +5700,7 @@ def penalized_glm_formula_predict(
         add_intercept=add_intercept,
         max_iter=max_iter,
         tol=tol,
-        type=type,
+        predict_type=predict_type,
         null_policy=null_policy,
         name=name,
     )

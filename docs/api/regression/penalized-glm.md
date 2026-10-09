@@ -289,15 +289,15 @@ ps.penalized_glm_predict(
     add_intercept: bool = True,
     max_iter: int = 100,
     tol: float = 1e-8,
-    type: Literal["response", "link"] = "response",
+    predict_type: Literal["response", "link"] = "response",
     null_policy: Literal["drop", "drop_y_zero_x"] = "drop",
     name: str | None = None,
 ) -> pl.Expr
 ```
 
 Refits per group/`.over()` partition with the same options used for `penalized_glm`, then
-predicts on every row. `type="response"` applies the family's inverse link to the linear
-predictor plus offset; `type="link"` returns the linear predictor plus offset directly.
+predicts on every row. `predict_type="response"` applies the family's inverse link to the linear
+predictor plus offset; `predict_type="link"` returns the linear predictor plus offset directly.
 
 `lower`/`upper` are always `NaN` — `FittedPenalizedGlm` has no interval-prediction method
 upstream (documented opt-out). A null `offset` value always yields a `NaN` prediction,

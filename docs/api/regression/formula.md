@@ -121,7 +121,7 @@ Prediction functions:
 ```python
 ps.ols_formula_predict(formula, interval=None, level=0.95, with_intercept=True)
 ps.ridge_formula_predict(formula, lambda_=1.0, interval=None, level=0.95, with_intercept=True)
-ps.penalized_glm_formula_predict(formula, family="poisson", type="response", null_policy="drop", ...)
+ps.penalized_glm_formula_predict(formula, family="poisson", predict_type="response", null_policy="drop", ...)
 # ... etc.
 ```
 
