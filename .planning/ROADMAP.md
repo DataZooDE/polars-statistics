@@ -72,7 +72,7 @@ real API, bundled into the wheel, and shipped as 0.8.0 on PyPI.
 - [x] **Phase 15: Accuracy Verification Pass** - Run every skill example against the real API and audit each skill's description so Claude auto-surfaces the right one (completed 2026-09-21)
 - [ ] **Phase 16: Wheel Bundling** - Bundle the skill files into the built wheel via maturin package data so they ship on `pip install`
 - [ ] **Phase 16.1: Upstream Crate Refresh** (INSERTED) - Bump to anofox-statistics 0.4.6 / anofox-regression 0.5.16, adapt to R-matching fixes, expose new API, update stubs/docs/skills
-- [ ] **Phase 16.2: Penalized GLM and AFT Survival Regression** (INSERTED) - Bump to anofox-statistics 0.4.7 / anofox-regression 0.5.21; expose anofox-regression 0.5.16's penalized GLM engine and AFT survival regression; add estimate/CI to the Mann-Whitney/Wilcoxon expressions
+- [ ] **Phase 16.2: Penalized GLM and AFT Survival Regression** (INSERTED) - Bump to anofox-statistics 0.4.7 / anofox-regression 0.5.22; expose anofox-regression 0.5.16's penalized GLM engine and AFT survival regression; add estimate/CI to the Mann-Whitney/Wilcoxon expressions
 - [ ] **Phase 16.3: Upstream API Wave 2** (INSERTED) - Expose anofox-statistics 0.4.7 / anofox-regression 0.5.17–0.5.21 additions: post-hoc tests, p_adjust, augment diagnostics, GLMM families, EB shrinkage
 - [ ] **Phase 17: Release 0.8.0** - Bump 0.7.0→0.8.0 across every version source and publish to production PyPI via the OIDC pipeline
 
@@ -180,46 +180,46 @@ real API, bundled into the wheel, and shipped as 0.8.0 on PyPI.
 
 ### Phase 16.2: Penalized GLM and AFT Survival Regression (INSERTED)
 
-**Goal**: polars-statistics moves to anofox-statistics 0.4.7 / anofox-regression 0.5.21 (user decision, 2026-10-09), and the two model families added in anofox-regression 0.5.16 (the penalized GLM engine and accelerated failure time survival regression) are available as Polars expressions and Python model classes. The Mann-Whitney / Wilcoxon expressions also return their Hodges-Lehmann estimate and confidence interval. All of it is documented, R-validated and in the skills.
+**Goal**: polars-statistics moves to anofox-statistics 0.4.7 / anofox-regression 0.5.22 (user decision, 2026-10-09), and the two model families added in anofox-regression 0.5.16 (the penalized GLM engine and accelerated failure time survival regression) are available as Polars expressions and Python model classes. The Mann-Whitney / Wilcoxon expressions also return their Hodges-Lehmann estimate and confidence interval. All of it is documented, R-validated and in the skills.
 **Depends on**: Phase 16.1 (crate versions and the refreshed docs/skills baseline)
 **Requirements**: UPST-05, UPST-06, UPST-07
 **Success Criteria** (what must be TRUE):
 
-  0. `Cargo.toml` floors are anofox-statistics 0.4.7 / anofox-regression 0.5.21. Tests and docs reflect the 0.5.17–0.5.21 behaviour changes (OLS/WLS lm-style aliasing, intercept inference on every GLM, probit link accuracy, LARS fit statistics, penalized GLM Poisson dispersion 1 / Gamma logLik / null deviance). All gates are green.
+  0. `Cargo.toml` floors are anofox-statistics 0.4.7 / anofox-regression 0.5.22. Tests and docs reflect the 0.5.17–0.5.21 behaviour changes (OLS/WLS lm-style aliasing, intercept inference on every GLM, probit link accuracy, LARS fit statistics, penalized GLM Poisson dispersion 1 / Gamma logLik / null deviance). All gates are green.
   1. Penalized GLM is exposed as a PyModel (family: poisson/binomial/logistic/negative binomial/gamma/tweedie with links; per-coefficient normal/laplace priors; ridge `lambda`; `vcov_type` laplace/sandwich/naive; offsets; inference) and as `#[polars_expr]` expressions for group_by/over. Results match upstream's R references (glm, MASS::glm.nb, negative.binomial(θ)).
   2. AFT survival regression is exposed as a PyModel (Weibull, exponential, log-normal, log-logistic; right censoring via an event indicator; inference; `predict_quantile`/`predict_median`/`predict_survival`/`predict_cdf`) and as expressions. Results match `survival::survreg` references.
   3. `ps.mann_whitney_u` / `ps.wilcoxon_signed_rank` expression outputs gain trailing `estimate`, `ci_lower` and `ci_upper` fields (additive), so `conf_level` takes effect.
   4. `.pyi` stubs (drift guard green), docstrings, mkdocs, CHANGELOG and the regression/hypothesis skill cheat-sheets cover the new surface. The skill-example harness and all CI gates (clippy, fmt, ruff on new files, pytest) are green.
 
-**Plans**: 7 plans
-**Wave 1**
+**Plans**: 8 plans
 
-- [ ] 16.2-01-PLAN.md — Penalized GLM engine: PyModel + fit expression + formula, R-validated (Wave 1)
-- [ ] 16.2-02-PLAN.md — Mann-Whitney/Wilcoxon expression estimate + CI, schema lock updated (Wave 1)
+**Wave 1**
+- [ ] 16.2-01-PLAN.md — Bump to anofox-statistics 0.4.7 / anofox-regression 0.5.22; lock the 0.5.19–0.5.21 behaviour changes (lm aliasing, GLM intercept inference, probit, LARS) with R references; adapt tests and affected docs (Wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
-
-- [ ] 16.2-03-PLAN.md — Penalized GLM summary/predict expressions + formula variants + rlib (Wave 2)
+- [ ] 16.2-02-PLAN.md — Penalized GLM engine: PyModel + fit expression + formula incl. estimate_dispersion, validated on the 0.5.22 R fixture (Wave 2)
+- [ ] 16.2-03-PLAN.md — Mann-Whitney/Wilcoxon expression estimate + CI, schema lock updated (Wave 2)
 
 **Wave 3** *(blocked on Wave 2 completion)*
-
-- [ ] 16.2-04-PLAN.md — AFT survival regression: PyModel + expressions vs survreg (Wave 3)
+- [ ] 16.2-04-PLAN.md — Penalized GLM summary (upstream intercept inference) / predict expressions + formula variants + rlib (Wave 3)
 
 **Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 16.2-05-PLAN.md — AFT survival regression: PyModel + expressions vs survreg (Wave 4)
 
-- [ ] 16.2-05-PLAN.md — mkdocs API pages (Wave 4)
-- [ ] 16.2-06-PLAN.md — CHANGELOG / README / API_REFERENCE / validation page (Wave 4)
-- [ ] 16.2-07-PLAN.md — Skills + ROUTING + full phase gate (Wave 4)
+**Wave 5** *(blocked on Wave 4 completion)*
+- [ ] 16.2-06-PLAN.md — mkdocs API pages (Wave 5)
+- [ ] 16.2-07-PLAN.md — CHANGELOG (incl. 0.5.19–0.5.21 behaviour changes) / README / API_REFERENCE / validation page (Wave 5)
+- [ ] 16.2-08-PLAN.md — Skills + ROUTING + full phase gate (Wave 5)
 
 ### Phase 16.3: Upstream API Wave 2 (INSERTED)
 
 **Goal**: The capabilities added in anofox-statistics 0.4.7 and anofox-regression 0.5.17–0.5.21 are exposed through the Polars/Python API, documented, R-validated and in the skills.
-**Depends on**: Phase 16.2 (crates at 0.4.7 / 0.5.21; penalized GLM/AFT surface in place)
+**Depends on**: Phase 16.2 (crates at 0.4.7 / 0.5.22; penalized GLM/AFT surface in place)
 **Requirements**: UPST-08, UPST-09, UPST-10
 **Success Criteria** (what must be TRUE):
 
   1. Post-hoc tests (`tukey_hsd`, `pairwise_t_test`, `dunn_test`), `p_adjust` (all R methods) and `ptukey`/`qtukey` are exposed as expressions and/or functions and match R (TukeyHSD, pairwise.t.test, dunn.test, p.adjust).
-  2. Regression additions are exposed: `diagnostics::augment` (per-observation fitted, residual, std/stud residuals, leverage, Cook's D, DFFITS; matches broom::augment), `ModelInfo`, intercept inference on every GLM (Poisson/Binomial/NegBin/Tweedie/Gamma), the GLMM NegBin/Gamma/Tweedie families with offset and per-factor random slopes, OLS/WLS `alias_tolerance`, penalized GLM `estimate_dispersion`, and empirical-Bayes shrinkage (`eb_shrink`, matching metafor).
+  2. Regression additions are exposed: `diagnostics::augment` (per-observation fitted, residual, std/stud residuals, leverage, Cook's D, DFFITS; matches broom::augment), `ModelInfo`, intercept inference on every GLM (Poisson/Binomial/NegBin/Tweedie/Gamma), the GLMM NegBin/Gamma/Tweedie families with offset and per-factor random slopes, OLS/WLS `alias_tolerance`, LARS fit-statistic getters, and empirical-Bayes shrinkage (`eb_shrink`, matching metafor).
   3. Any newly exposed or explicitly opted-out item is recorded in COVERAGE.md with a reason. This includes `TestResult`, which is a Rust-side unification and may have no Python counterpart, and the AID heuristic.
   4. Stubs (drift guard green), docstrings, mkdocs, CHANGELOG and skills cover the new surface; skill harness and CI gates green.
 

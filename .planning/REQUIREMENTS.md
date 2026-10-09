@@ -52,12 +52,12 @@ Requirements for this milestone. Each maps to exactly one roadmap phase.
 - [ ] **UPST-03**: New upstream capabilities are exposed via expressions/PyModels: effect sizes (Cohen's d, rank-biserial), Jarque-Bera, bootstrap CIs, conditional Fisher, conf_level for binomial/proportion/Fisher tests, GLMM Wald inference, Huber/RANSAC inference, NegBin estimate_dispersion, RLS initial_p_diagonal
 - [ ] **UPST-04**: Stubs, docstrings, mkdocs, CHANGELOG and skill cheat-sheets document the new surface, and the skill-example harness passes
 
-- [ ] **UPST-05**: Penalized GLM (anofox-regression 0.5.16 `solvers::penalized_glm`) is exposed as a PyModel and Polars expressions, validated against R glm / MASS::glm.nb
+- [ ] **UPST-05**: Crates bumped to anofox-statistics 0.4.7 / anofox-regression 0.5.22 with behaviour changes locked; penalized GLM (`solvers::penalized_glm`, incl. estimate_dispersion) is exposed as a PyModel and Polars expressions, validated against R glm / MASS::glm.nb
 - [ ] **UPST-06**: AFT survival regression (`solvers::aft`) is exposed as a PyModel and Polars expressions, validated against R survival::survreg
 - [ ] **UPST-07**: Mann-Whitney / Wilcoxon expressions return the Hodges-Lehmann estimate and confidence interval (additive fields), and the new 16.2 surface is documented in stubs, mkdocs, CHANGELOG and skills
 
 - [ ] **UPST-08**: Post-hoc tests (Tukey HSD, pairwise t, Dunn), p_adjust and ptukey/qtukey from anofox-statistics 0.4.7 are exposed and match R
-- [ ] **UPST-09**: anofox-regression 0.5.17–0.5.21 additions (augment diagnostics, ModelInfo, GLM intercept inference, GLMM NegBin/Gamma/Tweedie + offset + per-factor random slopes, alias_tolerance, penalized GLM estimate_dispersion, EB shrinkage) are exposed and match R
+- [ ] **UPST-09**: anofox-regression 0.5.17–0.5.21 additions (augment diagnostics, ModelInfo, GLM intercept inference, GLMM NegBin/Gamma/Tweedie + offset + per-factor random slopes, alias_tolerance, LARS fit-statistic getters, EB shrinkage) are exposed and match R
 - [ ] **UPST-10**: The 16.3 surface is documented in stubs, mkdocs, CHANGELOG and skills, with opt-outs recorded in COVERAGE.md
 
 ## v2 Requirements
