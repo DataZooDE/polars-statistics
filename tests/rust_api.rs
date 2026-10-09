@@ -12,6 +12,10 @@
 //!   known coefficients on synthetic linear data.
 //! - All other `*_fit` functions are smoke-tested for reachability and no-panic
 //!   behaviour on legitimate inputs.
+//! - Categorical functions whose arity grew a trailing `conf_level` input
+//!   (`binom_test_fit`, `prop_test_one_fit`, `prop_test_two_fit`, `fisher_exact_fit`)
+//!   are each called at both the old and new arity, proving the tolerant trailing
+//!   read keeps previous rlib callers working.
 
 use polars::prelude::*;
 use polars_statistics::expressions::*;
@@ -1441,7 +1445,8 @@ fn correlation_fits() {
 
 #[test]
 fn categorical_fits() {
-    // binom_test_fit: successes (u32), n (u32), p0 (f64), alternative (str)
+    // binom_test_fit: successes (u32), n (u32), p0 (f64), alternative (str) [old arity:
+    // no conf_level — proves the tolerant trailing read still works]
     {
         let inputs = vec![
             scalar_u32("successes", 7),
@@ -1449,10 +1454,21 @@ fn categorical_fits() {
             scalar_f64("p0", 0.5),
             scalar_str("alternative", "two-sided"),
         ];
-        let _ = binom_test_fit(&inputs).expect("binom_test_fit failed");
+        let _ = binom_test_fit(&inputs).expect("binom_test_fit failed (old arity)");
+    }
+    // binom_test_fit: new arity, trailing conf_level
+    {
+        let inputs = vec![
+            scalar_u32("successes", 7),
+            scalar_u32("n", 10),
+            scalar_f64("p0", 0.5),
+            scalar_str("alternative", "two-sided"),
+            scalar_f64("conf_level", 0.9),
+        ];
+        let _ = binom_test_fit(&inputs).expect("binom_test_fit failed (new arity)");
     }
 
-    // prop_test_one_fit
+    // prop_test_one_fit [old arity]
     {
         let inputs = vec![
             scalar_u32("successes", 30),
@@ -1460,10 +1476,21 @@ fn categorical_fits() {
             scalar_f64("p0", 0.4),
             scalar_str("alternative", "two-sided"),
         ];
-        let _ = prop_test_one_fit(&inputs).expect("prop_test_one_fit failed");
+        let _ = prop_test_one_fit(&inputs).expect("prop_test_one_fit failed (old arity)");
+    }
+    // prop_test_one_fit: new arity, trailing conf_level
+    {
+        let inputs = vec![
+            scalar_u32("successes", 30),
+            scalar_u32("n", 100),
+            scalar_f64("p0", 0.4),
+            scalar_str("alternative", "two-sided"),
+            scalar_f64("conf_level", 0.9),
+        ];
+        let _ = prop_test_one_fit(&inputs).expect("prop_test_one_fit failed (new arity)");
     }
 
-    // prop_test_two_fit
+    // prop_test_two_fit [old arity]
     {
         let inputs = vec![
             scalar_u32("s1", 30),
@@ -1473,7 +1500,20 @@ fn categorical_fits() {
             scalar_str("alternative", "two-sided"),
             scalar_bool("correction", false),
         ];
-        let _ = prop_test_two_fit(&inputs).expect("prop_test_two_fit failed");
+        let _ = prop_test_two_fit(&inputs).expect("prop_test_two_fit failed (old arity)");
+    }
+    // prop_test_two_fit: new arity, trailing conf_level
+    {
+        let inputs = vec![
+            scalar_u32("s1", 30),
+            scalar_u32("n1", 100),
+            scalar_u32("s2", 25),
+            scalar_u32("n2", 100),
+            scalar_str("alternative", "two-sided"),
+            scalar_bool("correction", false),
+            scalar_f64("conf_level", 0.9),
+        ];
+        let _ = prop_test_two_fit(&inputs).expect("prop_test_two_fit failed (new arity)");
     }
 
     // chisq_test_fit: 2x2 flattened table (u32 series of length 4), n_rows, n_cols, correction.
@@ -1502,7 +1542,7 @@ fn categorical_fits() {
         let _ = g_test_fit(&inputs).expect("g_test_fit failed");
     }
 
-    // fisher_exact_fit: a, b, c, d, alternative
+    // fisher_exact_fit: a, b, c, d, alternative [old arity — no conf_level]
     {
         let inputs = vec![
             scalar_u32("a", 8),
@@ -1511,8 +1551,30 @@ fn categorical_fits() {
             scalar_u32("d", 5),
             scalar_str("alternative", "two-sided"),
         ];
-        let _ = fisher_exact_fit(&inputs).expect("fisher_exact_fit failed");
+        let out = fisher_exact_fit(&inputs).expect("fisher_exact_fit failed (old arity)");
+        let n_fields = match out.dtype() {
+            DataType::Struct(fields) => fields.len(),
+            other => panic!("expected a Struct dtype, got {other:?}"),
+        };
+        assert_eq!(
+            n_fields, 4,
+            "fisher_exact_fit output must have exactly 4 struct fields"
+        );
     }
+    // fisher_exact_fit: new arity, trailing conf_level
+    {
+        let inputs = vec![
+            scalar_u32("a", 8),
+            scalar_u32("b", 2),
+            scalar_u32("c", 1),
+            scalar_u32("d", 5),
+            scalar_str("alternative", "two-sided"),
+            scalar_f64("conf_level", 0.9),
+        ];
+        let _ = fisher_exact_fit(&inputs).expect("fisher_exact_fit failed (new arity)");
+    }
+    // fisher_exact_conditional_fit is smoke-tested in effect_size_and_resampling_fits
+    // below, alongside the other new-this-phase statistics functions.
 
     // mcnemar_test_fit: a, b, c, d, correction
     {
@@ -1572,6 +1634,165 @@ fn categorical_fits() {
         let table = Series::new("table".into(), &[10u32, 20, 30, 40]);
         let inputs = vec![table, scalar_u32("n_rows", 2), scalar_u32("n_cols", 2)];
         let _ = contingency_coef_fit(&inputs).expect("contingency_coef_fit failed");
+    }
+}
+
+// =============================================================================
+// Effect sizes (Plan 02), Jarque-Bera and bootstrap CIs (Plan 04) — statistics
+// *_fit smoke tests added/changed in Phase 16.1.
+// =============================================================================
+
+#[test]
+#[allow(clippy::excessive_precision)]
+fn effect_size_and_resampling_fits() {
+    // Same X/Y fixture as tests/test_effect_sizes.py (R effectsize reference values).
+    let x: Vec<f64> = vec![5.1, 4.9, 6.2, 5.8, 6.05, 5.5, 5.3, 6.1];
+    let y: Vec<f64> = vec![6.5, 7.1, 6.8, 7.4, 6.0, 7.9, 6.6, 7.2, 6.9, 7.05];
+    let y8 = &y[..8];
+
+    fn effect_size_estimate(s: &Series) -> f64 {
+        let st = s.struct_().unwrap();
+        st.field_by_name("estimate")
+            .unwrap()
+            .f64()
+            .unwrap()
+            .get(0)
+            .unwrap_or(f64::NAN)
+    }
+
+    // cohens_d_fit: x, y, kind, mu — "student" kind matches the R reference.
+    {
+        let inputs = vec![
+            series_f64("x", &x),
+            series_f64("y", &y),
+            scalar_str("kind", "student"),
+            scalar_f64("mu", 0.0),
+        ];
+        let out = cohens_d_fit(&inputs).expect("cohens_d_fit failed (student)");
+        let d = effect_size_estimate(&out);
+        assert!(
+            (d - (-2.606655378290357)).abs() < 1e-10,
+            "cohens_d student estimate mismatch: {d}"
+        );
+    }
+    {
+        let inputs = vec![
+            series_f64("x", &x),
+            series_f64("y", &y),
+            scalar_str("kind", "welch"),
+            scalar_f64("mu", 0.0),
+        ];
+        let _ = cohens_d_fit(&inputs).expect("cohens_d_fit failed (welch)");
+    }
+    {
+        let inputs = vec![
+            series_f64("x", &x),
+            series_f64("y", y8),
+            scalar_str("kind", "paired"),
+            scalar_f64("mu", 0.0),
+        ];
+        let _ = cohens_d_fit(&inputs).expect("cohens_d_fit failed (paired)");
+    }
+
+    // cohens_d_one_sample_fit: x, mu
+    {
+        let inputs = vec![series_f64("x", &x), scalar_f64("mu", 0.0)];
+        let _ = cohens_d_one_sample_fit(&inputs).expect("cohens_d_one_sample_fit failed");
+    }
+
+    // rank_biserial_fit: x, y, mu (nullable) — matches the R reference (0.925).
+    {
+        let inputs = vec![
+            series_f64("x", &x),
+            series_f64("y", &y),
+            scalar_f64_null("mu"),
+        ];
+        let out = rank_biserial_fit(&inputs).expect("rank_biserial_fit failed");
+        let r = effect_size_estimate(&out);
+        assert!(
+            (r - 0.925).abs() < 1e-12,
+            "rank_biserial estimate mismatch: {r}"
+        );
+    }
+
+    // matched_pairs_rank_biserial_fit: x, y (equal length), mu (nullable)
+    {
+        let inputs = vec![
+            series_f64("x", &x),
+            series_f64("y", y8),
+            scalar_f64_null("mu"),
+        ];
+        let _ = matched_pairs_rank_biserial_fit(&inputs)
+            .expect("matched_pairs_rank_biserial_fit failed");
+    }
+
+    // rank_biserial_from_u_fit: u1 (f64), n1 (u32), n2 (u32)
+    {
+        let inputs = vec![
+            scalar_f64("u1", 10.0),
+            scalar_u32("n1", 8),
+            scalar_u32("n2", 10),
+        ];
+        let _ = rank_biserial_from_u_fit(&inputs).expect("rank_biserial_from_u_fit failed");
+    }
+
+    // jarque_bera_fit: x only — matches the R tseries::jarque.bera.test reference.
+    {
+        let jb_x: Vec<f64> = vec![2.1, 3.4, 1.9, 5.6, 4.4, 3.3, 2.8, 9.7, 3.0, 4.1];
+        let inputs = vec![series_f64("x", &jb_x)];
+        let out = jarque_bera_fit(&inputs).expect("jarque_bera_fit failed");
+        let st = out.struct_().unwrap();
+        let statistic = st
+            .field_by_name("statistic")
+            .unwrap()
+            .f64()
+            .unwrap()
+            .get(0)
+            .unwrap_or(f64::NAN);
+        assert!(
+            (statistic - 6.1833442919626558).abs() < 1e-10,
+            "jarque_bera statistic mismatch: {statistic}"
+        );
+    }
+
+    // bootstrap_mean_ci_fit: x, n_bootstrap, conf_level, block_length, seed (nullable)
+    let boot_x: Vec<f64> = (1..=10).map(|v| v as f64).collect();
+    for block_length in [0u32, 3u32] {
+        let inputs = vec![
+            series_f64("x", &boot_x),
+            scalar_u32("n_bootstrap", 1000),
+            scalar_f64("conf_level", 0.95),
+            scalar_u32("block_length", block_length),
+            scalar_u64("seed", 7),
+        ];
+        let _ = bootstrap_mean_ci_fit(&inputs)
+            .expect("bootstrap_mean_ci_fit failed (block_length variant)");
+    }
+
+    // bootstrap_ci_fit: x, statistic (str), n_bootstrap, conf_level, seed (nullable)
+    for statistic in ["mean", "median", "std"] {
+        let inputs = vec![
+            series_f64("x", &boot_x),
+            scalar_str("statistic", statistic),
+            scalar_u32("n_bootstrap", 1000),
+            scalar_f64("conf_level", 0.95),
+            scalar_u64("seed", 7),
+        ];
+        let _ = bootstrap_ci_fit(&inputs)
+            .unwrap_or_else(|_| panic!("bootstrap_ci_fit failed (statistic = {statistic})"));
+    }
+
+    // fisher_exact_conditional_fit: a, b, c, d, alternative, conf_level
+    {
+        let inputs = vec![
+            scalar_u32("a", 8),
+            scalar_u32("b", 2),
+            scalar_u32("c", 1),
+            scalar_u32("d", 5),
+            scalar_str("alternative", "two-sided"),
+            scalar_f64("conf_level", 0.95),
+        ];
+        let _ = fisher_exact_conditional_fit(&inputs).expect("fisher_exact_conditional_fit failed");
     }
 }
 
