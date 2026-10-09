@@ -49,7 +49,7 @@ Requirements for this milestone. Each maps to exactly one roadmap phase.
 
 - [x] **UPST-01**: Dependencies are bumped to anofox-statistics 0.4.6 and anofox-regression 0.5.16, and all CI gates (clippy, fmt, ruff, pytest) stay green
 - [ ] **UPST-02**: Tests and docs reflect the upstream R-matching behaviour changes (updated expected values, NaN/Inf now error instead of panicking)
-- [ ] **UPST-03**: New upstream capabilities are exposed via expressions/PyModels: effect sizes (Cohen's d, rank-biserial), Jarque-Bera, bootstrap CIs, conditional Fisher, conf_level for binomial/proportion/Fisher tests, GLMM Wald inference, Huber/RANSAC inference, NegBin estimate_dispersion, RLS initial_p_diagonal
+- [x] **UPST-03**: New upstream capabilities are exposed via expressions/PyModels: effect sizes (Cohen's d, rank-biserial), Jarque-Bera, bootstrap CIs, conditional Fisher, conf_level for binomial/proportion/Fisher tests, GLMM Wald inference, Huber/RANSAC inference, NegBin estimate_dispersion, RLS initial_p_diagonal
 - [ ] **UPST-04**: Stubs, docstrings, mkdocs, CHANGELOG and skill cheat-sheets document the new surface, and the skill-example harness passes
 
 - [ ] **UPST-05**: Crates bumped to anofox-statistics 0.4.7 / anofox-regression 0.5.22 with behaviour changes locked; penalized GLM (`solvers::penalized_glm`, incl. estimate_dispersion) is exposed as a PyModel and Polars expressions, validated against R glm / MASS::glm.nb
@@ -97,7 +97,7 @@ Deferred to future releases.
 | PKG-01 | Phase 16 | Pending |
 | UPST-01 | Phase 16.1 | Complete |
 | UPST-02 | Phase 16.1 | Pending |
-| UPST-03 | Phase 16.1 | Pending |
+| UPST-03 | Phase 16.1 | Complete |
 | UPST-04 | Phase 16.1 | Pending |
 | UPST-05 | Phase 16.2 | Pending |
 | UPST-06 | Phase 16.2 | Pending |
