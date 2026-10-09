@@ -5,6 +5,165 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Upstream crate refresh: `anofox-statistics` 0.4.2 → 0.4.6 and `anofox-regression`
+0.5.13 → 0.5.16 — new API exposed and R-matching fixes adopted. No new statistical
+methods are introduced in this release; this is an exposure/correctness pass on
+the existing `anofox-*` surface plus the confidence-level/effect-size/bootstrap
+additions those crates now provide.
+
+### Added
+
+- **Effect sizes** — `ps.cohens_d("x", "y", kind="student"|"welch"|"paired", mu)` and
+  `ps.cohens_d_one_sample("x", mu)`, matching R `effectsize::cohens_d` exactly.
+- **Rank-biserial correlation** — `ps.rank_biserial("x", "y", mu)`,
+  `ps.matched_pairs_rank_biserial("x", "y", mu)`, and
+  `ps.rank_biserial_from_u(u1, n1, n2)` (scalar literal args), cross-checked
+  against `MannWhitneyU.statistic`.
+- **Normality** — `ps.jarque_bera("x")` returns
+  `struct{statistic, p_value, skewness, kurtosis, n}`, matching R
+  `tseries::jarque.bera.test`.
+- **Bootstrap confidence intervals** — `ps.bootstrap_mean_ci("x", n_bootstrap,
+  conf_level, block_length, seed)` with IID, stationary, and circular-block
+  resampling; `ps.bootstrap_ci("x", statistic="mean"|"median"|"std", n_bootstrap,
+  conf_level, seed)` — a fixed-statistic dispatch to native Rust closures (no
+  arbitrary Python callables; the upstream generic closure cannot cross the
+  Python FFI boundary without a GIL-reentrancy hazard). `bootstrap_ci("mean", ...)`
+  is bit-identical to `bootstrap_mean_ci(block_length=0, ...)` for the same seed.
+- **`conf_level` kwarg** (default `0.95`, unchanged default behaviour) on
+  `ps.binom_test`, `ps.prop_test_one`, `ps.prop_test_two`, and `ps.fisher_exact`.
+- **`ps.fisher_exact_conditional(a, b, c, d, alternative, conf_level)`** — R
+  `fisher.test`-semantics conditional-MLE odds ratio and exact conditional
+  interval, distinct from `fisher_exact`'s sample odds ratio + Woolf interval.
+- **Robust regression inference** — `Huber(compute_inference=False,
+  confidence_level=0.95)` and `RANSAC(compute_inference=False,
+  confidence_level=0.95)` PyModel kwargs, each with 9 Option-safe inference
+  getters (`std_errors`, `t_statistics`, `p_values`, `conf_interval_lower`,
+  `conf_interval_upper`, `intercept_std_error`, `intercept_t_statistic`,
+  `intercept_p_value`, `intercept_conf_interval`); validated against
+  `MASS::rlm(method="XtX")`.
+- **`RANSAC` inlier-fit statistics** — 9 inlier-OLS fit-stat getters
+  (`adj_r_squared`, `mse`, `rmse`, `f_statistic`, `f_pvalue`, `aic`, `bic`,
+  `log_likelihood`) and `RANSAC.inlier_fit()`, which returns a real fitted `OLS`
+  instance over the inlier rows.
+- **`TheilSen(univariate_pairwise=True)`** — selects the classical
+  median-of-pairwise-slopes estimator (Sen 1968); `False` restores sklearn's
+  spatial-median-over-subsamples estimator.
+- **`NegativeBinomial(estimate_dispersion=False)`** PyModel kwarg + `.dispersion`
+  getter, plus the `estimate_dispersion` kwarg on `ps.negative_binomial` /
+  `negative_binomial_summary` / `negative_binomial_predict` /
+  `negative_binomial_formula`; validated against `MASS::glm.nb()` Pearson-dispersion
+  standard errors.
+- **`RLS(initial_p_diagonal=1e6)`** PyModel kwarg (sets `P0 = delta * I`) +
+  `initial_p_diagonal_value()` getter, plus the `initial_p_diagonal` kwarg on
+  `ps.rls` / `rls_summary` / `rls_predict` / `rls_formula`.
+- **`GLMM.z_values`, `GLMM.p_values`, `GLMM.conf_int(level=0.95)`** — Wald
+  inference getters/method, validated against `lme4` 2.0.1.
+- **`variance_factor()` / `leverage_new(x_new)`** on `OLS`, `WLS`, and `Ridge` —
+  shared variance-factor and leverage API (column-count mismatches raise
+  `ValueError`, never a panic).
+- **`Ridge.std_errors` / `t_statistics` / `p_values` / `intercept_std_error`** —
+  sandwich standard errors for `lambda_ > 0` (t-statistics/p-values are `None`,
+  since a t-test is not valid on shrunken coefficients), delegating fully to OLS
+  inference at `lambda_ = 0`; R-reference validated.
+
+### Changed
+
+- **`ps.fisher_exact`** output struct gains trailing `ci_lower` / `ci_upper`
+  fields (Woolf/logit interval). `statistic` and `p_value` are unchanged in
+  name, order, and value.
+
+### Behaviour changes (results now match R)
+
+- **Statistics** (`anofox-statistics` 0.4.3–0.4.6): Shapiro-Wilk now uses R's
+  exact `swilk.c` coefficients for n ≤ 11; Kendall's tau uses tie-corrected
+  variance (tau-b); Mann-Whitney / Wilcoxon no longer apply a continuity
+  correction at the null centre, and report p = 1 when all observations are
+  tied; `binom_test` uses the exact Clopper-Pearson interval and R's relative
+  tolerance for the exact two-sided p-value; proportion and Fisher intervals
+  use a qnorm-based calculation with R's continuity correction, and one-sided
+  alternatives now produce one-sided intervals; the exact two-sided
+  Mann-Whitney p-value is computed correctly (previously capped at 1 above the
+  mean); constant input data now produces a NaN p-value (t-test, ANOVA,
+  Brown-Forsythe, Yuen, Pearson) instead of crashing; NaN input to the test
+  classes raises `ValueError` ("non-finite value") instead of panicking,
+  ±Inf is ranked the way R ranks it, and Inf − Inf pairs are dropped (the
+  expression builders already drop non-finite values first, so this only
+  affects direct test-class use).
+- **Regression** (`anofox-regression` 0.5.14–0.5.16): linear-solver
+  log-likelihood / AIC / AICc / BIC now equal R's `logLik.lm` for OLS, WLS,
+  Ridge, Huber, ElasticNet, BLS/NNLS, PLS, and RLS; no-intercept R² / adjusted
+  R² / F-statistic use the uncentred TSS; Ridge standard errors are sandwich
+  SEs, and t-statistics/p-values are unavailable (`NaN` in `ridge_summary`)
+  for `lambda > 0`; Ridge prediction intervals use the sandwich variance
+  factor; a constant column in a design without an intercept is now kept as
+  the intercept rather than producing a singular fit; RANSAC's reported
+  statistics are those of the inlier-only OLS fit — `n_observations` is the
+  inlier count, inliers are selected by `|r| <= threshold`, and a constant
+  response now fits; Poisson / Negative Binomial log-likelihood is the full
+  family log-likelihood (NegBin's AIC counts `theta` as a parameter only when
+  it is estimated); GLMM Poisson/binomial `log_likelihood` includes the
+  saturated-model term; Tweedie / Gamma standard errors use the Pearson
+  dispersion, and log-likelihood / AIC / BIC are `NaN` unless `var_power` is
+  0, 1, 2, or 3 — the default `var_power=1.5` now reports `NaN` `aic`/`bic`;
+  Negative Binomial standard errors use dispersion 1 by default (matching
+  `MASS::glm.nb()`; opt into Pearson dispersion with
+  `estimate_dispersion=True`); NegBin's `theta` is now the exact ML estimate,
+  and zero counts no longer produce negative deviances; WLS with constant
+  non-unit weights now scales the way R's `lm(weights=)` does; one-feature
+  Theil-Sen is the classical pairwise-median estimator, and rank-deficient
+  designs are now aliased instead of failing; quantile regression now reaches
+  the exact LP optimum; GLMs with a constant column plus an intercept now
+  alias the constant column.
+- **Statistics** (`anofox-statistics` 0.4.5 / 0.4.6): the `MannWhitneyU` /
+  `WilcoxonSignedRank` Hodges-Lehmann estimate and confidence interval now
+  follow R `wilcox.test(conf.int = TRUE)` — a root-found asymptotic interval
+  with the continuity correction applied, one-sided intervals for one-sided
+  alternatives, and the signed-rank interval computed on `x - y`; `exact=True`
+  is now honoured only for `n1 * n2 <= 10,000` (rank sum) or `<= 300` non-zero
+  differences (signed rank) — larger samples fall back to the normal
+  approximation instead of overflowing; `mcnemar_exact` p-values now come from
+  the binomial CDF (matching R `binom.test(b, b + c, 0.5)`), fixing `NaN`
+  results for large discordant-pair counts.
+
+### Fixed
+
+- No panics on NaN/±Inf input anywhere in the statistics layer.
+- Exact rank-sum and signed-rank null distributions no longer overflow for
+  larger samples (`n1 + n2 > ~62`, `n >= 64`).
+- `mcnemar_exact` no longer returns `NaN` for more than ~1,074 discordant
+  pairs.
+- Removed O(n²) memory usage from the Mann-Whitney / Wilcoxon confidence
+  intervals, Kendall's tau, distance correlation, the Wilcoxon TOST
+  equivalence tests (which also no longer panic for `alpha > 0.5`), 1-D MMD,
+  and 1-D energy distance.
+- Removed O(n²) memory usage from the QR/SVD regression solvers, fixing
+  out-of-memory failures on large-n designs.
+
+### Added (Rust API)
+
+For `rlib` consumers (all additive; no existing `*_fit` signature or input
+index changed):
+
+- New `*_fit` functions: `cohens_d_fit`, `cohens_d_one_sample_fit`,
+  `rank_biserial_fit`, `matched_pairs_rank_biserial_fit`,
+  `rank_biserial_from_u_fit`, `jarque_bera_fit`, `bootstrap_mean_ci_fit`,
+  `bootstrap_ci_fit`, `fisher_exact_conditional_fit`.
+- `negative_binomial_fit_with` / `negative_binomial_summary_fit_with`
+  (`NegativeBinomialKwargs`), `negative_binomial_predict_fit_with`
+  (`NegativeBinomialPredictKwargs`); `rls_fit_with` / `rls_summary_fit_with`
+  (`RlsKwargs`), `rls_predict_fit_with` (`RlsPredictKwargs`).
+- `binom_test_fit` / `prop_test_one_fit` / `prop_test_two_fit` /
+  `fisher_exact_fit` now accept an optional trailing `conf_level` input — the
+  old arity still works unchanged.
+
+### Dependencies
+
+- `anofox-statistics` 0.4.2 → 0.4.6.
+- `anofox-regression` 0.5.13 → 0.5.16 (0.5.16's penalized GLM and AFT survival
+  solvers are not yet exposed in the Python API — tracked for a later phase).
+
 ## [0.7.0] - 2026-09-20
 
 Ergonomics, adoption & documentation release. Additive and backward-compatible —
