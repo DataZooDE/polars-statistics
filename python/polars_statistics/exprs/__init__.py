@@ -151,6 +151,7 @@ from polars_statistics.exprs.regression import (
     probit_summary,
     cloglog_summary,
     penalized_glm_summary,
+    aft_summary,
     alm_summary,
     # Prediction functions
     ols_predict,
@@ -168,6 +169,10 @@ from polars_statistics.exprs.regression import (
     probit_predict,
     cloglog_predict,
     penalized_glm_predict,
+    aft_predict_quantile,
+    aft_predict_median,
+    aft_predict_survival,
+    aft_predict_cdf,
     alm_predict,
     # Formula-based regression functions
     ols_formula,
@@ -185,6 +190,7 @@ from polars_statistics.exprs.regression import (
     probit_formula,
     cloglog_formula,
     penalized_glm_formula,
+    aft_formula,
     alm_formula,
     # Formula-based summary functions
     ols_formula_summary,
@@ -194,6 +200,7 @@ from polars_statistics.exprs.regression import (
     logistic_formula_summary,
     poisson_formula_summary,
     penalized_glm_formula_summary,
+    aft_formula_summary,
     alm_formula_summary,
     # Formula-based prediction functions
     ols_formula_predict,
@@ -358,6 +365,7 @@ __all__ = [
     "probit_summary",
     "cloglog_summary",
     "penalized_glm_summary",
+    "aft_summary",
     "alm_summary",
     # Prediction expressions
     "ols_predict",
@@ -375,6 +383,10 @@ __all__ = [
     "probit_predict",
     "cloglog_predict",
     "penalized_glm_predict",
+    "aft_predict_quantile",
+    "aft_predict_median",
+    "aft_predict_survival",
+    "aft_predict_cdf",
     "alm_predict",
     # Formula-based regression expressions
     "ols_formula",
@@ -392,6 +404,7 @@ __all__ = [
     "probit_formula",
     "cloglog_formula",
     "penalized_glm_formula",
+    "aft_formula",
     "alm_formula",
     # Formula-based summary expressions
     "ols_formula_summary",
@@ -401,6 +414,7 @@ __all__ = [
     "logistic_formula_summary",
     "poisson_formula_summary",
     "penalized_glm_formula_summary",
+    "aft_formula_summary",
     "alm_formula_summary",
     # Formula-based prediction expressions
     "ols_formula_predict",

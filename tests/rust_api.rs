@@ -46,6 +46,10 @@ fn scalar_f64(name: &str, v: f64) -> Series {
     Series::new(name.into(), &[v])
 }
 
+fn series_bool(name: &str, vals: &[bool]) -> Series {
+    Series::new(name.into(), vals)
+}
+
 fn scalar_bool(name: &str, v: bool) -> Series {
     Series::new(name.into(), &[v])
 }
@@ -987,6 +991,68 @@ fn glm_fits() {
             ..Default::default()
         };
         assert!(penalized_glm_fit(&inputs, &bad_dispersion).is_err());
+    }
+
+    // aft_*_fit: time, event, x... + AftKwargs (phase 16.2 plan 05, UPST-06)
+    {
+        let time: Vec<f64> = x_cnt.iter().map(|&xi| xi + 1.0).collect();
+        let event: Vec<bool> = (0..time.len()).map(|i| i % 3 != 0).collect();
+        let inputs = vec![
+            series_f64("time", &time),
+            series_bool("event", &event),
+            series_f64("x1", &x_cnt),
+        ];
+        let weibull_kwargs = AftKwargs {
+            distribution: "weibull".to_string(),
+            ..Default::default()
+        };
+
+        let out = aft_fit(&inputs, &weibull_kwargs).expect("aft_fit failed");
+        assert_n_obs_nonzero(&out, "n_observations");
+
+        let summary = aft_summary_fit(&inputs, &weibull_kwargs).expect("aft_summary_fit failed");
+        let summary_list = summary
+            .list()
+            .expect("summary must be List type")
+            .get_as_series(0)
+            .expect("summary list must have one element");
+        assert!(
+            !summary_list.is_empty(),
+            "expected a non-empty aft_summary_fit list"
+        );
+
+        let median_kwargs = AftKwargs {
+            distribution: "weibull".to_string(),
+            p: 0.5,
+            ..Default::default()
+        };
+        let quantile = aft_predict_quantile_fit(&inputs, &median_kwargs)
+            .expect("aft_predict_quantile_fit failed");
+        assert_eq!(quantile.len(), time.len());
+
+        let median =
+            aft_predict_median_fit(&inputs, &median_kwargs).expect("aft_predict_median_fit failed");
+        assert_eq!(median.len(), time.len());
+
+        let survival_kwargs = AftKwargs {
+            distribution: "weibull".to_string(),
+            t: 1.0,
+            ..Default::default()
+        };
+        let survival = aft_predict_survival_fit(&inputs, &survival_kwargs)
+            .expect("aft_predict_survival_fit failed");
+        assert_eq!(survival.len(), time.len());
+
+        let cdf =
+            aft_predict_cdf_fit(&inputs, &survival_kwargs).expect("aft_predict_cdf_fit failed");
+        assert_eq!(cdf.len(), time.len());
+
+        // Err (no panic) for an invalid distribution.
+        let bad_distribution = AftKwargs {
+            distribution: "gompertz".to_string(),
+            ..Default::default()
+        };
+        assert!(aft_fit(&inputs, &bad_distribution).is_err());
     }
 }
 

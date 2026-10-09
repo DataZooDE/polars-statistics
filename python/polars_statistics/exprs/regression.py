@@ -2573,6 +2573,315 @@ def aft(
     )
 
 
+def aft_summary(
+    time: Union[pl.Expr, str],
+    event: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    distribution: Literal["weibull", "exponential", "lognormal", "loglogistic"] = "weibull",
+    priors: Sequence[Union[None, str, tuple, dict]] | None = None,
+    vcov_type: Literal["laplace", "sandwich", "naive"] = "laplace",
+    conf_level: float = 0.95,
+    add_intercept: bool = True,
+    max_iter: int = 100,
+    tol: float = 1e-9,
+) -> pl.Expr:
+    """AFT coefficient summary in tidy format, with confidence intervals.
+
+    Rows are ``intercept`` (when ``add_intercept=True``), ``x1..xp``, then
+    ``log_scale`` (omitted for ``distribution="exponential"``, whose scale is
+    fixed at 1 and not estimated).
+
+    Parameters
+    ----------
+    time, event, x, distribution, priors, add_intercept, max_iter, tol
+        See :func:`aft`.
+    vcov_type : {"laplace", "sandwich", "naive"}, default "laplace"
+        Covariance at the mode used for the standard errors / CIs below.
+    conf_level : float, default 0.95
+        Confidence level for ``ci_lower``/``ci_upper``, in ``(0, 1)``.
+
+    Returns
+    -------
+    pl.Expr
+        List of structs with columns ``term``, ``estimate``, ``std_error``,
+        ``statistic``, ``p_value``, ``ci_lower``, ``ci_upper``. The
+        ``intercept`` row is read directly from upstream's ``AftInference``
+        intercept fields, never recomputed locally; the ``log_scale`` row's
+        statistic/p_value/CI are computed from upstream's
+        ``log_scale_std_error`` using the identical Wald formula.
+
+    Examples
+    --------
+    >>> df.select(
+    ...     ps.aft_summary("time", "event", "x1", "x2", distribution="weibull").alias("s")
+    ... ).explode("s").unnest("s")
+    """
+    if not (0.0 < conf_level < 1.0):
+        raise ValueError(f"conf_level must be in (0, 1), got {conf_level}")
+
+    kwargs = _aft_kwargs(
+        distribution=distribution,
+        priors=priors,
+        vcov_type=vcov_type,
+        add_intercept=add_intercept,
+        max_iter=max_iter,
+        tol=tol,
+        conf_level=conf_level,
+    )
+
+    if isinstance(time, str):
+        time = pl.col(time)
+    if isinstance(event, str):
+        event = pl.col(event)
+
+    x_exprs = []
+    for xi in x:
+        if isinstance(xi, str):
+            xi = pl.col(xi)
+        x_exprs.append(xi.cast(pl.Float64))
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_aft_summary",
+        args=[time.cast(pl.Float64), event, *x_exprs],
+        kwargs=kwargs,
+        returns_scalar=True,
+    )
+
+
+def _aft_predict(
+    function_name: str,
+    time: Union[pl.Expr, str],
+    event: Union[pl.Expr, str],
+    x: tuple,
+    distribution: str,
+    priors: Sequence[Union[None, str, tuple, dict]] | None,
+    add_intercept: bool,
+    max_iter: int,
+    tol: float,
+    null_policy: str,
+    name: str | None,
+    p: float = 0.5,
+    t: float | None = None,
+) -> pl.Expr:
+    """Shared implementation for the four `aft_predict_*` builders."""
+    if null_policy not in ("drop", "drop_y_zero_x"):
+        raise ValueError(
+            f'null_policy must be "drop" or "drop_y_zero_x", got {null_policy!r}'
+        )
+    prefix = name if name is not None else function_name.removeprefix("pl_")
+    kwargs = _aft_kwargs(
+        distribution=distribution,
+        priors=priors,
+        vcov_type="laplace",
+        add_intercept=add_intercept,
+        max_iter=max_iter,
+        tol=tol,
+        prefix=prefix,
+        p=p,
+        t=t,
+        null_policy=null_policy,
+    )
+
+    if isinstance(time, str):
+        time = pl.col(time)
+    if isinstance(event, str):
+        event = pl.col(event)
+
+    x_exprs = []
+    for xi in x:
+        if isinstance(xi, str):
+            xi = pl.col(xi)
+        x_exprs.append(xi.cast(pl.Float64))
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name=function_name,
+        args=[time.cast(pl.Float64), event, *x_exprs],
+        kwargs=kwargs,
+        returns_scalar=False,
+    )
+
+
+def aft_predict_quantile(
+    time: Union[pl.Expr, str],
+    event: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    p: float = 0.5,
+    distribution: Literal["weibull", "exponential", "lognormal", "loglogistic"] = "weibull",
+    priors: Sequence[Union[None, str, tuple, dict]] | None = None,
+    add_intercept: bool = True,
+    max_iter: int = 100,
+    tol: float = 1e-9,
+    null_policy: Literal["drop", "drop_y_zero_x"] = "drop",
+    name: str | None = None,
+) -> pl.Expr:
+    """AFT predicted `p`-quantile of the survival time.
+
+    Refits per group/`.over()` partition with the same options used for
+    :func:`aft`, then predicts on every row.
+
+    Parameters
+    ----------
+    time, event, x, distribution, priors, add_intercept, max_iter, tol
+        See :func:`aft`.
+    p : float, default 0.5
+        Quantile probability in ``[0, 1]``.
+    null_policy : {"drop", "drop_y_zero_x"}, default "drop"
+        - ``"drop"``: rows with a null/non-finite value in ``time``, the
+          event indicator, or any feature get a NaN prediction.
+        - ``"drop_y_zero_x"``: rows with a null time/event are excluded from
+          the fit but still predicted (null features zero-filled).
+    name : str, optional
+        Custom prefix for output column names. Defaults to
+        ``"aft_predict_quantile"``.
+
+    Returns
+    -------
+    pl.Expr
+        Struct with ``{name}_prediction``/``{name}_lower``/``{name}_upper``
+        per row. ``lower``/``upper`` are always NaN — the upstream engine has
+        no interval-prediction method.
+
+    Examples
+    --------
+    >>> df.with_columns(
+    ...     ps.aft_predict_quantile("time", "event", "x1", "x2", p=0.9)
+    ...         .over("group").alias("pred")
+    ... ).unnest("pred")
+    """
+    if not (0.0 <= p <= 1.0):
+        raise ValueError(f"p must be in [0, 1], got {p}")
+    return _aft_predict(
+        "pl_aft_predict_quantile",
+        time,
+        event,
+        x,
+        distribution,
+        priors,
+        add_intercept,
+        max_iter,
+        tol,
+        null_policy,
+        name,
+        p=p,
+    )
+
+
+def aft_predict_median(
+    time: Union[pl.Expr, str],
+    event: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    distribution: Literal["weibull", "exponential", "lognormal", "loglogistic"] = "weibull",
+    priors: Sequence[Union[None, str, tuple, dict]] | None = None,
+    add_intercept: bool = True,
+    max_iter: int = 100,
+    tol: float = 1e-9,
+    null_policy: Literal["drop", "drop_y_zero_x"] = "drop",
+    name: str | None = None,
+) -> pl.Expr:
+    """AFT predicted median survival time (``aft_predict_quantile`` at ``p=0.5``).
+
+    See :func:`aft_predict_quantile` for parameter semantics (other than
+    ``p``, which is fixed at ``0.5``).
+    """
+    return _aft_predict(
+        "pl_aft_predict_median",
+        time,
+        event,
+        x,
+        distribution,
+        priors,
+        add_intercept,
+        max_iter,
+        tol,
+        null_policy,
+        name,
+    )
+
+
+def aft_predict_survival(
+    time: Union[pl.Expr, str],
+    event: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    t: float,
+    distribution: Literal["weibull", "exponential", "lognormal", "loglogistic"] = "weibull",
+    priors: Sequence[Union[None, str, tuple, dict]] | None = None,
+    add_intercept: bool = True,
+    max_iter: int = 100,
+    tol: float = 1e-9,
+    null_policy: Literal["drop", "drop_y_zero_x"] = "drop",
+    name: str | None = None,
+) -> pl.Expr:
+    """AFT predicted survival probability ``S(t | x) = P(T > t | x)``.
+
+    Parameters
+    ----------
+    time, event, x, distribution, priors, add_intercept, max_iter, tol, null_policy, name
+        See :func:`aft_predict_quantile`.
+    t : float
+        Time at which to evaluate the survival function. Must be finite
+        and ``> 0``; keyword-only and required.
+    """
+    if t is None or not math.isfinite(t) or t <= 0.0:
+        raise ValueError(f"t must be finite and > 0, got {t}")
+    return _aft_predict(
+        "pl_aft_predict_survival",
+        time,
+        event,
+        x,
+        distribution,
+        priors,
+        add_intercept,
+        max_iter,
+        tol,
+        null_policy,
+        name,
+        t=t,
+    )
+
+
+def aft_predict_cdf(
+    time: Union[pl.Expr, str],
+    event: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    t: float,
+    distribution: Literal["weibull", "exponential", "lognormal", "loglogistic"] = "weibull",
+    priors: Sequence[Union[None, str, tuple, dict]] | None = None,
+    add_intercept: bool = True,
+    max_iter: int = 100,
+    tol: float = 1e-9,
+    null_policy: Literal["drop", "drop_y_zero_x"] = "drop",
+    name: str | None = None,
+) -> pl.Expr:
+    """AFT predicted failure probability ``F(t | x) = 1 - S(t | x)``.
+
+    Parameters
+    ----------
+    time, event, x, distribution, priors, add_intercept, max_iter, tol, null_policy, name
+        See :func:`aft_predict_quantile`.
+    t : float
+        Time at which to evaluate the CDF. Must be finite and ``> 0``;
+        keyword-only and required.
+    """
+    if t is None or not math.isfinite(t) or t <= 0.0:
+        raise ValueError(f"t must be finite and > 0, got {t}")
+    return _aft_predict(
+        "pl_aft_predict_cdf",
+        time,
+        event,
+        x,
+        distribution,
+        priors,
+        add_intercept,
+        max_iter,
+        tol,
+        null_policy,
+        name,
+        t=t,
+    )
+
+
 # ============================================================================
 # ALM Expressions
 # ============================================================================
@@ -4919,6 +5228,46 @@ def penalized_glm_formula(
     )
 
 
+def aft_formula(
+    formula: str,
+    event: Union[pl.Expr, str],
+    distribution: Literal["weibull", "exponential", "lognormal", "loglogistic"] = "weibull",
+    priors: Sequence[Union[None, str, tuple, dict]] | None = None,
+    add_intercept: bool = True,
+    max_iter: int = 100,
+    tol: float = 1e-9,
+) -> pl.Expr:
+    """AFT survival regression using R-style formula syntax.
+
+    Parameters
+    ----------
+    formula : str
+        R-style formula whose left-hand side is the ``time`` column (see
+        :func:`ols_formula` for syntax).
+    event : pl.Expr or str
+        Right-censoring indicator (see :func:`aft`). Not part of the formula
+        syntax — passed separately.
+    distribution, priors, add_intercept, max_iter, tol
+        See :func:`aft`.
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing AFT results (see :func:`aft`).
+    """
+    response, x_exprs, _ = _parse_formula(formula)
+    return aft(
+        response,
+        event,
+        *x_exprs,
+        distribution=distribution,
+        priors=priors,
+        add_intercept=add_intercept,
+        max_iter=max_iter,
+        tol=tol,
+    )
+
+
 def alm_formula(
     formula: str,
     distribution: str = "normal",
@@ -5086,6 +5435,37 @@ def penalized_glm_formula_summary(
         vcov_type=vcov_type,
         conf_level=conf_level,
         offset=offset,
+        add_intercept=add_intercept,
+        max_iter=max_iter,
+        tol=tol,
+    )
+
+
+def aft_formula_summary(
+    formula: str,
+    event: Union[pl.Expr, str],
+    distribution: Literal["weibull", "exponential", "lognormal", "loglogistic"] = "weibull",
+    priors: Sequence[Union[None, str, tuple, dict]] | None = None,
+    vcov_type: Literal["laplace", "sandwich", "naive"] = "laplace",
+    conf_level: float = 0.95,
+    add_intercept: bool = True,
+    max_iter: int = 100,
+    tol: float = 1e-9,
+) -> pl.Expr:
+    """AFT coefficient summary using R-style formula syntax.
+
+    See :func:`aft_summary` for parameter semantics; the formula's left-hand
+    side is the ``time`` column and ``event`` is passed separately.
+    """
+    response, x_exprs, _ = _parse_formula(formula)
+    return aft_summary(
+        response,
+        event,
+        *x_exprs,
+        distribution=distribution,
+        priors=priors,
+        vcov_type=vcov_type,
+        conf_level=conf_level,
         add_intercept=add_intercept,
         max_iter=max_iter,
         tol=tol,

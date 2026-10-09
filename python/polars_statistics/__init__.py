@@ -74,6 +74,13 @@ from polars_statistics.exprs import (
     aid_anomalies,
     # Survival (AFT) expressions
     aft,
+    aft_formula,
+    aft_formula_summary,
+    aft_predict_cdf,
+    aft_predict_median,
+    aft_predict_quantile,
+    aft_predict_survival,
+    aft_summary,
     alm,
     alm_formula,
     alm_formula_predict,
@@ -486,6 +493,7 @@ __all__ = [
     "probit_summary",
     "cloglog_summary",
     "penalized_glm_summary",
+    "aft_summary",
     "alm_summary",
     # Prediction expressions
     "ols_predict",
@@ -503,6 +511,10 @@ __all__ = [
     "probit_predict",
     "cloglog_predict",
     "penalized_glm_predict",
+    "aft_predict_quantile",
+    "aft_predict_median",
+    "aft_predict_survival",
+    "aft_predict_cdf",
     "alm_predict",
     # Formula-based regression expressions
     "ols_formula",
@@ -520,6 +532,7 @@ __all__ = [
     "probit_formula",
     "cloglog_formula",
     "penalized_glm_formula",
+    "aft_formula",
     "alm_formula",
     # Formula-based summary expressions
     "ols_formula_summary",
@@ -529,6 +542,7 @@ __all__ = [
     "logistic_formula_summary",
     "poisson_formula_summary",
     "penalized_glm_formula_summary",
+    "aft_formula_summary",
     "alm_formula_summary",
     # Formula-based prediction expressions
     "ols_formula_predict",

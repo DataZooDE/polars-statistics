@@ -353,3 +353,270 @@ class TestAFTModel:
         d = model.to_dict()
         assert "scale" in d
         assert "vcov" in d
+
+
+# ============================================================================
+# aft_summary (Task 3)
+# ============================================================================
+
+
+def _summary_rows(df: pl.DataFrame, distribution: str) -> pl.DataFrame:
+    return (
+        df.select(
+            ps.aft_summary("time", "event", "x1", "x2", distribution=distribution).alias("s")
+        )
+        .explode("s")
+        .unnest("s")
+    )
+
+
+class TestAftSummary:
+    @pytest.mark.parametrize("dist,se,scale", [
+        ("weibull", ref.AFT_WEIBULL_SE, ref.AFT_WEIBULL_SCALE),
+        ("lognormal", ref.AFT_LOGNORMAL_SE, ref.AFT_LOGNORMAL_SCALE),
+        ("loglogistic", ref.AFT_LOGLOGISTIC_SE, ref.AFT_LOGLOGISTIC_SCALE),
+        ("exponential", ref.AFT_EXPONENTIAL_SE, ref.AFT_EXPONENTIAL_SCALE),
+    ])
+    def test_summary_terms_and_se_match_r(self, dist, se, scale):
+        df = _fixture_df()
+        rows = _summary_rows(df, dist)
+        expected_terms = ["intercept", "x1", "x2"] + ([] if dist == "exponential" else ["log_scale"])
+        assert rows["term"].to_list() == expected_terms
+
+        for j, term in enumerate(("intercept", "x1", "x2")):
+            row = rows.filter(pl.col("term") == term)
+            assert rel_close(row["std_error"][0], se[j], 1e-5)
+
+        if dist != "exponential":
+            log_scale_row = rows.filter(pl.col("term") == "log_scale")
+            assert rel_close(log_scale_row["estimate"][0], math.log(scale), 1e-6)
+            assert rel_close(log_scale_row["std_error"][0], se[3], 1e-5)
+
+    def test_summary_intercept_and_features_equal_model_inference(self):
+        df = _fixture_df()
+        rows = _summary_rows(df, "weibull")
+        model = ps.AFT(distribution="weibull").fit(X, TIME, EVENT)
+
+        intercept_row = rows.filter(pl.col("term") == "intercept")
+        assert intercept_row["statistic"][0] == pytest.approx(model.intercept_z_value)
+        assert intercept_row["p_value"][0] == pytest.approx(model.intercept_p_value)
+        assert intercept_row["ci_lower"][0] == pytest.approx(model.intercept_conf_interval[0])
+        assert intercept_row["ci_upper"][0] == pytest.approx(model.intercept_conf_interval[1])
+
+        for j, term in enumerate(("x1", "x2")):
+            row = rows.filter(pl.col("term") == term)
+            assert row["statistic"][0] == pytest.approx(model.z_values[j])
+            assert row["p_value"][0] == pytest.approx(model.p_values[j])
+            assert row["ci_lower"][0] == pytest.approx(model.conf_interval_lower[j])
+            assert row["ci_upper"][0] == pytest.approx(model.conf_interval_upper[j])
+
+    def test_summary_conf_level_half_width(self):
+        df = _fixture_df()
+        rows = (
+            df.select(
+                ps.aft_summary(
+                    "time", "event", "x1", "x2", distribution="weibull", conf_level=0.9
+                ).alias("s")
+            )
+            .explode("s")
+            .unnest("s")
+        )
+        for row in rows.iter_rows(named=True):
+            half_width = (row["ci_upper"] - row["estimate"]) / row["std_error"]
+            assert rel_close(half_width, 1.6448536269514722, 1e-9)
+
+
+# ============================================================================
+# aft_predict_quantile / _median / _survival / _cdf (Task 3)
+# ============================================================================
+
+
+class TestAftPredict:
+    @pytest.mark.parametrize("dist,q", [
+        ("weibull", ref.AFT_WEIBULL_Q),
+        ("lognormal", ref.AFT_LOGNORMAL_Q),
+        ("loglogistic", ref.AFT_LOGLOGISTIC_Q),
+        ("exponential", ref.AFT_EXPONENTIAL_Q),
+    ])
+    def test_predict_quantile_matches_r_at_held_out_row(self, dist, q):
+        df = _fixture_df().vstack(
+            pl.DataFrame(
+                {
+                    "x1": [0.3],
+                    "x2": [-0.2],
+                    "time": [None],
+                    "event": [None],
+                    "event_float": [None],
+                }
+            )
+        )
+        for p, qv in zip((0.25, 0.5, 0.9), q):
+            r = df.select(
+                ps.aft_predict_quantile(
+                    "time", "event", "x1", "x2", p=p, distribution=dist, null_policy="drop_y_zero_x"
+                ).alias("pred")
+            ).unnest("pred")
+            assert rel_close(r["aft_predict_quantile_prediction"][-1], qv, 1e-6)
+
+    def test_predict_median_equals_quantile_half(self):
+        df = _fixture_df().vstack(
+            pl.DataFrame(
+                {"x1": [0.3], "x2": [-0.2], "time": [None], "event": [None], "event_float": [None]}
+            )
+        )
+        q = df.select(
+            ps.aft_predict_quantile(
+                "time", "event", "x1", "x2", p=0.5, null_policy="drop_y_zero_x"
+            ).alias("pred")
+        ).unnest("pred")
+        m = df.select(
+            ps.aft_predict_median(
+                "time", "event", "x1", "x2", null_policy="drop_y_zero_x"
+            ).alias("pred")
+        ).unnest("pred")
+        assert q["aft_predict_quantile_prediction"][-1] == pytest.approx(
+            m["aft_predict_median_prediction"][-1]
+        )
+
+    def test_predict_survival_and_cdf_identity(self):
+        df = _fixture_df().vstack(
+            pl.DataFrame(
+                {"x1": [0.3], "x2": [-0.2], "time": [None], "event": [None], "event_float": [None]}
+            )
+        )
+        med = df.select(
+            ps.aft_predict_median(
+                "time", "event", "x1", "x2", null_policy="drop_y_zero_x"
+            ).alias("pred")
+        ).unnest("pred")["aft_predict_median_prediction"][-1]
+
+        surv = df.select(
+            ps.aft_predict_survival(
+                "time", "event", "x1", "x2", t=med, null_policy="drop_y_zero_x"
+            ).alias("pred")
+        ).unnest("pred")
+        cdf = df.select(
+            ps.aft_predict_cdf(
+                "time", "event", "x1", "x2", t=med, null_policy="drop_y_zero_x"
+            ).alias("pred")
+        ).unnest("pred")
+        assert surv["aft_predict_survival_prediction"][-1] == pytest.approx(0.5, abs=1e-9)
+        assert cdf["aft_predict_cdf_prediction"][-1] == pytest.approx(0.5, abs=1e-9)
+
+    def test_predict_default_policy_gives_nan_for_held_out_row(self):
+        df = _fixture_df().vstack(
+            pl.DataFrame(
+                {"x1": [0.3], "x2": [-0.2], "time": [None], "event": [None], "event_float": [None]}
+            )
+        )
+        r = df.select(
+            ps.aft_predict_quantile("time", "event", "x1", "x2", p=0.5).alias("pred")
+        ).unnest("pred")
+        assert math.isnan(r["aft_predict_quantile_prediction"][-1])
+        assert math.isnan(r["aft_predict_quantile_lower"][-1])
+        assert math.isnan(r["aft_predict_quantile_upper"][-1])
+
+    def test_predict_default_prefixes_and_custom_name(self):
+        df = _fixture_df()
+        r = df.select(ps.aft_predict_quantile("time", "event", "x1", "x2").alias("pred")).unnest(
+            "pred"
+        )
+        assert "aft_predict_quantile_prediction" in r.columns
+        r_named = df.select(
+            ps.aft_predict_quantile("time", "event", "x1", "x2", name="custom").alias("pred")
+        ).unnest("pred")
+        assert "custom_prediction" in r_named.columns
+
+    def test_predict_in_sample_matches_pymodel(self):
+        df = _fixture_df()
+        expr_median = df.select(
+            ps.aft_predict_quantile("time", "event", "x1", "x2", p=0.5).alias("pred")
+        ).unnest("pred")["aft_predict_quantile_prediction"].to_numpy()
+        model = ps.AFT(distribution="weibull").fit(X, TIME, EVENT)
+        model_median = model.predict_median(X)
+        np.testing.assert_allclose(expr_median, model_median, rtol=1e-12)
+
+    def test_predict_build_time_errors(self):
+        with pytest.raises(ValueError):
+            ps.aft_predict_quantile("time", "event", "x1", p=1.5)
+        with pytest.raises(ValueError):
+            ps.aft_predict_quantile("time", "event", "x1", p=-0.1)
+        with pytest.raises(ValueError):
+            ps.aft_predict_survival("time", "event", "x1", t=float("nan"))
+        with pytest.raises(ValueError):
+            ps.aft_predict_survival("time", "event", "x1", t=0.0)
+        with pytest.raises(ValueError):
+            ps.aft_predict_quantile("time", "event", "x1", distribution="gompertz")
+        with pytest.raises(ValueError):
+            ps.aft_predict_quantile("time", "event", "x1", null_policy="bogus")
+
+
+# ============================================================================
+# group_by / over (Task 3)
+# ============================================================================
+
+
+class TestAftGroupByOver:
+    def test_group_by_matches_whole_frame_fit(self):
+        df = _fixture_df()
+        stacked = pl.concat(
+            [df.with_columns(g=pl.lit(0)), df.with_columns(g=pl.lit(1))]
+        )
+        whole = df.select(ps.aft("time", "event", "x1", "x2").alias("r")).unnest("r")
+        grouped = (
+            stacked.group_by("g")
+            .agg(ps.aft("time", "event", "x1", "x2").alias("r"))
+            .unnest("r")
+            .sort("g")
+        )
+        for g in (0, 1):
+            row = grouped.filter(pl.col("g") == g)
+            assert row["intercept"][0] == pytest.approx(whole["intercept"][0])
+
+    def test_over_broadcasts_struct(self):
+        df = _fixture_df().with_columns(g=pl.lit(0))
+        r = df.with_columns(ps.aft("time", "event", "x1", "x2").over("g").alias("r")).unnest("r")
+        assert r["intercept"].n_unique() == 1
+
+    def test_group_by_summary_equals_whole_frame(self):
+        df = _fixture_df()
+        whole = _summary_rows(df, "weibull")
+        stacked = df.with_columns(g=pl.lit(0))
+        grouped = (
+            stacked.group_by("g")
+            .agg(ps.aft_summary("time", "event", "x1", "x2").alias("s"))
+            .explode("s")
+            .unnest("s")
+        )
+        assert grouped["estimate"].to_list() == pytest.approx(whole["estimate"].to_list())
+
+
+# ============================================================================
+# aft_formula / aft_formula_summary (Task 3)
+# ============================================================================
+
+
+class TestAftFormula:
+    def test_formula_equals_column_form(self):
+        df = _fixture_df()
+        a = df.select(ps.aft("time", "event", "x1", "x2", distribution="lognormal").alias("r")).unnest(
+            "r"
+        )
+        b = df.select(
+            ps.aft_formula("time ~ x1 + x2", event="event", distribution="lognormal").alias("r")
+        ).unnest("r")
+        assert a["intercept"][0] == pytest.approx(b["intercept"][0])
+
+    def test_formula_summary_equals_column_form(self):
+        df = _fixture_df()
+        a = _summary_rows(df, "lognormal")
+        b = (
+            df.select(
+                ps.aft_formula_summary(
+                    "time ~ x1 + x2", event="event", distribution="lognormal"
+                ).alias("s")
+            )
+            .explode("s")
+            .unnest("s")
+        )
+        assert a["estimate"].to_list() == pytest.approx(b["estimate"].to_list())
