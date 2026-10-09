@@ -5,12 +5,15 @@
 [![PyPI version](https://badge.fury.io/py/polars-statistics.svg)](https://badge.fury.io/py/polars-statistics)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![Claude Code Plugin](https://img.shields.io/badge/Claude_Code-plugin-8A2BE2)](#claude-code-plugin)
 
 > **Note:** This extension is in early stage development. APIs may change and some features are experimental.
 
 High-performance statistical hypothesis testing and regression for [Polars](https://pola.rs/) DataFrames, powered by Rust — with results **validated against R**.
 
 Usable from **Python** (as a Polars plugin *and* an sklearn-style class API) and from **Rust** (as an rlib that other Rust crates depend on directly — see [Use from Rust](#use-from-rust)).
+
+> The repository includes a **[Claude Code plugin](#claude-code-plugin)** with five skills that document the Python API (expressions, model classes, result fields) for the Claude Code assistant.
 
 ## Why polars-statistics?
 
@@ -435,6 +438,27 @@ shape — so you can see exactly what columns and data types each method require
 - **[Migration Guide](docs/migration.md)** - `icc` matrix contract and `with_intercept` → `add_intercept`
 
 For the legacy monolithic reference, see [docs/API_REFERENCE.md](docs/API_REFERENCE.md).
+
+## Claude Code Plugin
+
+The repository ships a [Claude Code](https://claude.com/claude-code) plugin with five skills. Each skill documents a part of the Python API (expression builders, model classes, options and result fields), so that Claude Code can write polars-statistics code from a plain-language request such as *"compare conversion rates per region with a t-test and report Cohen's d"*.
+
+Install it in a Claude Code session:
+
+```
+/plugin marketplace add DataZooDE/polars-statistics
+/plugin install polars-statistics@polars-statistics
+```
+
+| Skill | Covers |
+|-------|--------|
+| `polars-statistics-getting-started` | Installation, the two API styles (expressions vs. model classes), model-selection decision matrix, migration notes |
+| `polars-statistics-hypothesis-tests` | Parametric and nonparametric tests, normality, correlation, categorical tests, effect sizes, bootstrap CIs, TOST equivalence, distribution comparison |
+| `polars-statistics-anova` | One-way (Fisher/Welch), two-way and repeated-measures ANOVA, intraclass correlation |
+| `polars-statistics-regression` | OLS, Ridge/Lasso/Elastic Net, WLS/RLS, BLS/NNLS, quantile, robust (Huber/RANSAC/Theil-Sen), PLS, ALM, GLMs, GLMM, formulas, `group_by`/`over` fitting |
+| `polars-statistics-results` | Extracting struct fields, unnesting results, `to_dict()` / `summary()`, error handling, type stubs |
+
+The skills live in [`plugins/polars-statistics/`](plugins/polars-statistics/). To use a local checkout instead of the marketplace, start Claude Code with `claude --plugin-dir ./plugins/polars-statistics`.
 
 ## Performance
 
