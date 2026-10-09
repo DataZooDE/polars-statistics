@@ -371,6 +371,7 @@ impl PyHuber {
 
         Ok(fitted.result().intercept_conf_interval)
     }
+
     /// Informative repr: class name plus key state; never panics if unfitted.
     fn __repr__(slf: &Bound<'_, Self>) -> PyResult<String> {
         crate::pymodels::ergonomics::repr(slf.as_any())
