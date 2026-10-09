@@ -4,19 +4,19 @@ milestone: v0.8.0
 milestone_name: Claude Code Skills Plugin
 current_phase: "16.1"
 current_phase_name: Upstream Crate Refresh
-current_plan: 7
+current_plan: 8
 status: executing
-stopped_at: Completed 16.1-05-PLAN.md
-last_updated: "2026-10-09T07:46:35.076Z"
+stopped_at: Completed 16.1-06-PLAN.md
+last_updated: "2026-10-09T08:38:14.566Z"
 last_activity: 2026-10-08
 last_activity_desc: Phase 16.1 execution resumed (wave continue)
-state_head: 644cbc79ceb80cb2dd29e50a8e6d040538ad7e65
+state_head: 04962ed5256ba91190c4a42b1953233c52f2dd38
 progress:
   total_phases: 8
-  completed_phases: 3
-  total_plans: 35
-  completed_plans: 13
-  percent: 37
+  completed_phases: 0
+  total_plans: 36
+  completed_plans: 14
+  percent: 0
 ---
 
 # Project State
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 ## Current Position
 
 Phase: 16.1 (Upstream Crate Refresh) — EXECUTING
-Current Plan: 7
+Current Plan: 8
 Total Plans in Phase: 9
 Status: Ready to execute
 Last activity: 2026-10-08 — Phase 16.1 execution resumed (wave continue)
@@ -106,6 +106,7 @@ Execution order: 13 → 14 → 15 → 16 → 17
 | Phase 16.1 P09 | 10min | 2 tasks | 2 files |
 | Phase 16.1 P04 | 42min | 3 tasks | 10 files |
 | Phase 16.1 P05 | 20min | 3 tasks | 12 files |
+| Phase 16.1 P06 | 46min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -150,6 +151,9 @@ Recent decisions affecting current work:
 - [Phase 16.1]: 16.1-04: bootstrap_mean_ci/bootstrap_ci Python builders cast x to Float64 before the non-finite filter (int64 columns otherwise fail the plugin's Float64 dtype check), matching exprs/modern.py's existing pattern.
 - [Phase 16.1]: 16.1-05: PyWLS/PyRidge.fitted narrowed from Box<dyn FittedRegressor> to concrete FittedWls/FittedRidge so variance_factor()/leverage_new() (inherent, not trait methods) are callable — Required to implement the requested variance_factor/leverage_new API at all; both solvers' Regressor::Fitted associated type was already concrete, so this is a behavior-preserving type-narrowing (confirmed by full green suite).
 - [Phase 16.1]: 16.1-05: Huber MASS reference p-value assertion relaxed to 0.0 <= p < 1.0 (fixture's huge t-stat underflows p to exactly 0.0 in f64 — numerically correct, matches upstream crate's own reference test which asserts no p-value)
+- [Phase 16.1]: 16.1-06: Computed hypothesis-tests Overview function count (44 -> 52) programmatically from live exprs/*.py modules; documented methodology inline. — Keeps the count auditable as the API surface grows instead of hand-maintaining a stale number.
+- [Phase 16.1]: 16.1-06: Placed new 'Group I — Effect Sizes & Bootstrap CIs' section between Group G and Group H (kept letter I, did not renumber H onward). — Matches the plan's explicit placement discretion and the literal acceptance-criteria grep.
+- [Phase 16.1]: 16.1-06: Extended hypothesis-tests and regression skill descriptions for the new inference/diagnostics prompt families. — ROUTING.md's new rows route on explicit phrase match rather than loosely-related existing wording.
 
 ### Pending Todos
 
@@ -183,7 +187,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-10-09T07:46:35.037Z
-Stopped at: Completed 16.1-05-PLAN.md
+Last session: 2026-10-09T08:38:14.403Z
+Stopped at: Completed 16.1-06-PLAN.md
 Resume file: None
 </content>
