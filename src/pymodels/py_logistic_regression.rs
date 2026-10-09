@@ -6,9 +6,10 @@
 //! (None / L2) and the standard `C` regularization-strength parameter.
 
 use numpy::{PyArray1, PyReadonlyArray1, PyReadonlyArray2};
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
-use anofox_regression::solvers::{FittedLogistic, LogisticRegression, Penalty};
+use anofox_regression::solvers::{FittedLogistic, FittedRegressor, LogisticRegression, Penalty};
 
 use crate::utils::{IntoNumpy, ToFaer};
 
@@ -78,6 +79,11 @@ impl PyLogisticRegression {
         compute_inference: bool,
         confidence_level: f64,
     ) -> PyResult<Self> {
+        if !(confidence_level > 0.0 && confidence_level < 1.0) {
+            return Err(PyValueError::new_err(format!(
+                "confidence_level must be in (0, 1), got {confidence_level}"
+            )));
+        }
         let with_intercept =
             crate::pymodels::errors::resolve_intercept(py, add_intercept, with_intercept, true)?;
         Ok(Self {
@@ -207,6 +213,140 @@ impl PyLogisticRegression {
             .as_ref()
             .ok_or_else(|| crate::pymodels::errors::not_fitted_err("LogisticRegression"))?;
         Ok(fitted.n_iter())
+    }
+
+    /// Standard errors of coefficients (``None`` unless ``compute_inference=True``).
+    #[getter]
+    fn std_errors<'py>(&self, py: Python<'py>) -> PyResult<Option<Bound<'py, PyArray1<f64>>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("LogisticRegression"))?;
+
+        Ok(fitted
+            .inner()
+            .result()
+            .std_errors
+            .as_ref()
+            .map(|se| se.into_numpy(py)))
+    }
+
+    /// P-values for coefficient significance tests (``None`` unless ``compute_inference=True``).
+    #[getter]
+    fn p_values<'py>(&self, py: Python<'py>) -> PyResult<Option<Bound<'py, PyArray1<f64>>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("LogisticRegression"))?;
+
+        Ok(fitted
+            .inner()
+            .result()
+            .p_values
+            .as_ref()
+            .map(|pv| pv.into_numpy(py)))
+    }
+
+    /// Wald z statistics for coefficients (``None`` unless ``compute_inference=True``).
+    #[getter]
+    fn t_statistics<'py>(&self, py: Python<'py>) -> PyResult<Option<Bound<'py, PyArray1<f64>>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("LogisticRegression"))?;
+
+        Ok(fitted
+            .inner()
+            .result()
+            .t_statistics
+            .as_ref()
+            .map(|ts| ts.into_numpy(py)))
+    }
+
+    /// Lower bounds of coefficient confidence intervals (``None`` unless
+    /// ``compute_inference=True``).
+    #[getter]
+    fn conf_interval_lower<'py>(
+        &self,
+        py: Python<'py>,
+    ) -> PyResult<Option<Bound<'py, PyArray1<f64>>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("LogisticRegression"))?;
+
+        Ok(fitted
+            .inner()
+            .result()
+            .conf_interval_lower
+            .as_ref()
+            .map(|ci| ci.into_numpy(py)))
+    }
+
+    /// Upper bounds of coefficient confidence intervals (``None`` unless
+    /// ``compute_inference=True``).
+    #[getter]
+    fn conf_interval_upper<'py>(
+        &self,
+        py: Python<'py>,
+    ) -> PyResult<Option<Bound<'py, PyArray1<f64>>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("LogisticRegression"))?;
+
+        Ok(fitted
+            .inner()
+            .result()
+            .conf_interval_upper
+            .as_ref()
+            .map(|ci| ci.into_numpy(py)))
+    }
+
+    /// Standard error of the intercept (``None`` unless ``compute_inference=True``).
+    #[getter]
+    fn intercept_std_error(&self) -> PyResult<Option<f64>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("LogisticRegression"))?;
+
+        Ok(fitted.inner().result().intercept_std_error)
+    }
+
+    /// Wald z statistic of the intercept (R ``summary.glm``).
+    #[getter]
+    fn intercept_t_statistic(&self) -> PyResult<Option<f64>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("LogisticRegression"))?;
+
+        Ok(fitted.inner().result().intercept_t_statistic)
+    }
+
+    /// P-value for the intercept (``None`` unless ``compute_inference=True``).
+    #[getter]
+    fn intercept_p_value(&self) -> PyResult<Option<f64>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("LogisticRegression"))?;
+
+        Ok(fitted.inner().result().intercept_p_value)
+    }
+
+    /// Wald confidence interval of the intercept at ``confidence_level`` (R
+    /// ``confint.default``), as ``(lower, upper)`` (``None`` unless
+    /// ``compute_inference=True``).
+    #[getter]
+    fn intercept_conf_interval(&self) -> PyResult<Option<(f64, f64)>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("LogisticRegression"))?;
+
+        Ok(fitted.inner().result().intercept_conf_interval)
     }
     /// Informative repr: class name plus key state; never panics if unfitted.
     fn __repr__(slf: &Bound<'_, Self>) -> PyResult<String> {
