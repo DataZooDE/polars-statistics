@@ -30,6 +30,19 @@ jobs:
       - name: Clippy
         run: cargo clippy --all-targets -- -D warnings
 
+      # WR-03: `tests/rust_api.rs` cannot link under the default `python`
+      # feature set — pyo3's `extension-module` feature (pulled in by the
+      # default `python` feature) deliberately omits linking against
+      # libpython, which is correct for the cdylib but breaks a standalone
+      # test binary. `cargo clippy --all-targets` above type-checks this
+      # test but never links it, so it was silently never exercised. Running
+      # under `--no-default-features` builds the rlib without pyo3/numpy and
+      # links cleanly; this is currently the *only* Rust test target in the
+      # crate (`tests/rust_api.rs`), so no other target is affected by this
+      # same linking gap. Do not change the crate's feature defaults.
+      - name: Rust API tests (no-default-features)
+        run: cargo test --no-default-features --test rust_api
+
   type-check:
     name: Type Stubs
     runs-on: ubuntu-latest
