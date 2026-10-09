@@ -19,6 +19,8 @@ Complete API documentation for polars-statistics.
 | **Regression** | |
 | [Linear Models](regression/linear.md) | OLS, Ridge, Elastic Net, WLS, RLS, BLS, NNLS, Quantile, Isotonic |
 | [GLM Models](regression/glm.md) | Logistic, Poisson, Negative Binomial, Tweedie, Probit, Cloglog |
+| [Penalized GLM](regression/penalized-glm.md) | Family-generic penalized GLM with priors (Poisson, Binomial, Logistic, Negative Binomial, Gamma, Tweedie) |
+| [Survival Regression (AFT)](regression/survival.md) | Accelerated failure time survival regression (Weibull, log-normal, log-logistic, exponential) |
 | [ALM](regression/alm.md) | Augmented Linear Model (24+ distributions) |
 | [Dynamic Models](regression/dynamic.md) | LmDynamic time-varying coefficients |
 | [Demand Classification](regression/aid.md) | AID demand patterns and anomaly detection |
@@ -27,7 +29,8 @@ Complete API documentation for polars-statistics.
 | [Diagnostics](regression/diagnostics.md) | Condition number, quasi-separation detection, gamma_* GLM diagnostics |
 | **Model Classes** | |
 | [Linear Model Classes](classes/linear.md) | OLS, Ridge, ElasticNet, WLS, RLS, BLS, Quantile, Isotonic, TheilSen, RANSAC, BayesianRidge, ARD, LARS, PassiveAggressive, MomentAccumulator |
-| [GLM Model Classes](classes/glm.md) | Logistic, Poisson, NegativeBinomial, Tweedie, Probit, Cloglog, Gamma, GLMM, PSpline |
+| [GLM Model Classes](classes/glm.md) | Logistic, Poisson, NegativeBinomial, Tweedie, Probit, Cloglog, Gamma, PenalizedGLM, GLMM, PSpline |
+| [Survival model classes](classes/survival.md) | AFT (accelerated failure time survival regression) |
 | [ALM Class](classes/alm.md) | Augmented Linear Model class |
 | [LmDynamic Class](classes/dynamic.md) | Dynamic linear model class |
 | [Aid Class](classes/aid.md) | Demand classification class |

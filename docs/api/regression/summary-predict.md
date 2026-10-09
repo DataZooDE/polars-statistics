@@ -23,9 +23,19 @@ ps.probit_summary(y, *x, with_intercept=True) -> pl.Expr
 ps.cloglog_summary(y, *x, with_intercept=True) -> pl.Expr
 ps.alm_summary(y, *x, distribution="normal", with_intercept=True) -> pl.Expr
 ps.quantile_summary(y, *x, tau=0.5, with_intercept=True) -> pl.Expr
+ps.penalized_glm_summary(y, *x, family="poisson", vcov_type="laplace", conf_level=0.95, ...) -> pl.Expr
+ps.aft_summary(time, event, *x, distribution="weibull", vcov_type="laplace", conf_level=0.95, ...) -> pl.Expr
 ```
 
 Formula variants also available: `ps.ols_formula_summary(formula, ...)`, etc.
+
+**`penalized_glm_summary` and `aft_summary` return a widened 7-field schema** — the usual
+`{term, estimate, std_error, statistic, p_value}` plus trailing `ci_lower`/`ci_upper` (additive;
+the shared schema above and every other `*_summary` expression are unchanged). The `intercept`
+row is read directly from the upstream engine's own intercept inference, never recomputed
+locally. See [Inference Summary Output](../outputs.md#inference-summary-output),
+[Penalized GLM](penalized-glm.md#penalized_glm_summary), and
+[Survival Regression (AFT)](survival.md#aft_summary).
 
 **Note on `quantile_summary`:** Quantile regression has no analytic standard errors, so the `std_error`, `statistic`, and `p_value` columns are returned as NaN. The coefficient estimates themselves are still valid.
 
@@ -100,8 +110,16 @@ All models have prediction functions:
 - `tweedie_predict`, `probit_predict`, `cloglog_predict`
 - `alm_predict`
 - `quantile_predict`, `isotonic_predict`, `lm_dynamic_predict`
+- `penalized_glm_predict` (`type="response"` or `"link"`)
+- `aft_predict_quantile`, `aft_predict_median`, `aft_predict_survival`, `aft_predict_cdf`
 
 Formula variants also available: `ps.ols_formula_predict(formula, ...)`, etc.
+
+**`penalized_glm_predict`/`aft_predict_*` have no analytic intervals** — `lower`/`upper` are
+always `NaN`; neither `FittedPenalizedGlm` nor `FittedAft` has an interval-prediction method
+upstream. See [Penalized GLM](penalized-glm.md#penalized_glm_predict) and
+[Survival Regression (AFT)](survival.md#aft_predict_quantile) for the full parameter lists
+(`type`/`null_policy` for the former; `p`/`t`/`null_policy` for the latter's four variants).
 
 **Models without analytic intervals.** The following predictors return `lower` / `upper` as NaN — point predictions only:
 
@@ -110,6 +128,8 @@ Formula variants also available: `ps.ols_formula_predict(formula, ...)`, etc.
 | `quantile_predict` | Quantile regression intervals require bootstrap (not yet wired through). |
 | `isotonic_predict` | Step-function fit with no parametric uncertainty estimate. |
 | `lm_dynamic_predict` | Predictions use time-averaged coefficients from the dynamic model. |
+| `penalized_glm_predict` | `FittedPenalizedGlm` has no interval-prediction method upstream. |
+| `aft_predict_quantile`/`_median`/`_survival`/`_cdf` | `FittedAft` has no interval-prediction method upstream. |
 
 **`ridge_predict`'s intervals use the sandwich variance factor** (anofox-regression
 0.5.14 #37): `interval="confidence"`/`"prediction"` widths are computed from the

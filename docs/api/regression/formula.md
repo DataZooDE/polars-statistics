@@ -50,6 +50,24 @@ ps.cloglog_formula(formula: str, with_intercept: bool = True) -> pl.Expr
 ps.alm_formula(formula: str, distribution: str = "normal", with_intercept: bool = True) -> pl.Expr
 ```
 
+### Penalized GLM
+
+```python
+ps.penalized_glm_formula(formula: str, family: str = "poisson", offset=None, ...) -> pl.Expr
+```
+
+See [Penalized GLM](penalized-glm.md#penalized_glm_formula). R's formula `offset()` term is
+not parsed — pass `offset` as a column/expression directly.
+
+### Survival (AFT)
+
+```python
+ps.aft_formula(formula: str, event: Union[pl.Expr, str], distribution: str = "weibull", ...) -> pl.Expr
+```
+
+The formula's left-hand side is the `time` column; `event` is **not** part of the formula
+syntax and is passed separately. See [Survival Regression (AFT)](survival.md#aft_formula).
+
 ---
 
 ## Examples
@@ -94,6 +112,8 @@ Summary functions:
 ```python
 ps.ols_formula_summary(formula, with_intercept=True)
 ps.ridge_formula_summary(formula, lambda_=1.0, with_intercept=True)
+ps.penalized_glm_formula_summary(formula, family="poisson", vcov_type="laplace", conf_level=0.95, ...)
+ps.aft_formula_summary(formula, event, distribution="weibull", vcov_type="laplace", conf_level=0.95, ...)
 # ... etc.
 ```
 
@@ -101,6 +121,7 @@ Prediction functions:
 ```python
 ps.ols_formula_predict(formula, interval=None, level=0.95, with_intercept=True)
 ps.ridge_formula_predict(formula, lambda_=1.0, interval=None, level=0.95, with_intercept=True)
+ps.penalized_glm_formula_predict(formula, family="poisson", type="response", null_policy="drop", ...)
 # ... etc.
 ```
 

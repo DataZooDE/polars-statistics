@@ -258,6 +258,122 @@ print(f"AIC: {model.aic:.4f}, std_errors: {model.std_errors}")
 
 ---
 
+## PenalizedGLM
+
+Family-generic penalized GLM (IRLS with explicit priors) — one engine shared by Poisson,
+Binomial, Logistic, Negative Binomial, Gamma and Tweedie. Without priors and with
+`lambda_ = 0.0` this is a plain maximum-likelihood GLM matching R's `glm` / `MASS::glm.nb`;
+with Gaussian priors it returns the posterior mode (as `arm::bayesglm` with fixed prior
+scales). See [Penalized GLM](../regression/penalized-glm.md) for the full families/links,
+dispersion, priors, and covariance-type semantics.
+
+```python
+from polars_statistics import PenalizedGLM
+
+model = PenalizedGLM(
+    family="poisson",             # "poisson", "binomial", "logistic", "negative_binomial", "gamma", "tweedie"
+    link=None,                    # defaults to the family's canonical link
+    theta=None,                   # Negative Binomial dispersion; None = estimated
+    power=None,                   # Tweedie variance power in [1, 2]; default 1.5
+    threshold=0.5,                # Logistic classification threshold
+    lambda_=0.0,                  # Uniform L2 ridge penalty
+    estimate_dispersion=False,    # Poisson-only quasipoisson scaling
+    priors=None,                  # per-coefficient priors (flat / normal / laplace)
+    vcov_type="laplace",          # "laplace", "sandwich", "naive"
+    add_intercept=True,
+    max_iter=100,
+    tol=1e-8,
+    compute_inference=True,
+    confidence_level=0.95,
+)
+model.fit(x, y, offset=None)
+predictions = model.predict(x_new, offset=None)   # response scale
+eta = model.predict_linear(x_new)                 # linear predictor
+```
+
+### Fit statistics
+
+```text
+model.coefficients      # np.ndarray — NaN for columns dropped as constant/aliased
+model.intercept         # float | None
+model.family            # str — lower-case family name
+model.link              # str — lower-case link name
+model.deviance           # float
+model.null_deviance      # float
+model.pseudo_r_squared   # float — 1 - deviance / null_deviance
+model.log_likelihood     # float
+model.aic                # float
+model.bic                # float
+model.dispersion         # float — see Dispersion below
+model.theta              # float | None — Negative Binomial only
+model.accuracy           # float | None — Logistic only
+model.iterations         # int
+model.converged          # bool
+model.n_observations     # int — rows with a non-finite y/x/offset are dropped
+```
+
+### Inference
+
+```text
+model.std_errors, model.z_values, model.p_values              # np.ndarray | None — feature coefficients
+model.conf_interval_lower, model.conf_interval_upper            # np.ndarray | None
+
+model.intercept_std_error, model.intercept_z_value              # float | None — read directly
+model.intercept_p_value, model.intercept_conf_interval          # from upstream's GlmInferenceResult,
+                                                                  # never recomputed
+```
+
+Every inference getter is `None` unless `compute_inference=True` (and the `intercept_*`
+getters are additionally `None` without an intercept).
+
+### Covariance
+
+```text
+model.vcov                # np.ndarray | None — scaled so sqrt(diag(vcov)) == std_errors (like R's vcov(glm))
+model.information          # np.ndarray | None — upstream's unscaled penalized observed information
+model.matrix_parameters    # list[int | None] | None — None = intercept row/column, int = feature index
+```
+
+`vcov` is scaled by `dispersion` for every family except Negative Binomial (whose `dispersion`
+getter reports `theta`, not a covariance scale, so no scaling is applied there).
+
+### Separation and fitted values
+
+```text
+model.has_separation         # bool — family="binomial"/"logistic" only; always False otherwise
+model.separated_predictors   # list[int] — 0-based feature indices involved
+model.separation_warning     # str | None
+model.fitted_values           # np.ndarray — fitted means over the rows used
+model.valid_rows               # list[int] — indices into the original rows that were used
+```
+
+### Example
+
+```python
+import numpy as np
+from polars_statistics import PenalizedGLM
+
+np.random.seed(0)
+n = 80
+x1 = np.random.normal(0, 1, n)
+x2 = np.random.normal(0, 1, n)
+mu = np.exp(0.3 + 0.5 * x1 - 0.2 * x2)
+y = np.random.poisson(mu).astype(float)
+X = np.column_stack([x1, x2])
+
+model = PenalizedGLM(family="poisson", estimate_dispersion=True).fit(X, y)
+print(model.coefficients, model.intercept)
+print(model.dispersion, model.aic, model.bic)
+print(model.matrix_parameters, model.vcov.shape)
+```
+
+**Validated against R `glm` / `MASS::glm.nb` / `negative.binomial(theta)`** on the
+`anofox-regression` 0.5.22 R reference fixture.
+
+**See Also:** [Survival (AFT)](survival.md) · [Penalized GLM expressions](../regression/penalized-glm.md)
+
+---
+
 ## GLMM
 
 Generalized Linear Mixed Model — extends GLM with random effects for grouped/clustered data.
@@ -364,6 +480,7 @@ smooth = model.predict(x)
 | `Probit` | `lambda_`, `with_intercept` |
 | `Cloglog` | `lambda_`, `with_intercept` |
 | `Gamma` | `lambda_`, `with_intercept` |
+| `PenalizedGLM` | `family`, `link`, `theta`, `power`, `threshold`, `lambda_`, `estimate_dispersion`, `priors`, `vcov_type`, `add_intercept`, `max_iter`, `tol`, `compute_inference`, `confidence_level` |
 | `GLMM` | `family`, `link`, `with_intercept`, `max_iter`, `tol` |
 | `PSpline` | `n_knots`, `degree`, `lambda_`, `with_intercept` |
 
@@ -373,3 +490,5 @@ smooth = model.predict(x)
 
 - [Linear Model Classes](linear.md)
 - [ALM Class](alm.md)
+- [Survival (AFT) Model Classes](survival.md)
+- [Penalized GLM expressions](../regression/penalized-glm.md)

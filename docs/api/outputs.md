@@ -241,6 +241,56 @@ Struct {
 
 ---
 
+## Penalized GLM Output
+
+Returned by `penalized_glm`. See [Penalized GLM](regression/penalized-glm.md).
+
+```
+Struct {
+    intercept: Float64,
+    coefficients: List[Float64],
+    deviance: Float64,
+    null_deviance: Float64,
+    pseudo_r_squared: Float64,
+    log_likelihood: Float64,
+    aic: Float64,
+    bic: Float64,
+    dispersion: Float64,       # 1.0 (Poisson unless estimate_dispersion=True; Binomial; Logistic),
+                                # Pearson estimate (Gamma, Tweedie, quasipoisson), or theta (Negative Binomial)
+    theta: Float64,            # NaN unless family="negative_binomial"
+    accuracy: Float64,         # NaN unless family="logistic"
+    has_separation: Boolean,   # family="binomial"/"logistic" only; False otherwise
+    iterations: UInt32,
+    converged: Boolean,
+    n_observations: UInt32,
+}
+```
+
+---
+
+## AFT Output
+
+Returned by `aft`. See [Survival Regression (AFT)](regression/survival.md).
+
+```
+Struct {
+    intercept: Float64,
+    coefficients: List[Float64],
+    scale: Float64,                 # sigma; 1.0 (not estimated) for distribution="exponential"
+    log_likelihood: Float64,        # on the time scale, as survreg reports it
+    null_log_likelihood: Float64,   # intercept(+scale)-only model
+    aic: Float64,
+    bic: Float64,
+    iterations: UInt32,
+    converged: Boolean,
+    n_observations: UInt32,
+    n_events: UInt32,
+    n_censored: UInt32,
+}
+```
+
+---
+
 ## ALM Output
 
 Returned by `alm`.
@@ -335,6 +385,33 @@ List[Struct {
 
 ---
 
+## Inference Summary Output
+
+Returned by `penalized_glm_summary` and `aft_summary`. See
+[Penalized GLM](regression/penalized-glm.md#penalized_glm_summary) and
+[Survival Regression (AFT)](regression/survival.md#aft_summary).
+
+```
+List[Struct {
+    term: String,
+    estimate: Float64,
+    std_error: Float64,
+    statistic: Float64,   # Wald z, normal reference
+    p_value: Float64,
+    ci_lower: Float64,
+    ci_upper: Float64,
+}]
+```
+
+A widened, 7-field variant of [Summary Output](#summary-output) (adds `ci_lower`/`ci_upper`) —
+additive, not a replacement; the shared `summary_output_dtype` and every other `*_summary`
+expression are unchanged. Rows are `intercept` (when an intercept is fitted), `x1..xp`, and for
+`aft_summary` a trailing `log_scale` row (omitted for `distribution="exponential"`). The
+`intercept` row is read directly from the upstream engine's own intercept inference fields,
+never recomputed locally.
+
+---
+
 ## Prediction Output
 
 Returned by `*_predict` functions.
@@ -361,6 +438,30 @@ Struct {
 ```
 
 Some tests include additional fields like `df`, `n`, `estimate`, `ci_lower`, `ci_upper`.
+
+---
+
+## Mann-Whitney / Wilcoxon Output
+
+Returned by `mann_whitney_u` and `wilcoxon_signed_rank`. See
+[Non-Parametric Tests](tests/nonparametric.md).
+
+```
+Struct {
+    statistic: Float64,
+    p_value: Float64,
+    estimate: Float64,    # Hodges-Lehmann shift (mann_whitney_u) / pseudo-median (wilcoxon_signed_rank)
+    ci_lower: Float64,
+    ci_upper: Float64,
+}
+```
+
+`estimate`/`ci_lower`/`ci_upper` are trailing fields added in 0.8.0 — the first two fields
+(`statistic`, `p_value`) are unchanged in order and value. They are `NaN` unless `conf_level`
+is given (R reports them only with `conf.int = TRUE`); a one-sided `alternative` gives an
+infinite bound. Values match R `wilcox.test(conf.int = TRUE)` on 126 upstream reference cases
+and equal the [`MannWhitneyU`/`WilcoxonSignedRank`](classes/tests.md) classes' `estimate`/
+`conf_int` exactly.
 
 ---
 
