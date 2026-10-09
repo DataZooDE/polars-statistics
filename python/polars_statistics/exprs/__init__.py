@@ -131,6 +131,8 @@ from polars_statistics.exprs.regression import (
     tweedie,
     probit,
     cloglog,
+    # Penalized GLM
+    penalized_glm,
     alm,
     # Summary functions
     ols_summary,
@@ -330,6 +332,8 @@ __all__ = [
     "probit",
     "cloglog",
     "alm",
+    # Penalized GLM expressions
+    "penalized_glm",
     # Summary expressions
     "ols_summary",
     "ridge_summary",

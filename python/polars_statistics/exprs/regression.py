@@ -5,9 +5,10 @@ These expressions allow fitting regression models within group_by and over opera
 
 from __future__ import annotations
 
+import math
 import warnings
 from pathlib import Path
-from typing import Union
+from typing import Literal, Sequence, Union
 
 import polars as pl
 from polars.plugins import register_plugin_function
@@ -2078,6 +2079,325 @@ def cloglog(
             pl.lit(add_intercept, dtype=pl.Boolean),
             *x_exprs,
         ],
+        returns_scalar=True,
+    )
+
+
+# ============================================================================
+# Penalized GLM Expressions
+# ============================================================================
+
+_PRIOR_KINDS = ("flat", "normal", "laplace")
+
+
+def _normalize_priors(
+    priors: Sequence[Union[None, str, tuple, dict]] | None,
+) -> list[dict]:
+    """Normalize a priors spec into a list of ``{"kind", "loc", "scale"}`` dicts.
+
+    Accepts, per entry: ``None`` or ``"flat"`` (flat prior), a tuple/list
+    ``(kind, loc, scale)`` or ``(kind,)``, or a dict with ``"kind"`` and
+    optional ``"loc"`` (default ``0.0``) / ``"scale"`` (default ``inf``).
+    An optional leading entry applies to the intercept.
+    """
+    if priors is None:
+        return []
+    out: list[dict] = []
+    for entry in priors:
+        if entry is None:
+            out.append({"kind": "flat", "loc": 0.0, "scale": float("inf")})
+            continue
+        if isinstance(entry, str):
+            kind, loc, scale = entry, 0.0, float("inf")
+        elif isinstance(entry, dict):
+            if "kind" not in entry:
+                raise ValueError("prior dict entries require a 'kind' key")
+            kind = entry["kind"]
+            loc = float(entry.get("loc", 0.0))
+            scale = float(entry.get("scale", float("inf")))
+        elif isinstance(entry, (tuple, list)):
+            if len(entry) == 1:
+                kind, loc, scale = entry[0], 0.0, float("inf")
+            elif len(entry) == 2:
+                kind, loc, scale = entry[0], float(entry[1]), float("inf")
+            elif len(entry) == 3:
+                kind, loc, scale = entry[0], float(entry[1]), float(entry[2])
+            else:
+                raise ValueError(
+                    f"prior tuple entries must have 1-3 elements, got {len(entry)}"
+                )
+        else:
+            raise ValueError(f"unsupported prior entry type: {type(entry)!r}")
+
+        kind_lc = str(kind).lower()
+        if kind_lc not in _PRIOR_KINDS:
+            raise ValueError(
+                f"unknown prior kind {kind!r} (expected one of {_PRIOR_KINDS})"
+            )
+        if kind_lc in ("normal", "laplace"):
+            if not math.isfinite(loc):
+                raise ValueError(f"prior loc must be finite for kind={kind_lc!r}, got {loc}")
+            if math.isnan(scale) or scale <= 0.0:
+                raise ValueError(
+                    f"prior scale must be > 0 (or +inf for a flat prior) for "
+                    f"kind={kind_lc!r}, got {scale}"
+                )
+        out.append({"kind": kind_lc, "loc": loc, "scale": scale})
+    return out
+
+
+_PENALIZED_GLM_FAMILIES = (
+    "poisson",
+    "binomial",
+    "logistic",
+    "negative_binomial",
+    "gamma",
+    "tweedie",
+)
+_PENALIZED_GLM_LINKS = {
+    "poisson": ("log", "identity", "sqrt"),
+    "binomial": ("logit", "probit", "cloglog"),
+    "logistic": ("logit",),
+    "negative_binomial": ("log",),
+    "gamma": ("log",),
+    "tweedie": ("log",),
+}
+
+
+def _validate_penalized_glm_family(
+    family_lc: str,
+    link: str | None,
+    theta: float | None,
+    power: float | None,
+    threshold: float,
+    estimate_dispersion: bool,
+) -> None:
+    """Mirror ``parse_penalized_glm_family`` (Rust) so invalid configuration
+    raises ``ValueError`` when the expression is built, not at collect time."""
+    if family_lc not in _PENALIZED_GLM_FAMILIES:
+        raise ValueError(
+            f"unknown family {family_lc!r} (expected one of {_PENALIZED_GLM_FAMILIES})"
+        )
+    if estimate_dispersion and family_lc != "poisson":
+        raise ValueError(
+            f'estimate_dispersion=True is only supported for family="poisson" '
+            f"(got {family_lc!r})"
+        )
+    if theta is not None and family_lc != "negative_binomial":
+        raise ValueError('theta is only valid for family="negative_binomial"')
+    if theta is not None and not (math.isfinite(theta) and theta > 0.0):
+        raise ValueError(f"theta must be finite and > 0, got {theta}")
+    if power is not None and family_lc != "tweedie":
+        raise ValueError('power is only valid for family="tweedie"')
+    if family_lc == "tweedie":
+        p = 1.5 if power is None else power
+        if not (1.0 <= p <= 2.0):
+            raise ValueError(f'power must be in [1, 2] for family="tweedie", got {p}')
+    if link is not None:
+        allowed = _PENALIZED_GLM_LINKS[family_lc]
+        if link not in allowed:
+            raise ValueError(
+                f"invalid link {link!r} for family={family_lc!r} (expected one of {allowed})"
+            )
+    if family_lc == "logistic" and not (0.0 < threshold < 1.0):
+        raise ValueError(f"threshold must be in (0, 1), got {threshold}")
+
+
+def _penalized_glm_kwargs(
+    family: str,
+    link: str | None,
+    theta: float | None,
+    power: float | None,
+    threshold: float,
+    lambda_: float,
+    estimate_dispersion: bool,
+    priors: Sequence[Union[None, str, tuple, dict]] | None,
+    vcov_type: str,
+    add_intercept: bool,
+    max_iter: int,
+    tol: float,
+    conf_level: float = 0.95,
+    prefix: str = "penalized_glm",
+    predict_type: str = "response",
+    null_policy: str = "drop",
+) -> dict:
+    """Validate and assemble the kwargs dict shared by every penalized GLM
+    expression (fit here; summary/predict reuse the same shape in Plan 04)."""
+    family_lc = str(family).lower()
+    if lambda_ < 0.0:
+        raise ValueError(f"lambda_ must be >= 0, got {lambda_}")
+    if max_iter < 1:
+        raise ValueError(f"max_iter must be >= 1, got {max_iter}")
+    if tol <= 0.0:
+        raise ValueError(f"tol must be > 0, got {tol}")
+    link_lc = link.lower() if link is not None else None
+    _validate_penalized_glm_family(family_lc, link_lc, theta, power, threshold, estimate_dispersion)
+    vcov_type_lc = str(vcov_type).lower()
+    if vcov_type_lc not in ("laplace", "sandwich", "naive"):
+        raise ValueError(
+            f"unknown vcov_type {vcov_type!r} (expected one of 'laplace', 'sandwich', 'naive')"
+        )
+    return {
+        "family": family_lc,
+        "link": link_lc,
+        "theta": float(theta) if theta is not None else None,
+        "power": float(power) if power is not None else None,
+        "threshold": float(threshold),
+        "lambda": float(lambda_),
+        "estimate_dispersion": bool(estimate_dispersion),
+        "priors": _normalize_priors(priors),
+        "vcov_type": vcov_type_lc,
+        "with_intercept": bool(add_intercept),
+        "max_iter": int(max_iter),
+        "tol": float(tol),
+        "conf_level": float(conf_level),
+        "prefix": str(prefix),
+        "predict_type": str(predict_type),
+        "null_policy": str(null_policy),
+    }
+
+
+def penalized_glm(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    family: Literal["poisson", "binomial", "logistic", "negative_binomial", "gamma", "tweedie"] = (
+        "poisson"
+    ),
+    link: str | None = None,
+    theta: float | None = None,
+    power: float | None = None,
+    threshold: float = 0.5,
+    lambda_: float = 0.0,
+    estimate_dispersion: bool = False,
+    priors: Sequence[Union[None, str, tuple, dict]] | None = None,
+    offset: Union[pl.Expr, str, None] = None,
+    add_intercept: bool = True,
+    max_iter: int = 100,
+    tol: float = 1e-8,
+) -> pl.Expr:
+    """Family-generic penalized GLM as a Polars expression.
+
+    One IRLS engine shared by Poisson, Binomial, Logistic, Negative Binomial,
+    Gamma and Tweedie, with optional explicit per-coefficient priors and a
+    selectable covariance at the mode. Works with ``group_by`` and ``.over``.
+
+    Parameters
+    ----------
+    y : pl.Expr or str
+        Response variable.
+    *x : pl.Expr or str
+        Feature variables (one or more).
+    family : {"poisson", "binomial", "logistic", "negative_binomial", "gamma", "tweedie"}
+        Response family:
+
+        - ``"poisson"``: links ``"log"`` (default), ``"identity"``, ``"sqrt"``.
+        - ``"binomial"``: links ``"logit"`` (default), ``"probit"``, ``"cloglog"``.
+        - ``"logistic"``: binomial/logit plus training ``accuracy``.
+        - ``"negative_binomial"``: log link; ``theta`` fixed or ML-estimated.
+        - ``"gamma"``: log link.
+        - ``"tweedie"``: log link; variance ``power`` in ``[1, 2]``.
+    link : str, optional
+        Link function; defaults to the family's canonical link. Invalid for
+        the family raises ``ValueError`` when the expression is built.
+    theta : float, optional
+        Fixed Negative Binomial dispersion; ``None`` estimates it by maximum
+        likelihood (``MASS::glm.nb``). Only valid for
+        ``family="negative_binomial"``.
+    power : float, optional
+        Tweedie variance power in ``[1, 2]``; default ``1.5``. Only valid for
+        ``family="tweedie"``.
+    threshold : float, default 0.5
+        Classification threshold for ``family="logistic"``, in ``(0, 1)``.
+    lambda_ : float, default 0.0
+        Uniform L2 ridge penalty on non-intercept coefficients, composed
+        additively with ``priors``.
+    estimate_dispersion : bool, default False
+        Poisson only: scale the coefficient covariance by the Pearson
+        chi2/df dispersion estimate (R's ``quasipoisson``). Every other
+        family fixes its own dispersion rule and rejects this option with
+        ``ValueError`` (Poisson itself otherwise uses dispersion 1, matching
+        R's ``glm(family = poisson)``).
+    priors : sequence, optional
+        Per-coefficient priors, positionally aligned with ``x``. Each entry
+        is ``None``/``"flat"`` (flat), a ``(kind, loc, scale)`` tuple/list
+        (or ``(kind,)``), or a dict ``{"kind", "loc", "scale"}`` — ``kind``
+        is one of ``"flat"``, ``"normal"``, ``"laplace"``. An optional
+        leading entry applies to the intercept (``p`` or ``p + 1`` entries).
+    offset : pl.Expr, str, or None
+        Offset added to the linear predictor (on the link scale, e.g.
+        ``log(exposure)``). Defaults to a constant ``0.0`` column.
+    add_intercept : bool, default True
+        Whether to include an intercept term.
+    max_iter : int, default 100
+        Maximum IRLS iterations.
+    tol : float, default 1e-8
+        Convergence tolerance.
+
+    Returns
+    -------
+    pl.Expr
+        Struct containing: intercept, coefficients, deviance, null_deviance,
+        pseudo_r_squared, log_likelihood, aic, bic, dispersion, theta,
+        accuracy, has_separation, iterations, converged, n_observations.
+
+    Notes
+    -----
+    Rows with a null / non-finite value in ``y``, any feature, or the offset
+    are dropped before fitting. Validated against R ``glm`` / ``MASS::glm.nb``
+    / ``negative.binomial(theta)`` on the `anofox-regression` 0.5.22 R
+    reference fixture.
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> import polars_statistics as ps
+    >>>
+    >>> df.group_by("group").agg(
+    ...     ps.penalized_glm("y", "x1", "x2", family="poisson").alias("model")
+    ... )
+    >>>
+    >>> # Gaussian priors (ridge-like, posterior mode)
+    >>> df.select(
+    ...     ps.penalized_glm(
+    ...         "y", "x1", "x2", priors=[None, ("normal", 0.0, 1.0), ("normal", 0.0, 1.0)]
+    ...     ).alias("model")
+    ... )
+    """
+    kwargs = _penalized_glm_kwargs(
+        family=family,
+        link=link,
+        theta=theta,
+        power=power,
+        threshold=threshold,
+        lambda_=lambda_,
+        estimate_dispersion=estimate_dispersion,
+        priors=priors,
+        vcov_type="laplace",
+        add_intercept=add_intercept,
+        max_iter=max_iter,
+        tol=tol,
+    )
+
+    if isinstance(y, str):
+        y = pl.col(y)
+    if offset is None:
+        offset_expr = pl.lit(0.0, dtype=pl.Float64)
+    elif isinstance(offset, str):
+        offset_expr = pl.col(offset).cast(pl.Float64)
+    else:
+        offset_expr = offset.cast(pl.Float64)
+
+    x_exprs = []
+    for xi in x:
+        if isinstance(xi, str):
+            xi = pl.col(xi)
+        x_exprs.append(xi.cast(pl.Float64))
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_penalized_glm",
+        args=[y.cast(pl.Float64), offset_expr, *x_exprs],
+        kwargs=kwargs,
         returns_scalar=True,
     )
 

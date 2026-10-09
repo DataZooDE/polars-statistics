@@ -172,6 +172,8 @@ from polars_statistics.exprs import (
     nnls,
     nnls_formula,
     nnls_predict,
+    # Penalized GLM expressions
+    penalized_glm,
     # Regression expressions
     ols,
     # Formula-based regression expressions
@@ -451,6 +453,8 @@ __all__ = [
     "probit",
     "cloglog",
     "alm",
+    # Penalized GLM expressions
+    "penalized_glm",
     # Summary expressions
     "ols_summary",
     "ridge_summary",

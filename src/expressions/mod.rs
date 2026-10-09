@@ -11,6 +11,7 @@ mod modern;
 mod nonparametric;
 mod output_types;
 mod parametric;
+mod penalized_glm;
 mod regression;
 mod resampling;
 mod tost;
@@ -32,6 +33,8 @@ pub use nonparametric::*;
 pub use output_types::*;
 #[allow(unused_imports)]
 pub use parametric::*;
+#[allow(unused_imports)]
+pub use penalized_glm::*;
 #[allow(unused_imports)]
 pub use regression::*;
 #[allow(unused_imports)]
