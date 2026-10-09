@@ -4,18 +4,18 @@ milestone: v0.8.0
 milestone_name: Claude Code Skills Plugin
 current_phase: "16.3"
 current_phase_name: Upstream API Wave 2
-current_plan: 2
+current_plan: 3
 status: executing
-stopped_at: Completed 16.3-01-PLAN.md
-last_updated: "2026-10-09T18:26:02.468Z"
+stopped_at: Completed 16.3-02-PLAN.md
+last_updated: "2026-10-09T19:04:11.027Z"
 last_activity: 2026-10-09
 last_activity_desc: Phase 16.3 execution started
-state_head: a4356b86f9d5fb90c7d6e54dc70766a6ef059244
+state_head: 668fd2777d3f392d25d8a9d39e1a5b3e23b75095
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 36
-  completed_plans: 25
+  completed_plans: 26
   percent: 0
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 ## Current Position
 
 Phase: 16.3 (Upstream API Wave 2) — EXECUTING
-Current Plan: 2
+Current Plan: 3
 Total Plans in Phase: 11
 Status: Ready to execute
 Last activity: 2026-10-09 — Phase 16.3 execution started
@@ -120,6 +120,7 @@ Execution order: 13 → 14 → 15 → 16 → 17
 | Phase 16.2 P07 | 16min | 2 tasks | 4 files |
 | Phase 16.2 P08 | 25min | 2 tasks | 5 files |
 | Phase 16.3 P01 | 40min | 3 tasks | 13 files |
+| Phase 16.3 P02 | 35min | 3 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -189,6 +190,8 @@ Recent decisions affecting current work:
 - [Phase 16.3]: 16.3-01: Post-hoc tests (tukey_hsd/pairwise_t_test/dunn_test) are long-format (values, groups) expressions, not the existing N-separate-columns ANOVA convention, to preserve real group labels in group1/group2.
 - [Phase 16.3]: 16.3-01: p_adjust/ptukey/qtukey use a bare Float64 output dtype (no Struct wrapper) -- first use of this dtype shape in the codebase.
 - [Phase 16.3]: 16.3-01: ptukey(qtukey(p)) round-trip test tolerance relaxed from 1e-8 to 1e-6 -- qtukey's Newton-Raphson solver converges to its own EPS=1e-4 criterion, not an implementation bug.
+- [Phase 16.3]: 16.3-02: GLM intercept-inference getters mirror the 16.1 Huber convention verbatim (t_statistics/conf_interval_lower/upper, four intercept_* fields) across all 10 OLS/WLS/GLM PyModel classes; LogisticRegression reads via fitted.inner().result() since FittedLogistic wraps FittedBinomial — Ensures API consistency across the regression PyModel family and avoids local recomputation of already-populated RegressionResult fields
+- [Phase 16.3]: 16.3-02: Split the regenerated _polars_statistics.pyi stub per task (splicing only the touched classes' blocks into the previously-committed stub) to keep each task commit's diff scoped to its own PyModel classes — Keeps per-task commits atomic even though scripts/gen_stubs.py regenerates the full cumulative file
 
 ### Pending Todos
 
@@ -224,7 +227,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-10-09T18:26:02.418Z
-Stopped at: Completed 16.3-01-PLAN.md
+Last session: 2026-10-09T19:04:10.969Z
+Stopped at: Completed 16.3-02-PLAN.md
 Resume file: None
 </content>
