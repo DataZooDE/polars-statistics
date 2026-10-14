@@ -68,6 +68,10 @@ Requirements for this milestone. Each maps to exactly one roadmap phase.
 
 Deferred to future releases.
 
+### Upstream Wave 3 (deferred to v0.9.0, user decision 2026-10-14)
+
+- **UPST-11**: Expose anofox-statistics 0.4.8+ (classification, timeseries incl. Durbin-Watson, survival modules) and anofox-regression 0.5.23+ (regularisation paths + k-fold CV, quantile-regression inference, predict_se, partial residuals, Breusch-Pagan/White tests, AFT survival curves, penalized-GLM augment, GLMM AIC/BIC). v0.8.0 is frozen at anofox-statistics 0.4.7 / anofox-regression 0.5.22.
+
 ### Forecast Integration
 
 - **FCST-01**: Evaluate exposing `anofox-forecast` capabilities (separate crate, not in this milestone)
