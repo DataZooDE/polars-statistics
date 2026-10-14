@@ -1,10 +1,12 @@
 //! PyO3 wrapper for Generalized Linear Mixed Model (GLMM) regression.
 
 use numpy::{PyArray1, PyReadonlyArray1, PyReadonlyArray2};
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
 
-use anofox_regression::solvers::{FittedGlmm, GlmmRegressor};
+use anofox_regression::solvers::{FittedGlmm, GlmmRegressor, GlmmRegressorBuilder};
+use faer::Col;
 
 use crate::utils::{IntoNumpy, ToFaer};
 
@@ -14,9 +16,9 @@ use crate::utils::{IntoNumpy, ToFaer};
 /// or penalized IRLS (Poisson/Binomial). Random effects are specified through
 /// group membership arrays passed at fit time.
 ///
-/// Use the class-method factories (`gaussian()`, `poisson()`, `binomial()`) to
-/// construct the model with the appropriate family, then call `fit` or
-/// `fit_crossed`.
+/// Use the class-method factories (`gaussian()`, `poisson()`, `binomial()`,
+/// `negative_binomial()`, `gamma()`, `tweedie(power)`) to construct the model
+/// with the appropriate family, then call `fit` or `fit_crossed`.
 ///
 /// Parameters (via factory methods)
 /// ----------------------------------
@@ -44,6 +46,11 @@ use crate::utils::{IntoNumpy, ToFaer};
 #[pyclass(name = "GLMM")]
 pub struct PyGLMM {
     family: String,
+    /// Tweedie variance power (`1 < power < 2`); unused by every other family.
+    power: f64,
+    /// Fixed negative-binomial size theta; `None` estimates it (`glmer.nb`).
+    /// Unused by every other family.
+    nb_theta: Option<f64>,
     with_intercept: bool,
     random_intercept: bool,
     random_slopes: Vec<usize>,
@@ -70,6 +77,8 @@ impl PyGLMM {
             crate::pymodels::errors::resolve_intercept(py, add_intercept, with_intercept, true)?;
         Ok(Self {
             family: "gaussian".into(),
+            power: 1.5,
+            nb_theta: None,
             with_intercept,
             random_intercept: true,
             random_slopes: vec![],
@@ -95,6 +104,8 @@ impl PyGLMM {
             crate::pymodels::errors::resolve_intercept(py, add_intercept, with_intercept, true)?;
         Ok(Self {
             family: "poisson".into(),
+            power: 1.5,
+            nb_theta: None,
             with_intercept,
             random_intercept: true,
             random_slopes: vec![],
@@ -120,6 +131,54 @@ impl PyGLMM {
             crate::pymodels::errors::resolve_intercept(py, add_intercept, with_intercept, true)?;
         Ok(Self {
             family: "binomial".into(),
+            power: 1.5,
+            nb_theta: None,
+            with_intercept,
+            random_intercept: true,
+            random_slopes: vec![],
+            reml,
+            max_iter,
+            tol,
+            fitted: None,
+        })
+    }
+
+    /// Construct a negative-binomial (NB2) GLMM with the log link,
+    /// `Var(y) = mu + mu^2/theta`.
+    ///
+    /// By default the size `theta` is estimated by maximising the profiled
+    /// Laplace log-likelihood, as `lme4::glmer.nb(nAGQ = 0)`; pass `nb_theta`
+    /// to fix it, matching `glmer(family = MASS::negative.binomial(theta), nAGQ = 0)`.
+    ///
+    /// Parameters
+    /// ----------
+    /// nb_theta : float, optional
+    ///     Fixed negative-binomial size theta. Must be finite and > 0.
+    ///     When omitted (default), theta is estimated from the data.
+    #[staticmethod]
+    #[pyo3(signature = (nb_theta=None, add_intercept=None, with_intercept=None, reml=false, max_iter=100, tol=1e-8))]
+    fn negative_binomial(
+        py: Python<'_>,
+        nb_theta: Option<f64>,
+        add_intercept: Option<bool>,
+        with_intercept: Option<bool>,
+        reml: bool,
+        max_iter: usize,
+        tol: f64,
+    ) -> PyResult<Self> {
+        if let Some(t) = nb_theta {
+            if !t.is_finite() || t <= 0.0 {
+                return Err(PyValueError::new_err(format!(
+                    "nb_theta must be finite and > 0, got {t}"
+                )));
+            }
+        }
+        let with_intercept =
+            crate::pymodels::errors::resolve_intercept(py, add_intercept, with_intercept, true)?;
+        Ok(Self {
+            family: "negative_binomial".into(),
+            power: 1.5,
+            nb_theta,
             with_intercept,
             random_intercept: true,
             random_slopes: vec![],
@@ -166,18 +225,7 @@ impl PyGLMM {
         // Portably convert u64 → usize (safe on all wheel targets)
         let group_usize: Vec<usize> = group.iter().map(|&g| g as usize).collect();
 
-        let model = match slf.family.as_str() {
-            "poisson" => GlmmRegressor::poisson(),
-            "binomial" => GlmmRegressor::binomial(),
-            _ => GlmmRegressor::gaussian(),
-        }
-        .with_intercept(slf.with_intercept)
-        .random_intercept(slf.random_intercept)
-        .random_slopes(slf.random_slopes.clone())
-        .reml(slf.reml)
-        .max_iterations(slf.max_iter)
-        .tolerance(slf.tol)
-        .build();
+        let model = slf.regressor_builder(None).build();
 
         let fitted = model
             .fit(&x_mat, &y_col, &group_usize)
@@ -229,18 +277,7 @@ impl PyGLMM {
             .collect();
         let group_refs: Vec<&[usize]> = groups_usize.iter().map(|g| g.as_slice()).collect();
 
-        let model = match slf.family.as_str() {
-            "poisson" => GlmmRegressor::poisson(),
-            "binomial" => GlmmRegressor::binomial(),
-            _ => GlmmRegressor::gaussian(),
-        }
-        .with_intercept(slf.with_intercept)
-        .random_intercept(slf.random_intercept)
-        .random_slopes(slf.random_slopes.clone())
-        .reml(slf.reml)
-        .max_iterations(slf.max_iter)
-        .tolerance(slf.tol)
-        .build();
+        let model = slf.regressor_builder(None).build();
 
         let fitted = model
             .fit_crossed(&x_mat, &y_col, &group_refs)
@@ -417,6 +454,18 @@ impl PyGLMM {
         Ok(fitted.theta())
     }
 
+    /// Negative-binomial size θ (`Var(y) = μ + μ²/θ`) — estimated, or as fixed
+    /// via `negative_binomial(nb_theta=...)`. `None` for every other family.
+    /// Distinct from `theta` (the profiled σ_b/σ variance-component ratio).
+    #[getter]
+    fn nb_theta(&self) -> PyResult<Option<f64>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("GLMM"))?;
+        Ok(fitted.nb_theta())
+    }
+
     /// Residual standard deviation (1.0 for Poisson/Binomial).
     #[getter]
     fn sigma(&self) -> PyResult<f64> {
@@ -489,5 +538,35 @@ impl PyGLMM {
     /// Readable multi-line summary of the results.
     fn summary(slf: &Bound<'_, Self>) -> PyResult<String> {
         crate::pymodels::ergonomics::generic_summary(slf.as_any())
+    }
+}
+
+impl PyGLMM {
+    /// Build the upstream `GlmmRegressorBuilder` from the current family and
+    /// options, optionally with a per-observation offset. Shared by `fit` and
+    /// `fit_crossed` so every option is threaded identically on both paths.
+    fn regressor_builder(&self, offset: Option<Col<f64>>) -> GlmmRegressorBuilder {
+        let mut builder = match self.family.as_str() {
+            "poisson" => GlmmRegressor::poisson(),
+            "binomial" => GlmmRegressor::binomial(),
+            "negative_binomial" => GlmmRegressor::negative_binomial(),
+            "gamma" => GlmmRegressor::gamma(),
+            "tweedie" => GlmmRegressor::tweedie(self.power),
+            _ => GlmmRegressor::gaussian(),
+        }
+        .with_intercept(self.with_intercept)
+        .random_intercept(self.random_intercept)
+        .random_slopes(self.random_slopes.clone())
+        .reml(self.reml)
+        .max_iterations(self.max_iter)
+        .tolerance(self.tol);
+
+        if let Some(t) = self.nb_theta {
+            builder = builder.nb_theta(t);
+        }
+        if let Some(o) = offset {
+            builder = builder.offset(o);
+        }
+        builder
     }
 }

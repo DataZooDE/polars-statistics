@@ -1,10 +1,54 @@
-"""Smoke tests for GlmmRegressor PyModel (REGR-01)."""
+"""Smoke tests for GlmmRegressor PyModel (REGR-01).
 
+16.3 plan 03 (UPST-09) adds the negative-binomial / Gamma / Tweedie families,
+offsets, and per-factor random slopes from anofox-regression 0.5.18-0.5.22
+(issue #29), validated against lme4 2.0.1 / tweedie 3.1.0 / statmod 1.5.2 via
+``tests/fixtures/glmm_families_reference.py`` (verbatim transcription of
+upstream's ``tests/fixtures/glmm_families_validation.rs``; see that module's
+docstring for provenance and ``SOURCE_SHA256``).
+"""
+
+import hashlib
+import importlib.util
 import math
+import os
+from pathlib import Path
 
 import numpy as np
 import pytest
 from polars_statistics import GLMM
+
+_FAM_FIXTURE_PATH = Path(__file__).parent / "fixtures" / "glmm_families_reference.py"
+_fam_spec = importlib.util.spec_from_file_location(
+    "glmm_families_reference", _FAM_FIXTURE_PATH
+)
+fam = importlib.util.module_from_spec(_fam_spec)
+_fam_spec.loader.exec_module(fam)
+
+
+def close(got: float, want: float, tol: float) -> bool:
+    """Upstream's `close(a, b, tol) = |a - b| / (1 + |b|) < tol`."""
+    return abs(got - want) / (1.0 + abs(want)) < tol
+
+
+def assert_close_vec(got, want, tol: float, label: str = "") -> None:
+    """Element-wise `close`, matching upstream's `close_vec` assertion style."""
+    got = list(got)
+    want = list(want)
+    assert len(got) == len(want), f"{label}: length {len(got)} != {len(want)}"
+    for i, (g, w) in enumerate(zip(got, want)):
+        err = abs(g - w) / (1.0 + abs(w))
+        assert err < tol, f"{label}[{i}]: got {g!r}, want {w!r} (scaled err {err:.2e} >= {tol:.0e})"
+
+
+def in_solver_order(ids, r_values):
+    """Reorder R's per-level values (sorted level ids) into the solver's level
+    order, which is the order of first appearance in `ids`."""
+    seen = []
+    for i in ids:
+        if i not in seen:
+            seen.append(i)
+    return [r_values[i] for i in seen]
 
 # Scenario LMM_A from anofox-regression 0.5.16
 # tests/fixtures/glmm_validation.rs (80 rows, 1 feature, 8 groups of 10), copied
@@ -280,3 +324,89 @@ class TestGLMMWaldInference:
         model = GLMM.gaussian()
         with pytest.raises(Exception):
             _ = model.conf_int()
+
+
+def test_glmm_families_fixture_integrity():
+    """Fixture length/value sanity, plus a live re-parse-and-compare against the
+    upstream .rs file when the cargo registry cache is present (16.3-02 pattern)."""
+    assert len(fam.X) == 180
+    assert len(fam.XC) == 240
+    assert fam.NB_H_THETA == pytest.approx(3.6625227730)
+    assert fam.SOURCE_CRATE == "anofox-regression 0.5.22"
+    assert len(fam.SOURCE_SHA256) == 64
+
+    cargo_home = Path(os.environ.get("CARGO_HOME", Path.home() / ".cargo"))
+    candidates = []
+    for version in ("0.5.21", "0.5.22"):
+        candidates.extend(
+            sorted(
+                cargo_home.glob(
+                    f"registry/src/*/anofox-regression-{version}/tests/fixtures/"
+                    "glmm_families_validation.rs"
+                )
+            )
+        )
+    if not candidates:
+        pytest.skip("upstream anofox-regression 0.5.21/0.5.22 source not found")
+    upstream = candidates[0]
+    content = upstream.read_text()
+    sha = hashlib.sha256(content.encode()).hexdigest()
+    if sha != fam.SOURCE_SHA256:
+        pytest.skip(
+            "upstream fixture sha256 differs from the pinned SOURCE_SHA256 "
+            "(a different crate version is cached under $CARGO_HOME)"
+        )
+    assert "3.6625227730" in content
+
+
+class TestGLMMFamilies:
+    """NegBin / Gamma / Tweedie families vs lme4 (16.3-03, UPST-09)."""
+
+    def test_negative_binomial_estimated_theta_matches_glmer_nb(self):
+        X = np.array(fam.X)[:, None]
+        y = np.array(fam.Y_NB)
+        group = list(fam.G)
+        model = GLMM.negative_binomial().fit(X, y, group)
+        assert model.converged
+        tol = 2e-3
+        assert close(model.nb_theta, fam.NB_H_THETA, tol)
+        assert_close_vec(model.fixed_effects, fam.NB_H_FIXEF, tol, "NB_H fixef")
+        assert_close_vec(model.std_errors, fam.NB_H_SE, tol, "NB_H se")
+        assert close(model.log_likelihood, fam.NB_H_LOGLIK, tol)
+        assert close(model.sigma, fam.NB_H_SIGMA, tol)
+        assert close(model.random_sd[0], fam.NB_H_SD_RE, tol)
+        assert_close_vec(model.random_effects, fam.NB_H_BLUP, tol, "NB_H blup")
+
+    def test_negative_binomial_fixed_theta_type_contract(self):
+        """nb_theta is reported as None for the families that don't use it, and
+        echoed exactly for a user-fixed value (full glmer-reference check in
+        Task 2's test_negative_binomial_fixed_theta_matches_glmer)."""
+        X = np.array(fam.X)[:, None]
+        y = np.array(fam.Y_NB)
+        group = list(fam.G)
+        model = GLMM.negative_binomial(nb_theta=2.0).fit(X, y, group)
+        assert model.nb_theta == 2.0
+
+    @pytest.mark.parametrize("bad_theta", [0.0, -1.0, float("nan")])
+    def test_negative_binomial_invalid_theta(self, bad_theta):
+        with pytest.raises(ValueError):
+            GLMM.negative_binomial(nb_theta=bad_theta)
+
+    def test_existing_families_nb_theta_none(self):
+        """Pre-existing families regress unchanged and report nb_theta is None."""
+        gaussian_model = _fit_lmm_a()
+        assert gaussian_model.nb_theta is None
+
+        rng = np.random.default_rng(3)
+        n = 60
+        X = rng.standard_normal((n, 2))
+        group = np.repeat(np.arange(6), 10).astype(np.int64)
+        y = rng.poisson(lam=2.0, size=n).astype(float)
+        poisson_model = GLMM.poisson().fit(X, y, group.tolist())
+        assert poisson_model.is_fitted()
+        assert poisson_model.nb_theta is None
+
+    def test_unfitted_nb_theta_raises(self):
+        model = GLMM.negative_binomial()
+        with pytest.raises(Exception):
+            _ = model.nb_theta
