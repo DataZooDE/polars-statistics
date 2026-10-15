@@ -1165,6 +1165,216 @@ Tests verify both equivalence detection and non-equivalence detection:
 
 ---
 
+## Upstream API Wave 2 (v0.8.0, Phase 16.3)
+
+New capabilities from the `anofox-statistics` 0.4.7 / `anofox-regression`
+0.5.17–0.5.22 upstream refresh exposed in Phase 16.3, validated against R 4.6.1
+references (plus `dunn.test` 1.4.2, `lme4` 2.0.1, `metafor`, `broom` 1.0.13).
+
+### Post-hoc Tests & Multiple Comparisons
+
+Validated against R's `TukeyHSD()`, `pairwise.t.test()`, `dunn.test::dunn.test()`,
+`p.adjust()`, `ptukey()`/`qtukey()` (R 4.6.1).
+
+=== "R"
+
+    ```r
+    TukeyHSD(aov(values ~ groups))
+    pairwise.t.test(values, groups, pool.sd = TRUE, p.adjust.method = "holm")
+    dunn.test::dunn.test(values, groups, method = "holm")
+    p.adjust(p, method = "BH")
+    ptukey(q, nmeans, df)
+    qtukey(p, nmeans, df)
+    ```
+
+=== "polars-statistics"
+
+    ```python
+    ps.tukey_hsd("values", "groups", conf_level=0.95)
+    ps.pairwise_t_test("values", "groups", pooled_sd=True, p_adjust_method="holm")
+    ps.dunn_test("values", "groups", p_adjust_method="holm")
+    ps.p_adjust("p", method="fdr")
+    ps.ptukey("q", nmeans=4, df=20)
+    ps.qtukey("p", nmeans=4, df=20)
+    ```
+
+| Capability | R reference | Tolerance |
+|:-----------|:------------|----------:|
+| `p_adjust` (holm/hochberg/hommel/bonferroni/BH/BY/none, 56 cases) | `p.adjust()` | 1e-14 |
+| `ptukey` (630 rows, both tails) | `ptukey()` | 1e-10 |
+| `qtukey` (420 rows) | `qtukey()` | 1e-8 |
+| `tukey_hsd` / `pairwise_t_test` / `dunn_test` (1365 rows) | `TukeyHSD()` / `pairwise.t.test()` / `dunn.test()` | 1e-9 (Tukey `p_value` 1e-10 absolute) |
+
+Source test files: `tests/test_p_adjust.py`, `tests/test_posthoc.py`.
+
+### Empirical-Bayes Shrinkage (`eb_shrink`)
+
+Validated against R's `metafor::rma(method = "DL")` / `blup()`.
+
+=== "R"
+
+    ```r
+    library(metafor)
+    fit <- rma(yi, sei = sei, method = "DL")
+    blup(fit)
+    ```
+
+=== "polars-statistics"
+
+    ```python
+    ps.eb_shrink("estimate", "std_error", method="dl")
+    ```
+
+| Output field | R reference | Tolerance |
+|:-------------|:------------|----------:|
+| `mu`, `mu_se`, `tau_squared`, `q`, `i_squared` | `rma(method = "DL")` | 1e-10 |
+| `shrunken`, `shrunken_se`, `weight` | `blup()` | 1e-10 |
+
+Validated on the upstream crate's YI/SEI fixture and the 13-trial
+`metafor::dat.bcg` reference. Source test file: `tests/test_eb_shrink.py`.
+
+### Per-Observation Diagnostics (`augment`)
+
+Validated against R `broom::augment` conventions (`rstandard`/`rstudent`/
+`hatvalues`/`cooks.distance`/`dffits`) on the `mtcars`/`warpbreaks` m1a
+fixture (`anofox-regression` 0.5.22 `tests/fixtures/m1a_validation.rs`).
+
+=== "R"
+
+    ```r
+    fit <- lm(mpg ~ wt + hp, data = mtcars)
+    broom::augment(fit)   # .fitted, .resid, .std.resid, .hat, .cooksd, .sigma
+    rstandard(fit); rstudent(fit); hatvalues(fit); cooks.distance(fit); dffits(fit)
+    ```
+
+=== "polars-statistics"
+
+    ```python
+    ps.augment("mpg", "wt", "hp", model="ols")
+    OLS().fit(x, y).augment(x, y)
+    ```
+
+| Model | Output fields | Tolerance |
+|:------|:---------------|----------:|
+| OLS / WLS | `fitted`/`residual`/`std_residual`/`stud_residual`/`leverage`/`cooks_d`/`dffits` | 1e-8 |
+| Binomial-logit (deviance + Pearson), Poisson (deviance + Pearson), Gamma, Negative Binomial | same fields | 1e-6 |
+| Tweedie (`var_power=2.0`, `link_power=0.0`) | reproduces Gamma's `cooks_d` and response `residual` | 1e-6 |
+
+Cross-checked elementwise (rel 1e-8) against the pre-existing
+`ps.leverage`/`ps.cooks_distance`/`ps.dffits`/`ps.studentized_residuals`/
+`ps.externally_studentized_residuals` for OLS. Source test file:
+`tests/test_augment.py`.
+
+### GLMM Families, Offsets, Per-Factor Random Slopes
+
+Validated against `lme4` 2.0.1: `glmer.nb()`, `glmer(family = MASS::negative.binomial(theta))`,
+`glmer(family = Gamma(link = "log"))`, `glmer(family = statmod::tweedie(var.power = 1.5))`,
+`offset()`, and crossed random slopes `(x | a) + (1 | b)`.
+
+=== "R"
+
+    ```r
+    library(lme4)
+    glmer.nb(y ~ x + (1 | group))
+    glmer(y ~ x + offset(log(exposure)) + (1 | group), family = poisson)
+    glmer(y ~ x + (x | group_a) + (1 | group_b), family = binomial)
+    ```
+
+=== "polars-statistics"
+
+    ```python
+    from polars_statistics import GLMM
+
+    GLMM.negative_binomial(nb_theta=None).fit(x, y, group)
+    GLMM.poisson().fit(x, y, group, offset=exposure_log)
+    GLMM.binomial().fit_crossed(x, y, groups=[group_a, group_b],
+                                 random_slopes_per_factor=[[0], None])
+    ```
+
+| Capability | R reference | Tolerance |
+|:-----------|:------------|-----------|
+| NegBin / Gamma / Tweedie families | `glmer.nb()` / `glmer(MASS::negative.binomial)` / `glmer(Gamma(log))` / `glmer(statmod::tweedie)` | 2e-4 |
+| Estimated NB `theta` | `glmer.nb()`'s estimated `theta` | 2e-3 |
+| Offset (`offset=`) | `offset()` in the `lme4` formula | 2e-4 |
+| Crossed per-factor random slopes (`random_slopes_per_factor`) | `(x | a) + (1 | b)` | 2e-3 |
+
+Source test file: `tests/test_glmm.py`; fixture `tests/fixtures/glmm_families_reference.py`
+(verbatim transcription of `anofox-regression` 0.5.22's `glmm_families_validation.rs`).
+
+### OLS / WLS Alias Tolerance
+
+Validated against R `lm`'s own aliasing rule (`dqrdc2`) with a configurable
+relative tolerance, on `anofox-regression` 0.5.22's `tests/issue64_lm_aliasing.rs`
+near-collinear references (R reference intercept `2.023318557879104`,
+coefficients `1.490290680634032`/`-0.772169023108856` at `alias_tolerance=1e-6`).
+
+=== "R"
+
+    ```r
+    lm(y ~ x1 + x1b + x2)   # x1b is a scaled copy of x1 at ratio 2e-7
+    ```
+
+=== "polars-statistics"
+
+    ```python
+    OLS(alias_tolerance=1e-6).fit(x, y)   # tighter than the 1e-7 default -> aliases x1b
+    ps.ols("y", "x1", "x1b", "x2", alias_tolerance=1e-8)  # looser -> keeps x1b
+    ```
+
+| Output field | Tolerance |
+|:--------------|----------:|
+| `intercept`, `coefficients`, `std_errors`, `rmse`, `r_squared`, `adj_r_squared` | 1e-9 |
+
+Source test file: `tests/test_alias_tolerance.py`.
+
+### LARS Fit Statistics
+
+`LARS.adj_r_squared` / `.mse` / `.rmse`, validated against R `summary(lm())`
+(OLS convention, `df = active coefficients + intercept`), `anofox-regression`
+0.5.22 issue #65.
+
+| Case | R reference | Tolerance |
+|:-----|:------------|----------:|
+| Full LAR path | `summary(lm())$adj.r.squared` / `rmse` | 1e-9 |
+| LassoLars (`alpha=0.05`, active-set `df`) | `rmse == sqrt(RSS / df_resid)`, `adj = 1 - (1-R²)(n-1)/df_resid` | 1e-12 |
+| LAR without intercept vs `OLS(add_intercept=False)` | `rmse` | 1e-8 |
+
+Source test file: `tests/test_lars.py`.
+
+### GLM / OLS / WLS Intercept Inference Getters (PyModel)
+
+`intercept_std_error`/`intercept_t_statistic`/`intercept_p_value`/
+`intercept_conf_interval` and `t_statistics`/`conf_interval_lower`/`upper`
+getters on `Logistic`, `Probit`, `Cloglog`, `LogisticRegression`, `Poisson`,
+`NegativeBinomial`, `Tweedie`, `Gamma`, `OLS`, `WLS`, plus `compute_inference`/
+`confidence_level` constructor kwargs, validated against R's `summary.glm()`/
+`summary.lm()`/`confint.default()` on the `mtcars`/`warpbreaks` m1a fixture.
+
+=== "R"
+
+    ```r
+    fit <- glm(vs ~ mpg, family = binomial)
+    summary(fit)$coefficients["(Intercept)", ]   # std.error, z value, Pr(>|z|)
+    confint.default(fit)["(Intercept)", ]        # Wald CI
+    ```
+
+=== "polars-statistics"
+
+    ```python
+    m = Logistic(compute_inference=True, confidence_level=0.95).fit(x, y)
+    m.intercept_std_error, m.intercept_t_statistic, m.intercept_p_value
+    m.intercept_conf_interval
+    ```
+
+| Model family | Tolerance |
+|:-------------|----------:|
+| OLS / WLS | 1e-8 |
+| GLM (Binomial-logit/probit/cloglog, Poisson, Gamma, Tweedie, Negative Binomial) | 1e-6 |
+
+Source test file: `tests/test_glm_intercept_inference.py`.
+
+---
+
 ## Upstream Refresh (v0.8.0)
 
 New capabilities and R-matching behaviour changes from the `anofox-statistics`
@@ -1216,7 +1426,10 @@ The full list of R packages referenced in validation:
 | `coin` | Permutation tests |
 | `effectsize` | Cohen's d, rank-biserial correlation |
 | `tseries` | Jarque-Bera normality test |
-| `lme4` | GLMM Wald inference (`z_values`/`p_values`/`conf_int`) |
+| `lme4` | GLMM Wald inference (`z_values`/`p_values`/`conf_int`); NegBin/Gamma/Tweedie families, offsets, crossed per-factor random slopes |
+| `dunn.test` | Dunn's test for multiple comparisons (`dunn.test()`) |
+| `metafor` | Empirical-Bayes / random-effects meta-analysis (`rma(method = "DL")`, `blup()`) |
+| `broom` | Tidy per-observation model diagnostics (`augment()`) |
 
 ---
 

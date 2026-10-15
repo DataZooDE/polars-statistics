@@ -40,6 +40,35 @@ new builders and PyModel options:
   [GLM Model Classes](api/classes/glm.md), and
   [Survival Model Classes](api/classes/survival.md).
 
+### New in 0.8.0 (Upstream API Wave 2, Phase 16.3)
+
+Full exposure of `anofox-statistics` 0.4.7 and `anofox-regression`
+0.5.17–0.5.22's remaining additions:
+
+- **Post-hoc tests & multiple comparisons** — `tukey_hsd`, `pairwise_t_test`,
+  `dunn_test`, `p_adjust`, `ptukey`, `qtukey`. See
+  [Post-hoc Tests & Multiple Comparisons](api/tests/posthoc.md).
+- **Empirical-Bayes shrinkage** — `ps.eb_shrink`. See
+  [Empirical-Bayes Shrinkage](api/regression/shrinkage.md).
+- **Per-observation diagnostics** — `ps.augment` expression and `.augment()`
+  on `OLS`, `WLS`, and all eight GLM PyModel classes. See the
+  [Augment section of Diagnostics](api/regression/diagnostics.md#augment-per-observation-diagnostics).
+- **GLM/OLS/WLS inference getters** — `intercept_std_error`/
+  `intercept_t_statistic`/`intercept_p_value`/`intercept_conf_interval`,
+  `t_statistics`/`conf_interval_lower`/`upper`, and `compute_inference`/
+  `confidence_level` kwargs. See [GLM Model Classes](api/classes/glm.md) and
+  [Linear Model Classes](api/classes/linear.md).
+- **GLMM** — `negative_binomial`/`gamma`/`tweedie` families, `offset`,
+  `random_slopes_per_factor`, and the per-factor covariance/SD/BLUP
+  accessors. See the GLMM section of [GLM Model Classes](api/classes/glm.md).
+- **`model_info`** on every fitted PyModel class. See
+  [Linear Model Classes](api/classes/linear.md) and
+  [GLM Model Classes](api/classes/glm.md).
+- **`alias_tolerance`** on `OLS`/`WLS` and the `ols`/`wls` expression family.
+  See [Linear Model Classes](api/classes/linear.md).
+- **LARS** `adj_r_squared`/`mse`/`rmse` getters. See
+  [Linear Model Classes](api/classes/linear.md).
+
 ---
 
 ## Table of Contents

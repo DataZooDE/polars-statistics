@@ -115,6 +115,32 @@ ps.bootstrap_mean_ci("x", seed=42)        # Percentile bootstrap CI for the mean
 
 All tests return a struct with `statistic` and `p_value` fields.
 
+### Post-hoc Tests & Multiple Comparisons
+
+After a significant omnibus test, find out *which* group pairs actually differ:
+
+```python
+import polars as pl
+import polars_statistics as ps
+
+# 1. Omnibus test (wide format: one column per group)
+wide = pl.DataFrame({"a": [5.1, 5.3, 4.9], "b": [6.2, 6.5, 6.1], "c": [7.8, 8.0, 7.5]})
+wide.select(ps.one_way_anova("a", "b", "c").alias("anova")).unnest("anova")
+
+# 2. Post-hoc pairwise comparisons (long format: one values + one groups column)
+long_df = pl.DataFrame({
+    "value": [5.1, 5.3, 4.9, 6.2, 6.5, 6.1, 7.8, 8.0, 7.5],
+    "group": ["a", "a", "a", "b", "b", "b", "c", "c", "c"],
+})
+pairs = long_df.select(
+    ps.tukey_hsd("value", "group").alias("ph")  # or ps.pairwise_t_test / ps.dunn_test
+).select(pl.col("ph").explode().struct.unnest())
+# Columns: group1, group2, n1, n2, estimate, statistic, df, p_value, p_adj, ci_lower, ci_upper
+
+ps.p_adjust("p_values", method="BH")      # Any R p.adjust method, standalone
+ps.ptukey("q", nmeans=4, df=20)           # Studentized-range CDF/quantile
+```
+
 ### TOST Equivalence Tests
 
 Test for practical equivalence using Two One-Sided Tests (TOST) procedure:
@@ -207,6 +233,40 @@ ps.poisson_working_residuals("y", "x1")
 # GLM goodness-of-fit
 ps.pearson_chi_squared_logistic("y", "x1")   # Σ pearson_resid² + df_resid
 ps.pearson_chi_squared_poisson("y", "x1")
+```
+
+Per-observation diagnostics (R `broom::augment`), one combined expression for
+`ols`/`wls`/`logistic`/`probit`/`cloglog`/`poisson`/`negative_binomial`/`tweedie`/`gamma`
+— also available as `OLS().fit(x, y).augment(x, y)`, and on `WLS` and every GLM class:
+
+```python
+import polars as pl
+import polars_statistics as ps
+
+reg = pl.DataFrame({"y": [1.0, 2.0, 3.0, 4.0, 10.0], "x1": [1.0, 2.0, 3.0, 4.0, 5.0]})
+reg.select(
+    ps.augment("y", "x1", model="ols", residual_type="pearson").alias("diag")
+).unnest("diag")
+# -> fitted, residual, std_residual, stud_residual, leverage, cooks_d, dffits
+```
+
+### Empirical-Bayes Shrinkage
+
+Shrink noisy per-group estimates (e.g. per-store effect sizes) toward a pooled mean,
+matching R `metafor::rma(method = "DL")` / `blup()`:
+
+```python
+import polars as pl
+import polars_statistics as ps
+
+df = pl.DataFrame({
+    "estimate": [0.12, -0.05, 0.30, 0.02, 0.18],
+    "std_error": [0.08, 0.15, 0.05, 0.20, 0.07],
+})
+df.select(
+    ps.eb_shrink("estimate", "std_error", method="dl").alias("eb")
+).unnest("eb")
+# Columns: shrunken, shrunken_se, weight, mu, mu_se, tau_squared, i_squared, q, n_groups
 ```
 
 ### Formula Syntax
@@ -400,6 +460,18 @@ Every Polars expression has a `*_fit` Rust entry point in `polars_statistics::ex
   - `aft_predict_survival_fit`
   - `aft_predict_cdf_fit`
 - **Forecast comparison / TOST / modern**: see `expressions::forecast`, `expressions::tost`, `expressions::modern`.
+- **Post-hoc tests** (`src/expressions/posthoc.rs`):
+  - `p_adjust_fit`
+  - `ptukey_fit`
+  - `qtukey_fit`
+  - `tukey_hsd_fit`
+  - `pairwise_t_test_fit`
+  - `dunn_test_fit`
+- **Empirical-Bayes shrinkage** (`src/expressions/shrinkage.rs`):
+  - `eb_shrink_fit`
+- **Per-observation diagnostics** (`AugmentKwargs`):
+  - `augment_fit`
+- **OLS/WLS alias tolerance** (named kwargs structs, old `*_fit` signatures unchanged — `LinearAliasKwargs` / `LinearAliasPredictKwargs`): `ols_fit_with`/`wls_fit_with`/`ols_summary_fit_with`/`wls_summary_fit_with`/`ols_predict_fit_with`/`wls_predict_fit_with`
 
 The input slice layout (which input is `y`, which are scalars, which are `x` columns) is documented above each function — same contract that the Polars plugin uses.
 
