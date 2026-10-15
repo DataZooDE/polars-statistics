@@ -2,21 +2,21 @@
 gsd_state_version: "1.0"
 milestone: v0.8.0
 milestone_name: Claude Code Skills Plugin
-current_phase: "16.1"
-current_phase_name: Upstream Crate Refresh
-current_plan: Not started
-status: planning
+current_phase: 17
+current_phase_name: Release 0.8.0
+current_plan: 1
+status: executing
 stopped_at: Phase 16 complete, ready to plan Phase 16.1
-last_updated: "2026-10-15T21:49:31.789Z"
-last_activity: 2026-10-15
-last_activity_desc: Phase 16 complete, transitioned to Phase 16.1
-state_head: b5c181e42430585f78373ee0a40dfa07dc13d448
+last_updated: "2026-10-15T22:17:43.937Z"
+last_activity: 2026-10-16
+last_activity_desc: Phase 17 execution started
+state_head: a19902d75a23af29b7fd1755cda064a2aeac6884
 progress:
   total_phases: 9
-  completed_phases: 4
-  total_plans: 39
+  completed_phases: 5
+  total_plans: 44
   completed_plans: 39
-  percent: 44
+  percent: 56
 ---
 
 # Project State
@@ -26,15 +26,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-20)
 
 **Core value:** Every public statistical capability in the backing `anofox-*` crates is exposed through the Polars/Python API — correctly, documented, tested, and shipped to PyPI.
-**Current focus:** Phase 16 — Wheel Bundling
+**Current focus:** Phase 17 — Release 0.8.0
 
 ## Current Position
 
-Phase: 16.1 — Upstream Crate Refresh
-Current Plan: Not started
-Total Plans in Phase: 1
-Status: Ready to plan
-Last activity: 2026-10-15 — Phase 16 complete, transitioned to Phase 16.1
+Phase: 17 (Release 0.8.0) — EXECUTING
+Current Plan: 1
+Total Plans in Phase: 5
+Status: Executing Phase 17
+Last activity: 2026-10-16 — Phase 17 execution started
 
 ## Milestone Roadmap (v0.8.0)
 
