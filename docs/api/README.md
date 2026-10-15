@@ -10,6 +10,7 @@ Complete API documentation for polars-statistics.
 | **Statistical Tests** | |
 | [Parametric Tests](tests/parametric.md) | t-tests, Brown-Forsythe, Yuen, one_way_anova, two_way_anova, repeated_measures_anova |
 | [Non-Parametric Tests](tests/nonparametric.md) | Mann-Whitney, Wilcoxon, Kruskal-Wallis, Brunner-Munzel |
+| [Post-hoc Tests & Multiple Comparisons](tests/posthoc.md) | `tukey_hsd`, `pairwise_t_test`, `dunn_test`, `p_adjust`, `ptukey`, `qtukey` |
 | [Distributional Tests](tests/distributional.md) | Shapiro-Wilk, D'Agostino, Jarque-Bera normality tests |
 | [Forecast Tests](tests/forecast.md) | Diebold-Mariano, Clark-West, SPA, MCS |
 | [Correlation Tests](tests/correlation.md) | Pearson, Spearman, Kendall, distance correlation, partial correlation, icc (matrix-input) |
@@ -26,10 +27,11 @@ Complete API documentation for polars-statistics.
 | [Demand Classification](regression/aid.md) | AID demand patterns and anomaly detection |
 | [Formula Syntax](regression/formula.md) | R-style formulas with interactions and polynomials |
 | [Summary & Predict](regression/summary-predict.md) | Coefficient tables and prediction intervals |
-| [Diagnostics](regression/diagnostics.md) | Condition number, quasi-separation detection, gamma_* GLM diagnostics |
+| [Diagnostics](regression/diagnostics.md) | Condition number, quasi-separation detection, `augment` per-observation diagnostics, gamma_* GLM diagnostics |
+| [Empirical-Bayes Shrinkage](regression/shrinkage.md) | `eb_shrink` — random-effects meta-analytic shrinkage toward a pooled mean |
 | **Model Classes** | |
-| [Linear Model Classes](classes/linear.md) | OLS, Ridge, ElasticNet, WLS, RLS, BLS, Quantile, Isotonic, TheilSen, RANSAC, BayesianRidge, ARD, LARS, PassiveAggressive, MomentAccumulator |
-| [GLM Model Classes](classes/glm.md) | Logistic, Poisson, NegativeBinomial, Tweedie, Probit, Cloglog, Gamma, PenalizedGLM, GLMM, PSpline |
+| [Linear Model Classes](classes/linear.md) | OLS, Ridge, ElasticNet, WLS, RLS, BLS, Quantile, Isotonic, TheilSen, RANSAC, BayesianRidge, ARD, LARS, PassiveAggressive, MomentAccumulator — every class exposes `model_info` and `OLS`/`WLS` expose `.augment()` |
+| [GLM Model Classes](classes/glm.md) | Logistic, Poisson, NegativeBinomial, Tweedie, Probit, Cloglog, Gamma, PenalizedGLM, GLMM, PSpline — every class exposes `model_info`; GLMM adds negative-binomial/Gamma/Tweedie families, offsets, per-factor random slopes |
 | [Survival model classes](classes/survival.md) | AFT (accelerated failure time survival regression) |
 | [ALM Class](classes/alm.md) | Augmented Linear Model class |
 | [LmDynamic Class](classes/dynamic.md) | Dynamic linear model class |

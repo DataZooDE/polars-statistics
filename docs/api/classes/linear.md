@@ -23,10 +23,45 @@ model.std_errors        # np.ndarray (if compute_inference=True)
 model.p_values          # np.ndarray (if compute_inference=True)
 model.aic               # float
 model.bic               # float
+model.model_info        # dict — see "model_info" below
 
 # Predict
 predictions = model.predict(X_new)
 ```
+
+### `model_info`
+
+Every class on this page (plus every [GLM Model Class](glm.md)) exposes
+`model_info -> dict` — `{"model_type": str, "family": str | None, "link": str}` — read from
+the fitted model's own upstream `HasModelInfo` implementation, raising if the model is unfit.
+`family`/`link` default to `"gaussian"`/`"identity"` for classes without an explicit family
+(e.g. `OLS`); some classes have no family concept at all (`family: None`).
+
+| Class | `model_type` | `family` | `link` |
+|-------|--------------|----------|--------|
+| `OLS` | `"ols"` | `"gaussian"` | `"identity"` |
+| `Ridge` | `"ridge"` | `"gaussian"` | `"identity"` |
+| `ElasticNet` | `"elastic_net"` | `"gaussian"` | `"identity"` |
+| `WLS` | `"wls"` | `"gaussian"` | `"identity"` |
+| `RLS` | `"rls"` | `"gaussian"` | `"identity"` |
+| `BLS` (`lower_bound`/`upper_bound` not both `0`/unbounded-below) | `"bls"` | `"gaussian"` | `"identity"` |
+| `BLS(lower_bound=0.0)` (non-negative least squares) | `"nnls"` | `"gaussian"` | `"identity"` |
+| `PLS` | `"pls"` | `"gaussian"` | `"identity"` |
+| `Quantile` | `"quantile"` | `None` | `"identity"` |
+| `Isotonic` | `"isotonic"` | `None` | `"identity"` |
+| `Huber` | `"huber"` | `None` | `"identity"` |
+| `TheilSen` | `"theil_sen"` | `None` | `"identity"` |
+| `RANSAC` | `"ransac"` | `None` | `"identity"` |
+| `BayesianRidge` | `"bayesian_ridge"` | `"gaussian"` | `"identity"` |
+| `ARD` | `"ard"` | `"gaussian"` | `"identity"` |
+| `LARS` | `"lars"` | `"gaussian"` | `"identity"` |
+| `PassiveAggressive` | `"passive_aggressive"` | `None` | `"identity"` |
+
+`BLS` reports `"nnls"` vs. `"bls"` per upstream's own bound-based dispatch (a pure
+non-negativity constraint on every coefficient is treated as the NNLS special case) — this is
+not a separate constructor kwarg, it is inferred from the `lower_bound`/`upper_bound` you pass.
+See [GLM Model Classes](glm.md#common-interface) for the GLM-family `model_type`/`family`/
+`link` table (`Logistic`/`Probit`/`Cloglog` share `family="binomial"` but differ by `link`).
 
 ---
 
@@ -40,9 +75,26 @@ from polars_statistics import OLS
 model = OLS(
     with_intercept: bool = True,
     compute_inference: bool = True,
+    alias_tolerance: float = 1e-7,
 )
 model.fit(X, y)
+
+# Inference getters (populated when compute_inference=True)
+model.intercept_std_error, model.intercept_t_statistic   # float | None
+model.intercept_p_value, model.intercept_conf_interval    # float | None, tuple[float, float] | None
+model.conf_interval_lower, model.conf_interval_upper      # np.ndarray | None — feature coefficients
+
+# Per-observation diagnostics
+diag = model.augment(X, y, residual_type=None)   # dict: fitted/residual/std_residual/
+                                                   # stud_residual/leverage/cooks_d/dffits/resid_type
 ```
+
+**`alias_tolerance`** (default `1e-7`, R `lm`'s own tolerance): see
+[Rank-deficient designs](#rank-deficient-designs-ols-wls) below.
+
+**`.augment(x, y, residual_type=None)`:** R `broom::augment`-style per-observation
+diagnostics — see [`ps.augment`](../regression/diagnostics.md#augment-per-observation-diagnostics)
+for the full field semantics; `residual_type` defaults to `"response"` for OLS/WLS.
 
 ### `variance_factor` / `leverage_new` (OLS, WLS, Ridge)
 
@@ -90,6 +142,12 @@ pair — both now match `"cholesky"` and R's `dqrdc2` convention.
 model = OLS(solve_method="qr").fit(X, y)   # X columns 1 and 2 are collinear
 model.coefficients  # e.g. [1.49, nan] — column 2 (the later one) is aliased
 ```
+
+**`alias_tolerance`** (default `1e-7`, matching `anofox_regression::utils::LM_ALIAS_TOLERANCE`
+and R `lm`'s own tolerance) controls how close to exactly collinear a column must be before it
+is aliased: a **tighter** tolerance (smaller value) aliases more columns, a **looser**
+tolerance (larger value) keeps more. The default reproduces the behaviour documented above
+exactly.
 
 ---
 
@@ -176,12 +234,29 @@ from polars_statistics import WLS
 model = WLS(
     with_intercept: bool = True,
     compute_inference: bool = True,
+    alias_tolerance: float = 1e-7,
 )
 model.fit(X, y, weights)  # weights: 1D numpy array
 
 model.variance_factor()    # np.ndarray | None — inv(X'WX); see the OLS note above
 model.leverage_new(x_new)  # np.ndarray — weighted hat-diagonal leverage; see the OLS note above
+
+# Inference getters (populated when compute_inference=True)
+model.std_errors, model.t_statistics, model.p_values      # np.ndarray | None — feature coefficients
+model.conf_interval_lower, model.conf_interval_upper       # np.ndarray | None
+model.intercept_std_error, model.intercept_t_statistic     # float | None
+model.intercept_p_value, model.intercept_conf_interval      # float | None, tuple[float, float] | None
+
+# Per-observation diagnostics
+diag = model.augment(X, y, weights=None, residual_type=None)  # weights=None reuses the fit's own weights
 ```
+
+**`alias_tolerance`** (default `1e-7`): same rank-deficiency tolerance as OLS — see
+[Rank-deficient designs](#rank-deficient-designs-ols-wls) below.
+
+**`.augment(x, y, weights=None, residual_type=None)`:** same R `broom::augment` semantics as
+`OLS.augment` — see [`ps.augment`](../regression/diagnostics.md#augment-per-observation-diagnostics).
+`weights=None` (default) reuses the fit's own weights rather than requiring them again.
 
 > **Known limitation:** `WLS.hc_inference` raises `NotImplementedError` — HC-robust inference
 > is not yet implemented for WLS. Use `OLS.hc_inference` or `Ridge.hc_inference` instead.
@@ -604,8 +679,18 @@ model.intercept            # float or None
 model.coef_path            # list[np.ndarray] — coefficients at each knot
 model.alphas               # list[float] — regularization values at each knot
 model.r_squared            # float
+model.adj_r_squared        # float (0.8.0) — R convention, df = active coefficients + intercept
+model.mse                  # float (0.8.0)
+model.rmse                 # float (0.8.0)
+model.model_info           # dict (0.8.0) — {"model_type": "lars", "family": "gaussian", "link": "identity"}
 model.n_observations       # int
 ```
+
+**`adj_r_squared`/`mse`/`rmse` (0.8.0, anofox-regression 0.5.21 #65):** use R's `summary(lm())`
+convention, `df = active coefficients + intercept`. For the full LAR path this matches
+`summary(lm())` exactly; for `n_nonzero_coefs` stopping early (the active-set df formula) or a
+fit without an intercept, `rmse`/`adj_r_squared` match `OLS(add_intercept=False)` fit on the
+same active features.
 
 **Example:**
 ```python
@@ -667,10 +752,10 @@ model.fit(X_train, y_train)
 
 | Class | Parameters |
 |-------|------------|
-| `OLS` | `with_intercept`, `compute_inference` |
+| `OLS` | `with_intercept`, `compute_inference`, `alias_tolerance` |
 | `Ridge` | `lambda_`, `with_intercept`, `compute_inference` |
 | `ElasticNet` | `lambda_`, `alpha`, `with_intercept`, `compute_inference` |
-| `WLS` | `with_intercept`, `compute_inference` |
+| `WLS` | `with_intercept`, `compute_inference`, `alias_tolerance` |
 | `RLS` | `forgetting_factor`, `with_intercept`, `initial_p_diagonal` |
 | `BLS` | `lower_bound`, `upper_bound`, `with_intercept` |
 | `Huber` | `epsilon`, `alpha`, `with_intercept`, `max_iter`, `tol`, `compute_inference`, `confidence_level` |
