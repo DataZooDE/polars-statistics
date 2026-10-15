@@ -1,6 +1,6 @@
 ---
 name: polars-statistics-anova
-description: Use polars-statistics ANOVA — run one-way ANOVA (Fisher or Welch), two-way ANOVA, repeated-measures ANOVA, or intraclass correlation coefficient (ICC) as Polars expressions.
+description: Use polars-statistics ANOVA — run one-way ANOVA (Fisher or Welch), two-way ANOVA, repeated-measures ANOVA, or intraclass correlation coefficient (ICC); follow up with post-hoc pairwise comparisons (Tukey HSD, pairwise t-tests, Dunn's test) and p-value adjustment (p_adjust) as Polars expressions.
 version: "0.8.0"
 user-invocable: false
 ---
@@ -22,6 +22,10 @@ use the `ps.unnest()` helper from `polars-statistics-results`.
 
 There are no PyModel-class equivalents for the ANOVA family — these are expression-only.
 
+This skill also covers the **post-hoc / multiple-testing family** that follows a
+significant omnibus test: `tukey_hsd`, `pairwise_t_test`, `dunn_test` (pairwise group
+comparisons), and the `p_adjust`/`ptukey`/`qtukey` building blocks they use internally.
+
 ---
 
 ## When to use this skill
@@ -35,10 +39,16 @@ Route here when the user asks about any of the following:
 - Intraclass correlation, inter-rater reliability, ICC, `icc`
 - Which ANOVA function to use (one column per group vs. long format, etc.)
 - ANOVA struct output fields, how to extract `p_value`, `eta_squared`, `ss_between`
+- Post-hoc comparisons after a significant omnibus test — which groups differ:
+  `tukey_hsd`, `pairwise_t_test`, `dunn_test`
+- Multiple-testing / p-value adjustment: `p_adjust`, Holm/Hochberg/Hommel/Bonferroni/BH
+  (fdr)/BY
+- The studentized range distribution: `ptukey`, `qtukey`
 
 Also route here for questions about **format gotchas**: wide vs. long input for
 `one_way_anova`, raw vs. pre-encoded factors for `two_way_anova` and
-`repeated_measures_anova`, and the separate-rater-column contract for `icc`.
+`repeated_measures_anova`, the separate-rater-column contract for `icc`, and the
+long-format convention (`values`, `groups`) used by the post-hoc family below.
 
 ---
 
@@ -181,6 +191,50 @@ ps.icc(*rater_cols, icc_type="icc2")
 | `ci_upper` | f64 | Upper 95% confidence bound |
 | `n_subjects` | f64 | Number of subjects (rows) |
 | `n_raters` | f64 | Number of raters (columns passed) |
+
+---
+
+### Post-hoc comparisons & multiple testing
+
+Run the omnibus test first (`one_way_anova` for parametric data, `kruskal_wallis` for
+non-parametric data — see `polars-statistics-hypothesis-tests`). If it is significant,
+follow up with one of these to find which pairs of groups actually differ. Unlike
+`one_way_anova`'s wide format, these six functions take **long format**: one flat
+`values` column plus one `groups` label column (see Gotcha 6 below).
+
+```python
+# verify: skip -- function signature reference (not runnable Python; no DataFrame context)
+ps.tukey_hsd(values, groups, conf_level=0.95)
+ps.pairwise_t_test(values, groups, pooled_sd=True, p_adjust_method="holm", alternative="two-sided")
+ps.dunn_test(values, groups, p_adjust_method="holm")
+ps.p_adjust(p, method="holm")
+ps.ptukey(q, nmeans, df, nranges=1, lower_tail=True)
+ps.qtukey(p, nmeans, df, nranges=1, lower_tail=True)
+```
+
+| Function | Parameter | Default | Description |
+|----------|-----------|---------|-------------|
+| `tukey_hsd` | `values`, `groups` | required | Long-format observations / group labels |
+| `tukey_hsd` | `conf_level` | `0.95` | Family-wise CI level for `ci_lower`/`ci_upper`; must be in `(0, 1)`, checked at build time |
+| `pairwise_t_test` | `pooled_sd` | `True` | `True` pools the SD over all groups (R default); `False` runs a per-pair Welch t-test |
+| `pairwise_t_test` | `p_adjust_method` | `"holm"` | One of `"holm"`, `"hochberg"`, `"hommel"`, `"bonferroni"`, `"BH"` (alias `"fdr"`), `"BY"`, `"none"` (case-insensitive) |
+| `pairwise_t_test` | `alternative` | `"two-sided"` | `"two-sided"`/`"two_sided"`/`"two.sided"`, `"less"`, or `"greater"`, for `group2 - group1` |
+| `dunn_test` | `p_adjust_method` | `"holm"` | Same method set as `pairwise_t_test` |
+| `p_adjust` | `p`, `method` | `"holm"` | Column of raw p-values; same method set |
+| `ptukey`/`qtukey` | `q`/`p`, `nmeans`, `df`, `nranges`, `lower_tail` | `nranges=1`, `lower_tail=True` | Studentized-range CDF / quantile; each arg may be a scalar or a column |
+
+**`tukey_hsd`/`pairwise_t_test`/`dunn_test` return** `List[Struct{group1, group2, n1, n2, estimate, statistic, df, p_value, p_adj, ci_lower, ci_upper}]` —
+one row per group pair (`k(k-1)/2` rows for `k` groups), ordered like R's `TukeyHSD`
+(B-A, C-A, C-B, ...). `pairwise_t_test`'s `ci_lower`/`ci_upper` and `dunn_test`'s
+`df`/`ci_lower`/`ci_upper` are `NaN` (R's `pairwise.t.test`/`dunn.test` compute none of
+those). `p_adjust`/`ptukey`/`qtukey` return a bare `Float64` (`returns_scalar=False`, no
+Struct wrapper), same length as the input.
+
+**R equivalents:** `TukeyHSD(aov(values ~ factor(groups)), conf.level = conf_level)`;
+`pairwise.t.test(values, groups, p.adjust.method, pool.sd, alternative)`;
+`dunn.test::dunn.test(values, groups, method, altp = TRUE)` / `FSA::dunnTest`;
+`p.adjust(p, method)`; `ptukey(q, nmeans, df, nranges, lower.tail)`;
+`qtukey(p, nmeans, df, nranges, lower.tail)`.
 
 ---
 
@@ -331,6 +385,54 @@ p_val = result["anova"].struct.field("p_value")[0]
 print(f"p = {p_val:.4f}")
 ```
 
+### Example 6: Post-hoc comparisons after ANOVA / Kruskal-Wallis, and p-value adjustment
+
+```python
+import polars as pl
+import polars_statistics as ps
+
+df = pl.DataFrame({
+    "value": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0],
+    "group": ["a", "a", "a", "b", "b", "b", "c", "c", "c"],
+})
+
+# 1. Omnibus test first (wide format -- pivot the long data, see Gotcha 1):
+df_wide = (
+    df.with_row_index("row_id")
+    .pivot(on="group", values="value", index="row_id", aggregate_function="first")
+    .drop("row_id")
+)
+omnibus = df_wide.select(ps.one_way_anova("a", "b", "c").alias("anova"))
+print(omnibus["anova"].struct.field("p_value")[0])
+
+# 2. If significant, follow up with Tukey HSD on the original long-format data:
+tukey = (
+    df.select(ps.tukey_hsd("value", "group").alias("ph"))
+    .select(pl.col("ph").explode().struct.unnest())
+)
+print(tukey.filter(pl.col("p_adj") < 0.05))
+
+# 3. Kruskal-Wallis (wide) -> Dunn's test (long) for the non-parametric case:
+kw = df_wide.select(ps.kruskal_wallis("a", "b", "c").alias("kw"))
+print(kw["kw"].struct.field("p_value")[0])
+
+dunn = (
+    df.select(ps.dunn_test("value", "group").alias("ph"))
+    .select(pl.col("ph").explode().struct.unnest())
+)
+print(dunn)
+
+# 4. Adjust p-values from several independent families with .over():
+p_df = pl.DataFrame({
+    "family": ["x", "x", "x", "y", "y"],
+    "p": [0.001, 0.01, 0.03, 0.04, 0.2],
+})
+adjusted = p_df.with_columns(
+    ps.p_adjust("p", method="BH").over("family").alias("p_adj")
+)
+print(adjusted)
+```
+
 ---
 
 ## Gotchas / Notes
@@ -463,6 +565,69 @@ counts = df.group_by("subject").agg(pl.col("condition").n_unique().alias("n_cond
 assert counts["n_cond"].n_unique() == 1, "Unbalanced design -- fill or drop missing cells"
 ```
 
+### Gotcha 6: Post-hoc functions use LONG format — values + groups columns
+
+`tukey_hsd`, `pairwise_t_test`, and `dunn_test` take one flat `values` column plus one
+`groups` label column — the opposite convention from `one_way_anova`'s wide format
+(Gotcha 1). `groups` is cast to `pl.String`; numeric group labels are compared as
+strings (zero-pad them, e.g. `"01"`/`"02"`/`"10"`, if numeric sort order matters).
+
+```python
+import polars as pl
+import polars_statistics as ps
+
+df = pl.DataFrame({
+    "value": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+    "group": ["a", "a", "b", "b", "c", "c"],
+})
+df.select(ps.tukey_hsd("value", "group"))   # long format -- correct
+```
+
+### Gotcha 7: Post-hoc rows are dropped (NA) first; fewer than 2 usable groups gives an empty list
+
+Rows with a null/NaN `value` or a null `group` are dropped before the comparison runs
+(R's `NA` row-drop semantics). If fewer than 2 usable groups remain, the result is an
+**empty list**, never an exception. Inside `group_by().agg()`, each group is analysed
+independently — the same caveat as `one_way_anova` (Gotcha 1): a post-hoc call nested in
+a `group_by` only ever sees that one group's rows, so it is typically called at the
+whole-frame level, not per-group.
+
+### Gotcha 8: `estimate` sign and Dunn's `z` sign convention
+
+For `tukey_hsd` and `pairwise_t_test`, `estimate = mean(group2) - mean(group1)`. For
+`dunn_test`, `estimate` is the difference in mean ranks (`group2 - group1`) — but
+`dunn.test`/`FSA::dunnTest` report the **opposite sign** for their own `z` statistic;
+negate when porting an R-authored analysis. For `tukey_hsd`, `p_value == p_adj` always —
+Tukey's test is already simultaneous, so there is no separate unadjusted p-value.
+
+### Gotcha 9: `p_adjust` is a WHOLE-COLUMN operation — use `.over()` for independent families
+
+`p_adjust` adjusts an entire family of p-values together, not one row at a time. Passing
+several independent families (e.g. one per experiment) in a single column without
+`.over(family_col)` adjusts them as **one** combined family, which is usually wrong.
+Null/NaN entries are kept (null stays null, NaN stays NaN) and excluded from the
+comparison count `n`. Inside `group_by().agg()`, `p_adjust` returns one adjusted list
+per group — equivalent to `.over()` for this purpose.
+
+```python
+import polars as pl
+import polars_statistics as ps
+
+df = pl.DataFrame({"family": ["x", "x", "y", "y"], "p": [0.01, 0.04, 0.02, 0.03]})
+df.with_columns(ps.p_adjust("p", method="BH").over("family").alias("p_adj"))  # correct
+# df.with_columns(ps.p_adjust("p", method="BH").alias("p_adj"))  # wrong: treats x+y as one family
+```
+
+### Gotcha 10: `ptukey`/`qtukey` broadcast scalars and return NaN for invalid parameters
+
+Every argument (`q`/`p`, `nmeans`, `df`, `nranges`) may be a scalar or a column; a scalar
+broadcasts against any column arguments, but all column arguments must share the same
+length. Both functions return `NaN` (never raise) for `NaN` input or invalid parameters
+(`df < 2`, `nranges < 1`, `nmeans < 2`), and `qtukey` additionally returns `NaN` for `p`
+outside `[0, 1]`. `qtukey`'s Newton-Raphson solver converges to its own `1e-4` criterion,
+so `ptukey(qtukey(p, ...), ...)` round-trips only to `1e-6`, not full machine precision —
+this is expected, not a bug.
+
 ---
 
 ## See also
@@ -471,3 +636,4 @@ assert counts["n_cond"].n_unique() == 1, "Unbalanced design -- fill or drop miss
 - polars-statistics-regression — OLS, Ridge, Elastic Net, GLM, and all regression families
 - polars-statistics-results — extract struct fields, unnest result columns, to_dict(), summary()
 - polars-statistics-getting-started — install, model-selection decision matrix, sklearn migration
+- docs/api/tests/posthoc.md — full post-hoc / multiple-testing reference and R validation notes
