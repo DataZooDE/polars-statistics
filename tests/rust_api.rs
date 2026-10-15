@@ -3166,3 +3166,28 @@ fn posthoc_fits() {
         assert_eq!(rows.len(), 3, "3 groups must give 3 pairwise rows");
     }
 }
+
+#[test]
+fn eb_shrink_fits() {
+    // eb_shrink_fit: estimate, std_error, method, tau_squared
+    let yi = [0.10, 0.30, 0.35, 0.65, 1.00];
+    let sei = [0.30, 0.10, 0.50, 0.20, 0.40];
+    let inputs = vec![
+        series_f64("estimate", &yi),
+        series_f64("std_error", &sei),
+        scalar_str("method", "dl"),
+        scalar_f64_null("tau_squared"),
+    ];
+    let out = eb_shrink_fit(&inputs).expect("eb_shrink_fit failed");
+    assert_eq!(
+        out.len(),
+        5,
+        "eb_shrink_fit output length must equal input length"
+    );
+    let ca = out.struct_().expect("expected struct series");
+    let mu_s = ca
+        .field_by_name("mu")
+        .expect("eb_shrink_fit output missing mu field");
+    let mu = mu_s.f64().unwrap().get(0).expect("mu must not be null");
+    assert!(mu.is_finite(), "mu must be finite, got {mu}");
+}
