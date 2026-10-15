@@ -720,6 +720,18 @@ impl PyOLS {
         crate::pymodels::augment::augment_dict(py, fitted, x, y, None, residual_type.as_deref())
     }
 
+    /// Model type, error family (R naming; None for estimators without a
+    /// likelihood) and link of the fit (anofox-regression ModelInfo).
+    #[getter]
+    fn model_info<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, pyo3::types::PyDict>> {
+        use anofox_regression::HasModelInfo;
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("OLS"))?;
+        crate::pymodels::model_info::model_info_dict(py, fitted.model_info())
+    }
+
     /// Informative repr, e.g. ``OLS(fitted=True, r_squared=0.9820, ...)``.
     fn __repr__(slf: &Bound<'_, Self>) -> PyResult<String> {
         crate::pymodels::ergonomics::repr(slf.as_any())

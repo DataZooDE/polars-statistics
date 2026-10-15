@@ -167,15 +167,22 @@ def test_shapiro_to_dict_repr():
 
 
 def test_to_dict_values_are_json_like(reg_data):
-    """Every OLS to_dict value should be a plain scalar, None, ndarray, or a
+    """Every OLS to_dict value should be a plain scalar, None, ndarray, a
     ``(float, float)`` confidence-interval tuple (e.g. ``intercept_conf_interval``,
-    the 16.1 Huber convention mirrored onto OLS/WLS/GLMs in 16.3)."""
+    the 16.1 Huber convention mirrored onto OLS/WLS/GLMs in 16.3), or the
+    ``model_info`` dict (``{"model_type": str, "family": str | None, "link":
+    str}``, 16.3-08, UPST-09)."""
     x, y = reg_data
     d = OLS().fit(x, y).to_dict()
     for k, v in d.items():
         if isinstance(v, tuple):
             assert len(v) == 2 and all(isinstance(e, (int, float)) for e in v), (
                 f"{k} tuple has unexpected shape/content {v!r}"
+            )
+            continue
+        if k == "model_info":
+            assert isinstance(v, dict) and set(v) == {"model_type", "family", "link"}, (
+                f"model_info has unexpected shape {v!r}"
             )
             continue
         assert v is None or isinstance(v, (int, float, bool, np.ndarray)), (

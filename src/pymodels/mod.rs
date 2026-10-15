@@ -9,6 +9,9 @@ pub(crate) mod errors;
 // Shared `broom::augment`-style per-observation diagnostics helper.
 pub(crate) mod augment;
 
+// Shared `ModelInfo` -> dict helper (UPST-09).
+pub(crate) mod model_info;
+
 // Regression models
 mod py_aid;
 mod py_alm;
