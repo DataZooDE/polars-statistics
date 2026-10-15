@@ -5,17 +5,17 @@ milestone_name: Claude Code Skills Plugin
 current_phase: "16.3"
 current_phase_name: Upstream API Wave 2
 current_plan: 11
-status: executing
-stopped_at: Completed 16.3-10-PLAN.md
-last_updated: "2026-10-15T19:41:42.244Z"
+status: verifying
+stopped_at: Completed 16.3-11-PLAN.md -- Phase 16.3 (Upstream API Wave 2) complete, ready for verification
+last_updated: "2026-10-15T19:53:10.726Z"
 last_activity: 2026-10-09
 last_activity_desc: Phase 16.3 execution started
-state_head: a5773560871eaee8c5c763eed2bfdf97a0c150bf
+state_head: f0ee6f0f19baf38c9e7b382aee99b2e747722481
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 36
-  completed_plans: 34
+  completed_plans: 35
   percent: 0
 ---
 
@@ -33,7 +33,7 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 Phase: 16.3 (Upstream API Wave 2) — EXECUTING
 Current Plan: 11
 Total Plans in Phase: 11
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-10-09 — Phase 16.3 execution started
 
 ## Milestone Roadmap (v0.8.0)
@@ -129,6 +129,7 @@ Execution order: 13 → 14 → 15 → 16 → 17
 | Phase 16.3 P08 | 20min | 3 tasks | 35 files |
 | Phase 16.3 P09 | 35min | 3 tasks | 13 files |
 | Phase 16.3 P10 | 25min | 2 tasks | 4 files |
+| Phase 16.3 P11 | 35min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -217,6 +218,8 @@ Recent decisions affecting current work:
 - [Phase 16.3]: [Phase 16.3]: 16.3-09: mkdocs docs for the 16.3 surface verified against the live package (not docstrings); fixed a pre-existing stale GLMM direct-constructor doc example (GLMM only supports the six family-factory staticmethods, not GLMM(family=...))
 - [Phase 16.3]: [Phase 16.3]: 16.3-10: CHANGELOG [Unreleased] Dependencies section is append-only (16.2's stale 'planned for a later release' sentence preserved verbatim) -- new pin/deferral facts recorded as a trailing bullet, not an edit to that line
 - [Phase 16.3]: [Phase 16.3]: 16.3-10: moved the ps.augment() README mention out of the pre-existing bare Diagnostics code fence into its own self-contained runnable snippet, since the verify script execs every fence containing the literal 'augment(' substring
+- [Phase 16.3]: [Phase 16.3]: 16.3-11: All post-hoc / multiple-testing functions documented in the anova skill, not hypothesis-tests, even though dunn_test follows kruskal_wallis (owned by hypothesis-tests) -- matches the plan's routing decision; hypothesis-tests cross-references by name instead of duplicating content.
+- [Phase 16.3]: [Phase 16.3]: 16.3-11: GLM Group 5's shared 0.8.0 surface (model_info, .augment(), intercept/CI getters) documented once as a shared-surface note instead of repeated per-class; GLMM Group 6 rewritten into a shared-structural-kwargs block plus per-family one-liners to avoid repeating the same kwarg list six times.
 
 ### Pending Todos
 
@@ -252,7 +255,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-10-15T19:41:42.180Z
-Stopped at: Completed 16.3-10-PLAN.md
+Last session: 2026-10-15T19:53:10.671Z
+Stopped at: Completed 16.3-11-PLAN.md -- Phase 16.3 (Upstream API Wave 2) complete, ready for verification
 Resume file: None
 </content>
