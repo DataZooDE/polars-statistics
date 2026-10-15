@@ -4,18 +4,18 @@ milestone: v0.8.0
 milestone_name: Claude Code Skills Plugin
 current_phase: 17
 current_phase_name: Release 0.8.0
-current_plan: 2
+current_plan: 3
 status: executing
-stopped_at: Completed 17-01-PLAN.md
-last_updated: "2026-10-15T22:45:12.595Z"
+stopped_at: "Completed 17-02-PLAN.md (PR #48 open, CI green)"
+last_updated: "2026-10-15T23:07:47.690Z"
 last_activity: 2026-10-16
 last_activity_desc: Phase 17 execution started
-state_head: bc87d7f305119951e24c15f39ca8d347cab7a09a
+state_head: 869622fe5865da3eefea950b4d711a64c0c8f0f1
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 44
-  completed_plans: 40
+  completed_plans: 41
   percent: 0
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 ## Current Position
 
 Phase: 17 (Release 0.8.0) — EXECUTING
-Current Plan: 2
+Current Plan: 3
 Total Plans in Phase: 5
 Status: Ready to execute
 Last activity: 2026-10-16 — Phase 17 execution started
@@ -138,6 +138,7 @@ Execution order: 13 → 14 → 15 → 16 → 17
 | Phase 16.4 P03 | 9min | 3 tasks | 4 files |
 | Phase 16-wheel-bundling P01 | 15min | 3 tasks | 10 files |
 | Phase 17 P01 | 50min | 3 tasks | 10 files |
+| Phase 17 P02 | 35min | 3 tasks | 0 files |
 
 ## Accumulated Context
 
@@ -240,6 +241,8 @@ Recent decisions affecting current work:
 - [Phase 16]: [Phase 16]: 16-01: [Rule 2] Wired scripts/verify_wheel_bundling.py --drift-only into the CI lint job so stale bundled skills fail CI before release
 - [Phase 17]: 17-01: check_version_alignment.py line-scans TOML/JSON/frontmatter directly (no tomllib) so the check itself runs under CI's Python 3.9 pytest jobs
 - [Phase 17]: 17-01: CHANGELOG self-contradiction removed — deleted the 'planned for a later release' deferral sentence since the Added section + next bullet already document those additions as shipped
+- [Phase 17]: [Phase 17]: 17-02: PR #47's predicted ci.yml conflict did not materialize — git merge-tree probe showed a clean auto-merge (exit 0); documented as a finding, not a conflict to resolve
+- [Phase 17]: [Phase 17]: 17-02: Did not flip REL-08 to complete in REQUIREMENTS.md — it requires the production PyPI publish + post-release smoke, which belong to 17-04/17-05
 
 ### Pending Todos
 
@@ -275,7 +278,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-10-15T22:45:12.531Z
-Stopped at: Completed 17-01-PLAN.md
+Last session: 2026-10-15T23:07:47.626Z
+Stopped at: Completed 17-02-PLAN.md (PR #48 open, CI green)
 Resume file: None
 </content>

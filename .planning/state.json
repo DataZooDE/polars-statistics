@@ -86,7 +86,7 @@
     {
       "number": "17",
       "name": "Release 0.8.0",
-      "status": "pending"
+      "status": "in_progress"
     }
   ],
   "next": {
@@ -94,5 +94,5 @@
     "label": "Advance to the next step",
     "reason": "Phase 17 of 9 · 0% · executing"
   },
-  "updated_at": "2026-10-15T22:45:05.563Z"
+  "updated_at": "2026-10-15T23:07:38.318Z"
 }
