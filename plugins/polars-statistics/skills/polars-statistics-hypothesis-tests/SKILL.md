@@ -113,6 +113,11 @@ ps.brunner_munzel(x, y, alternative="two-sided", alpha=None)
   shift — omitting them skips the Hodges-Lehmann estimator (faster).
 - `kruskal_wallis` accepts two or more group columns as positional arguments (wide format — one
   column per group). See the gotchas section about stacked / long data.
+- If `kruskal_wallis` is significant, follow up with `ps.dunn_test(values, groups)` (long
+  format — see the `polars-statistics-anova` skill) to find which pairs of groups differ.
+- **Multiple-testing correction:** adjusting a family of p-values for multiple comparisons
+  (Holm, Hochberg, Hommel, Bonferroni, BH/fdr, BY) is `ps.p_adjust(p, method=)` — see the
+  `polars-statistics-anova` skill's post-hoc section.
 
 **Output struct fields:**
 
@@ -828,6 +833,10 @@ df_wide.select(ps.kruskal_wallis("ctrl", "treat_a", "treat_b"))
 # Wrong: stacked long format inside group_by
 # df_long.group_by("group").agg(ps.kruskal_wallis("value"))  # DO NOT DO THIS
 ```
+
+If `kruskal_wallis` comes back significant, follow with `ps.dunn_test(values, groups)`
+(long format — the opposite convention from `kruskal_wallis`'s own wide format) to find
+which pairs of groups differ; see the `polars-statistics-anova` skill's post-hoc section.
 
 ### `conf_level` and `mu` in Mann-Whitney / Wilcoxon default to `None`
 

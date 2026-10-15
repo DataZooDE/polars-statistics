@@ -195,6 +195,11 @@ Every PyModel class shares this interface:
 | Per-row predictions + intervals | `ps.ols_predict("y","x", interval="prediction")` | `.predict(X)` | expression returns struct with bounds |
 | Online / streaming fit | — | `MomentAccumulator` + `OLS.fit_from_accumulator(acc)` | exact accumulation |
 | R-style formula | `ps.ols_formula("y ~ x1 + x2 + x1:x2")` | — | handles `*`, `:`, `poly()`, `I()` |
+| Which groups differ after ANOVA / Kruskal-Wallis | `ps.tukey_hsd("value","group")` / `ps.pairwise_t_test(...)` / `ps.dunn_test(...)` | — | long format (`values`, `groups`); see polars-statistics-anova |
+| Adjust many p-values for multiple testing | `ps.p_adjust("p", method="BH")` | — | whole-column op, use `.over()` for independent families; see polars-statistics-anova |
+| Shrink noisy per-group/per-store estimates toward the mean | `ps.eb_shrink("estimate","std_error")` | — | empirical Bayes (DerSimonian-Laird); see polars-statistics-regression |
+| Overdispersed counts / positive data with random effects and an exposure offset | — | `GLMM.negative_binomial(...)` / `.gamma(...)` / `.tweedie(power=...)` | `offset=` on `fit`/`fit_crossed`; see polars-statistics-regression |
+| Per-observation residuals/leverage/influence for a GLM in one call | `ps.augment("y","x", model="poisson")` | `.augment(x, y)` on the fitted PyModel | `broom::augment`-style; see polars-statistics-regression |
 
 ---
 

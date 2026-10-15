@@ -12,8 +12,8 @@ description edits.
 |-------|---------------|
 | `polars-statistics-getting-started` | Get started with polars-statistics — install the package, understand the two API styles (expressions vs. PyModel classes), choose the right model with the decision matrix, and migrate from sklearn. |
 | `polars-statistics-hypothesis-tests` | Use polars-statistics hypothesis tests — run t-tests, Mann-Whitney, Kruskal-Wallis, normality tests, correlation tests, chi-square, Fisher's exact, TOST equivalence tests, MMD, energy distance, effect sizes (Cohen's d, rank-biserial), Jarque-Bera normality, or bootstrap confidence intervals as Polars expressions. |
-| `polars-statistics-anova` | Use polars-statistics ANOVA — run one-way ANOVA (Fisher or Welch), two-way ANOVA, repeated-measures ANOVA, or intraclass correlation coefficient (ICC) as Polars expressions. |
-| `polars-statistics-regression` | Use polars-statistics regression — fit OLS, Ridge, Lasso, Elastic Net, WLS, RLS, BLS, NNLS, Quantile, Huber, PLS, ALM, or any GLM (logistic, Poisson, Negative Binomial, Tweedie, Probit, Cloglog, penalized GLM with priors and offsets), AFT survival regression with censoring, as Polars expressions or as PyModel classes; use R-style formulas with interactions and polynomial terms; get standard errors and p-values for Huber/RANSAC robust fits and GLMM fixed effects, or leverage/variance diagnostics for OLS/WLS/Ridge. |
+| `polars-statistics-anova` | Use polars-statistics ANOVA — run one-way ANOVA (Fisher or Welch), two-way ANOVA, repeated-measures ANOVA, or intraclass correlation coefficient (ICC); follow up with post-hoc pairwise comparisons (Tukey HSD, pairwise t-tests, Dunn's test) and p-value adjustment (p_adjust) as Polars expressions. |
+| `polars-statistics-regression` | Use polars-statistics regression — fit OLS, Ridge, Lasso, Elastic Net, WLS, RLS, BLS, NNLS, Quantile, Huber, PLS, ALM, or any GLM (logistic, Poisson, Negative Binomial, Tweedie, Probit, Cloglog, penalized GLM with priors and offsets), AFT survival regression with censoring, or GLMM mixed models (including Negative Binomial/Gamma/Tweedie families with an offset), as Polars expressions or as PyModel classes; use R-style formulas with interactions and polynomial terms; get standard errors and p-values for Huber/RANSAC robust fits and GLMM fixed effects, or leverage/variance diagnostics for OLS/WLS/Ridge; get broom::augment-style per-observation diagnostics (augment) for any supported model, a model_info summary of what was fit, or empirical-Bayes shrinkage (eb_shrink) of noisy per-group estimates. |
 | `polars-statistics-results` | Consume polars-statistics expression results — extract struct fields, unnest result columns, call to_dict() and summary() on PyModel classes, handle PyRuntimeError for unfitted models, or work with the typed .pyi API. |
 
 ---
@@ -57,6 +57,9 @@ description edits.
 | "Repeated-measures ANOVA for within-subjects experiment" | `polars-statistics-anova` | CORRECT — "repeated-measures ANOVA" explicit |
 | "Intraclass correlation coefficient for three raters" | `polars-statistics-anova` | CORRECT — "intraclass correlation coefficient (ICC)" explicit |
 | "Welch's ANOVA when group variances are unequal" | `polars-statistics-anova` | CORRECT — "one-way ANOVA (Fisher or Welch)" explicit |
+| "Which pairs of groups differ after ANOVA?" | `polars-statistics-anova` | CORRECT — "post-hoc pairwise comparisons" explicit; `tukey_hsd`/`pairwise_t_test` documented |
+| "Dunn's test after Kruskal-Wallis" | `polars-statistics-anova` | CORRECT — "Dunn's test" explicit; cross-referenced from the hypothesis-tests skill's `kruskal_wallis` section |
+| "Benjamini-Hochberg adjust these p-values" | `polars-statistics-anova` | CORRECT — "p-value adjustment (p_adjust)" explicit; `method="BH"` documented |
 
 ### Family: Regression
 
@@ -76,6 +79,10 @@ description edits.
 | "Poisson regression with an exposure offset" | `polars-statistics-regression` | CORRECT — "penalized GLM with priors and offsets" explicit |
 | "Bayesian-style GLM with a normal prior on a coefficient" | `polars-statistics-regression` | CORRECT — "penalized GLM with priors" explicit |
 | "Predict median survival time per customer" | `polars-statistics-regression` | CORRECT — "AFT survival regression" explicit; `predict_median`/`aft_predict_median` documented in the API reference |
+| "broom::augment-style diagnostics for my Poisson model" | `polars-statistics-regression` | CORRECT — "broom::augment-style per-observation diagnostics (augment)" explicit |
+| "Shrink per-store estimates toward the mean (empirical Bayes)" | `polars-statistics-regression` | CORRECT — "empirical-Bayes shrinkage (eb_shrink)" explicit |
+| "Negative binomial mixed model with exposure offset" | `polars-statistics-regression` | CORRECT — "GLMM mixed models (including Negative Binomial/Gamma/Tweedie families with an offset)" explicit |
+| "What family / link did this model use?" | `polars-statistics-regression` or `polars-statistics-results` | CORRECT — "a model_info summary of what was fit" explicit in regression; `polars-statistics-results` also documents `model_info`/`.to_dict()` on PyModel classes |
 
 ### Family: Results
 
@@ -104,6 +111,17 @@ explicitly; the hypothesis-tests description covers it under the broader "correl
 tests" phrasing. Either skill provides correct usage; the anova skill is the primary home
 for the expression form, and its explicit ICC mention makes it the correct routing target.
 No description change needed.
+
+**Known ambiguity — Dunn's test:** A user asking "post-hoc test after Kruskal-Wallis" could
+plausibly expect either `polars-statistics-hypothesis-tests` (which owns `kruskal_wallis`,
+the omnibus test `dunn_test` follows) or `polars-statistics-anova` (which owns `dunn_test`
+itself, alongside `tukey_hsd`/`pairwise_t_test`). By design, **all post-hoc / multiple-testing
+functions live in `polars-statistics-anova`** — `dunn_test`, `tukey_hsd`, `pairwise_t_test`,
+`p_adjust`, `ptukey`, `qtukey` — while `polars-statistics-hypothesis-tests` only owns the
+omnibus `kruskal_wallis` test and cross-references `dunn_test` from its own skill. No
+description change needed — the `polars-statistics-anova` description explicitly names
+"Dunn's test" and "p-value adjustment (p_adjust)", and the hypothesis-tests skill's
+`kruskal_wallis` section and gotcha both point to the anova skill by name.
 
 **No mis-routes detected** — all 23 test prompts resolve to the correct skill based on the
 current `description` fields. No description refinements required.
