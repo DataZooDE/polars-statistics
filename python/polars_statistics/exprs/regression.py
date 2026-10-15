@@ -44,6 +44,16 @@ def _resolve_intercept(
     return default
 
 
+def _check_alias_tolerance(tol: float) -> float:
+    """Validate the R-`lm`-style rank-deficiency (aliasing) tolerance.
+
+    Must be finite and non-negative; raises ``ValueError`` otherwise.
+    """
+    if not math.isfinite(tol) or tol < 0:
+        raise ValueError(f"alias_tolerance must be finite and >= 0, got {tol}")
+    return tol
+
+
 # ============================================================================
 # Linear Regression Expressions
 # ============================================================================
@@ -55,6 +65,7 @@ def ols(
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
     solve_method: str | None = None,
+    alias_tolerance: float = 1e-7,
 ) -> pl.Expr:
     """Ordinary Least Squares regression as a Polars expression.
 
@@ -70,6 +81,10 @@ def ols(
         Whether to include an intercept term.
     solve_method : str or None, default None
         Solver for the linear system: "qr" (default), "svd", or "cholesky".
+    alias_tolerance : float, default 1e-7
+        Relative tolerance of R `lm`'s rank-deficiency test; a column within
+        it of the span of the intercept and earlier columns gets a NaN
+        coefficient. Default matches R `lm` / anofox's `LM_ALIAS_TOLERANCE`.
 
     Returns
     -------
@@ -119,6 +134,7 @@ def ols(
             pl.lit(solve_method, dtype=pl.String),
             *x_exprs,
         ],
+        kwargs={"alias_tolerance": _check_alias_tolerance(alias_tolerance)},
         returns_scalar=True,
     )
 

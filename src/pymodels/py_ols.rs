@@ -1,6 +1,7 @@
 //! PyO3 wrapper for OLS regression.
 
 use numpy::{PyArray1, PyArray2, PyReadonlyArray1, PyReadonlyArray2};
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
 use anofox_regression::prelude::*;
@@ -23,6 +24,12 @@ use crate::utils::{IntoNumpy, ToFaer};
 ///     Whether to compute statistical inference (std errors, t-stats, p-values).
 /// confidence_level : float, default 0.95
 ///     Confidence level for confidence intervals.
+/// alias_tolerance : float, default 1e-7
+///     Relative tolerance of R `lm`'s rank-deficiency (aliasing) test: a
+///     column whose residual norm, after projecting out the intercept and
+///     the earlier kept columns, is below `alias_tolerance` times its own
+///     norm is aliased (NaN coefficient). Default matches R `lm` /
+///     anofox-regression's `LM_ALIAS_TOLERANCE`.
 ///
 /// Examples
 /// --------
@@ -44,6 +51,7 @@ pub struct PyOLS {
     compute_inference: bool,
     confidence_level: f64,
     solve_method: Option<String>,
+    alias_tolerance: f64,
     fitted: Option<FittedOls>,
 }
 
@@ -51,7 +59,8 @@ pub struct PyOLS {
 impl PyOLS {
     /// Create a new OLS model.
     #[new]
-    #[pyo3(signature = (add_intercept=None, with_intercept=None, compute_inference=true, confidence_level=0.95, solve_method=None))]
+    #[pyo3(signature = (add_intercept=None, with_intercept=None, compute_inference=true, confidence_level=0.95, solve_method=None, alias_tolerance=1e-7))]
+    #[allow(clippy::too_many_arguments)]
     fn new(
         py: Python<'_>,
         add_intercept: Option<bool>,
@@ -59,7 +68,13 @@ impl PyOLS {
         compute_inference: bool,
         confidence_level: f64,
         solve_method: Option<String>,
+        alias_tolerance: f64,
     ) -> PyResult<Self> {
+        if !(alias_tolerance.is_finite() && alias_tolerance >= 0.0) {
+            return Err(PyValueError::new_err(format!(
+                "alias_tolerance must be finite and >= 0, got {alias_tolerance}"
+            )));
+        }
         let with_intercept =
             crate::pymodels::errors::resolve_intercept(py, add_intercept, with_intercept, true)?;
         Ok(Self {
@@ -67,6 +82,7 @@ impl PyOLS {
             compute_inference,
             confidence_level,
             solve_method,
+            alias_tolerance,
             fitted: None,
         })
     }
@@ -96,7 +112,8 @@ impl PyOLS {
         let mut builder = OlsRegressor::builder()
             .with_intercept(slf.with_intercept)
             .compute_inference(slf.compute_inference)
-            .confidence_level(slf.confidence_level);
+            .confidence_level(slf.confidence_level)
+            .alias_tolerance(slf.alias_tolerance);
         if let Some(ref solver_str) = slf.solve_method {
             let solver = match solver_str.as_str() {
                 "svd" => SolverType::Svd,
@@ -614,7 +631,8 @@ impl PyOLS {
         let mut builder = OlsRegressor::builder()
             .with_intercept(slf.with_intercept)
             .compute_inference(slf.compute_inference)
-            .confidence_level(slf.confidence_level);
+            .confidence_level(slf.confidence_level)
+            .alias_tolerance(slf.alias_tolerance);
         if let Some(ref solver_str) = slf.solve_method.clone() {
             let solver = match solver_str.as_str() {
                 "svd" => SolverType::Svd,
@@ -730,6 +748,7 @@ impl PyOLS {
             compute_inference,
             confidence_level,
             solve_method: None,
+            alias_tolerance: anofox_regression::utils::LM_ALIAS_TOLERANCE,
             fitted: Some(fitted),
         }
     }

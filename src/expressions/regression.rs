@@ -25,6 +25,7 @@ use anofox_regression::solvers::{
     PlsRegressor, PoissonRegressor, QuantileRegressor, Regressor, RidgeRegressor, RlsRegressor,
     TweedieRegressor, WlsRegressor,
 };
+use anofox_regression::utils::LM_ALIAS_TOLERANCE;
 use anofox_regression::{HcType, IntervalType, SolverType, TweedieFamily};
 
 /// Result type for build_xy_with_null_policy: (X_fit, y, valid_mask, X_pred)
@@ -534,11 +535,44 @@ fn summary_nan_output() -> PolarsResult<Series> {
 // Linear Regression Expressions
 // ============================================================================
 
-/// OLS fit callable from Rust callers.
+/// Default tolerance of the R-`lm`-style rank-deficiency (aliasing) test:
+/// `anofox_regression::utils::LM_ALIAS_TOLERANCE` (= R `lm.fit`'s `tol`, `1e-7`).
+fn default_alias_tolerance() -> f64 {
+    LM_ALIAS_TOLERANCE
+}
+
+/// Named kwargs for the OLS/WLS fit/summary shims (additive — default matches
+/// R `lm`'s rank-deficiency tolerance).
+#[derive(Deserialize, Clone, Debug)]
+pub struct LinearAliasKwargs {
+    /// Relative tolerance of R `lm`'s rank-deficiency test: a column whose
+    /// residual norm, after projecting out the intercept and the earlier
+    /// kept columns, is below `alias_tolerance` times its own norm is
+    /// aliased (NaN coefficient). Default [`LM_ALIAS_TOLERANCE`] = `1e-7`,
+    /// as R's `lm`.
+    #[serde(default = "default_alias_tolerance")]
+    pub alias_tolerance: f64,
+}
+
+impl Default for LinearAliasKwargs {
+    fn default() -> Self {
+        Self {
+            alias_tolerance: default_alias_tolerance(),
+        }
+    }
+}
+
+/// OLS fit callable from Rust callers (default R-`lm` aliasing tolerance).
 ///
 /// Input contract: `[y, with_intercept (bool), solve_method (str|null), x_0, x_1, ...]`.
 /// Returns a one-row struct Series matching [`linear_regression_output_dtype`].
 pub fn ols_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    ols_fit_with(inputs, &LinearAliasKwargs::default())
+}
+
+/// Additive variant of [`ols_fit`] taking the named `alias_tolerance` option.
+/// Same positional input contract.
+pub fn ols_fit_with(inputs: &[Series], kwargs: &LinearAliasKwargs) -> PolarsResult<Series> {
     let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
     let solve_method = parse_solver_type(inputs[2].str()?.get(0));
 
@@ -547,7 +581,9 @@ pub fn ols_fit(inputs: &[Series]) -> PolarsResult<Series> {
         Err(_) => return linear_nan_output(),
     };
 
-    let mut builder = OlsRegressor::builder().with_intercept(with_intercept);
+    let mut builder = OlsRegressor::builder()
+        .with_intercept(with_intercept)
+        .alias_tolerance(kwargs.alias_tolerance);
     if let Some(solver) = solve_method {
         builder = builder.solve_method(solver);
     }
@@ -576,9 +612,10 @@ pub fn ols_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// OLS regression expression.
 /// inputs[0] = y, inputs[1] = with_intercept (bool), inputs[2] = solve_method (string or null), inputs[3..] = x columns
+/// kwargs: `alias_tolerance` (named, additive — see [`LinearAliasKwargs`]).
 #[polars_expr(output_type_func=linear_regression_output_dtype)]
-fn pl_ols(inputs: &[Series]) -> PolarsResult<Series> {
-    ols_fit(inputs)
+fn pl_ols(inputs: &[Series], kwargs: LinearAliasKwargs) -> PolarsResult<Series> {
+    ols_fit_with(inputs, &kwargs)
 }
 
 /// Ridge fit callable from Rust callers.
