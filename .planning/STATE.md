@@ -4,18 +4,18 @@ milestone: v0.8.0
 milestone_name: Claude Code Skills Plugin
 current_phase: "16.3"
 current_phase_name: Upstream API Wave 2
-current_plan: 10
+current_plan: 11
 status: executing
-stopped_at: Completed 16.3-09-PLAN.md
-last_updated: "2026-10-15T19:33:35.154Z"
+stopped_at: Completed 16.3-10-PLAN.md
+last_updated: "2026-10-15T19:41:42.244Z"
 last_activity: 2026-10-09
 last_activity_desc: Phase 16.3 execution started
-state_head: f61f99bd32aaf1a34dc96a92356a90ed26e0e9d0
+state_head: a5773560871eaee8c5c763eed2bfdf97a0c150bf
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 36
-  completed_plans: 33
+  completed_plans: 34
   percent: 0
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 ## Current Position
 
 Phase: 16.3 (Upstream API Wave 2) — EXECUTING
-Current Plan: 10
+Current Plan: 11
 Total Plans in Phase: 11
 Status: Ready to execute
 Last activity: 2026-10-09 — Phase 16.3 execution started
@@ -128,6 +128,7 @@ Execution order: 13 → 14 → 15 → 16 → 17
 | Phase 16.3 P07 | 38min | 3 tasks | 8 files |
 | Phase 16.3 P08 | 20min | 3 tasks | 35 files |
 | Phase 16.3 P09 | 35min | 3 tasks | 13 files |
+| Phase 16.3 P10 | 25min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -214,6 +215,8 @@ Recent decisions affecting current work:
 - [Phase 16.3]: [Phase 16.3]: 16.3-08: Ridge already stores a concrete FittedRidge (narrowed in 16.1-05), so it gets the direct fitted.model_info() getter like OLS rather than the boxed-capture field the plan assumed for ElasticNet/RLS/BLS
 - [Phase 16.3]: [Phase 16.3]: 16.3-08: 16.3-08 is the last UPST-09-tagged plan (02-08); flipped UPST-09 to Complete in REQUIREMENTS.md
 - [Phase 16.3]: [Phase 16.3]: 16.3-09: mkdocs docs for the 16.3 surface verified against the live package (not docstrings); fixed a pre-existing stale GLMM direct-constructor doc example (GLMM only supports the six family-factory staticmethods, not GLMM(family=...))
+- [Phase 16.3]: [Phase 16.3]: 16.3-10: CHANGELOG [Unreleased] Dependencies section is append-only (16.2's stale 'planned for a later release' sentence preserved verbatim) -- new pin/deferral facts recorded as a trailing bullet, not an edit to that line
+- [Phase 16.3]: [Phase 16.3]: 16.3-10: moved the ps.augment() README mention out of the pre-existing bare Diagnostics code fence into its own self-contained runnable snippet, since the verify script execs every fence containing the literal 'augment(' substring
 
 ### Pending Todos
 
@@ -249,7 +252,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-10-15T19:33:35.100Z
-Stopped at: Completed 16.3-09-PLAN.md
+Last session: 2026-10-15T19:41:42.180Z
+Stopped at: Completed 16.3-10-PLAN.md
 Resume file: None
 </content>
