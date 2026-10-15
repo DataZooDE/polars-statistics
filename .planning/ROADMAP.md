@@ -275,7 +275,11 @@ real API, bundled into the wheel, and shipped as 0.8.0 on PyPI.
   3. `.github/workflows/ci.yml` runs `ruff check .` (and `ruff format --check` only if the repo is already formatted that way) in the lint job.
   4. Full pytest suite, stub drift guard, skill harness and mkdocs --strict stay green.
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+- [ ] 16.4-01-PLAN.md — Runtime package: annotation modernisation (UP006/007/045/035) + import sorting, proven behaviour-neutral (AST guard, API fingerprint, pytest on 3.12 and 3.9)
+- [ ] 16.4-02-PLAN.md — tests/examples/scripts/docs: import + f-string autofix, B017 → RuntimeError(match="not fitted"), F841/B007 fixes; example output and plot PNGs proven unchanged
+- [ ] 16.4-03-PLAN.md — Stub generator emits a ruff-clean stub; .planning excluded with a reason; pinned `ruff check .` in the CI lint job; no format gate; final phase gate
 
 ### Phase 17: Release 0.8.0
 
