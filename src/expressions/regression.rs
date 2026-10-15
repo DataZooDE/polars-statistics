@@ -2667,7 +2667,7 @@ pub fn negative_binomial_fit_with(
         .estimate_dispersion(kwargs.estimate_dispersion);
 
     if let Some(t) = theta {
-        builder = builder.theta(t);
+        builder = builder.theta(t).estimate_theta(false);
     } else {
         builder = builder.estimate_theta(true);
     }
@@ -3986,7 +3986,7 @@ pub fn negative_binomial_summary_fit_with(
         .estimate_dispersion(kwargs.estimate_dispersion);
 
     if let Some(t) = theta {
-        builder = builder.theta(t);
+        builder = builder.theta(t).estimate_theta(false);
     } else {
         builder = builder.estimate_theta(true);
     }

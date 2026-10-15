@@ -227,6 +227,9 @@ survival engines `anofox-regression` added in 0.5.16.
 
 ### Fixed
 
+- `ps.negative_binomial` / `ps.negative_binomial_summary` (and formula
+  variants) now honour a fixed `theta`; previously it was silently
+  re-estimated.
 - No panics on NaN/±Inf input anywhere in the statistics layer.
 - Exact rank-sum and signed-rank null distributions no longer overflow for
   larger samples (`n1 + n2 > ~62`, `n >= 64`).

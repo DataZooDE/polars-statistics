@@ -178,6 +178,119 @@ class TestNegBinEstimateDispersionExpression:
             formula_result["coefficients"], direct_result["coefficients"], atol=1e-10
         )
 
+
+# Follow-up FU-01 (16.3-REVIEW-FIX.md): dataset whose ML theta (~4.36) clearly
+# differs from the fixed values exercised below (0.5 and 10.0), so a silently
+# re-estimated theta produces visibly different coefficients than a correctly
+# honored fixed theta. Simulated once with a fixed seed (gamma-Poisson mixture,
+# true size/theta = 3) rather than using R references, since this test only
+# needs internal consistency between the expression and PyModel APIs, not
+# agreement with an external implementation.
+_FU01_RNG = np.random.default_rng(7)
+_FU01_N = 150
+_FU01_X = _FU01_RNG.uniform(-2.5, 2.5, size=_FU01_N)
+_FU01_TRUE_THETA = 3.0
+_FU01_BETA0, _FU01_BETA1 = 0.3, 1.3
+_FU01_MU = np.exp(_FU01_BETA0 + _FU01_BETA1 * _FU01_X)
+_FU01_LAM = _FU01_RNG.gamma(shape=_FU01_TRUE_THETA, scale=_FU01_MU / _FU01_TRUE_THETA)
+_FU01_Y = _FU01_RNG.poisson(_FU01_LAM).astype(float)
+FU01_FIXED_THETAS = (0.5, 10.0)
+
+
+def _fu01_df() -> pl.DataFrame:
+    return pl.DataFrame({"y": _FU01_Y, "x": _FU01_X})
+
+
+class TestNegBinFixedThetaHonored:
+    """CR-01 follow-up: a user-supplied fixed ``theta`` must actually be held
+    fixed (`estimate_theta=False`), not silently re-estimated. Regression
+    test for FU-01 in 16.3-REVIEW-FIX.md."""
+
+    @pytest.mark.parametrize("theta", FU01_FIXED_THETAS)
+    def test_expression_matches_pymodel_fixed_theta(self, theta):
+        df = _fu01_df()
+        expr_result = df.select(
+            ps.negative_binomial("y", "x", theta=theta).alias("m")
+        )["m"][0]
+
+        X = _FU01_X.reshape(-1, 1)
+        pymodel = NegativeBinomial(theta=theta, estimate_theta=False).fit(
+            X, _FU01_Y
+        )
+
+        assert expr_result["intercept"] == pytest.approx(pymodel.intercept, rel=1e-8)
+        np.testing.assert_allclose(
+            expr_result["coefficients"], pymodel.coefficients, rtol=1e-8
+        )
+
+    @pytest.mark.parametrize("theta", FU01_FIXED_THETAS)
+    def test_expression_fixed_theta_differs_from_estimated(self, theta):
+        df = _fu01_df()
+        fixed_result = df.select(
+            ps.negative_binomial("y", "x", theta=theta).alias("m")
+        )["m"][0]
+        estimated_result = df.select(ps.negative_binomial("y", "x").alias("m"))["m"][0]
+
+        # A silently re-estimated theta would make these identical (the bug
+        # this test guards against); a correctly fixed theta does not.
+        assert abs(fixed_result["intercept"] - estimated_result["intercept"]) > 1e-3
+        assert abs(
+            fixed_result["coefficients"][0] - estimated_result["coefficients"][0]
+        ) > 1e-3
+
+    @pytest.mark.parametrize("theta", FU01_FIXED_THETAS)
+    def test_summary_matches_pymodel_fixed_theta(self, theta):
+        df = _fu01_df()
+        summary_result = df.select(
+            ps.negative_binomial_summary("y", "x", theta=theta).alias("coef")
+        )["coef"][0]
+        estimates = [row["estimate"] for row in summary_result]
+        std_errors = [row["std_error"] for row in summary_result]
+
+        X = _FU01_X.reshape(-1, 1)
+        pymodel = NegativeBinomial(theta=theta, estimate_theta=False).fit(
+            X, _FU01_Y
+        )
+
+        np.testing.assert_allclose(
+            estimates, [pymodel.intercept, *pymodel.coefficients], rtol=1e-8
+        )
+        np.testing.assert_allclose(
+            std_errors, [pymodel.intercept_std_error, *pymodel.std_errors], rtol=1e-8
+        )
+
+    @pytest.mark.parametrize("theta", FU01_FIXED_THETAS)
+    def test_summary_fixed_theta_differs_from_estimated(self, theta):
+        df = _fu01_df()
+        fixed_result = df.select(
+            ps.negative_binomial_summary("y", "x", theta=theta).alias("coef")
+        )["coef"][0]
+        estimated_result = df.select(
+            ps.negative_binomial_summary("y", "x").alias("coef")
+        )["coef"][0]
+
+        fixed_estimates = [row["estimate"] for row in fixed_result]
+        estimated_estimates = [row["estimate"] for row in estimated_result]
+        assert any(
+            abs(a - b) > 1e-3 for a, b in zip(fixed_estimates, estimated_estimates)
+        )
+
+    def test_formula_matches_direct_call_fixed_theta(self):
+        df = _fu01_df()
+        formula_result = df.select(
+            ps.negative_binomial_formula("y ~ x", theta=0.5).alias("m")
+        )["m"][0]
+        direct_result = df.select(ps.negative_binomial("y", "x", theta=0.5).alias("m"))[
+            "m"
+        ][0]
+        assert formula_result["intercept"] == pytest.approx(
+            direct_result["intercept"], abs=1e-10
+        )
+        np.testing.assert_allclose(
+            formula_result["coefficients"], direct_result["coefficients"], atol=1e-10
+        )
+
+
 # RLS: x = 0..39, y = 1 + 2x exactly (no noise) so coefficient shifts from a
 # tighter initial_p_diagonal prior are unambiguous.
 RLS_X = list(range(40))
