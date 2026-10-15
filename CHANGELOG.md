@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-16
+
+polars-statistics now ships a Claude Code plugin with five Agent Skills,
+bundled inside the wheel, so Claude can discover and apply the library's
+API from accurate, version-pinned cheat-sheets.
+
 Upstream crate refresh: `anofox-statistics` 0.4.2 → 0.4.7 and `anofox-regression`
 0.5.13 → 0.5.22 — new API exposed and R-matching fixes adopted, plus two new
 model families (penalized GLM, AFT survival regression). This release is an
@@ -17,6 +23,20 @@ survival engines `anofox-regression` added in 0.5.16.
 
 ### Added
 
+- **Claude Code plugin & Agent Skills** — the repo-root
+  `.claude-plugin/marketplace.json` plus the `plugins/polars-statistics/`
+  plugin (`plugin.json`; five auto-surfaced skills: getting-started,
+  hypothesis-tests, anova, regression, results; `ROUTING.md`). Every skill
+  code example is executed against the live API. Install with:
+  ```
+  /plugin marketplace add DataZooDE/polars-statistics
+  /plugin install polars-statistics@polars-statistics
+  ```
+- **Skills bundled in the wheel** — after `pip install polars-statistics`
+  the plugin tree is present at `polars_statistics/_plugin/`
+  (`marketplace.json`, `.claude-plugin/plugin.json`, `skills/*/SKILL.md`,
+  `ROUTING.md`), found via
+  `pathlib.Path(polars_statistics.__file__).parent / "_plugin"`.
 - **Effect sizes** — `ps.cohens_d("x", "y", kind="student"|"welch"|"paired", mu)` and
   `ps.cohens_d_one_sample("x", mu)`, matching R `effectsize::cohens_d` exactly.
 - **Rank-biserial correlation** — `ps.rank_biserial("x", "y", mu)`,
@@ -146,6 +166,14 @@ survival engines `anofox-regression` added in 0.5.16.
 
 ### Changed
 
+- **Python 3.9 introspection** — public expression builders now use PEP 604
+  annotations (under `from __future__ import annotations`), so on Python 3.9
+  `typing.get_type_hints()` no longer resolves for most builders; it still
+  resolves on 3.10+. Runtime behaviour, signatures, and the `.pyi` stubs are
+  unchanged.
+- **CI / tooling** — a pinned ruff lint gate (`ruff check .`, ruff 0.16.8)
+  over the whole repo, a wheel-bundling drift guard, and a version-alignment
+  test across every version source.
 - **`ps.fisher_exact`** output struct gains trailing `ci_lower` / `ci_upper`
   fields (Woolf/logit interval). `statistic` and `p_value` are unchanged in
   name, order, and value.
@@ -284,16 +312,14 @@ index changed):
 
 - `anofox-statistics` 0.4.2 → 0.4.7.
 - `anofox-regression` 0.5.13 → 0.5.22 — the 0.5.16 penalized GLM and AFT
-  survival solvers are now exposed (see Added). The other 0.4.7 / 0.5.17–0.5.22
-  additions (post-hoc tests, `p_adjust`, `augment`, `ModelInfo`, GLMM families,
-  empirical-Bayes shrinkage) are planned for a later release.
+  survival solvers are now exposed (see Added).
 - `anofox-statistics` and `anofox-regression` are pinned exactly (`=0.4.7` /
   `=0.5.22`, commit `d0accad`) for this release. The 0.4.7 / 0.5.17–0.5.22
   additions named above (post-hoc tests, `p_adjust`, `ptukey`/`qtukey`,
   `augment`, `model_info`, GLMM NegBin/Gamma/Tweedie families, offsets,
   per-factor random slopes, empirical-Bayes shrinkage, GLM/OLS/WLS intercept
   inference getters, `alias_tolerance`, LARS fit statistics) are now fully
-  exposed by this phase. Newer upstream releases (`anofox-statistics` 0.4.8+ /
+  exposed in this release. Newer upstream releases (`anofox-statistics` 0.4.8+ /
   `anofox-regression` 0.5.23+) are deferred to v0.9.0.
 
 ## [0.7.0] - 2026-09-20
@@ -653,6 +679,8 @@ because the new kwargs default to `None` / `"likelihood"`.
   - SIMD-optimized linear algebra via faer
   - Automatic parallelization for group operations
 
+[Unreleased]: https://github.com/DataZooDE/polars-statistics/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/DataZooDE/polars-statistics/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/DataZooDE/polars-statistics/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/DataZooDE/polars-statistics/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/DataZooDE/polars-statistics/compare/v0.4.0...v0.5.0
