@@ -1,6 +1,7 @@
 //! PyO3 wrapper for Weighted Least Squares regression.
 
 use numpy::{PyArray1, PyArray2, PyReadonlyArray1, PyReadonlyArray2};
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
 use anofox_regression::solvers::{FittedRegressor, FittedWls, Regressor, WlsRegressor};
@@ -20,6 +21,9 @@ use crate::utils::{IntoNumpy, ToFaer};
 ///     Whether to compute statistical inference.
 /// confidence_level : float, default 0.95
 ///     Confidence level for confidence intervals.
+/// alias_tolerance : float, default 1e-7
+///     Relative tolerance of R `lm`'s rank-deficiency (aliasing) test. See
+///     ``OLS``'s parameter of the same name.
 ///
 /// Notes
 /// -----
@@ -45,26 +49,34 @@ pub struct PyWLS {
     with_intercept: bool,
     compute_inference: bool,
     confidence_level: f64,
+    alias_tolerance: f64,
     fitted: Option<FittedWls>,
 }
 
 #[pymethods]
 impl PyWLS {
     #[new]
-    #[pyo3(signature = (add_intercept=None, with_intercept=None, compute_inference=true, confidence_level=0.95))]
+    #[pyo3(signature = (add_intercept=None, with_intercept=None, compute_inference=true, confidence_level=0.95, alias_tolerance=1e-7))]
     fn new(
         py: Python<'_>,
         add_intercept: Option<bool>,
         with_intercept: Option<bool>,
         compute_inference: bool,
         confidence_level: f64,
+        alias_tolerance: f64,
     ) -> PyResult<Self> {
+        if !(alias_tolerance.is_finite() && alias_tolerance >= 0.0) {
+            return Err(PyValueError::new_err(format!(
+                "alias_tolerance must be finite and >= 0, got {alias_tolerance}"
+            )));
+        }
         let with_intercept =
             crate::pymodels::errors::resolve_intercept(py, add_intercept, with_intercept, true)?;
         Ok(Self {
             with_intercept,
             compute_inference,
             confidence_level,
+            alias_tolerance,
             fitted: None,
         })
     }
@@ -94,6 +106,7 @@ impl PyWLS {
             .with_intercept(slf.with_intercept)
             .compute_inference(slf.compute_inference)
             .confidence_level(slf.confidence_level)
+            .alias_tolerance(slf.alias_tolerance)
             .weights(w_col)
             .build();
 

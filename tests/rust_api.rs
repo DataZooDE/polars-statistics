@@ -3260,3 +3260,276 @@ fn augment_fits() {
         assert!(lev.is_finite(), "leverage must be finite, got {lev}");
     }
 }
+
+// =============================================================================
+// alias_tolerance (anofox-regression 0.5.21 #64): the six `*_fit_with`
+// variants on a near-collinear design (issue #64 data, ratio=2e-7 -- the
+// default R-lm tolerance (1e-7) keeps this column; alias_tolerance=1e-6
+// aliases it).
+// =============================================================================
+
+fn alias_t64(i: usize) -> f64 {
+    i as f64
+}
+
+fn alias_x1_64() -> Vec<f64> {
+    (0..60).map(|i| alias_t64(i) / 10.0).collect()
+}
+
+fn alias_x2_64() -> Vec<f64> {
+    (0..60).map(|i| alias_t64(i).sin()).collect()
+}
+
+fn alias_y_64() -> Vec<f64> {
+    (0..60)
+        .map(|i| {
+            let t = alias_t64(i);
+            2.0 + 1.5 * t / 10.0 - 0.8 * t.sin() + 0.3 * (7.0 * t).cos()
+        })
+        .collect()
+}
+
+/// Unit vector: residual of sin(13t) regressed on [1, x1, x2] (OLS with
+/// intercept), matching the upstream/Python `near_direction()` generator.
+fn alias_near_direction_64() -> Vec<f64> {
+    let x1 = alias_x1_64();
+    let x2 = alias_x2_64();
+    let e0: Vec<f64> = (0..60).map(|i| (13.0 * alias_t64(i)).sin()).collect();
+
+    let inputs = vec![
+        series_f64("y", &e0),
+        scalar_bool("with_intercept", true),
+        scalar_str_null("solve_method"),
+        series_f64("x1", &x1),
+        series_f64("x2", &x2),
+    ];
+    let out = ols_fit_with(&inputs, &LinearAliasKwargs::default()).expect("ols_fit_with failed");
+    let st = out.struct_().unwrap();
+    let intercept = st
+        .field_by_name("intercept")
+        .unwrap()
+        .f64()
+        .unwrap()
+        .get(0)
+        .unwrap();
+    let coefs = st
+        .field_by_name("coefficients")
+        .unwrap()
+        .list()
+        .unwrap()
+        .get_as_series(0)
+        .unwrap();
+    let c0 = coefs.f64().unwrap().get(0).unwrap();
+    let c1 = coefs.f64().unwrap().get(1).unwrap();
+
+    let residual: Vec<f64> = (0..60)
+        .map(|i| e0[i] - (intercept + c0 * x1[i] + c1 * x2[i]))
+        .collect();
+    let norm: f64 = residual.iter().map(|v| v * v).sum::<f64>().sqrt();
+    residual.iter().map(|v| v / norm).collect()
+}
+
+/// `(x1, x2, x3)` where x3 is `ratio`-near-collinear with `[x1, x2]`.
+fn alias_near_64(ratio: f64) -> (Vec<f64>, Vec<f64>, Vec<f64>) {
+    let x1 = alias_x1_64();
+    let x2 = alias_x2_64();
+    let base: Vec<f64> = (0..60).map(|i| x1[i] + x2[i]).collect();
+    let nb: f64 = base.iter().map(|v| v * v).sum::<f64>().sqrt();
+    let e = alias_near_direction_64();
+    let x3: Vec<f64> = (0..60).map(|i| base[i] + ratio * nb * e[i]).collect();
+    (x1, x2, x3)
+}
+
+#[test]
+fn alias_tolerance_fits() {
+    let (x1, x2, x3) = alias_near_64(2e-7);
+    let y = alias_y_64();
+    let n = y.len();
+    let tight_kwargs = LinearAliasKwargs {
+        alias_tolerance: 1e-6,
+    };
+
+    // ols_fit_with: x3 (3rd feature) is aliased -> NaN coefficient; the
+    // default (omitted) tolerance keeps it.
+    {
+        let inputs = vec![
+            series_f64("y", &y),
+            scalar_bool("with_intercept", true),
+            scalar_str_null("solve_method"),
+            series_f64("x1", &x1),
+            series_f64("x2", &x2),
+            series_f64("x3", &x3),
+        ];
+        let out = ols_fit_with(&inputs, &tight_kwargs).expect("ols_fit_with failed");
+        let st = out.struct_().unwrap();
+        let coefs = st
+            .field_by_name("coefficients")
+            .unwrap()
+            .list()
+            .unwrap()
+            .get_as_series(0)
+            .unwrap();
+        let c2 = coefs.f64().unwrap().get(2).unwrap();
+        assert!(
+            c2.is_nan(),
+            "ols_fit_with: x3 coefficient should be NaN, got {c2}"
+        );
+
+        let out_default = ols_fit(&inputs).expect("ols_fit failed");
+        let st_default = out_default.struct_().unwrap();
+        let coefs_default = st_default
+            .field_by_name("coefficients")
+            .unwrap()
+            .list()
+            .unwrap()
+            .get_as_series(0)
+            .unwrap();
+        let c2_default = coefs_default.f64().unwrap().get(2).unwrap();
+        assert!(
+            !c2_default.is_nan(),
+            "ols_fit (default tol): x3 should be kept, got NaN"
+        );
+    }
+
+    // wls_fit_with: same, with unit weights.
+    {
+        let w = vec![1.0_f64; n];
+        let inputs = vec![
+            series_f64("y", &y),
+            series_f64("w", &w),
+            scalar_bool("with_intercept", true),
+            scalar_str_null("solve_method"),
+            series_f64("x1", &x1),
+            series_f64("x2", &x2),
+            series_f64("x3", &x3),
+        ];
+        let out = wls_fit_with(&inputs, &tight_kwargs).expect("wls_fit_with failed");
+        let st = out.struct_().unwrap();
+        let coefs = st
+            .field_by_name("coefficients")
+            .unwrap()
+            .list()
+            .unwrap()
+            .get_as_series(0)
+            .unwrap();
+        let c2 = coefs.f64().unwrap().get(2).unwrap();
+        assert!(
+            c2.is_nan(),
+            "wls_fit_with: x3 coefficient should be NaN, got {c2}"
+        );
+    }
+
+    // ols_summary_fit_with: x3 row's estimate (last term) is NaN.
+    {
+        let inputs = vec![
+            series_f64("y", &y),
+            scalar_bool("with_intercept", true),
+            scalar_str_null("solve_method"),
+            scalar_str_null("hc_type"),
+            series_f64("x1", &x1),
+            series_f64("x2", &x2),
+            series_f64("x3", &x3),
+        ];
+        let out =
+            ols_summary_fit_with(&inputs, &tight_kwargs).expect("ols_summary_fit_with failed");
+        let rows = out.list().unwrap().get_as_series(0).unwrap();
+        let struct_ca = rows.struct_().unwrap();
+        let estimates = struct_ca.field_by_name("estimate").unwrap();
+        let estimates = estimates.f64().unwrap();
+        let last = estimates.get(estimates.len() - 1).unwrap();
+        assert!(
+            last.is_nan(),
+            "ols_summary_fit_with: x3 estimate should be NaN, got {last}"
+        );
+    }
+
+    // wls_summary_fit_with: same.
+    {
+        let w = vec![1.0_f64; n];
+        let inputs = vec![
+            series_f64("y", &y),
+            series_f64("w", &w),
+            scalar_bool("with_intercept", true),
+            scalar_str_null("solve_method"),
+            series_f64("x1", &x1),
+            series_f64("x2", &x2),
+            series_f64("x3", &x3),
+        ];
+        let out =
+            wls_summary_fit_with(&inputs, &tight_kwargs).expect("wls_summary_fit_with failed");
+        let rows = out.list().unwrap().get_as_series(0).unwrap();
+        let struct_ca = rows.struct_().unwrap();
+        let estimates = struct_ca.field_by_name("estimate").unwrap();
+        let estimates = estimates.f64().unwrap();
+        let last = estimates.get(estimates.len() - 1).unwrap();
+        assert!(
+            last.is_nan(),
+            "wls_summary_fit_with: x3 estimate should be NaN, got {last}"
+        );
+    }
+
+    // ols_predict_fit_with / wls_predict_fit_with: finite predictions despite
+    // the aliased column.
+    {
+        let inputs = vec![
+            series_f64("y", &y),
+            scalar_bool("with_intercept", true),
+            scalar_str_null("solve_method"),
+            scalar_str_null("interval"),
+            scalar_f64("level", 0.95),
+            scalar_str("null_policy", "drop"),
+            series_f64("x1", &x1),
+            series_f64("x2", &x2),
+            series_f64("x3", &x3),
+        ];
+        let predict_kwargs = LinearAliasPredictKwargs {
+            prefix: "p".to_string(),
+            alias_tolerance: 1e-6,
+        };
+        let out =
+            ols_predict_fit_with(&inputs, predict_kwargs).expect("ols_predict_fit_with failed");
+        assert_eq!(out.len(), n);
+        let ca = out.struct_().unwrap();
+        let preds = ca.field_by_name("p_prediction").unwrap();
+        let preds = preds.f64().unwrap();
+        for i in 0..n {
+            let v = preds.get(i).unwrap();
+            assert!(
+                v.is_finite(),
+                "ols_predict_fit_with: prediction {i} not finite: {v}"
+            );
+        }
+    }
+    {
+        let w = vec![1.0_f64; n];
+        let inputs = vec![
+            series_f64("y", &y),
+            scalar_bool("with_intercept", true),
+            scalar_str_null("solve_method"),
+            scalar_str_null("interval"),
+            scalar_f64("level", 0.95),
+            scalar_str("null_policy", "drop"),
+            series_f64("weights", &w),
+            series_f64("x1", &x1),
+            series_f64("x2", &x2),
+            series_f64("x3", &x3),
+        ];
+        let predict_kwargs = LinearAliasPredictKwargs {
+            prefix: "p".to_string(),
+            alias_tolerance: 1e-6,
+        };
+        let out =
+            wls_predict_fit_with(&inputs, predict_kwargs).expect("wls_predict_fit_with failed");
+        assert_eq!(out.len(), n);
+        let ca = out.struct_().unwrap();
+        let preds = ca.field_by_name("p_prediction").unwrap();
+        let preds = preds.f64().unwrap();
+        for i in 0..n {
+            let v = preds.get(i).unwrap();
+            assert!(
+                v.is_finite(),
+                "wls_predict_fit_with: prediction {i} not finite: {v}"
+            );
+        }
+    }
+}

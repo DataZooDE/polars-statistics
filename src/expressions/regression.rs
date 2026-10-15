@@ -712,10 +712,16 @@ fn pl_elastic_net(inputs: &[Series]) -> PolarsResult<Series> {
     elastic_net_fit(inputs)
 }
 
-/// WLS fit callable from Rust callers.
+/// WLS fit callable from Rust callers (default R-`lm` aliasing tolerance).
 ///
 /// Input contract: `[y, weights (f64), with_intercept (bool), solve_method (str|null), x_0, ...]`.
 pub fn wls_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    wls_fit_with(inputs, &LinearAliasKwargs::default())
+}
+
+/// Additive variant of [`wls_fit`] taking the named `alias_tolerance` option.
+/// Same positional input contract.
+pub fn wls_fit_with(inputs: &[Series], kwargs: &LinearAliasKwargs) -> PolarsResult<Series> {
     let weights_series = inputs[1].f64()?;
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let solve_method = parse_solver_type(inputs[3].str()?.get(0));
@@ -730,7 +736,8 @@ pub fn wls_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
     let mut builder = WlsRegressor::builder()
         .with_intercept(with_intercept)
-        .weights(weights);
+        .weights(weights)
+        .alias_tolerance(kwargs.alias_tolerance);
     if let Some(solver) = solve_method {
         builder = builder.solve_method(solver);
     }
@@ -759,9 +766,10 @@ pub fn wls_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// WLS regression expression.
 /// inputs[0] = y, inputs[1] = weights, inputs[2] = with_intercept, inputs[3] = solve_method (string or null), inputs[4..] = x columns
+/// kwargs: `alias_tolerance` (named, additive — see [`LinearAliasKwargs`]).
 #[polars_expr(output_type_func=linear_regression_output_dtype)]
-fn pl_wls(inputs: &[Series]) -> PolarsResult<Series> {
-    wls_fit(inputs)
+fn pl_wls(inputs: &[Series], kwargs: LinearAliasKwargs) -> PolarsResult<Series> {
+    wls_fit_with(inputs, &kwargs)
 }
 
 /// Default diagonal of the initial RLS P matrix (P0 = delta*I), matching
@@ -3323,6 +3331,12 @@ pub(crate) fn build_term_names(n_features: usize, with_intercept: bool) -> Vec<S
 
 /// Public Rust-callable variant. Same input contract as the `pl_ols_summary` expression shim.
 pub fn ols_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    ols_summary_fit_with(inputs, &LinearAliasKwargs::default())
+}
+
+/// Additive variant of [`ols_summary_fit`] taking the named `alias_tolerance`
+/// option. Same positional input contract.
+pub fn ols_summary_fit_with(inputs: &[Series], kwargs: &LinearAliasKwargs) -> PolarsResult<Series> {
     let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
     let solve_method = parse_solver_type(inputs[2].str()?.get(0));
     let hc_type = parse_hc_type(inputs[3].str()?.get(0));
@@ -3335,7 +3349,8 @@ pub fn ols_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
     let mut builder = OlsRegressor::builder()
         .with_intercept(with_intercept)
-        .compute_inference(true);
+        .compute_inference(true)
+        .alias_tolerance(kwargs.alias_tolerance);
     if let Some(solver) = solve_method {
         builder = builder.solve_method(solver);
     }
@@ -3419,9 +3434,10 @@ pub fn ols_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
 /// OLS summary expression - returns tidy coefficient table
 /// inputs[0] = y, inputs[1] = with_intercept (bool), inputs[2] = solve_method (string or null),
 /// inputs[3] = hc_type (string or null), inputs[4..] = x columns
+/// kwargs: `alias_tolerance` (named, additive — see [`LinearAliasKwargs`]).
 #[polars_expr(output_type_func=summary_output_dtype)]
-fn pl_ols_summary(inputs: &[Series]) -> PolarsResult<Series> {
-    ols_summary_fit(inputs)
+fn pl_ols_summary(inputs: &[Series], kwargs: LinearAliasKwargs) -> PolarsResult<Series> {
+    ols_summary_fit_with(inputs, &kwargs)
 }
 
 /// Public Rust-callable variant. Same input contract as the `pl_ridge_summary` expression shim.
@@ -3566,6 +3582,12 @@ fn pl_elastic_net_summary(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_wls_summary` expression shim.
 pub fn wls_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    wls_summary_fit_with(inputs, &LinearAliasKwargs::default())
+}
+
+/// Additive variant of [`wls_summary_fit`] taking the named `alias_tolerance`
+/// option. Same positional input contract.
+pub fn wls_summary_fit_with(inputs: &[Series], kwargs: &LinearAliasKwargs) -> PolarsResult<Series> {
     let weights_series = inputs[1].f64()?;
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let solve_method = parse_solver_type(inputs[3].str()?.get(0));
@@ -3581,7 +3603,8 @@ pub fn wls_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
     let mut builder = WlsRegressor::builder()
         .with_intercept(with_intercept)
-        .weights(weights);
+        .weights(weights)
+        .alias_tolerance(kwargs.alias_tolerance);
     if let Some(solver) = solve_method {
         builder = builder.solve_method(solver);
     }
@@ -3633,9 +3656,10 @@ pub fn wls_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// WLS summary expression
 /// inputs[0] = y, inputs[1] = weights, inputs[2] = with_intercept, inputs[3] = solve_method (string or null), inputs[4..] = x columns
+/// kwargs: `alias_tolerance` (named, additive — see [`LinearAliasKwargs`]).
 #[polars_expr(output_type_func=summary_output_dtype)]
-fn pl_wls_summary(inputs: &[Series]) -> PolarsResult<Series> {
-    wls_summary_fit(inputs)
+fn pl_wls_summary(inputs: &[Series], kwargs: LinearAliasKwargs) -> PolarsResult<Series> {
+    wls_summary_fit_with(inputs, &kwargs)
 }
 
 /// Public Rust-callable variant. Same input contract as the `pl_rls_summary` expression shim.
@@ -4407,8 +4431,49 @@ pub(crate) fn build_xy_with_null_policy(
     }
 }
 
+/// Named kwargs for the OLS/WLS predict shims: output-column `prefix` plus
+/// the `alias_tolerance` option.
+#[derive(Deserialize, Clone, Debug)]
+pub struct LinearAliasPredictKwargs {
+    /// Prefix for output column names.
+    pub prefix: String,
+    /// See [`LinearAliasKwargs::alias_tolerance`].
+    #[serde(default = "default_alias_tolerance")]
+    pub alias_tolerance: f64,
+}
+
+/// Output dtype for `pl_ols_predict`/`pl_wls_predict` — delegates to the
+/// shared prefix-based prediction schema (`alias_tolerance` does not affect
+/// shape).
+pub(crate) fn linear_alias_predict_output_dtype(
+    input_fields: &[Field],
+    kwargs: LinearAliasPredictKwargs,
+) -> PolarsResult<Field> {
+    predict_output_dtype_with_prefix(
+        input_fields,
+        PredictKwargs {
+            prefix: kwargs.prefix,
+        },
+    )
+}
+
 /// Public Rust-callable variant. Same input contract as the `pl_ols_predict` expression shim.
 pub fn ols_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
+    ols_predict_fit_with(
+        inputs,
+        LinearAliasPredictKwargs {
+            prefix: kwargs.prefix,
+            alias_tolerance: LM_ALIAS_TOLERANCE,
+        },
+    )
+}
+
+/// Additive variant of [`ols_predict_fit`] taking the named `alias_tolerance`
+/// option. Same positional input contract.
+pub fn ols_predict_fit_with(
+    inputs: &[Series],
+    kwargs: LinearAliasPredictKwargs,
+) -> PolarsResult<Series> {
     let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
     let solve_method = parse_solver_type(inputs[2].str()?.get(0));
     let interval = inputs[3].str()?.get(0); // None, "confidence", or "prediction"
@@ -4426,7 +4491,9 @@ pub fn ols_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult
         Err(_) => return prediction_nan_output_with_prefix(n_rows, prefix),
     };
 
-    let mut builder = OlsRegressor::builder().with_intercept(with_intercept);
+    let mut builder = OlsRegressor::builder()
+        .with_intercept(with_intercept)
+        .alias_tolerance(kwargs.alias_tolerance);
     if let Some(solver) = solve_method {
         builder = builder.solve_method(solver);
     }
@@ -4488,9 +4555,10 @@ pub fn ols_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult
 /// OLS prediction expression - returns predictions with optional intervals.
 /// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = solve_method (string or null),
 /// inputs[3] = interval (string or null), inputs[4] = level, inputs[5] = null_policy, inputs[6..] = x columns
-#[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
-fn pl_ols_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
-    ols_predict_fit(inputs, kwargs)
+/// kwargs: `prefix`, `alias_tolerance` (named, additive — see [`LinearAliasPredictKwargs`]).
+#[polars_expr(output_type_func_with_kwargs=linear_alias_predict_output_dtype)]
+fn pl_ols_predict(inputs: &[Series], kwargs: LinearAliasPredictKwargs) -> PolarsResult<Series> {
+    ols_predict_fit_with(inputs, kwargs)
 }
 
 /// Public Rust-callable variant. Same input contract as the `pl_ridge_predict` expression shim.
@@ -4661,6 +4729,21 @@ fn pl_elastic_net_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsRes
 
 /// Public Rust-callable variant. Same input contract as the `pl_wls_predict` expression shim.
 pub fn wls_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
+    wls_predict_fit_with(
+        inputs,
+        LinearAliasPredictKwargs {
+            prefix: kwargs.prefix,
+            alias_tolerance: LM_ALIAS_TOLERANCE,
+        },
+    )
+}
+
+/// Additive variant of [`wls_predict_fit`] taking the named `alias_tolerance`
+/// option. Same positional input contract.
+pub fn wls_predict_fit_with(
+    inputs: &[Series],
+    kwargs: LinearAliasPredictKwargs,
+) -> PolarsResult<Series> {
     let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
     let solve_method = parse_solver_type(inputs[2].str()?.get(0));
     let interval = inputs[3].str()?.get(0);
@@ -4690,7 +4773,8 @@ pub fn wls_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult
 
     let mut builder = WlsRegressor::builder()
         .with_intercept(with_intercept)
-        .weights(weights_fit);
+        .weights(weights_fit)
+        .alias_tolerance(kwargs.alias_tolerance);
     if let Some(solver) = solve_method {
         builder = builder.solve_method(solver);
     }
@@ -4749,9 +4833,10 @@ pub fn wls_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult
 /// WLS prediction expression (weights column is inputs[7])
 /// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = solve_method (string or null),
 /// inputs[3] = interval, inputs[4] = level, inputs[5] = null_policy, inputs[6] = weights, inputs[7..] = x columns
-#[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
-fn pl_wls_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
-    wls_predict_fit(inputs, kwargs)
+/// kwargs: `prefix`, `alias_tolerance` (named, additive — see [`LinearAliasPredictKwargs`]).
+#[polars_expr(output_type_func_with_kwargs=linear_alias_predict_output_dtype)]
+fn pl_wls_predict(inputs: &[Series], kwargs: LinearAliasPredictKwargs) -> PolarsResult<Series> {
+    wls_predict_fit_with(inputs, kwargs)
 }
 
 /// Public Rust-callable variant. Same input contract as the `pl_rls_predict` expression shim.

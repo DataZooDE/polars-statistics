@@ -250,6 +250,7 @@ def wls(
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
     solve_method: str | None = None,
+    alias_tolerance: float = 1e-7,
 ) -> pl.Expr:
     """Weighted Least Squares regression as a Polars expression.
 
@@ -265,6 +266,8 @@ def wls(
         Whether to include an intercept term.
     solve_method : str or None, default None
         Solver for the linear system: "qr" (default), "svd", or "cholesky".
+    alias_tolerance : float, default 1e-7
+        See :func:`ols`.
 
     Returns
     -------
@@ -293,6 +296,7 @@ def wls(
             pl.lit(solve_method, dtype=pl.String),
             *x_exprs,
         ],
+        kwargs={"alias_tolerance": _check_alias_tolerance(alias_tolerance)},
         returns_scalar=True,
     )
 
@@ -3170,6 +3174,7 @@ def ols_summary(
     with_intercept: bool | None = None,
     solve_method: str | None = None,
     hc_type: str | None = None,
+    alias_tolerance: float = 1e-7,
 ) -> pl.Expr:
     """OLS coefficient summary in tidy format (like R's broom::tidy).
 
@@ -3189,6 +3194,8 @@ def ols_summary(
     hc_type : str or None, default None
         Heteroskedasticity-consistent standard errors variant:
         "hc0", "hc1", "hc2", or "hc3". If None, uses homoskedastic SEs.
+    alias_tolerance : float, default 1e-7
+        See :func:`ols`.
 
     Returns
     -------
@@ -3226,6 +3233,7 @@ def ols_summary(
             pl.lit(hc_type, dtype=pl.String),
             *x_exprs,
         ],
+        kwargs={"alias_tolerance": _check_alias_tolerance(alias_tolerance)},
         returns_scalar=True,
     )
 
@@ -3329,8 +3337,15 @@ def wls_summary(
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
     solve_method: str | None = None,
+    alias_tolerance: float = 1e-7,
 ) -> pl.Expr:
-    """Weighted Least Squares coefficient summary in tidy format."""
+    """Weighted Least Squares coefficient summary in tidy format.
+
+    Parameters
+    ----------
+    alias_tolerance : float, default 1e-7
+        See :func:`ols`.
+    """
     add_intercept = _resolve_intercept(add_intercept, with_intercept)
     if isinstance(y, str):
         y = pl.col(y)
@@ -3353,6 +3368,7 @@ def wls_summary(
             pl.lit(solve_method, dtype=pl.String),
             *x_exprs,
         ],
+        kwargs={"alias_tolerance": _check_alias_tolerance(alias_tolerance)},
         returns_scalar=True,
     )
 
@@ -3786,6 +3802,7 @@ def ols_predict(
     level: float = 0.95,
     null_policy: str = "drop",
     name: str | None = None,
+    alias_tolerance: float = 1e-7,
 ) -> pl.Expr:
     """OLS predictions with optional confidence/prediction intervals.
 
@@ -3816,6 +3833,8 @@ def ols_predict(
     name : str or None, default None
         Custom prefix for output column names. If None, uses "ols".
         Output columns will be: {name}_prediction, {name}_lower, {name}_upper.
+    alias_tolerance : float, default 1e-7
+        See :func:`ols`.
 
     Returns
     -------
@@ -3877,7 +3896,7 @@ def ols_predict(
             pl.lit(null_policy, dtype=pl.String),
             *x_exprs,
         ],
-        kwargs={"prefix": prefix},
+        kwargs={"prefix": prefix, "alias_tolerance": _check_alias_tolerance(alias_tolerance)},
         returns_scalar=False,
     )
 
@@ -4080,6 +4099,7 @@ def wls_predict(
     level: float = 0.95,
     null_policy: str = "drop",
     name: str | None = None,
+    alias_tolerance: float = 1e-7,
 ) -> pl.Expr:
     """Weighted Least Squares predictions with optional intervals.
 
@@ -4103,6 +4123,8 @@ def wls_predict(
         "drop" or "drop_y_zero_x".
     name : str or None, default None
         Custom prefix for output column names. If None, uses "wls".
+    alias_tolerance : float, default 1e-7
+        See :func:`ols`.
 
     Returns
     -------
@@ -4136,7 +4158,7 @@ def wls_predict(
             weights.cast(pl.Float64),
             *x_exprs,
         ],
-        kwargs={"prefix": prefix},
+        kwargs={"prefix": prefix, "alias_tolerance": _check_alias_tolerance(alias_tolerance)},
         returns_scalar=False,
     )
 
@@ -4906,6 +4928,7 @@ def ols_formula(
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
     solve_method: str | None = None,
+    alias_tolerance: float = 1e-7,
 ) -> pl.Expr:
     """OLS regression using R-style formula syntax.
 
@@ -4926,6 +4949,8 @@ def ols_formula(
         Whether to include an intercept term.
     solve_method : str or None, default None
         Solver for the linear system: "qr" (default), "svd", or "cholesky".
+    alias_tolerance : float, default 1e-7
+        See :func:`ols`.
 
     Returns
     -------
@@ -4956,7 +4981,13 @@ def ols_formula(
     """
     add_intercept = _resolve_intercept(add_intercept, with_intercept)
     response, x_exprs, _ = _parse_formula(formula)
-    return ols(response, *x_exprs, add_intercept=add_intercept, solve_method=solve_method)
+    return ols(
+        response,
+        *x_exprs,
+        add_intercept=add_intercept,
+        solve_method=solve_method,
+        alias_tolerance=alias_tolerance,
+    )
 
 
 def ridge_formula(
@@ -5057,6 +5088,7 @@ def wls_formula(
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
     solve_method: str | None = None,
+    alias_tolerance: float = 1e-7,
 ) -> pl.Expr:
     """Weighted Least Squares regression using R-style formula syntax.
 
@@ -5070,6 +5102,8 @@ def wls_formula(
         Whether to include an intercept term.
     solve_method : str or None, default None
         Solver for the linear system: "qr" (default), "svd", or "cholesky".
+    alias_tolerance : float, default 1e-7
+        See :func:`ols`.
 
     Returns
     -------
@@ -5078,7 +5112,14 @@ def wls_formula(
     """
     add_intercept = _resolve_intercept(add_intercept, with_intercept)
     response, x_exprs, _ = _parse_formula(formula)
-    return wls(response, weights, *x_exprs, add_intercept=add_intercept, solve_method=solve_method)
+    return wls(
+        response,
+        weights,
+        *x_exprs,
+        add_intercept=add_intercept,
+        solve_method=solve_method,
+        alias_tolerance=alias_tolerance,
+    )
 
 
 def rls_formula(
@@ -5475,6 +5516,7 @@ def ols_formula_summary(
     with_intercept: bool | None = None,
     solve_method: str | None = None,
     hc_type: str | None = None,
+    alias_tolerance: float = 1e-7,
 ) -> pl.Expr:
     """OLS coefficient summary using R-style formula syntax.
 
@@ -5489,6 +5531,8 @@ def ols_formula_summary(
     hc_type : str or None, default None
         Heteroskedasticity-consistent standard errors variant:
         "hc0", "hc1", "hc2", or "hc3". If None, uses homoskedastic SEs.
+    alias_tolerance : float, default 1e-7
+        See :func:`ols`.
 
     Returns
     -------
@@ -5497,7 +5541,14 @@ def ols_formula_summary(
     """
     add_intercept = _resolve_intercept(add_intercept, with_intercept)
     response, x_exprs, _ = _parse_formula(formula)
-    return ols_summary(response, *x_exprs, add_intercept=add_intercept, solve_method=solve_method, hc_type=hc_type)
+    return ols_summary(
+        response,
+        *x_exprs,
+        add_intercept=add_intercept,
+        solve_method=solve_method,
+        hc_type=hc_type,
+        alias_tolerance=alias_tolerance,
+    )
 
 
 def ridge_formula_summary(
@@ -5666,6 +5717,7 @@ def ols_formula_predict(
     level: float = 0.95,
     null_policy: str = "drop",
     name: str | None = None,
+    alias_tolerance: float = 1e-7,
 ) -> pl.Expr:
     """OLS predictions using R-style formula syntax.
 
@@ -5685,6 +5737,8 @@ def ols_formula_predict(
         "drop" or "drop_y_zero_x".
     name : str or None, default None
         Custom prefix for output column names. Defaults to "ols".
+    alias_tolerance : float, default 1e-7
+        See :func:`ols`.
 
     Returns
     -------
@@ -5709,6 +5763,7 @@ def ols_formula_predict(
         level=level,
         null_policy=null_policy,
         name=name,
+        alias_tolerance=alias_tolerance,
     )
 
 
