@@ -36,6 +36,7 @@ eta_squared: Float64, n_groups: UInt32}`
 - Comparing means across three or more groups in one step
 - Use `kind="welch"` when group variances differ (heteroscedasticity)
 - Check variance equality first with [`brown_forsythe`](#brown_forsythe)
+- If significant, follow up with [`tukey_hsd` or `pairwise_t_test`](posthoc.md) to find which pairs of groups differ
 
 **Example:**
 ```python
@@ -330,5 +331,6 @@ df.select(ps.yuen_test("treatment", "control", trim=0.1))
 ## See Also
 
 - [Non-Parametric Tests](nonparametric.md) - Distribution-free alternatives (Mann-Whitney, Wilcoxon)
+- [Post-hoc Tests & Multiple Comparisons](posthoc.md) - `tukey_hsd`, `pairwise_t_test` (pairwise follow-up after `one_way_anova`)
 - [TOST Equivalence Tests](tost.md) - Test for practical equivalence rather than difference
 - [Distributional Tests](distributional.md) - Test normality assumptions

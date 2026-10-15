@@ -158,7 +158,7 @@ ps.kruskal_wallis(
 - Ordinal response variable
 - Unequal group sizes with skewed data
 
-**Note:** A significant result indicates at least one group differs, but doesn't identify which groups differ. Use pairwise Mann-Whitney tests with multiple comparison correction for post-hoc analysis.
+**Note:** A significant result indicates at least one group differs, but doesn't identify which groups differ. Follow up with [`dunn_test`](posthoc.md#dunn_test) for pairwise rank-based comparisons with multiple comparison correction.
 
 **Example:**
 ```python
@@ -272,6 +272,7 @@ df.select(ps.brunner_munzel("treatment", "control", alternative="greater"))
 ## See Also
 
 - [Parametric Tests](parametric.md) - Tests with distributional assumptions
+- [Post-hoc Tests & Multiple Comparisons](posthoc.md) - `dunn_test` (pairwise follow-up after `kruskal_wallis`)
 - [TOST Equivalence Tests](tost.md) - Non-parametric equivalence tests (`tost_wilcoxon_*`)
 - [Distributional Tests](distributional.md) - Test normality to help choose between parametric/non-parametric
 - [Effect Sizes & Bootstrap CIs](effect-sizes.md) - `rank_biserial`, `matched_pairs_rank_biserial` effect sizes

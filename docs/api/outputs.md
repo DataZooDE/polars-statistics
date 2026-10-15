@@ -441,6 +441,46 @@ Some tests include additional fields like `df`, `n`, `estimate`, `ci_lower`, `ci
 
 ---
 
+## Pairwise Comparison Output
+
+Returned by `tukey_hsd`, `pairwise_t_test`, `dunn_test`. See
+[Post-hoc Tests & Multiple Comparisons](tests/posthoc.md).
+
+```
+List[Struct {
+    group1: String,
+    group2: String,
+    n1: UInt32,
+    n2: UInt32,
+    estimate: Float64,     # mean/mean-rank difference, group2 - group1
+    statistic: Float64,
+    df: Float64,           # NaN for pairwise_t_test (Welch df varies per pair, not reported) and dunn_test
+    p_value: Float64,
+    p_adj: Float64,        # == p_value for tukey_hsd (already simultaneous)
+    ci_lower: Float64,     # NaN for pairwise_t_test and dunn_test
+    ci_upper: Float64,     # NaN for pairwise_t_test and dunn_test
+}]
+```
+
+One row per call (`returns_scalar=True`); explode to one row per pairwise comparison with
+`.explode("col").struct.unnest()`. For `k` groups there are `k(k-1)/2` rows. Rows with a
+null/NaN value or a null group are dropped before computing; fewer than 2 usable groups give
+an empty list, never an exception.
+
+---
+
+## Elementwise Float64 Output
+
+Returned by `p_adjust`, `ptukey`, `qtukey`. See
+[Post-hoc Tests & Multiple Comparisons](tests/posthoc.md).
+
+A bare `Float64` expression — no `Struct` wrapper — the same length as the input column(s).
+`p_adjust` is a whole-column operation (adjusts the full family together, not value-by-value);
+`ptukey`/`qtukey` are genuinely elementwise and broadcast scalar arguments against column
+arguments. All three return `NaN` (never an exception) for invalid input rather than raising.
+
+---
+
 ## Mann-Whitney / Wilcoxon Output
 
 Returned by `mann_whitney_u` and `wilcoxon_signed_rank`. See

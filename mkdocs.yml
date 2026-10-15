@@ -69,6 +69,7 @@ nav:
   - Statistical Tests:
       - Parametric Tests: api/tests/parametric.md
       - Non-Parametric Tests: api/tests/nonparametric.md
+      - Post-hoc & Multiple Comparisons: api/tests/posthoc.md
       - Distributional Tests: api/tests/distributional.md
       - Correlation Tests: api/tests/correlation.md
       - Forecast Comparison: api/tests/forecast.md
