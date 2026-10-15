@@ -533,6 +533,18 @@ impl PyRANSAC {
     }
 
     /// Informative repr: class name plus key state; never panics if unfitted.
+    /// Model type, error family (R naming; None for estimators without a
+    /// likelihood) and link of the fit (anofox-regression ModelInfo).
+    #[getter]
+    fn model_info<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, pyo3::types::PyDict>> {
+        use anofox_regression::HasModelInfo;
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("RANSAC"))?;
+        crate::pymodels::model_info::model_info_dict(py, fitted.model_info())
+    }
+
     fn __repr__(slf: &Bound<'_, Self>) -> PyResult<String> {
         crate::pymodels::ergonomics::repr(slf.as_any())
     }
