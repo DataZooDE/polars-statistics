@@ -4,18 +4,18 @@ milestone: v0.8.0
 milestone_name: Claude Code Skills Plugin
 current_phase: "16.3"
 current_phase_name: Upstream API Wave 2
-current_plan: 8
+current_plan: 9
 status: executing
-stopped_at: Completed 16.3-07-PLAN.md
-last_updated: "2026-10-15T18:59:44.194Z"
+stopped_at: Completed 16.3-08-PLAN.md
+last_updated: "2026-10-15T19:20:17.213Z"
 last_activity: 2026-10-09
 last_activity_desc: Phase 16.3 execution started
-state_head: 3b2c46ab5aaa3b0f827366a2d3c33a3a26d92031
+state_head: 4192bef4e8edebb2b9a15e19d22debb2094c6bef
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 36
-  completed_plans: 31
+  completed_plans: 32
   percent: 0
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 ## Current Position
 
 Phase: 16.3 (Upstream API Wave 2) — EXECUTING
-Current Plan: 8
+Current Plan: 9
 Total Plans in Phase: 11
 Status: Ready to execute
 Last activity: 2026-10-09 — Phase 16.3 execution started
@@ -126,6 +126,7 @@ Execution order: 13 → 14 → 15 → 16 → 17
 | Phase 16.3 P05 | 50min | 3 tasks | 11 files |
 | Phase 16.3 P06 | 30min | 3 tasks | 10 files |
 | Phase 16.3 P07 | 38min | 3 tasks | 8 files |
+| Phase 16.3 P08 | 20min | 3 tasks | 35 files |
 
 ## Accumulated Context
 
@@ -209,6 +210,8 @@ Recent decisions affecting current work:
 - [Phase 16.3]: [Phase 16.3]: 16.3-06: Confirmed anofox-regression's Augmentable impls read family/link/theta from the fitted object itself, so every PyModel .augment() describes exactly what the instance was fit with (no reconciliation logic needed, unlike ps.augment's Tweedie dispatch fix in 16.3-05)
 - [Phase 16.3]: [Phase 16.3]: 16.3-06: Did not flip UPST-09 to Complete in REQUIREMENTS.md -- still shared with 16.3-07 through 16.3-11
 - [Phase 16.3]: alias_tolerance shim pattern copied verbatim from 16.1-03's NegativeBinomialKwargs precedent, now applied to a 6-function OLS/WLS family — Reuse the established additive-kwargs shim pattern rather than inventing a new one
+- [Phase 16.3]: [Phase 16.3]: 16.3-08: Ridge already stores a concrete FittedRidge (narrowed in 16.1-05), so it gets the direct fitted.model_info() getter like OLS rather than the boxed-capture field the plan assumed for ElasticNet/RLS/BLS
+- [Phase 16.3]: [Phase 16.3]: 16.3-08: 16.3-08 is the last UPST-09-tagged plan (02-08); flipped UPST-09 to Complete in REQUIREMENTS.md
 
 ### Pending Todos
 
@@ -244,7 +247,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-10-15T18:59:44.094Z
-Stopped at: Completed 16.3-07-PLAN.md
+Last session: 2026-10-15T19:20:17.145Z
+Stopped at: Completed 16.3-08-PLAN.md
 Resume file: None
 </content>
