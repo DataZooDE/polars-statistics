@@ -1,6 +1,6 @@
 ---
 name: polars-statistics-regression
-description: Use polars-statistics regression — fit OLS, Ridge, Lasso, Elastic Net, WLS, RLS, BLS, NNLS, Quantile, Huber, PLS, ALM, or any GLM (logistic, Poisson, Negative Binomial, Tweedie, Probit, Cloglog, penalized GLM with priors and offsets), AFT survival regression with censoring, as Polars expressions or as PyModel classes; use R-style formulas with interactions and polynomial terms; get standard errors and p-values for Huber/RANSAC robust fits and GLMM fixed effects, or leverage/variance diagnostics for OLS/WLS/Ridge.
+description: Use polars-statistics regression — fit OLS, Ridge, Lasso, Elastic Net, WLS, RLS, BLS, NNLS, Quantile, Huber, PLS, ALM, or any GLM (logistic, Poisson, Negative Binomial, Tweedie, Probit, Cloglog, penalized GLM with priors and offsets), AFT survival regression with censoring, or GLMM mixed models (including Negative Binomial/Gamma/Tweedie families with an offset), as Polars expressions or as PyModel classes; use R-style formulas with interactions and polynomial terms; get standard errors and p-values for Huber/RANSAC robust fits and GLMM fixed effects, or leverage/variance diagnostics for OLS/WLS/Ridge; get broom::augment-style per-observation diagnostics (augment) for any supported model, a model_info summary of what was fit, or empirical-Bayes shrinkage (eb_shrink) of noisy per-group estimates.
 version: "0.8.0"
 user-invocable: false
 ---
@@ -28,6 +28,11 @@ Route here when the task involves:
 - sklearn-to-polars migration for any regression class
 - Survival / time-to-event data with right censoring (AFT: Weibull, log-normal, log-logistic, exponential)
 - Count data with an exposure offset, or a Bayesian-style (Gaussian/Laplace) prior on a GLM coefficient (penalized GLM)
+- Per-observation diagnostics for any fitted model — residuals, leverage, Cook's distance, DFFITS in one call (`ps.augment` / `.augment()`)
+- What model/family/link a fitted PyModel actually used (`model_info`)
+- Overdispersed counts or positive data with random effects and an exposure offset (`GLMM.negative_binomial`/`.gamma`/`.tweedie`)
+- Shrinking noisy per-group/per-store estimates toward the overall mean (empirical Bayes, `ps.eb_shrink`)
+- Rank-deficient / aliased designs for OLS or WLS (`alias_tolerance`)
 
 ## API Reference
 
@@ -43,10 +48,19 @@ Model(hyperparams...)
   .score(x, y)        -> float  (R²)
   .is_fitted()        -> bool
   .summary()          -> str    (human-readable coefficient table)
-  .to_dict()          -> dict   (machine-readable)
+  .to_dict()          -> dict   (machine-readable; includes model_info since 0.8.0)
+  .model_info         -> dict   (0.8.0) {"model_type": str, "family": str | None, "link": str}
 ```
 
 Guard against unfitted access: accessing `.coefficients`, `.r_squared`, etc. on an unfitted model raises `PyRuntimeError("Model not fitted")`.
+
+**`model_info` (0.8.0):** every PyModel class whose fitted type implements `HasModelInfo`
+exposes `model_info -> dict`. `model_type` distinguishes classes that share a
+family/link — e.g. `Logistic`/`Probit`/`Cloglog` all report `family="binomial"` but
+`model_type` `"binomial"` with `link` `"logit"`/`"probit"`/`"cloglog"` respectively,
+while `LogisticRegression` reports `model_type="logistic"` (the separate sklearn-style
+solver). `family` is `None` for estimators with no likelihood family (e.g. `OLS`, `Ridge`,
+`Quantile`, `TheilSen`) — `model_info` still reports `model_type`/`link` for those.
 
 ---
 
@@ -60,12 +74,14 @@ OLS(
     compute_inference: bool = True,
     confidence_level: float = 0.95,
     solve_method: str | None = None,      # "qr" | "svd" | "cholesky"
+    alias_tolerance: float = 1e-7,        # (0.8.0) R lm's rank-deficiency tolerance -- see Gotchas
 )
   .fit(x, y) -> OLS
   .fit_from_accumulator(acc: MomentAccumulator) -> OLS
   .hc_inference(x, hc_type: str = "hc1") -> dict   # hc_type: "hc0" | "hc1" | "hc2" | "hc3"
   .variance_factor() -> np.ndarray | None   # (p+1)x(p+1) with intercept, p x p without; None for moments-fits
   .leverage_new(x_new) -> np.ndarray        # hat-matrix leverage for new rows; ValueError on column-count mismatch
+  .augment(x, y, residual_type: str | None = None) -> dict   # (0.8.0) broom::augment-style per-observation diagnostics
   # Properties:
   .coefficients, .intercept
   .r_squared, .adj_r_squared, .mse, .rmse
@@ -73,6 +89,10 @@ OLS(
   .p_values, .std_errors, .t_statistics
   .n_observations, .n_parameters
   .fitted_values, .residuals
+  # Intercept inference + slope CIs (0.8.0):
+  .intercept_std_error, .intercept_t_statistic, .intercept_p_value, .intercept_conf_interval
+  .conf_interval_lower, .conf_interval_upper   # feature-coefficient CIs at confidence_level
+  .model_info                                  # (0.8.0) {"model_type": "ols", "family": None, "link": "identity"}
 
 Ridge(
     lambda_: float = 1.0,                 # regularization strength
@@ -87,6 +107,7 @@ Ridge(
   .variance_factor() -> np.ndarray | None   # same contract as OLS.variance_factor()
   .leverage_new(x_new) -> np.ndarray
   .coefficients, .intercept, .r_squared, .adj_r_squared, .lambda_value
+  .model_info                              # (0.8.0) {"model_type": "ridge", "family": None, "link": "identity"}
   # Inference getters (sandwich SEs; see the lambda_>0 gotcha below):
   .std_errors, .intercept_std_error        # always populated when compute_inference=True
   .p_values, .t_statistics                 # None when lambda_ > 0 (no valid t-test on shrunken coefficients)
@@ -101,18 +122,25 @@ ElasticNet(
 )
   .fit(x, y) -> ElasticNet
   .coefficients, .intercept, .r_squared, .lambda_value, .alpha_value
+  .model_info   # (0.8.0)
 
 WLS(
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,   # deprecated
     compute_inference: bool = True,
     confidence_level: float = 0.95,
+    alias_tolerance: float = 1e-7,        # (0.8.0) same contract as OLS.alias_tolerance
 )
   .fit(x, y, weights) -> WLS             # 3-ARG fit — weights is required, not optional
   .hc_inference(x, hc_type: str = "hc1") -> dict
   .variance_factor() -> np.ndarray | None   # same contract as OLS.variance_factor()
   .leverage_new(x_new) -> np.ndarray
+  .augment(x, y, weights=None, residual_type: str | None = None) -> dict   # (0.8.0) weights defaults to the fit's own weights
   .coefficients, .intercept, .r_squared
+  # Intercept inference + slope CIs + model_info (0.8.0, same contract as OLS):
+  .intercept_std_error, .intercept_t_statistic, .intercept_p_value, .intercept_conf_interval
+  .conf_interval_lower, .conf_interval_upper, .p_values, .std_errors, .t_statistics
+  .model_info
 
 RLS(
     forgetting_factor: float = 1.0,       # 0 < factor <= 1; 1.0 = expanding OLS
@@ -273,6 +301,8 @@ LARS(
 )
   .fit(x, y) -> LARS
   .coefficients, .intercept, .r_squared, .alphas
+  .adj_r_squared, .mse, .rmse   # (0.8.0, anofox-regression 0.5.21 #65) now filled; previously NaN
+  .model_info                  # (0.8.0)
 
 PassiveAggressive(
     c: float = 1.0,                       # regularization (inverse strength)
@@ -317,6 +347,16 @@ PSpline(
 ---
 
 ### Group 5 — GLM Models
+
+**Shared surface (0.8.0), every class in this group:** `model_info -> dict`
+(`{"model_type", "family", "link"}`); `.augment(x, y, residual_type=None) -> dict`
+(`fitted`/`residual`/`std_residual`/`stud_residual`/`leverage`/`cooks_d`/`dffits` plus a
+trailing `resid_type` key — `residual_type` defaults to `"deviance"` for every GLM);
+`intercept_std_error`, `intercept_t_statistic` (Wald z for Logistic/Probit/Cloglog, t on
+the residual df for Poisson/NegativeBinomial/Tweedie/Gamma), `intercept_p_value`,
+`intercept_conf_interval`; `conf_interval_lower`/`conf_interval_upper` for the feature
+coefficients. Every inference getter is `None` unless `compute_inference=True` (and the
+`intercept_*` getters are additionally `None` without an intercept).
 
 ```python
 # verify: skip -- PyModel class reference (constructor type annotations and indented method chaining are illustrative, not valid Python)
@@ -380,20 +420,26 @@ NegativeBinomial(
     lambda_: float = 0.0,
     estimate_dispersion: bool = False,    # False (default) = SEs use dispersion 1;
                                            # True = Pearson-dispersion SEs (R summary.glm(negative.binomial(theta)))
+    compute_inference: bool = True,       # (0.8.0)
+    confidence_level: float = 0.95,       # (0.8.0)
 )
   .fit(x, y) -> NegativeBinomial
   .predict(x) -> np.ndarray
   .coefficients, .intercept, .aic, .bic, .p_values, .std_errors, .theta_estimated
   .dispersion                            # 1.0 by default; the estimated Pearson dispersion when estimate_dispersion=True
+  # NOTE: this .theta_estimated is the NB dispersion of a SINGLE fitted model --
+  # distinct from GLMM.nb_theta (Group 6 below), which is the mixed-model equivalent.
 
 Tweedie(
     var_power: float = 1.5,               # 0=Gaussian, 1=Poisson, 2=Gamma, 3=InvGaussian
-    link_power: float | None = None,      # None = canonical link
+    link_power: float | None = None,      # None = canonical link (1 - var_power)
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,   # deprecated
     max_iter: int = 100,
     tol: float = 1e-6,
     lambda_: float = 0.0,
+    compute_inference: bool = True,       # (0.8.0)
+    confidence_level: float = 0.95,       # (0.8.0)
 )
   .fit(x, y) -> Tweedie
   # Factory methods (alternative to __init__):
@@ -405,6 +451,8 @@ Tweedie(
   # parameter name. Use Tweedie().gaussian(with_intercept=True) not add_intercept=.
   .predict(x) -> np.ndarray
   .coefficients, .intercept, .aic, .bic, .p_values, .std_errors, .var_power_value
+  # link_power (0.8.0): same kwarg ps.augment(model="tweedie", link_power=...) uses to
+  # reproduce this exact fit. aic/bic are NaN unless var_power in {0.0, 1.0, 2.0, 3.0}.
 
 Probit(
     add_intercept: bool | None = None,
@@ -412,6 +460,8 @@ Probit(
     max_iter: int = 100,
     tol: float = 1e-6,
     lambda_: float = 0.0,
+    compute_inference: bool = True,       # (0.8.0)
+    confidence_level: float = 0.95,       # (0.8.0)
 )
   .fit(x, y) -> Probit                   # y: binary 0/1
   .predict(x) -> np.ndarray
@@ -425,6 +475,8 @@ Cloglog(
     max_iter: int = 100,
     tol: float = 1e-6,
     lambda_: float = 0.0,
+    compute_inference: bool = True,       # (0.8.0)
+    confidence_level: float = 0.95,       # (0.8.0)
 )
   .fit(x, y) -> Cloglog                  # y: binary 0/1
   .predict(x) -> np.ndarray
@@ -438,6 +490,8 @@ Gamma(
     max_iter: int = 25,
     tol: float = 1e-8,
     lambda_: float = 0.0,
+    compute_inference: bool = True,       # (0.8.0)
+    confidence_level: float = 0.95,       # (0.8.0)
 )
   .fit(x, y) -> Gamma                    # y: strictly positive
   .predict(x) -> np.ndarray
@@ -482,25 +536,42 @@ PenalizedGLM(
 ```python
 # verify: skip -- PyModel class reference (indented builder methods with type annotations are illustrative, not valid Python)
 GLMM()
-  # No constructor params — configure via builder methods:
-  .gaussian(
-      add_intercept: bool | None = None,
-      with_intercept: bool | None = None,  # deprecated
-      reml: bool = True,
-      max_iter: int = 100,
-      tol: float = 1e-8,
-  ) -> GLMM
-  .binomial(add_intercept=None, with_intercept=None, reml=False, max_iter=100, tol=1e-8) -> GLMM
-  .poisson(add_intercept=None, with_intercept=None, reml=False, max_iter=100, tol=1e-8) -> GLMM
-  .fit(x, y, group) -> GLMM              # group: array of integer group IDs (Vec<u64>)
-  .fit_crossed(x, y, groups) -> GLMM    # multiple crossed random effects
-  .predict_fixed(x) -> np.ndarray
+  # No constructor — GLMM cannot be built directly; use one of six family factories,
+  # each returning a new (unfitted) GLMM. All six share these structural kwargs:
+  #   add_intercept=None, with_intercept=None (deprecated), max_iter=100, tol=1e-8,
+  #   random_intercept=True, random_slopes: list[int] | None = None,
+  #   random_slopes_per_factor: dict | list | None = None,   # (0.8.0) per-factor random slopes
+  #   theta_max: float = 1000.0                               # (0.8.0) variance-component search bound
+  .gaussian(reml: bool = True, **structural_kwargs) -> GLMM          # reml=True default
+  .binomial(reml: bool = False, **structural_kwargs) -> GLMM
+  .poisson(reml: bool = False, **structural_kwargs) -> GLMM
+  .gamma(reml: bool = False, **structural_kwargs) -> GLMM             # (0.8.0) log link
+  .tweedie(power: float = 1.5, reml: bool = False, **structural_kwargs) -> GLMM   # (0.8.0) log link
+  .negative_binomial(nb_theta: float | None = None, reml: bool = False, **structural_kwargs) -> GLMM
+  # (0.8.0) nb_theta=None estimates it, matching glmer.nb; log link
+  .fit(x, y, group, offset=None) -> GLMM            # group: array of int/str group IDs; offset (0.8.0)
+  .fit_crossed(x, y, groups, offset=None) -> GLMM   # groups: list of 1D arrays, one per factor
+  .predict_fixed(x, offset=None) -> np.ndarray
   .fixed_effects, .intercept, .random_effects, .random_sd, .slopes
   .sigma, .theta, .deviance, .log_likelihood
   .n_groups, .iterations, .converged, .std_errors
   .z_values, .p_values                   # Wald inference: z = fixed_effects / std_errors
   .conf_int(level: float = 0.95) -> tuple[np.ndarray, np.ndarray]   # (lower, upper); all-NaN for invalid level
   .factors() -> list[dict]
+  .model_info   # (0.8.0) {"model_type": "glmm", "family": str, "link": str}
+  # lme4-validated getters (0.8.0):
+  .nb_theta                 # float | None -- None for every non-negative-binomial family;
+                             # distinct from NegativeBinomial.theta_estimated (Group 5 above)
+  .random_cov               # random-effects covariance matrix
+  .random_effects_matrix    # BLUPs, one row per group/factor level
+  .random_corr              # correlation matrix derived from random_cov
+  .n_random_effects, .n_factors   # n_factors == 1 for a single-factor fit(), more for fit_crossed()
+  .is_reml
+  # Per-factor accessors (0.8.0, crossed fits only; None for a single-factor fit or
+  # an out-of-range index):
+  .factor_random_cov(f) -> np.ndarray | None
+  .factor_random_sd(f) -> np.ndarray | None
+  .factor_random_effects_matrix(f) -> np.ndarray | None
 
 ALM(
     distribution: str = "normal",
@@ -642,11 +713,11 @@ All fit expressions return a Polars Struct containing regression results. Use in
 ```python
 # verify: skip -- expression API reference (y, *x are column-name placeholders, not runnable Python; ps not imported)
 # Linear
-ps.ols(y, *x, add_intercept=None, with_intercept=None, solve_method=None)
+ps.ols(y, *x, add_intercept=None, with_intercept=None, solve_method=None, alias_tolerance=1e-7)
 ps.ridge(y, *x, lambda_=1.0, add_intercept=None, with_intercept=None, solve_method=None)
 ps.elastic_net(y, *x, lambda_=1.0, alpha=0.5, add_intercept=None, with_intercept=None)
 ps.lasso(y, *x, lambda_=1.0, add_intercept=None, with_intercept=None)       # elastic_net(alpha=1.0)
-ps.wls(y, weights, *x, add_intercept=None, with_intercept=None, solve_method=None)  # weights BEFORE *x
+ps.wls(y, weights, *x, add_intercept=None, with_intercept=None, solve_method=None, alias_tolerance=1e-7)  # weights BEFORE *x
 ps.rls(y, *x, forgetting_factor=0.99, add_intercept=None, with_intercept=None, initial_p_diagonal=1e6)
 ps.expanding_ols(y, *x, add_intercept=None, with_intercept=None)             # rls(forgetting_factor=1.0)
 ps.bls(y, *x, lower_bound=None, upper_bound=None, add_intercept=None, with_intercept=None)
@@ -682,6 +753,14 @@ ps.aid_anomalies(y, intermittent_threshold=0.3)
 
 **`ps.aft` output struct fields:** `intercept, coefficients, scale, log_likelihood, null_log_likelihood, aic, bic, iterations, converged, n_observations, n_events, n_censored` (12 fields; confirmed via live `df.select(...).schema`).
 
+**`alias_tolerance` (0.8.0, `ols`/`wls` and every `_summary`/`_predict`/`_formula*` variant above):**
+R `lm`'s configurable rank-deficiency tolerance (`anofox_regression::utils::LM_ALIAS_TOLERANCE`,
+default `1e-7`). A later column that is a linear combination of the intercept and earlier
+kept columns within this tolerance is aliased (`NaN` coefficient, excluded from
+`rank`/`n_parameters`) — a **tighter** tolerance (smaller value) aliases more columns, a
+**looser** tolerance (larger value) keeps more. The default reproduces pre-0.8.0 behaviour
+exactly. See the aliasing Gotcha below.
+
 ---
 
 ### Regression Expressions — Summary (Tidy Coefficients)
@@ -690,13 +769,13 @@ All `*_summary` variants return `List[Struct]` with fields: `{term, estimate, st
 
 ```python
 # verify: skip -- expression API reference (y, *x are column-name placeholders, not runnable Python; ps not imported)
-ps.ols_summary(y, *x, add_intercept=None, with_intercept=None, solve_method=None, hc_type=None)
+ps.ols_summary(y, *x, add_intercept=None, with_intercept=None, solve_method=None, hc_type=None, alias_tolerance=1e-7)
 # hc_type: "hc0" | "hc1" | "hc2" | "hc3" | None (homoskedastic)
 
 ps.ridge_summary(y, *x, lambda_=1.0, add_intercept=None, with_intercept=None, solve_method=None)
 ps.elastic_net_summary(y, *x, lambda_=1.0, alpha=0.5, add_intercept=None, with_intercept=None)
 ps.lasso_summary(y, *x, lambda_=1.0, add_intercept=None, with_intercept=None)
-ps.wls_summary(y, weights, *x, add_intercept=None, with_intercept=None, solve_method=None)
+ps.wls_summary(y, weights, *x, add_intercept=None, with_intercept=None, solve_method=None, alias_tolerance=1e-7)
 ps.rls_summary(y, *x, forgetting_factor=0.99, add_intercept=None, with_intercept=None, initial_p_diagonal=1e6)
 ps.bls_summary(y, *x, lower_bound=None, upper_bound=None, add_intercept=None, with_intercept=None)
 ps.quantile_summary(y, *x, tau=0.5, add_intercept=None, with_intercept=None)
@@ -741,11 +820,11 @@ All `*_predict` variants return per-row struct: `{<prefix>_prediction, <prefix>_
 
 ```python
 # verify: skip -- expression API reference (y, *x are column-name placeholders, not runnable Python; ps not imported)
-ps.ols_predict(y, *x, add_intercept=True, solve_method=None, interval=None, level=0.95, null_policy="drop", name=None)
+ps.ols_predict(y, *x, add_intercept=True, solve_method=None, interval=None, level=0.95, null_policy="drop", name=None, alias_tolerance=1e-7)
 ps.ridge_predict(y, *x, lambda_=1.0, add_intercept=True, solve_method=None, interval=None, level=0.95, null_policy="drop", name=None)
 ps.elastic_net_predict(y, *x, lambda_=1.0, alpha=0.5, add_intercept=True, interval=None, level=0.95, null_policy="drop", name=None)
 ps.lasso_predict(y, *x, lambda_=1.0, add_intercept=True, interval=None, level=0.95, null_policy="drop", name=None)
-ps.wls_predict(y, weights, *x, add_intercept=True, solve_method=None, interval=None, level=0.95, null_policy="drop", name=None)
+ps.wls_predict(y, weights, *x, add_intercept=True, solve_method=None, interval=None, level=0.95, null_policy="drop", name=None, alias_tolerance=1e-7)
 ps.rls_predict(y, *x, forgetting_factor=0.99, add_intercept=True, interval=None, level=0.95, null_policy="drop", name=None, initial_p_diagonal=1e6)
 ps.bls_predict(y, *x, lower_bound=None, upper_bound=None, add_intercept=True, interval=None, level=0.95, null_policy="drop", name=None)
 ps.nnls_predict(y, *x, add_intercept=True, interval=None, level=0.95, null_policy="drop", name=None)
@@ -795,11 +874,11 @@ All formula expressions parse R-style formula strings and construct the correspo
 
 ```python
 # verify: skip -- formula expression reference (formula: str uses type annotation syntax, not runnable Python)
-ps.ols_formula(formula: str, add_intercept=None, with_intercept=None, solve_method=None)
+ps.ols_formula(formula: str, add_intercept=None, with_intercept=None, solve_method=None, alias_tolerance=1e-7)
 ps.ridge_formula(formula: str, lambda_=1.0, add_intercept=None, with_intercept=None, solve_method=None)
 ps.elastic_net_formula(formula: str, lambda_=1.0, alpha=0.5, add_intercept=None, with_intercept=None)
 ps.lasso_formula(formula: str, lambda_=1.0, add_intercept=None, with_intercept=None)
-ps.wls_formula(formula: str, weights, add_intercept=None, with_intercept=None, solve_method=None)
+ps.wls_formula(formula: str, weights, add_intercept=None, with_intercept=None, solve_method=None, alias_tolerance=1e-7)
 # Note: wls_formula takes a weights positional arg (column name or expr) after formula
 ps.rls_formula(formula: str, forgetting_factor=0.99, add_intercept=None, with_intercept=None, initial_p_diagonal=1e6)
 ps.bls_formula(formula: str, lower_bound=None, upper_bound=None, add_intercept=None, with_intercept=None)
@@ -821,7 +900,7 @@ ps.aft_formula(formula: str, event, distribution="weibull", priors=None, add_int
 
 ```python
 # verify: skip -- formula expression reference (formula: str uses type annotation syntax, not runnable Python)
-ps.ols_formula_summary(formula: str, add_intercept=None, with_intercept=None, solve_method=None, hc_type=None)
+ps.ols_formula_summary(formula: str, add_intercept=None, with_intercept=None, solve_method=None, hc_type=None, alias_tolerance=1e-7)
 ps.ridge_formula_summary(formula: str, lambda_=1.0, add_intercept=None, with_intercept=None, solve_method=None)
 ps.elastic_net_formula_summary(formula: str, lambda_=1.0, alpha=0.5, add_intercept=None, with_intercept=None)
 ps.lasso_formula_summary(formula: str, lambda_=1.0, add_intercept=None, with_intercept=None)
@@ -838,7 +917,7 @@ ps.aft_formula_summary(formula: str, event, distribution="weibull", priors=None,
 
 ```python
 # verify: skip -- formula expression reference (formula: str uses type annotation syntax, not runnable Python)
-ps.ols_formula_predict(formula: str, add_intercept=True, solve_method=None, interval=None, level=0.95, null_policy="drop", name=None)
+ps.ols_formula_predict(formula: str, add_intercept=True, solve_method=None, interval=None, level=0.95, null_policy="drop", name=None, alias_tolerance=1e-7)
 ps.ridge_formula_predict(formula: str, lambda_=1.0, add_intercept=True, solve_method=None, interval=None, level=0.95, null_policy="drop", name=None)
 ps.elastic_net_formula_predict(formula: str, lambda_=1.0, alpha=0.5, add_intercept=True, interval=None, level=0.95, null_policy="drop", name=None)
 ps.lasso_formula_predict(formula: str, lambda_=1.0, add_intercept=True, interval=None, level=0.95, null_policy="drop", name=None)
@@ -860,6 +939,19 @@ ps.aft_formula_predict_cdf(formula: str, event, *, t, distribution="weibull", pr
 
 ```python
 # verify: skip -- diagnostics expression reference (group_sizes: list[int] uses type annotation syntax; ps and x not in scope)
+# Per-observation diagnostics (one combined expression, broom::augment-style):
+ps.augment(y, *x, model="ols", weights=None, residual_type=None, add_intercept=True,
+           theta=None, var_power=1.5, link_power=None, max_iter=100, tol=1e-8)
+# model: "ols" | "wls" | "logistic" | "probit" | "cloglog" | "poisson" |
+#        "negative_binomial" | "tweedie" | "gamma"
+# weights: required (and only valid) with model="wls"
+# residual_type: "response" | "pearson" | "deviance" -- defaults to "response" for
+#                ols/wls, "deviance" for every GLM (matching R's broom::augment)
+# theta: fixed NegBin dispersion (model="negative_binomial" only); None estimates it
+# var_power/link_power: Tweedie only; link_power=None uses the canonical link (1-var_power)
+# Returns Struct{fitted, residual, std_residual, stud_residual, leverage, cooks_d, dffits}
+# one row per input row (returns_scalar=False, like the *_predict expressions)
+
 # Structural / multicollinearity:
 ps.condition_number(*x, add_intercept=None, with_intercept=None)
 ps.vif(*x)
@@ -903,6 +995,28 @@ ps.gamma_pearson_chi_squared(y, *x, lambda_=0.0, add_intercept=None, with_interc
 ps.gamma_standardized_pearson_residuals(y, *x, lambda_=0.0, add_intercept=None, with_intercept=None)
 ps.gamma_standardized_deviance_residuals(y, *x, lambda_=0.0, add_intercept=None, with_intercept=None)
 ```
+
+---
+
+### Regression Expressions — Empirical-Bayes Shrinkage
+
+```python
+# verify: skip -- shrinkage expression reference (ps and columns not in scope)
+ps.eb_shrink(estimate, std_error, method="dl", tau_squared=None) -> pl.Expr
+# estimate/std_error: per-row point estimate and its SE (e.g. one per store/study), or column names
+# method: "dl" (DerSimonian-Laird, matching metafor::rma(method="DL")) | "none" (tau_squared=0, complete pooling)
+# tau_squared: overrides the estimator with a fixed value when given; must be finite and >= 0
+```
+
+**Returns:** `Struct{shrunken, shrunken_se, weight, mu, mu_se, tau_squared, i_squared, q, n_groups}`
+— one row per input row (`returns_scalar=False`), unlike the one-row `List[Struct]` shape used
+by the post-hoc pairwise tests (`polars-statistics-anova`). `mu`/`mu_se`/`tau_squared`/
+`i_squared`/`q`/`n_groups` are whole-sample scalars, repeated identically on every row.
+
+**R equivalent:** `rma(yi = estimate, sei = std_error, method = "DL")` for
+`mu`/`tau_squared`/`q`/`i_squared`, then `blup(fit)$pred`/`blup(fit)$se` for
+`shrunken`/`shrunken_se`. Use `.over(family)` (or `group_by(family).agg(...)`) to shrink
+several independent families of estimates within one DataFrame.
 
 ---
 
@@ -1229,6 +1343,95 @@ survival_df = aft_df.select(
 assert "aft_predict_survival_prediction" in survival_df.columns
 ```
 
+### Example 11: ps.augment per-observation diagnostics for a Poisson GLM, per group
+
+```python
+import numpy as np
+import polars as pl
+import polars_statistics as ps
+from polars_statistics import Poisson
+
+rng = np.random.default_rng(5)
+n = 60
+group = ["A"] * 30 + ["B"] * 30
+x1 = rng.normal(0, 1, n)
+mu = np.exp(0.3 + 0.6 * x1)
+y = rng.poisson(mu).astype(float)
+
+df = pl.DataFrame({"group": group, "y": y, "x1": x1})
+
+# Expression form: residuals/leverage/Cook's distance/DFFITS, analysed independently per group
+aug = df.with_columns(
+    ps.augment("y", "x1", model="poisson").over("group").alias("aug")
+).unnest("aug")
+print(aug.select("group", "y", "x1", "fitted", "cooks_d").head())
+
+# PyModel equivalent — same model, always describes exactly what the instance was fit with
+X = df.select("x1").to_numpy()
+m = Poisson().fit(X, y)
+aug_dict = m.augment(X, y)
+assert set(aug_dict.keys()) == {
+    "fitted", "residual", "std_residual", "stud_residual", "leverage", "cooks_d",
+    "dffits", "resid_type",
+}
+print(aug_dict["resid_type"])   # "deviance" -- the GLM default
+```
+
+### Example 12: GLMM Negative Binomial with an exposure offset and per-factor random slopes
+
+```python
+import numpy as np
+from polars_statistics import GLMM
+
+rng = np.random.default_rng(7)
+n = 200
+X = rng.normal(0, 1, (n, 1))
+factor_a = np.repeat(np.arange(10), 20)
+factor_b = np.tile(np.arange(4), 50)
+offset = rng.uniform(0.5, 2.0, n)
+mu = offset * np.exp(0.3 + 0.5 * X[:, 0])
+y = rng.negative_binomial(5, 5 / (5 + mu)).astype(float)
+
+# factor_a gets a random slope on feature 0; factor_b keeps only a random intercept
+model = GLMM.negative_binomial(random_slopes_per_factor=[[0], []])
+model.fit_crossed(X, y, [factor_a, factor_b], offset=np.log(offset))
+
+print(model.nb_theta, model.n_factors)          # estimated NB dispersion; 2 crossed factors
+print(model.factor_random_sd(0))                # factor_a's random-slope SD vector
+print(model.factor_random_sd(1))                # factor_b's random-intercept-only SD vector
+assert model.n_factors == 2
+assert model.model_info["model_type"] == "glmm"
+```
+
+### Example 13: Empirical-Bayes shrinkage of noisy per-group estimates
+
+```python
+import polars as pl
+import polars_statistics as ps
+
+df = pl.DataFrame({
+    "store": ["s1", "s2", "s3", "s4", "s5"],
+    "estimate": [0.12, 0.35, -0.05, 0.40, 0.08],
+    "std_error": [0.10, 0.30, 0.05, 0.35, 0.09],
+})
+
+result = df.with_columns(
+    ps.eb_shrink("estimate", "std_error").alias("eb")
+).unnest("eb")
+print(result.select("store", "estimate", "shrunken", "shrunken_se", "mu", "tau_squared"))
+
+# Several independent families in one frame, shrunk independently with .over():
+df_families = pl.DataFrame({
+    "family": ["a", "a", "a", "b", "b", "b"],
+    "estimate": [0.12, 0.35, -0.05, 1.2, 0.9, 1.5],
+    "std_error": [0.10, 0.30, 0.05, 0.40, 0.25, 0.50],
+})
+shrunk = df_families.with_columns(
+    ps.eb_shrink("estimate", "std_error").over("family").alias("eb")
+).unnest("eb")
+print(shrunk.select("family", "estimate", "shrunken", "mu"))
+```
+
 ## Gotchas / Notes
 
 **Intercept kwarg deprecation.** Use `add_intercept=True/False` in all new code. The old parameter name emits `FutureWarning` at runtime. Both names are accepted for backward compatibility, but `add_intercept=` is the current name.
@@ -1296,6 +1499,51 @@ assert "aft_predict_survival_prediction" in survival_df.columns
 **Use `tol=1e-10` on `AFT`/`aft*` to reproduce R `survival::survreg` to 1e-6.** The library's convergence tolerance defaults (`tol=1e-9` on the expression, `tol=1e-9` on the `AFT` constructor) are already tight; the plan's own R-reference tests tighten further to `tol=1e-10` to match `survreg`'s coefficients/scale to 1e-6 and log-likelihoods to 1e-7.
 
 **Full `vcov`/`information` are PyModel-only.** `PenalizedGLM.vcov`/`.information` and `AFT.vcov`/`.information` expose the full covariance/information matrices; no expression returns them (`penalized_glm_summary`/`aft_summary` return only the diagonal-derived `std_error`/`ci_lower`/`ci_upper` per term).
+
+### New-surface gotchas (0.8.0: augment, model_info, GLMM, alias_tolerance, eb_shrink)
+
+**`GLMM.nb_theta` is distinct from `NegativeBinomial.theta_estimated`.** `GLMM.nb_theta` is
+the mixed-model negative-binomial dispersion parameter and is `None` for every
+non-negative-binomial GLMM family (`gaussian`, `poisson`, `binomial`, `gamma`, `tweedie`).
+The plain (non-mixed) `NegativeBinomial` PyModel's dispersion getter is named
+`theta_estimated`, not `nb_theta` — the two getters live on different classes and are not
+interchangeable.
+
+**`augment`/`.augment()` needs the training data again, and resolves its own
+`residual_type` default.** Unlike `.predict(x)`, both the expression `ps.augment(y, *x, ...)`
+and every PyModel's `.augment(x, y, residual_type=None)` method require the same `x`/`y` the
+model was fit on (or will be fit on, for the expression) — passing new, unseen data computes
+diagnostics for a different fit, not out-of-sample diagnostics for the existing one. When
+`residual_type` is left `None`, both layers resolve it themselves: `"response"` for
+`ols`/`wls`, `"deviance"` for every GLM (matching R's `broom::augment`) — the resolved value is
+always reported back in the PyModel dict's trailing `resid_type` key (the expression's Python
+builder resolves the default before building the plugin call, so its type is the argument you
+passed, with no implicit-default ambiguity).
+
+**`alias_tolerance` moves R's aliasing threshold, not a solver tolerance.** `alias_tolerance`
+(default `1e-7`, on `OLS`/`WLS` and their `ols`/`wls` family of expressions) is R `lm`'s
+configurable rank-deficiency tolerance — it decides whether a later column within tolerance
+of a linear combination of earlier kept columns gets a `NaN` coefficient (aliased). A
+**smaller** `alias_tolerance` aliases *more* columns (stricter match required to alias); a
+**larger** value aliases *fewer* (keeps borderline-collinear columns). It does not change
+`max_iter`/`tol` IRLS convergence criteria on any GLM — those are separate kwargs.
+
+**`eb_shrink` is row-aligned, and `i_squared` is Higgins-Thompson with a fixed `tau_squared`
+denominator.** Every `eb_shrink` output row corresponds to one input row (`shrunken`,
+`shrunken_se`, `weight` differ per row; `mu`/`mu_se`/`tau_squared`/`i_squared`/`q`/`n_groups`
+are whole-sample scalars repeated on every row) — this is the opposite shape from the
+post-hoc pairwise tests' one-row `List[Struct]` (`polars-statistics-anova`). `i_squared` is
+always the Higgins-Thompson `I^2` definition (proportion of total variation from
+between-group heterogeneity, computed from the *same* DerSimonian-Laird `tau_squared` used
+for shrinkage) — it is not recomputed against a different heterogeneity estimator even when
+`method="none"` or a fixed `tau_squared=` override is passed.
+
+**`model_info["family"]` is `None` for estimators with no likelihood family.** `OLS`, `Ridge`,
+`ElasticNet`, `WLS`, `RLS`, `BLS`, `Quantile`, `Huber`, `TheilSen`, `RANSAC`, `PLS`, `LARS`,
+and other non-GLM linear solvers always report `family: None` in `model_info` — only
+`model_type`/`link` are populated for those. GLM-family classes (`Logistic`, `Poisson`,
+`NegativeBinomial`, `Tweedie`, `Probit`, `Cloglog`, `Gamma`, `LogisticRegression`,
+`PenalizedGLM`, `GLMM`) report a non-`None` `family`.
 
 ### 0.5.19-0.5.21 upstream behaviour changes (anofox-regression bump)
 

@@ -177,6 +177,21 @@ Every PyModel class (fitted or unfitted) exposes three universal introspection m
 These are available on all 44 PyModel classes including `OLS`, `Ridge`, `ElasticNet`,
 `TTestInd`, `MannWhitneyU`, `Logistic`, `ALM`, `Aid`, and every other class in the library.
 
+**`model_info` (0.8.0):** every PyModel class whose fitted type implements `HasModelInfo`
+(OLS, WLS, Ridge, ElasticNet, LARS, every GLM class, `GLMM`, `PenalizedGLM`, `AFT`, and more)
+exposes `model_info -> dict` — `{"model_type": str, "family": str | None, "link": str}`.
+`family` is `None` for non-likelihood estimators (`OLS`, `Ridge`, `Quantile`, ...). Since
+0.8.0, `.to_dict()` also includes `model_info` as one of its keys.
+
+**`.augment(x, y, residual_type=None)` (0.8.0):** `OLS`, `WLS` (`weights=None` additionally),
+`Logistic`, `Probit`, `Cloglog`, `LogisticRegression`, `Poisson`, `NegativeBinomial`,
+`Tweedie`, and `Gamma` expose per-observation diagnostics as a `dict` of numpy arrays —
+`{"fitted", "residual", "std_residual", "stud_residual", "leverage", "cooks_d", "dffits",
+"resid_type"}` — the same seven fields as the `ps.augment` expression's Struct, plus a
+trailing `resid_type` key reporting the resolved residual type. It always describes exactly
+what that instance was fit with. See `polars-statistics-regression` for the full
+model-by-model semantics.
+
 **Guarding fitted-property access:**
 
 Accessing a fitted property (`.coefficients`, `.r_squared`, `.p_value`, etc.) on a model
@@ -236,6 +251,10 @@ if m.is_fitted():                 # safe guard
 | `aft` | `intercept`, `coefficients`, `scale`, `log_likelihood`, `null_log_likelihood`, `aic`, `bic`, `iterations`, `converged`, `n_observations`, `n_events`, `n_censored` (12 fields) |
 | `penalized_glm_predict` | `penalized_glm_prediction`, `penalized_glm_lower`, `penalized_glm_upper` (prefix customizable with `name=`; `lower`/`upper` always `NaN` — no interval-prediction method upstream) |
 | `aft_predict_quantile`, `aft_predict_median`, `aft_predict_survival`, `aft_predict_cdf` | `{name}_prediction`, `{name}_lower`, `{name}_upper` (default `name` is the function name, e.g. `aft_predict_survival_prediction`; `lower`/`upper` always `NaN`) |
+| `tukey_hsd`, `pairwise_t_test`, `dunn_test` | `List[Struct{group1, group2, n1, n2, estimate, statistic, df, p_value, p_adj, ci_lower, ci_upper}]` — one row per group pair; use `.explode().unnest()`; `pairwise_t_test`'s `ci_lower`/`ci_upper` and `dunn_test`'s `df`/`ci_lower`/`ci_upper` are `NaN` |
+| `p_adjust`, `ptukey`, `qtukey` | Bare `Float64` (no Struct wrapper, `returns_scalar=False`) — same length as the input column |
+| `augment` | `Struct{fitted, residual, std_residual, stud_residual, leverage, cooks_d, dffits}` — one row per input row (`returns_scalar=False`, like the `*_predict` expressions) |
+| `eb_shrink` | `Struct{shrunken, shrunken_se, weight, mu, mu_se, tau_squared, i_squared, q, n_groups}` — one row per input row; `mu`/`mu_se`/`tau_squared`/`i_squared`/`q`/`n_groups` are whole-sample scalars repeated on every row |
 
 **Note on `ols_predict` naming:** the prefix of the three prediction fields matches the
 `name=` kwarg you pass: `ps.ols_predict("y", "x", name="fitted")` produces
