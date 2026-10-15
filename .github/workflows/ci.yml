@@ -16,6 +16,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # QUAL-01 / Phase 16.4: ruff version is pinned so CI and local agree.
+      # Format checking is intentionally not run here because the repo is
+      # not ruff-formatted (see pyproject.toml [tool.ruff.format] comment).
+      - name: Set up Python (ruff)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install ruff (pinned)
+        run: python -m pip install 'ruff==0.16.8'
+
+      - name: Ruff lint
+        run: ruff check . --output-format=github
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
