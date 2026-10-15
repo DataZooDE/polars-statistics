@@ -3030,18 +3030,27 @@ pub fn augment_fit(inputs: &[Series], kwargs: &AugmentKwargs) -> PolarsResult<Se
         return augment_nan_output(n_rows);
     }
 
+    // Invariant relied on below: every index in `valid_indices` was proven, in
+    // the validity scan above, to have a `Some(v)` with `v.is_finite()` in
+    // every `x` column (and in `y`, and in `weights` when `needs_weights`) —
+    // that is exactly how `valid`/`valid_indices` were constructed. So
+    // `.f64()` and `.get(valid_indices[..])` cannot fail for these rows
+    // today. Still, follow `build_xy_data`'s convention (a few hundred lines
+    // above) of falling back to `f64::NAN` rather than `.unwrap()`-panicking,
+    // so a future refactor that reorders or short-circuits the validity scan
+    // degrades to NaN output instead of a reachable panic on user input.
     let x = Mat::from_fn(n_valid, n_features, |row, col| {
         inputs[2 + col]
             .f64()
-            .unwrap()
-            .get(valid_indices[row])
-            .unwrap()
+            .ok()
+            .and_then(|ca| ca.get(valid_indices[row]))
+            .unwrap_or(f64::NAN)
     });
-    let y = Col::from_fn(n_valid, |i| y_ca.get(valid_indices[i]).unwrap());
+    let y = Col::from_fn(n_valid, |i| y_ca.get(valid_indices[i]).unwrap_or(f64::NAN));
     let weights: Option<Col<f64>> = if needs_weights {
         let w_ca = inputs[1].f64()?;
         Some(Col::from_fn(n_valid, |i| {
-            w_ca.get(valid_indices[i]).unwrap()
+            w_ca.get(valid_indices[i]).unwrap_or(f64::NAN)
         }))
     } else {
         None
