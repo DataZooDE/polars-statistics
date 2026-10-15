@@ -380,6 +380,13 @@ class TestNegativeBinomialMatchesR:
         assert rel_close(out["dffits"].to_numpy(), ref.NB_DFFITS, 1e-6)
 
     def test_negative_binomial_fixed_theta_matches_estimated(self):
+        # `theta` far from the data's ML estimate (`ref.NB_THETA` ~= 9.94), so a
+        # silently-ignored fixed theta (bug: builder kept `estimate_theta=True`
+        # and overwrote the user's theta with the ML estimate) and a genuinely
+        # fixed theta produce measurably different fits -- this test can
+        # distinguish "theta correctly fixed" from "theta silently ignored",
+        # unlike the previous version which only checked closeness.
+        fixed_theta = 2.0
         df = _wb_df()
         est = df.select(
             ps.augment(
@@ -398,11 +405,31 @@ class TestNegativeBinomialMatchesR:
                 "tensionM",
                 "tensionH",
                 model="negative_binomial",
-                theta=float(ref.NB_THETA),
+                theta=fixed_theta,
                 tol=1e-12,
             ).alias("a")
         ).unnest("a")
-        assert rel_close(fixed["fitted"].to_numpy(), est["fitted"].to_numpy(), 1e-4)
+
+        # Fixed-theta augment must match a truly-fixed-theta `NegativeBinomial`
+        # fit (estimate_theta=False) to tight tolerance.
+        x = np.column_stack([WB_WOOLB, WB_TM, WB_TH])
+        reference_model = NegativeBinomial(
+            theta=fixed_theta, estimate_theta=False, tol=1e-12
+        ).fit(x, WB_BREAKS)
+        reference_fixed = reference_model.augment(x, WB_BREAKS)
+        assert rel_close(fixed["fitted"].to_numpy(), reference_fixed["fitted"], 1e-8)
+        assert rel_close(
+            fixed["std_residual"].to_numpy(), reference_fixed["std_residual"], 1e-8
+        )
+        assert rel_close(fixed["cooks_d"].to_numpy(), reference_fixed["cooks_d"], 1e-8)
+
+        # And it must differ measurably from the fully ML-estimated fit --
+        # `std_residual`/`cooks_d` depend on the dispersion (theta), unlike
+        # `fitted`, which barely moves with theta at this tolerance.
+        assert not rel_close(
+            fixed["std_residual"].to_numpy(), est["std_residual"].to_numpy(), 1e-3
+        )
+        assert not rel_close(fixed["cooks_d"].to_numpy(), est["cooks_d"].to_numpy(), 1e-3)
 
 
 class TestProbitCloglogFinite:

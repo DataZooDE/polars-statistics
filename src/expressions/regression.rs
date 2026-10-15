@@ -3121,7 +3121,7 @@ pub fn augment_fit(inputs: &[Series], kwargs: &AugmentKwargs) -> PolarsResult<Se
                 .max_iterations(kwargs.max_iter)
                 .tolerance(kwargs.tol);
             b = match kwargs.theta {
-                Some(t) => b.theta(t),
+                Some(t) => b.theta(t).estimate_theta(false),
                 None => b.estimate_theta(true),
             };
             let m = b.build();
