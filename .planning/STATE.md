@@ -4,18 +4,18 @@ milestone: v0.8.0
 milestone_name: Claude Code Skills Plugin
 current_phase: 17
 current_phase_name: Release 0.8.0
-current_plan: 3
+current_plan: 4
 status: executing
-stopped_at: "Completed 17-02-PLAN.md (PR #48 open, CI green)"
-last_updated: "2026-10-15T23:07:47.690Z"
+stopped_at: "Completed 17-03-PLAN.md (PR #48 merged as fd52d07, local main synced)"
+last_updated: "2026-10-15T23:12:31.533Z"
 last_activity: 2026-10-16
 last_activity_desc: Phase 17 execution started
-state_head: 869622fe5865da3eefea950b4d711a64c0c8f0f1
+state_head: 0eec6a261076d69e7f33d9677576e541ccdc3cfc
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 44
-  completed_plans: 41
+  completed_plans: 42
   percent: 0
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 ## Current Position
 
 Phase: 17 (Release 0.8.0) — EXECUTING
-Current Plan: 3
+Current Plan: 4
 Total Plans in Phase: 5
 Status: Ready to execute
 Last activity: 2026-10-16 — Phase 17 execution started
@@ -139,6 +139,7 @@ Execution order: 13 → 14 → 15 → 16 → 17
 | Phase 16-wheel-bundling P01 | 15min | 3 tasks | 10 files |
 | Phase 17 P01 | 50min | 3 tasks | 10 files |
 | Phase 17 P02 | 35min | 3 tasks | 0 files |
+| Phase 17 P03 | 20min | 3 tasks | 0 files |
 
 ## Accumulated Context
 
@@ -243,6 +244,8 @@ Recent decisions affecting current work:
 - [Phase 17]: 17-01: CHANGELOG self-contradiction removed — deleted the 'planned for a later release' deferral sentence since the Added section + next bullet already document those additions as shipped
 - [Phase 17]: [Phase 17]: 17-02: PR #47's predicted ci.yml conflict did not materialize — git merge-tree probe showed a clean auto-merge (exit 0); documented as a finding, not a conflict to resolve
 - [Phase 17]: [Phase 17]: 17-02: Did not flip REL-08 to complete in REQUIREMENTS.md — it requires the production PyPI publish + post-release smoke, which belong to 17-04/17-05
+- [Phase 17]: [Phase 17]: 17-03: PR #48 merged into GitHub main as merge commit fd52d07 (user-approved merge-commit method, --match-head-commit guard); local main synced via git merge --no-edit origin/main (not ff-only — local main carried 17-02's bookkeeping commit), no history rewrite
+- [Phase 17]: [Phase 17]: 17-03: .planning/milestone.lock (transient session-lock file) ended up committed to GitHub main via 17-01/17-02's plan-metadata commits; left in place per the no-history-rewrite rule, flagged for user awareness (no secrets, just session id/pid/timestamp)
 
 ### Pending Todos
 
@@ -278,7 +281,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-10-15T23:07:47.626Z
-Stopped at: Completed 17-02-PLAN.md (PR #48 open, CI green)
+Last session: 2026-10-15T23:12:31.467Z
+Stopped at: Completed 17-03-PLAN.md (PR #48 merged as fd52d07, local main synced)
 Resume file: None
 </content>
