@@ -62,7 +62,7 @@ Requirements for this milestone. Each maps to exactly one roadmap phase.
 
 ### Code Quality
 
-- [ ] **QUAL-01**: `ruff check .` is green repo-wide and enforced in CI
+- [x] **QUAL-01**: `ruff check .` is green repo-wide and enforced in CI
 
 ## v2 Requirements
 
@@ -113,7 +113,7 @@ Deferred to future releases.
 | UPST-08 | Phase 16.3 | Complete |
 | UPST-09 | Phase 16.3 | Complete |
 | UPST-10 | Phase 16.3 | Complete |
-| QUAL-01 | Phase 16.4 | Pending |
+| QUAL-01 | Phase 16.4 | Complete |
 | REL-07 | Phase 17 | Pending |
 | REL-08 | Phase 17 | Pending |
 

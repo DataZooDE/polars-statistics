@@ -5,17 +5,17 @@ milestone_name: Claude Code Skills Plugin
 current_phase: "16.4"
 current_phase_name: Ruff Cleanup
 current_plan: 3
-status: executing
-stopped_at: Completed 16.4-02-PLAN.md
-last_updated: "2026-10-15T21:21:01.944Z"
+status: verifying
+stopped_at: Completed 16.4-03-PLAN.md
+last_updated: "2026-10-15T21:32:14.298Z"
 last_activity: 2026-10-15
 last_activity_desc: Phase 16.4 execution started
-state_head: edd82eaca945b00813be43f47a16b0d3b0be24ee
+state_head: ac355a201307abf18baf400092e9f3ac3554e372
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 39
-  completed_plans: 37
+  completed_plans: 38
   percent: 0
 ---
 
@@ -33,7 +33,7 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 Phase: 16.4 (Ruff Cleanup) — EXECUTING
 Current Plan: 3
 Total Plans in Phase: 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-10-15 — Phase 16.4 execution started
 
 ## Milestone Roadmap (v0.8.0)
@@ -133,6 +133,7 @@ Execution order: 13 → 14 → 15 → 16 → 17
 | Phase 16.3 P11 | 35min | 3 tasks | 6 files |
 | Phase 16.4 P01 | 6min | 3 tasks | 15 files |
 | Phase 16.4 P02 | 6min | 3 tasks | 42 files |
+| Phase 16.4 P03 | 9min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -228,6 +229,9 @@ Recent decisions affecting current work:
 - [Phase 16.4]: [Phase 16.4]: 16.4-01: Did not flip QUAL-01 to Complete in REQUIREMENTS.md — requirement is whole-repo (ruff check . + CI gate), shared with 16.4-02/03 which have not executed yet
 - [Phase 16.4]: [Phase 16.4]: 16.4-02: Live-probed all 21 B017/sibling sites against the real PyO3 getters before the sed rewrite (not the plan's recorded probe list verbatim) — caught that test_moments.py:91 is actually OLS().coefficients, not MomentAccumulator as its filename suggested
 - [Phase 16.4]: [Phase 16.4]: 16.4-02: docs/assets/gen_plots.py F841/B007 fixes kept every surviving zip()/tuple-unpack partner wired exactly as before; only the unused half of each target was dropped or renamed to _name, so iteration length and rendered output stayed byte-identical
+- [Phase 16.4]: [Phase 16.4]: 16.4-03: Fixed scripts/gen_stubs.py (bare class names, no file-wide noqa) instead of excluding the generated .pyi from ruff, per CONTEXT's generator-fix-first rule
+- [Phase 16.4]: [Phase 16.4]: 16.4-03: Scoped ruff with pyproject.toml [tool.ruff] extend-exclude = [".planning"] (documented reason) rather than a per-file-ignore for the 2 remaining non-package findings
+- [Phase 16.4]: [Phase 16.4]: 16.4-03: Did not add ruff format --check to CI (139/249 files would be reformatted) — reformatting is a large diff unrelated to lint, per CONTEXT rule
 
 ### Pending Todos
 
@@ -263,7 +267,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-10-15T21:21:01.864Z
-Stopped at: Completed 16.4-02-PLAN.md
+Last session: 2026-10-15T21:32:14.237Z
+Stopped at: Completed 16.4-03-PLAN.md
 Resume file: None
 </content>
