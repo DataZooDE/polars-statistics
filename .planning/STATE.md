@@ -2,21 +2,21 @@
 gsd_state_version: "1.0"
 milestone: v0.8.0
 milestone_name: Claude Code Skills Plugin
-current_phase: "16.3"
-current_phase_name: Upstream API Wave 2
-current_plan: 11
-status: verifying
-stopped_at: Completed 16.3-11-PLAN.md -- Phase 16.3 (Upstream API Wave 2) complete, ready for verification
-last_updated: "2026-10-15T19:53:10.726Z"
-last_activity: 2026-10-09
-last_activity_desc: Phase 16.3 execution started
-state_head: f0ee6f0f19baf38c9e7b382aee99b2e747722481
+current_phase: "16.4"
+current_phase_name: Ruff Cleanup
+current_plan: 1
+status: executing
+stopped_at: Phase 16.3 complete, ready to plan Phase 16
+last_updated: "2026-10-15T20:38:04.223Z"
+last_activity: 2026-10-15
+last_activity_desc: Phase 16.4 execution started
+state_head: c2b3ccf993ce90906f3503f7841d11d80854eac8
 progress:
   total_phases: 9
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 36
   completed_plans: 35
-  percent: 0
+  percent: 11
 ---
 
 # Project State
@@ -26,15 +26,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-20)
 
 **Core value:** Every public statistical capability in the backing `anofox-*` crates is exposed through the Polars/Python API — correctly, documented, tested, and shipped to PyPI.
-**Current focus:** Phase 16.3 — Upstream API Wave 2
+**Current focus:** Phase 16.4 — Ruff Cleanup
 
 ## Current Position
 
-Phase: 16.3 (Upstream API Wave 2) — EXECUTING
-Current Plan: 11
+Phase: 16.4 (Ruff Cleanup) — EXECUTING
+Current Plan: 1
 Total Plans in Phase: 11
-Status: Phase complete — ready for verification
-Last activity: 2026-10-09 — Phase 16.3 execution started
+Status: Executing Phase 16.4
+Last activity: 2026-10-15 — Phase 16.4 execution started
 
 ## Milestone Roadmap (v0.8.0)
 
@@ -52,7 +52,7 @@ Execution order: 13 → 14 → 15 → 16 → 17
 
 **Velocity:**
 
-- Total plans completed: 46
+- Total plans completed: 57
 - Average duration: — min
 - Total execution time: 0.0 hours
 
@@ -71,6 +71,7 @@ Execution order: 13 → 14 → 15 → 16 → 17
 | 15 | 1 | - | - |
 | 16.1 | 9 | - | - |
 | 16.2 | 8 | - | - |
+| 16.3 | 11 | - | - |
 
 **Recent Trend:**
 
@@ -256,6 +257,6 @@ Items acknowledged and carried forward from previous milestone close:
 ## Session Continuity
 
 Last session: 2026-10-15T19:53:10.671Z
-Stopped at: Completed 16.3-11-PLAN.md -- Phase 16.3 (Upstream API Wave 2) complete, ready for verification
+Stopped at: Phase 16.3 complete, ready to plan Phase 16
 Resume file: None
 </content>
