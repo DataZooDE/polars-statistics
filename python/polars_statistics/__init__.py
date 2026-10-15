@@ -299,7 +299,7 @@ from polars_statistics.exprs import (
 # Result-ergonomics helpers for the expression (Struct-column) surface
 from polars_statistics.results import struct_to_dict, unnest
 
-__version__ = "0.7.0"
+__version__ = "0.8.0"
 
 # Library path for plugin registration
 LIB = Path(__file__).parent
