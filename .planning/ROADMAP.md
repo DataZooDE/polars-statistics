@@ -229,7 +229,7 @@ real API, bundled into the wheel, and shipped as 0.8.0 on PyPI.
   3. Any newly exposed or explicitly opted-out item is recorded in COVERAGE.md with a reason. This includes `TestResult`, which is a Rust-side unification and may have no Python counterpart, and the AID heuristic.
   4. Stubs (drift guard green), docstrings, mkdocs, CHANGELOG and skills cover the new surface; skill harness and CI gates green.
 
-**Plans**: 4/11 plans executed
+**Plans**: 5/11 plans executed
 
 **Wave 1**
 
@@ -243,7 +243,7 @@ real API, bundled into the wheel, and shipped as 0.8.0 on PyPI.
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 16.3-05-PLAN.md — augment: combined expression for all models + OLS / WLS .augment(), vs R / broom, cross-checked (Wave 3)
+- [x] 16.3-05-PLAN.md — augment: combined expression for all models + OLS / WLS .augment(), vs R / broom, cross-checked (Wave 3)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 

@@ -4,18 +4,18 @@ milestone: v0.8.0
 milestone_name: Claude Code Skills Plugin
 current_phase: "16.3"
 current_phase_name: Upstream API Wave 2
-current_plan: 5
+current_plan: 6
 status: executing
-stopped_at: Completed 16.3-04-PLAN.md
-last_updated: "2026-10-15T17:20:36.972Z"
+stopped_at: Completed 16.3-05-PLAN.md
+last_updated: "2026-10-15T17:51:33.395Z"
 last_activity: 2026-10-09
 last_activity_desc: Phase 16.3 execution started
-state_head: 00fd7a71a44ffed2f2a8692f2cce6fc7431a5ef4
+state_head: 6adf782d16d1d45f77485f42df6d6a9a88cdedfa
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 36
-  completed_plans: 28
+  completed_plans: 29
   percent: 0
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 ## Current Position
 
 Phase: 16.3 (Upstream API Wave 2) — EXECUTING
-Current Plan: 5
+Current Plan: 6
 Total Plans in Phase: 11
 Status: Ready to execute
 Last activity: 2026-10-09 — Phase 16.3 execution started
@@ -123,6 +123,7 @@ Execution order: 13 → 14 → 15 → 16 → 17
 | Phase 16.3 P02 | 35min | 3 tasks | 14 files |
 | Phase 16.3 P03 | 50min | 3 tasks | 4 files |
 | Phase 16.3 P04 | 25min | 2 tasks | 7 files |
+| Phase 16.3 P05 | 50min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -200,6 +201,9 @@ Recent decisions affecting current work:
 - [Phase 16.3]: [Phase 16.3]: 16.3-04: eb_shrink produces one struct row per input row (returns_scalar=False), unlike posthoc.rs's one-row List[Struct] pairwise tests -- every shrunken value belongs to an input row, so .over(family) shrinks per family directly.
 - [Phase 16.3]: [Phase 16.3]: 16.3-04: Length mismatch between estimate/std_error is checked explicitly before calling upstream eb_shrink and raised as ComputeError directly, distinct from the all-NaN-rows degradation path used for EmptyInput/InsufficientData.
 - [Phase 16.3]: [Phase 16.3]: 16.3-04: Did not flip UPST-09 to Complete in REQUIREMENTS.md -- still shared with 16.3-05 through 16.3-11 (augment diagnostics, ModelInfo, GLM intercept inference, GLMM, alias_tolerance, LARS getters), none of which have executed yet.
+- [Phase 16.3]: [Phase 16.3]: 16.3-05: py_wls.rs's fitted field was already a concrete Option<FittedWls> (16.1-05), so WLS.augment needed no storage-type change
+- [Phase 16.3]: [Phase 16.3]: 16.3-05: augment's tweedie dispatch sets .link_power(0.0) explicitly (log link) since TweedieRegressorBuilder's own unset-link default (canonical link, 1 - var_power) does not reproduce GammaRegressor's Cook's distance at var_power=2.0 -- the pre-existing ps.tweedie() expression is untouched
+- [Phase 16.3]: [Phase 16.3]: 16.3-05: Did not flip UPST-09 to Complete in REQUIREMENTS.md -- still shared with 16.3-06 through 16.3-11
 
 ### Pending Todos
 
@@ -235,7 +239,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-10-15T17:20:20.029Z
-Stopped at: Completed 16.3-04-PLAN.md
+Last session: 2026-10-15T17:51:33.346Z
+Stopped at: Completed 16.3-05-PLAN.md
 Resume file: None
 </content>
