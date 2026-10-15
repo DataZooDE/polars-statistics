@@ -407,6 +407,42 @@ impl PyWLS {
         Ok(fitted.leverage_new(&x_new_mat).into_numpy(py))
     }
 
+    /// Per-observation diagnostics (R ``broom::augment``): pass the training
+    /// data (without the intercept column). Weights default to the fit's own
+    /// weights.
+    ///
+    /// Parameters
+    /// ----------
+    /// x : array-like of shape (n_samples, n_features)
+    ///     The feature matrix used to fit the model.
+    /// y : array-like of shape (n_samples,)
+    ///     The target values used to fit the model.
+    /// weights : array-like of shape (n_samples,), optional
+    ///     Prior weights. Defaults to the fit's own weights.
+    /// residual_type : str, optional
+    ///     ``"response"`` (default), ``"pearson"``, or ``"deviance"``.
+    ///
+    /// Returns
+    /// -------
+    /// dict
+    ///     Keys: fitted, residual, resid_type, std_residual, stud_residual,
+    ///     leverage, cooks_d, dffits.
+    #[pyo3(signature = (x, y, weights=None, residual_type=None))]
+    fn augment<'py>(
+        &self,
+        py: Python<'py>,
+        x: PyReadonlyArray2<'py, f64>,
+        y: PyReadonlyArray1<'py, f64>,
+        weights: Option<PyReadonlyArray1<'py, f64>>,
+        residual_type: Option<String>,
+    ) -> PyResult<Bound<'py, pyo3::types::PyDict>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("WLS"))?;
+        crate::pymodels::augment::augment_dict(py, fitted, x, y, weights, residual_type.as_deref())
+    }
+
     /// Informative repr: class name plus key state; never panics if unfitted.
     fn __repr__(slf: &Bound<'_, Self>) -> PyResult<String> {
         crate::pymodels::ergonomics::repr(slf.as_any())

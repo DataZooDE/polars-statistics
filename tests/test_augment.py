@@ -23,7 +23,7 @@ import numpy as np
 import polars as pl
 import polars_statistics as ps
 import pytest
-from polars_statistics import OLS
+from polars_statistics import OLS, WLS
 
 _FIXTURE_PATH = Path(__file__).parent / "fixtures" / "m1a_reference.py"
 _spec = importlib.util.spec_from_file_location("m1a_reference", _FIXTURE_PATH)
@@ -469,3 +469,69 @@ class TestOverGroupBy:
         grouped_b = grouped.filter(pl.col("g") == "b")["a"][0]
         assert len(grouped_a) == df.height
         assert len(grouped_b) == df.height
+
+
+class TestWlsPymodelMatchesR:
+    def _x(self):
+        return np.column_stack([MT_WT, MT_HP])
+
+    def test_wls_pymodel_default_weights_matches_r(self):
+        model = WLS().fit(self._x(), MT_MPG, MT_W)
+        d = model.augment(self._x(), MT_MPG)
+
+        assert d["resid_type"] == "response"
+        assert rel_close(d["fitted"], ref.WLS_FITTED, 1e-8)
+        assert rel_close(d["residual"], ref.WLS_RESID, 1e-8)
+        assert rel_close(d["std_residual"], ref.WLS_RSTD, 1e-8)
+        assert rel_close(d["stud_residual"], ref.WLS_RSTUD, 1e-8)
+        assert rel_close(d["leverage"], ref.WLS_HAT, 1e-8)
+        assert rel_close(d["cooks_d"], ref.WLS_COOK, 1e-8)
+        assert rel_close(d["dffits"], ref.WLS_DFFITS, 1e-8)
+
+    def test_wls_pymodel_explicit_weights_identical(self):
+        model = WLS().fit(self._x(), MT_MPG, MT_W)
+        d_default = model.augment(self._x(), MT_MPG)
+        d_explicit = model.augment(self._x(), MT_MPG, weights=MT_W)
+        for key in d_default:
+            if key == "resid_type":
+                assert d_default[key] == d_explicit[key]
+            else:
+                assert rel_close(d_default[key], d_explicit[key], 1e-12)
+
+
+class TestPymodelExpressionParity:
+    def test_ols_pymodel_matches_expression(self):
+        x = np.column_stack([MT_WT, MT_HP])
+        model = OLS().fit(x, MT_MPG)
+        d = model.augment(x, MT_MPG)
+
+        df = _mt_df()
+        expr_out = df.select(ps.augment("mpg", "wt", "hp").alias("a")).unnest("a")
+        for key in ("fitted", "residual", "std_residual", "stud_residual", "leverage", "cooks_d", "dffits"):
+            assert rel_close(d[key], expr_out[key].to_numpy(), 1e-12)
+
+    def test_wls_pymodel_matches_expression(self):
+        x = np.column_stack([MT_WT, MT_HP])
+        model = WLS().fit(x, MT_MPG, MT_W)
+        d = model.augment(x, MT_MPG)
+
+        df = _mt_df()
+        expr_out = df.select(
+            ps.augment("mpg", "wt", "hp", model="wls", weights="w").alias("a")
+        ).unnest("a")
+        for key in ("fitted", "residual", "std_residual", "stud_residual", "leverage", "cooks_d", "dffits"):
+            assert rel_close(d[key], expr_out[key].to_numpy(), 1e-12)
+
+
+class TestWlsPymodelErrors:
+    def test_wls_unfitted_augment_raises_runtime_error_naming_class(self):
+        model = WLS()
+        x = np.column_stack([MT_WT, MT_HP])
+        with pytest.raises(RuntimeError, match="WLS"):
+            model.augment(x, MT_MPG)
+
+    def test_wls_augment_mismatched_length_raises_value_error(self):
+        model = WLS().fit(np.column_stack([MT_WT, MT_HP]), MT_MPG, MT_W)
+        x = np.column_stack([MT_WT, MT_HP])
+        with pytest.raises(ValueError):
+            model.augment(x, MT_MPG[:10])
