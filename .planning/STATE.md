@@ -4,18 +4,18 @@ milestone: v0.8.0
 milestone_name: Claude Code Skills Plugin
 current_phase: "16.3"
 current_phase_name: Upstream API Wave 2
-current_plan: 4
+current_plan: 5
 status: executing
-stopped_at: Completed 16.3-03-PLAN.md
-last_updated: "2026-10-15T17:04:34.411Z"
+stopped_at: Completed 16.3-04-PLAN.md
+last_updated: "2026-10-15T17:20:36.972Z"
 last_activity: 2026-10-09
 last_activity_desc: Phase 16.3 execution started
-state_head: 25ee2ad8cd0e7bee10343a5b2fd1bbda3ce7e0db
+state_head: 00fd7a71a44ffed2f2a8692f2cce6fc7431a5ef4
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 36
-  completed_plans: 27
+  completed_plans: 28
   percent: 0
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 ## Current Position
 
 Phase: 16.3 (Upstream API Wave 2) — EXECUTING
-Current Plan: 4
+Current Plan: 5
 Total Plans in Phase: 11
 Status: Ready to execute
 Last activity: 2026-10-09 — Phase 16.3 execution started
@@ -122,6 +122,7 @@ Execution order: 13 → 14 → 15 → 16 → 17
 | Phase 16.3 P01 | 40min | 3 tasks | 13 files |
 | Phase 16.3 P02 | 35min | 3 tasks | 14 files |
 | Phase 16.3 P03 | 50min | 3 tasks | 4 files |
+| Phase 16.3 P04 | 25min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -196,6 +197,9 @@ Recent decisions affecting current work:
 - [Phase 16.3]: [Phase 16.3]: 16.3-03: Resumed stalled executor at Task 1 (ae59953 already committed) — re-verified its full verify/acceptance gate against HEAD before continuing; matched the plan exactly, no fix commit needed
 - [Phase 16.3]: [Phase 16.3]: 16.3-03: Did not flip UPST-09 to Complete in REQUIREMENTS.md — shared with 16.3-04 through 16.3-08 (augment diagnostics, ModelInfo, alias_tolerance, LARS getters, EB shrinkage), none of which have executed yet
 - [Phase 16.3]: [Phase 16.3]: 16.3-03: PyGLMM::construct(...) centralizes random-structure validation (mutual exclusivity, no-intercept-no-slope, theta_max bounds) across all six GLMM factories instead of duplicating checks per factory
+- [Phase 16.3]: [Phase 16.3]: 16.3-04: eb_shrink produces one struct row per input row (returns_scalar=False), unlike posthoc.rs's one-row List[Struct] pairwise tests -- every shrunken value belongs to an input row, so .over(family) shrinks per family directly.
+- [Phase 16.3]: [Phase 16.3]: 16.3-04: Length mismatch between estimate/std_error is checked explicitly before calling upstream eb_shrink and raised as ComputeError directly, distinct from the all-NaN-rows degradation path used for EmptyInput/InsufficientData.
+- [Phase 16.3]: [Phase 16.3]: 16.3-04: Did not flip UPST-09 to Complete in REQUIREMENTS.md -- still shared with 16.3-05 through 16.3-11 (augment diagnostics, ModelInfo, GLM intercept inference, GLMM, alias_tolerance, LARS getters), none of which have executed yet.
 
 ### Pending Todos
 
@@ -231,7 +235,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-10-15T17:04:34.360Z
-Stopped at: Completed 16.3-03-PLAN.md
+Last session: 2026-10-15T17:20:20.029Z
+Stopped at: Completed 16.3-04-PLAN.md
 Resume file: None
 </content>
