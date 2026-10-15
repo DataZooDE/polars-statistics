@@ -23,7 +23,16 @@ import numpy as np
 import polars as pl
 import polars_statistics as ps
 import pytest
-from polars_statistics import OLS, WLS, Poisson, Tweedie
+from polars_statistics import (
+    OLS,
+    WLS,
+    Cloglog,
+    Logistic,
+    LogisticRegression,
+    Poisson,
+    Probit,
+    Tweedie,
+)
 
 _FIXTURE_PATH = Path(__file__).parent / "fixtures" / "m1a_reference.py"
 _spec = importlib.util.spec_from_file_location("m1a_reference", _FIXTURE_PATH)
@@ -635,3 +644,126 @@ class TestGlmPyModelAugment:
             fitted_model.augment(x, MT_CARB[:5])
         with pytest.raises(ValueError):
             fitted_model.augment(x, MT_CARB, residual_type="working")
+
+    # -- Logistic / Probit / Cloglog / LogisticRegression (Task 2) ---------
+
+    def test_logistic_pymodel_matches_r(self):
+        x = MT_MPG.reshape(-1, 1)
+        model = Logistic(max_iter=100, tol=1e-12).fit(x, MT_VS)
+        d = model.augment(x, MT_VS)
+
+        assert d["resid_type"] == "deviance"
+        assert rel_close(d["fitted"], ref.BIN_FITTED, 1e-6)
+        assert rel_close(d["residual"], ref.BIN_RESID_DEV, 1e-6)
+        assert rel_close(d["std_residual"], ref.BIN_RSTD_DEV, 1e-6)
+        assert rel_close(d["stud_residual"], ref.BIN_RSTUD, 1e-6)
+        assert rel_close(d["leverage"], ref.BIN_HAT, 1e-6)
+        assert rel_close(d["cooks_d"], ref.BIN_COOK, 1e-6)
+        assert rel_close(d["dffits"], ref.BIN_DFFITS, 1e-6)
+
+    def test_logistic_pymodel_pearson(self):
+        x = MT_MPG.reshape(-1, 1)
+        model = Logistic(max_iter=100, tol=1e-12).fit(x, MT_VS)
+        d = model.augment(x, MT_VS, residual_type="pearson")
+
+        assert d["resid_type"] == "pearson"
+        assert rel_close(d["residual"], ref.BIN_RESID_PEAR, 1e-6)
+        assert rel_close(d["std_residual"], ref.BIN_RSTD_PEAR, 1e-6)
+
+    def test_logistic_pymodel_expression_parity(self):
+        x = MT_MPG.reshape(-1, 1)
+        model = Logistic(max_iter=100, tol=1e-12).fit(x, MT_VS)
+        d = model.augment(x, MT_VS)
+
+        df = _mt_df()
+        expr_out = df.select(
+            ps.augment("vs", "mpg", model="logistic", tol=1e-12).alias("a")
+        ).unnest("a")
+        for key in (
+            "fitted",
+            "residual",
+            "std_residual",
+            "stud_residual",
+            "leverage",
+            "cooks_d",
+            "dffits",
+        ):
+            assert rel_close(d[key], expr_out[key].to_numpy(), 1e-10)
+
+    def test_logistic_regression_pymodel_matches_r(self):
+        x = MT_MPG.reshape(-1, 1)
+        model = LogisticRegression(penalty="none", max_iter=100, tol=1e-12).fit(x, MT_VS)
+        d = model.augment(x, MT_VS)
+
+        assert rel_close(d["leverage"], ref.BIN_HAT, 1e-5)
+        assert rel_close(d["fitted"], ref.BIN_FITTED, 1e-5)
+        assert rel_close(d["residual"], ref.BIN_RESID_DEV, 1e-5)
+        assert rel_close(d["std_residual"], ref.BIN_RSTD_DEV, 1e-5)
+        assert rel_close(d["cooks_d"], ref.BIN_COOK, 1e-5)
+        assert rel_close(d["dffits"], ref.BIN_DFFITS, 1e-5)
+
+    def test_logistic_regression_pymodel_expression_parity(self):
+        x = MT_MPG.reshape(-1, 1)
+        model = LogisticRegression(penalty="none", max_iter=100, tol=1e-12).fit(x, MT_VS)
+        d = model.augment(x, MT_VS)
+
+        df = _mt_df()
+        expr_out = df.select(
+            ps.augment("vs", "mpg", model="logistic", tol=1e-12).alias("a")
+        ).unnest("a")
+        assert rel_close(d["leverage"], expr_out["leverage"].to_numpy(), 1e-5)
+        assert rel_close(d["fitted"], expr_out["fitted"].to_numpy(), 1e-5)
+
+    def test_probit_pymodel_expression_parity(self):
+        x = MT_MPG.reshape(-1, 1)
+        model = Probit(max_iter=100, tol=1e-12).fit(x, MT_VS)
+        d = model.augment(x, MT_VS)
+
+        df = _mt_df()
+        expr_out = df.select(
+            ps.augment("vs", "mpg", model="probit", tol=1e-12).alias("a")
+        ).unnest("a")
+        for key in (
+            "fitted",
+            "residual",
+            "std_residual",
+            "stud_residual",
+            "leverage",
+            "cooks_d",
+            "dffits",
+        ):
+            assert rel_close(d[key], expr_out[key].to_numpy(), 1e-10)
+        assert d["leverage"].sum() == pytest.approx(2.0, abs=1e-8)
+
+    def test_cloglog_pymodel_expression_parity(self):
+        x = MT_MPG.reshape(-1, 1)
+        model = Cloglog(max_iter=100, tol=1e-12).fit(x, MT_VS)
+        d = model.augment(x, MT_VS)
+
+        df = _mt_df()
+        expr_out = df.select(
+            ps.augment("vs", "mpg", model="cloglog", tol=1e-12).alias("a")
+        ).unnest("a")
+        for key in (
+            "fitted",
+            "residual",
+            "std_residual",
+            "stud_residual",
+            "leverage",
+            "cooks_d",
+            "dffits",
+        ):
+            assert rel_close(d[key], expr_out[key].to_numpy(), 1e-10)
+        assert d["leverage"].sum() == pytest.approx(2.0, abs=1e-8)
+
+    def test_binomial_family_pymodel_errors_name_class(self):
+        x = MT_MPG.reshape(-1, 1)
+        for cls, name in (
+            (Logistic, "Logistic"),
+            (Probit, "Probit"),
+            (Cloglog, "Cloglog"),
+            (LogisticRegression, "LogisticRegression"),
+        ):
+            model = cls()
+            with pytest.raises(RuntimeError, match=name):
+                model.augment(x, MT_VS)
