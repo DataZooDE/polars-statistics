@@ -1,6 +1,6 @@
 //! PyO3 wrapper for Generalized Linear Mixed Model (GLMM) regression.
 
-use numpy::{PyArray1, PyReadonlyArray1, PyReadonlyArray2};
+use numpy::{PyArray1, PyReadonlyArray1, PyReadonlyArray2, PyUntypedArrayMethods};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
@@ -189,6 +189,74 @@ impl PyGLMM {
         })
     }
 
+    /// Construct a Gamma GLMM with the log link (`y > 0`), matching
+    /// `lme4::glmer(family = Gamma(link = "log"), nAGQ = 0)`.
+    #[staticmethod]
+    #[pyo3(signature = (add_intercept=None, with_intercept=None, reml=false, max_iter=100, tol=1e-8))]
+    fn gamma(
+        py: Python<'_>,
+        add_intercept: Option<bool>,
+        with_intercept: Option<bool>,
+        reml: bool,
+        max_iter: usize,
+        tol: f64,
+    ) -> PyResult<Self> {
+        let with_intercept =
+            crate::pymodels::errors::resolve_intercept(py, add_intercept, with_intercept, true)?;
+        Ok(Self {
+            family: "gamma".into(),
+            power: 1.5,
+            nb_theta: None,
+            with_intercept,
+            random_intercept: true,
+            random_slopes: vec![],
+            reml,
+            max_iter,
+            tol,
+            fitted: None,
+        })
+    }
+
+    /// Construct a Tweedie (compound Poisson-gamma) GLMM with variance power
+    /// `1 < power < 2` and the log link (`y >= 0`), matching
+    /// `lme4::glmer(family = statmod::tweedie(var.power = power, link.power = 0), nAGQ = 0)`.
+    ///
+    /// Parameters
+    /// ----------
+    /// power : float, default 1.5
+    ///     Tweedie variance power. Must satisfy `1 < power < 2`.
+    #[staticmethod]
+    #[pyo3(signature = (power=1.5, add_intercept=None, with_intercept=None, reml=false, max_iter=100, tol=1e-8))]
+    fn tweedie(
+        py: Python<'_>,
+        power: f64,
+        add_intercept: Option<bool>,
+        with_intercept: Option<bool>,
+        reml: bool,
+        max_iter: usize,
+        tol: f64,
+    ) -> PyResult<Self> {
+        if !(power.is_finite() && power > 1.0 && power < 2.0) {
+            return Err(PyValueError::new_err(format!(
+                "power must satisfy 1 < power < 2, got {power}"
+            )));
+        }
+        let with_intercept =
+            crate::pymodels::errors::resolve_intercept(py, add_intercept, with_intercept, true)?;
+        Ok(Self {
+            family: "tweedie".into(),
+            power,
+            nb_theta: None,
+            with_intercept,
+            random_intercept: true,
+            random_slopes: vec![],
+            reml,
+            max_iter,
+            tol,
+            fitted: None,
+        })
+    }
+
     /// Fit the GLMM with a single grouping factor.
     ///
     /// Parameters
@@ -200,16 +268,22 @@ impl PyGLMM {
     /// group : list[int]
     ///     Group membership per observation (0-based integer IDs).
     ///     Length must equal n_samples.
+    /// offset : numpy.ndarray of shape (n_samples,), optional
+    ///     Per-observation offset on the linear-predictor scale, e.g.
+    ///     ``log(exposure)``; added with a fixed coefficient of 1, as
+    ///     ``offset()`` in an lme4 formula. Length must equal n_samples.
     ///
     /// Returns
     /// -------
     /// self
     ///     The fitted model (enables method chaining).
+    #[pyo3(signature = (x, y, group, offset=None))]
     fn fit<'py>(
         mut slf: PyRefMut<'py, Self>,
         x: PyReadonlyArray2<'py, f64>,
         y: PyReadonlyArray1<'py, f64>,
         group: Vec<u64>,
+        offset: Option<PyReadonlyArray1<'py, f64>>,
     ) -> PyResult<PyRefMut<'py, Self>> {
         crate::pymodels::errors::validate_xy("GLMM", &x, &y)?;
         let x_mat = x.to_faer();
@@ -225,7 +299,20 @@ impl PyGLMM {
         // Portably convert u64 → usize (safe on all wheel targets)
         let group_usize: Vec<usize> = group.iter().map(|&g| g as usize).collect();
 
-        let model = slf.regressor_builder(None).build();
+        let offset_col = match offset {
+            Some(off) => {
+                let off_n = off.shape()[0];
+                if off_n != n_rows {
+                    return Err(PyValueError::new_err(format!(
+                        "offset has {off_n} entries but x/y have {n_rows} rows"
+                    )));
+                }
+                Some(off.to_faer())
+            }
+            None => None,
+        };
+
+        let model = slf.regressor_builder(offset_col).build();
 
         let fitted = model
             .fit(&x_mat, &y_col, &group_usize)
@@ -247,16 +334,22 @@ impl PyGLMM {
     ///     One list of group IDs per factor. Each inner list must have length
     ///     n_samples. For crossed factors pass `[sku_ids, region_ids]`; for
     ///     nested factors pass the interaction ID as a separate factor.
+    /// offset : numpy.ndarray of shape (n_samples,), optional
+    ///     Per-observation offset on the linear-predictor scale, e.g.
+    ///     ``log(exposure)``; added with a fixed coefficient of 1, as
+    ///     ``offset()`` in an lme4 formula. Length must equal n_samples.
     ///
     /// Returns
     /// -------
     /// self
     ///     The fitted model (enables method chaining).
+    #[pyo3(signature = (x, y, groups, offset=None))]
     fn fit_crossed<'py>(
         mut slf: PyRefMut<'py, Self>,
         x: PyReadonlyArray2<'py, f64>,
         y: PyReadonlyArray1<'py, f64>,
         groups: Vec<Vec<u64>>,
+        offset: Option<PyReadonlyArray1<'py, f64>>,
     ) -> PyResult<PyRefMut<'py, Self>> {
         let x_mat = x.to_faer();
         let y_col = y.to_faer();
@@ -277,7 +370,20 @@ impl PyGLMM {
             .collect();
         let group_refs: Vec<&[usize]> = groups_usize.iter().map(|g| g.as_slice()).collect();
 
-        let model = slf.regressor_builder(None).build();
+        let offset_col = match offset {
+            Some(off) => {
+                let off_n = off.shape()[0];
+                if off_n != n_rows {
+                    return Err(PyValueError::new_err(format!(
+                        "offset has {off_n} entries but x/y have {n_rows} rows"
+                    )));
+                }
+                Some(off.to_faer())
+            }
+            None => None,
+        };
+
+        let model = slf.regressor_builder(offset_col).build();
 
         let fitted = model
             .fit_crossed(&x_mat, &y_col, &group_refs)
@@ -293,22 +399,42 @@ impl PyGLMM {
     /// ----------
     /// x : numpy.ndarray of shape (n_samples, n_features)
     ///     Feature matrix. Must be float64.
+    /// offset : numpy.ndarray of shape (n_samples,), optional
+    ///     Per-observation offset added to the linear predictor, e.g.
+    ///     ``log(exposure)``; length must equal the rows of `x`.
     ///
     /// Returns
     /// -------
     /// numpy.ndarray of shape (n_samples,)
     ///     Predicted values using fixed effects only (no random effects).
+    #[pyo3(signature = (x, offset=None))]
     fn predict_fixed<'py>(
         &self,
         py: Python<'py>,
         x: PyReadonlyArray2<'py, f64>,
+        offset: Option<PyReadonlyArray1<'py, f64>>,
     ) -> PyResult<Bound<'py, PyArray1<f64>>> {
         let fitted = self
             .fitted
             .as_ref()
             .ok_or_else(|| crate::pymodels::errors::not_fitted_err("GLMM"))?;
         let x_mat = x.to_faer();
-        Ok(fitted.predict_fixed(&x_mat).into_numpy(py))
+        match offset {
+            Some(off) => {
+                let n_rows = x_mat.nrows();
+                let off_n = off.shape()[0];
+                if off_n != n_rows {
+                    return Err(PyValueError::new_err(format!(
+                        "offset has {off_n} entries but x has {n_rows} rows"
+                    )));
+                }
+                let off_col = off.to_faer();
+                Ok(fitted
+                    .predict_fixed_with_offset(&x_mat, &off_col)
+                    .into_numpy(py))
+            }
+            None => Ok(fitted.predict_fixed(&x_mat).into_numpy(py)),
+        }
     }
 
     /// Per-factor summaries (non-empty only for `fit_crossed`).

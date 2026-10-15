@@ -410,3 +410,141 @@ class TestGLMMFamilies:
         model = GLMM.negative_binomial()
         with pytest.raises(Exception):
             _ = model.nb_theta
+
+    def test_negative_binomial_fixed_theta_matches_glmer(self):
+        """nb_theta=2.0 vs lme4 glmer(family=MASS::negative.binomial(2)) (case I)."""
+        X = np.array(fam.X)[:, None]
+        y = np.array(fam.Y_NB)
+        group = list(fam.G)
+        model = GLMM.negative_binomial(nb_theta=2.0).fit(X, y, group)
+        assert model.converged
+        assert model.nb_theta == 2.0
+        tol = 2e-4
+        assert_close_vec(model.fixed_effects, fam.NB_I_FIXEF, tol, "NB_I fixef")
+        assert_close_vec(model.std_errors, fam.NB_I_SE, tol, "NB_I se")
+        assert close(model.log_likelihood, fam.NB_I_LOGLIK, tol)
+        assert close(model.sigma, fam.NB_I_SIGMA, tol)
+        assert close(model.random_sd[0], fam.NB_I_SD_RE, tol)
+        assert_close_vec(model.random_effects, fam.NB_I_BLUP, tol, "NB_I blup")
+
+    def test_gamma_matches_glmer(self):
+        """GLMM.gamma() vs lme4 glmer(family=Gamma(link="log")) (case J)."""
+        X = np.array(fam.X)[:, None]
+        y = np.array(fam.Y_GA)
+        group = list(fam.G)
+        model = GLMM.gamma().fit(X, y, group)
+        assert model.converged
+        assert model.nb_theta is None
+        tol = 2e-4
+        assert_close_vec(model.fixed_effects, fam.GA_J_FIXEF, tol, "GA_J fixef")
+        assert_close_vec(model.std_errors, fam.GA_J_SE, tol, "GA_J se")
+        assert close(model.log_likelihood, fam.GA_J_LOGLIK, tol)
+        assert close(model.sigma, fam.GA_J_SIGMA, tol)
+        assert close(model.random_sd[0], fam.GA_J_SD_RE, tol)
+        assert_close_vec(model.random_effects, fam.GA_J_BLUP, tol, "GA_J blup")
+
+    def test_tweedie_matches_glmer_with_tweedie_family(self):
+        """GLMM.tweedie(power=1.5) vs lme4 glmer + statmod::tweedie(1.5) (case K)."""
+        X = np.array(fam.X)[:, None]
+        y = np.array(fam.Y_TW)
+        group = list(fam.G)
+        model = GLMM.tweedie(power=1.5).fit(X, y, group)
+        assert model.converged
+        tol = 2e-4
+        assert_close_vec(model.fixed_effects, fam.TW_K_FIXEF, tol, "TW_K fixef")
+        assert_close_vec(model.std_errors, fam.TW_K_SE, tol, "TW_K se")
+        assert close(model.log_likelihood, fam.TW_K_LOGLIK, tol)
+        assert close(model.sigma, fam.TW_K_SIGMA, tol)
+        assert close(model.random_sd[0], fam.TW_K_SD_RE, tol)
+        assert_close_vec(model.random_effects, fam.TW_K_BLUP, tol, "TW_K blup")
+
+    @pytest.mark.parametrize("bad_power", [2.5, 1.0, 2.0, 0.5, float("nan")])
+    def test_tweedie_invalid_power_raises(self, bad_power):
+        with pytest.raises(ValueError):
+            GLMM.tweedie(power=bad_power)
+
+    def test_gamma_requires_positive_response_validation(self):
+        """Gamma GLMM rejects a non-positive response with ValueError, not a panic."""
+        X = np.array(fam.X)[:, None]
+        y = np.array(fam.Y_GA, dtype=float)
+        y[0] = 0.0
+        group = list(fam.G)
+        with pytest.raises(ValueError):
+            GLMM.gamma().fit(X, y, group)
+
+
+class TestGLMMOffset:
+    """Offsets on fit / fit_crossed / predict_fixed for every family (16.3-03
+    Task 2, UPST-09) vs lme4 cases L (Poisson) and M (Gaussian REML)."""
+
+    def test_poisson_offset_matches_glmer(self):
+        X = np.array(fam.X)[:, None]
+        y = np.array(fam.Y_PO_OFF)
+        group = list(fam.G)
+        offset = np.log(np.array(fam.EXPO))
+        model = GLMM.poisson().fit(X, y, group, offset=offset)
+        assert model.converged
+        tol = 2e-4
+        assert_close_vec(model.fixed_effects, fam.PO_L_FIXEF, tol, "PO_L fixef")
+        assert_close_vec(model.std_errors, fam.PO_L_SE, tol, "PO_L se")
+        assert close(model.log_likelihood, fam.PO_L_LOGLIK, tol)
+        assert close(model.sigma, fam.PO_L_SIGMA, tol)
+        assert close(model.random_sd[0], fam.PO_L_SD_RE, tol)
+        assert_close_vec(model.random_effects, fam.PO_L_BLUP, tol, "PO_L blup")
+
+    def test_predict_fixed_offset_adds_to_linear_predictor(self):
+        X = np.array(fam.X)[:, None]
+        y = np.array(fam.Y_PO_OFF)
+        group = list(fam.G)
+        offset = np.log(np.array(fam.EXPO))
+        model = GLMM.poisson().fit(X, y, group, offset=offset)
+        eta = model.predict_fixed(X)
+        eta_off = model.predict_fixed(X, offset=offset)
+        np.testing.assert_allclose(eta_off - eta, offset, atol=1e-12)
+
+    def test_lmm_offset_matches_lmer(self):
+        X = np.array(fam.X)[:, None]
+        y = np.array(fam.Y_M)
+        group = list(fam.G)
+        offset = np.array(fam.OFF_M)
+        model = GLMM.gaussian(reml=True).fit(X, y, group, offset=offset)
+        assert model.converged
+        tol = 2e-4
+        assert_close_vec(model.fixed_effects, fam.LMM_M_FIXEF, tol, "LMM_M fixef")
+        assert_close_vec(model.std_errors, fam.LMM_M_SE, tol, "LMM_M se")
+        assert close(model.log_likelihood, fam.LMM_M_LOGLIK, tol)
+        assert close(model.sigma, fam.LMM_M_SIGMA, tol)
+        assert close(model.random_sd[0], fam.LMM_M_SD_RE, tol)
+        assert_close_vec(model.random_effects, fam.LMM_M_BLUP, tol, "LMM_M blup")
+
+    def test_fit_crossed_offset_accepted_matches_zero_offset(self):
+        """fit_crossed(..., offset=...) is accepted; a zero offset equals the
+        fit without an offset exactly."""
+        XC = np.array(fam.XC)[:, None]
+        groups = [list(fam.A), list(fam.B)]
+        y = np.array(fam.Y_O)
+        model_no_off = GLMM.poisson().fit_crossed(XC, y, groups)
+        model_zero_off = GLMM.poisson().fit_crossed(XC, y, groups, offset=np.zeros(len(y)))
+        np.testing.assert_array_equal(model_zero_off.fixed_effects, model_no_off.fixed_effects)
+
+    def test_offset_length_mismatch_raises_in_fit(self):
+        X = np.array(fam.X)[:, None]
+        y = np.array(fam.Y_NB)
+        group = list(fam.G)
+        with pytest.raises(ValueError):
+            GLMM.poisson().fit(X, y, group, offset=np.zeros(3))
+
+    def test_offset_length_mismatch_raises_in_fit_crossed(self):
+        XC = np.array(fam.XC)[:, None]
+        groups = [list(fam.A), list(fam.B)]
+        y = np.array(fam.Y_O)
+        with pytest.raises(ValueError):
+            GLMM.poisson().fit_crossed(XC, y, groups, offset=np.zeros(3))
+
+    def test_offset_length_mismatch_raises_in_predict_fixed(self):
+        X = np.array(fam.X)[:, None]
+        y = np.array(fam.Y_NB)
+        group = list(fam.G)
+        model = GLMM.poisson().fit(X, y, group)
+        with pytest.raises(ValueError):
+            model.predict_fixed(X, offset=np.zeros(3))
