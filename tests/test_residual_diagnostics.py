@@ -3,7 +3,6 @@
 import numpy as np
 import polars as pl
 import pytest
-
 from polars_statistics import (
     externally_studentized_residuals,
     residual_outliers,

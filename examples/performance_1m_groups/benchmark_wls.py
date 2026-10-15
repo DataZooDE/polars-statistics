@@ -17,7 +17,7 @@ print("=" * 50)
 print("WLS Fit Benchmark")
 print("=" * 50)
 print(f"Configuration: {N_GROUPS:,} groups, {N_ROWS:,} rows, 3 features")
-print(f"Parameters: uniform weights (1.0)")
+print("Parameters: uniform weights (1.0)")
 print()
 
 print("Generating data...")

@@ -1,0 +1,98 @@
+{
+  "contract": "1.0.0",
+  "flavor": "core",
+  "milestone": "v0.8.0 — Claude Code Skills Plugin",
+  "phases": [
+    {
+      "number": "1",
+      "name": "Dependency Modernization",
+      "status": "complete"
+    },
+    {
+      "number": "2",
+      "name": "Public API Audit",
+      "status": "complete"
+    },
+    {
+      "number": "3",
+      "name": "Statistics API Parity",
+      "status": "complete"
+    },
+    {
+      "number": "4",
+      "name": "Regression API Parity",
+      "status": "complete"
+    },
+    {
+      "number": "5",
+      "name": "Documentation",
+      "status": "complete"
+    },
+    {
+      "number": "6",
+      "name": "Testing & Validation",
+      "status": "complete"
+    },
+    {
+      "number": "7",
+      "name": "Release 0.6.0",
+      "status": "complete"
+    },
+    {
+      "number": "8",
+      "name": "Type Safety",
+      "status": "complete"
+    },
+    {
+      "number": "9",
+      "name": "Result Ergonomics",
+      "status": "complete"
+    },
+    {
+      "number": "10",
+      "name": "Errors & API Consistency",
+      "status": "complete"
+    },
+    {
+      "number": "11",
+      "name": "Documentation & Adoption",
+      "status": "complete"
+    },
+    {
+      "number": "12",
+      "name": "Release 0.7.0",
+      "status": "complete"
+    },
+    {
+      "number": "13",
+      "name": "Plugin & Marketplace Scaffolding",
+      "status": "complete"
+    },
+    {
+      "number": "14",
+      "name": "Skill Cheat-Sheet Authoring",
+      "status": "complete"
+    },
+    {
+      "number": "15",
+      "name": "Accuracy Verification Pass",
+      "status": "complete"
+    },
+    {
+      "number": "16",
+      "name": "Wheel Bundling",
+      "status": "complete"
+    },
+    {
+      "number": "17",
+      "name": "Release 0.8.0",
+      "status": "pending"
+    }
+  ],
+  "next": {
+    "command": "/gsd:progress --next",
+    "label": "Advance to the next step",
+    "reason": "Phase 17 of 9 · 0% · executing"
+  },
+  "updated_at": "2026-10-15T22:45:05.563Z"
+}

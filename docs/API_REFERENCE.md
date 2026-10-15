@@ -8,6 +8,67 @@
 
 Complete API reference for polars-statistics. For quick start examples, see the [README](https://github.com/DataZooDE/polars-statistics#readme).
 
+## New in 0.8.0
+
+Upstream crate refresh (`anofox-statistics` 0.4.6, `anofox-regression` 0.5.16) —
+new builders and PyModel options:
+
+- **Effect sizes & bootstrap CIs** — `cohens_d`, `cohens_d_one_sample`,
+  `rank_biserial`, `matched_pairs_rank_biserial`, `rank_biserial_from_u`,
+  `bootstrap_mean_ci`, `bootstrap_ci`. See
+  [Effect Sizes & Bootstrap CIs](api/tests/effect-sizes.md).
+- **Normality** — `jarque_bera`. See
+  [Distributional Tests](api/tests/distributional.md).
+- **Categorical** — `conf_level` on `binom_test` / `prop_test_one` /
+  `prop_test_two` / `fisher_exact`; `fisher_exact`'s struct gains
+  `ci_lower`/`ci_upper`; new `fisher_exact_conditional`. See
+  [Categorical Tests](api/tests/categorical.md).
+- **Robust regression inference** — `Huber(compute_inference=True)`,
+  `RANSAC(compute_inference=True)` + `RANSAC.inlier_fit()`,
+  `TheilSen(univariate_pairwise=True)`,
+  `OLS`/`WLS`/`Ridge.variance_factor()`/`.leverage_new()`, Ridge sandwich
+  inference. See [Linear Models](api/classes/linear.md).
+- **GLM-family options** — `NegativeBinomial(estimate_dispersion=True)`,
+  `RLS(initial_p_diagonal=...)`, `GLMM.z_values`/`p_values`/`conf_int(level)`.
+  See [GLM Models](api/classes/glm.md).
+- **Penalized GLM and survival regression** (`anofox-regression` 0.5.16,
+  bumped to 0.5.22) — `PenalizedGLM`/`ps.penalized_glm*` (priors, ridge,
+  offsets, 6 families) and `AFT`/`ps.aft*` (Weibull/exponential/log-normal/
+  log-logistic, right censoring). See
+  [Penalized GLM](api/regression/penalized-glm.md),
+  [Survival Regression (AFT)](api/regression/survival.md),
+  [GLM Model Classes](api/classes/glm.md), and
+  [Survival Model Classes](api/classes/survival.md).
+
+### New in 0.8.0 (Upstream API Wave 2, Phase 16.3)
+
+Full exposure of `anofox-statistics` 0.4.7 and `anofox-regression`
+0.5.17–0.5.22's remaining additions:
+
+- **Post-hoc tests & multiple comparisons** — `tukey_hsd`, `pairwise_t_test`,
+  `dunn_test`, `p_adjust`, `ptukey`, `qtukey`. See
+  [Post-hoc Tests & Multiple Comparisons](api/tests/posthoc.md).
+- **Empirical-Bayes shrinkage** — `ps.eb_shrink`. See
+  [Empirical-Bayes Shrinkage](api/regression/shrinkage.md).
+- **Per-observation diagnostics** — `ps.augment` expression and `.augment()`
+  on `OLS`, `WLS`, and all eight GLM PyModel classes. See the
+  [Augment section of Diagnostics](api/regression/diagnostics.md#augment-per-observation-diagnostics).
+- **GLM/OLS/WLS inference getters** — `intercept_std_error`/
+  `intercept_t_statistic`/`intercept_p_value`/`intercept_conf_interval`,
+  `t_statistics`/`conf_interval_lower`/`upper`, and `compute_inference`/
+  `confidence_level` kwargs. See [GLM Model Classes](api/classes/glm.md) and
+  [Linear Model Classes](api/classes/linear.md).
+- **GLMM** — `negative_binomial`/`gamma`/`tweedie` families, `offset`,
+  `random_slopes_per_factor`, and the per-factor covariance/SD/BLUP
+  accessors. See the GLMM section of [GLM Model Classes](api/classes/glm.md).
+- **`model_info`** on every fitted PyModel class. See
+  [Linear Model Classes](api/classes/linear.md) and
+  [GLM Model Classes](api/classes/glm.md).
+- **`alias_tolerance`** on `OLS`/`WLS` and the `ols`/`wls` expression family.
+  See [Linear Model Classes](api/classes/linear.md).
+- **LARS** `adj_r_squared`/`mse`/`rmse` getters. See
+  [Linear Model Classes](api/classes/linear.md).
+
 ---
 
 ## Table of Contents
@@ -169,10 +230,14 @@ Mann-Whitney U test (Wilcoxon rank-sum test).
 ps.mann_whitney_u(
     x: Union[pl.Expr, str],
     y: Union[pl.Expr, str],
+    conf_level: Optional[float] = None,
 ) -> pl.Expr
 ```
 
-**Returns:** `Struct{statistic: Float64, p_value: Float64}`
+**Returns:** `Struct{statistic: Float64, p_value: Float64, estimate: Float64,
+ci_lower: Float64, ci_upper: Float64}` — *New in 0.8.0:* the trailing
+Hodges-Lehmann `estimate`/`ci_lower`/`ci_upper` fields are `NaN` unless
+`conf_level` is given, matching R `wilcox.test(conf.int = TRUE)`.
 
 ---
 
@@ -184,10 +249,14 @@ Wilcoxon signed-rank test for paired samples.
 ps.wilcoxon_signed_rank(
     x: Union[pl.Expr, str],
     y: Union[pl.Expr, str],
+    conf_level: Optional[float] = None,
 ) -> pl.Expr
 ```
 
-**Returns:** `Struct{statistic: Float64, p_value: Float64}`
+**Returns:** `Struct{statistic: Float64, p_value: Float64, estimate: Float64,
+ci_lower: Float64, ci_upper: Float64}` — *New in 0.8.0:* the trailing
+Hodges-Lehmann `estimate`/`ci_lower`/`ci_upper` fields are `NaN` unless
+`conf_level` is given, matching R `wilcox.test(conf.int = TRUE)`.
 
 ---
 
@@ -522,6 +591,7 @@ ps.binom_test(
     n: int,
     p0: float = 0.5,
     alternative: str = "two-sided",  # "two-sided", "less", "greater"
+    conf_level: float = 0.95,
 ) -> pl.Expr
 ```
 
@@ -539,6 +609,7 @@ ps.prop_test_one(
     n: int,
     p0: float = 0.5,
     alternative: str = "two-sided",
+    conf_level: float = 0.95,
 ) -> pl.Expr
 ```
 
@@ -558,6 +629,7 @@ ps.prop_test_two(
     n2: int,
     alternative: str = "two-sided",
     correction: bool = False,  # Yates' continuity correction
+    conf_level: float = 0.95,
 ) -> pl.Expr
 ```
 
@@ -615,16 +687,42 @@ ps.g_test(
 
 #### `fisher_exact`
 
-Fisher's exact test for 2x2 contingency tables.
+Fisher's exact test for 2x2 contingency tables. Reports the *sample* odds ratio
+(`ad/bc`) and a Woolf (logit) confidence interval.
 
 ```python
 ps.fisher_exact(
     a: int, b: int, c: int, d: int,  # 2x2 table cells
     alternative: str = "two-sided",
+    conf_level: float = 0.95,
 ) -> pl.Expr
 ```
 
-**Returns:** `Struct{statistic: Float64 (odds ratio), p_value: Float64}`
+**Returns:** `Struct{statistic: Float64 (sample odds ratio ad/bc), p_value: Float64, ci_lower: Float64, ci_upper: Float64}`
+
+*New in 0.8.0:* `conf_level` and the trailing `ci_lower`/`ci_upper` fields
+(Woolf/logit interval). `statistic`/`p_value` are unchanged in name, order,
+and value.
+
+---
+
+#### `fisher_exact_conditional`
+
+*New in 0.8.0.* Fisher's exact test with full R `fisher.test` semantics:
+reports the conditional maximum-likelihood estimate of the odds ratio and the
+exact conditional confidence interval (one-sided for one-sided
+`alternative`), rather than `fisher_exact`'s sample odds ratio + Woolf
+interval.
+
+```python
+ps.fisher_exact_conditional(
+    a: int, b: int, c: int, d: int,  # 2x2 table cells
+    alternative: str = "two-sided",
+    conf_level: float = 0.95,
+) -> pl.Expr
+```
+
+**Returns:** `Struct{statistic: Float64 (conditional MLE odds ratio), p_value: Float64, ci_lower: Float64, ci_upper: Float64}`
 
 ---
 

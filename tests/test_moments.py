@@ -1,7 +1,7 @@
 """Smoke tests for MomentAccumulator PyModel and OLS/Ridge fit_from_accumulator."""
 import numpy as np
 import pytest
-from polars_statistics import MomentAccumulator, OLS, Ridge
+from polars_statistics import OLS, MomentAccumulator, Ridge
 
 
 class TestMomentAccumulator:
@@ -88,7 +88,7 @@ class TestOLSFitFromAccumulator:
     def test_not_fitted_raises(self):
         model = OLS()
         assert not model.is_fitted()
-        with pytest.raises(Exception):
+        with pytest.raises(RuntimeError, match="not fitted"):
             _ = model.coefficients
 
 

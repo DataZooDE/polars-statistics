@@ -9,25 +9,67 @@ Return coefficient statistics in tidy format (like R's `broom::tidy`).
 ### Available Functions
 
 ```python
-ps.ols_summary(y, *x, with_intercept=True) -> pl.Expr
+ps.ols_summary(y, *x, with_intercept=True, alias_tolerance=1e-7) -> pl.Expr
 ps.ridge_summary(y, *x, lambda_=1.0, with_intercept=True) -> pl.Expr
 ps.elastic_net_summary(y, *x, lambda_=1.0, alpha=0.5, with_intercept=True) -> pl.Expr
-ps.wls_summary(y, weights, *x, with_intercept=True) -> pl.Expr
-ps.rls_summary(y, *x, forgetting_factor=0.99, with_intercept=True) -> pl.Expr
+ps.wls_summary(y, weights, *x, with_intercept=True, alias_tolerance=1e-7) -> pl.Expr
+ps.rls_summary(y, *x, forgetting_factor=0.99, with_intercept=True, initial_p_diagonal=1e6) -> pl.Expr
 ps.bls_summary(y, *x, lower_bound=None, upper_bound=None, with_intercept=True) -> pl.Expr
 ps.logistic_summary(y, *x, with_intercept=True) -> pl.Expr
 ps.poisson_summary(y, *x, with_intercept=True) -> pl.Expr
-ps.negative_binomial_summary(y, *x, theta=None, with_intercept=True) -> pl.Expr
+ps.negative_binomial_summary(y, *x, theta=None, with_intercept=True, estimate_dispersion=False) -> pl.Expr
 ps.tweedie_summary(y, *x, var_power=1.5, with_intercept=True) -> pl.Expr
 ps.probit_summary(y, *x, with_intercept=True) -> pl.Expr
 ps.cloglog_summary(y, *x, with_intercept=True) -> pl.Expr
 ps.alm_summary(y, *x, distribution="normal", with_intercept=True) -> pl.Expr
 ps.quantile_summary(y, *x, tau=0.5, with_intercept=True) -> pl.Expr
+ps.penalized_glm_summary(y, *x, family="poisson", vcov_type="laplace", conf_level=0.95, ...) -> pl.Expr
+ps.aft_summary(time, event, *x, distribution="weibull", vcov_type="laplace", conf_level=0.95, ...) -> pl.Expr
 ```
 
 Formula variants also available: `ps.ols_formula_summary(formula, ...)`, etc.
 
+**`penalized_glm_summary` and `aft_summary` return a widened 7-field schema** — the usual
+`{term, estimate, std_error, statistic, p_value}` plus trailing `ci_lower`/`ci_upper` (additive;
+the shared schema above and every other `*_summary` expression are unchanged). The `intercept`
+row is read directly from the upstream engine's own intercept inference, never recomputed
+locally. See [Inference Summary Output](../outputs.md#inference-summary-output),
+[Penalized GLM](penalized-glm.md#penalized_glm_summary), and
+[Survival Regression (AFT)](survival.md#aft_summary).
+
 **Note on `quantile_summary`:** Quantile regression has no analytic standard errors, so the `std_error`, `statistic`, and `p_value` columns are returned as NaN. The coefficient estimates themselves are still valid.
+
+**Note on `ridge_summary` (`lambda_ > 0`):** `std_error` is the ridge sandwich
+standard error (`sigma^2 * A @ X'X @ A'`, matching R), but `statistic`/`p_value`
+are `NaN` — a classical t-test on shrunken/biased coefficients is not statistically
+valid (anofox-regression 0.5.14 #37). `lambda_ = 0` delegates fully to OLS
+inference (`statistic`/`p_value` populated). See
+[Ridge](../classes/linear.md#ridge) for the class-level equivalent.
+
+**Note on `negative_binomial_summary`'s `estimate_dispersion`:** scales
+`std_error` by the Pearson chi2/df dispersion estimate (R `summary.glm`
+semantics); default `False` keeps dispersion fixed at `1.0`. See
+[NegativeBinomial](../classes/glm.md#negativebinomial).
+
+**Note on `rls_summary`'s `initial_p_diagonal`:** sets the initial covariance
+prior `P0 = initial_p_diagonal * I`; default `1e6` is identical to omitting it.
+See [RLS](../classes/linear.md#rls).
+
+**`alias_tolerance` (0.8.0, `ols_summary`/`wls_summary`):** R `lm`'s configurable
+rank-deficiency tolerance, default `1e-7`. A later column that is a linear combination of the
+intercept and earlier kept columns within this tolerance is aliased (`NaN` `estimate`/
+`std_error`/`statistic`/`p_value` for that term). See
+[Linear Models](linear.md#ols) and
+[Rank-deficient designs](../classes/linear.md#rank-deficient-designs-ols-wls).
+
+**GLM intercept inference since 0.8.0 (anofox-regression 0.5.20 #66):** every GLM
+`*_summary` (`logistic_summary`, `poisson_summary`, `negative_binomial_summary`,
+`tweedie_summary`, `probit_summary`, `cloglog_summary`) now reports the intercept
+row's `std_error`/`statistic`/`p_value` (previously `NaN`). `tweedie_summary`
+additionally reports t-based statistics/p-values (t on the residual df, as R's
+`summary.glm`) for every row, where they previously could be `NaN`. The `Gamma`
+PyModel's `std_errors`/`p_values` getters gained the same t-based values (no
+`gamma_summary` expression exists yet).
 
 **Returns:** See [Summary Output](../outputs.md#summary-output)
 
@@ -63,8 +105,13 @@ ps.ols_predict(
     interval: str | None = None,  # None, "confidence", "prediction"
     level: float = 0.95,
     null_policy: str = "drop",    # "drop", "drop_y_zero_x"
+    alias_tolerance: float = 1e-7,
 ) -> pl.Expr
 ```
+
+**`ols_predict`/`wls_predict` also accept `alias_tolerance`** (default `1e-7`) — same
+rank-deficiency tolerance as `ols`/`wls` (see the note above); a column aliased at fit time
+contributes `NaN` to the prediction wherever that column is involved.
 
 ### Available Functions
 
@@ -75,8 +122,16 @@ All models have prediction functions:
 - `tweedie_predict`, `probit_predict`, `cloglog_predict`
 - `alm_predict`
 - `quantile_predict`, `isotonic_predict`, `lm_dynamic_predict`
+- `penalized_glm_predict` (`predict_type="response"` or `"link"`)
+- `aft_predict_quantile`, `aft_predict_median`, `aft_predict_survival`, `aft_predict_cdf`
 
 Formula variants also available: `ps.ols_formula_predict(formula, ...)`, etc.
+
+**`penalized_glm_predict`/`aft_predict_*` have no analytic intervals** — `lower`/`upper` are
+always `NaN`; neither `FittedPenalizedGlm` nor `FittedAft` has an interval-prediction method
+upstream. See [Penalized GLM](penalized-glm.md#penalized_glm_predict) and
+[Survival Regression (AFT)](survival.md#aft_predict_quantile) for the full parameter lists
+(`predict_type`/`null_policy` for the former; `p`/`t`/`null_policy` for the latter's four variants).
 
 **Models without analytic intervals.** The following predictors return `lower` / `upper` as NaN — point predictions only:
 
@@ -85,6 +140,21 @@ Formula variants also available: `ps.ols_formula_predict(formula, ...)`, etc.
 | `quantile_predict` | Quantile regression intervals require bootstrap (not yet wired through). |
 | `isotonic_predict` | Step-function fit with no parametric uncertainty estimate. |
 | `lm_dynamic_predict` | Predictions use time-averaged coefficients from the dynamic model. |
+| `penalized_glm_predict` | `FittedPenalizedGlm` has no interval-prediction method upstream. |
+| `aft_predict_quantile`/`_median`/`_survival`/`_cdf` | `FittedAft` has no interval-prediction method upstream. |
+
+**`ridge_predict`'s intervals use the sandwich variance factor** (anofox-regression
+0.5.14 #37): `interval="confidence"`/`"prediction"` widths are computed from the
+ridge sandwich covariance (`A @ X'X @ A'`), which is narrower than the pre-0.8.0
+interval width for `lambda_ > 0`.
+
+**`negative_binomial_predict`/`negative_binomial_summary` accept
+`estimate_dispersion`** (default `False`) — see the Summary Functions note above.
+Note: `negative_binomial_predict` itself has no `theta` kwarg (theta is always
+estimated for prediction).
+
+**`rls_predict`/`rls_summary` accept `initial_p_diagonal`** (default `1e6`) — see
+the Summary Functions note above.
 
 ```python
 # Quantile regression predictions

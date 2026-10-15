@@ -1,6 +1,7 @@
 //! PyO3 wrapper for OLS regression.
 
-use numpy::{PyArray1, PyReadonlyArray1, PyReadonlyArray2};
+use numpy::{PyArray1, PyArray2, PyReadonlyArray1, PyReadonlyArray2};
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
 use anofox_regression::prelude::*;
@@ -23,6 +24,12 @@ use crate::utils::{IntoNumpy, ToFaer};
 ///     Whether to compute statistical inference (std errors, t-stats, p-values).
 /// confidence_level : float, default 0.95
 ///     Confidence level for confidence intervals.
+/// alias_tolerance : float, default 1e-7
+///     Relative tolerance of R `lm`'s rank-deficiency (aliasing) test: a
+///     column whose residual norm, after projecting out the intercept and
+///     the earlier kept columns, is below `alias_tolerance` times its own
+///     norm is aliased (NaN coefficient). Default matches R `lm` /
+///     anofox-regression's `LM_ALIAS_TOLERANCE`.
 ///
 /// Examples
 /// --------
@@ -44,6 +51,7 @@ pub struct PyOLS {
     compute_inference: bool,
     confidence_level: f64,
     solve_method: Option<String>,
+    alias_tolerance: f64,
     fitted: Option<FittedOls>,
 }
 
@@ -51,7 +59,8 @@ pub struct PyOLS {
 impl PyOLS {
     /// Create a new OLS model.
     #[new]
-    #[pyo3(signature = (add_intercept=None, with_intercept=None, compute_inference=true, confidence_level=0.95, solve_method=None))]
+    #[pyo3(signature = (add_intercept=None, with_intercept=None, compute_inference=true, confidence_level=0.95, solve_method=None, alias_tolerance=1e-7))]
+    #[allow(clippy::too_many_arguments)]
     fn new(
         py: Python<'_>,
         add_intercept: Option<bool>,
@@ -59,7 +68,13 @@ impl PyOLS {
         compute_inference: bool,
         confidence_level: f64,
         solve_method: Option<String>,
+        alias_tolerance: f64,
     ) -> PyResult<Self> {
+        if !(alias_tolerance.is_finite() && alias_tolerance >= 0.0) {
+            return Err(PyValueError::new_err(format!(
+                "alias_tolerance must be finite and >= 0, got {alias_tolerance}"
+            )));
+        }
         let with_intercept =
             crate::pymodels::errors::resolve_intercept(py, add_intercept, with_intercept, true)?;
         Ok(Self {
@@ -67,6 +82,7 @@ impl PyOLS {
             compute_inference,
             confidence_level,
             solve_method,
+            alias_tolerance,
             fitted: None,
         })
     }
@@ -96,7 +112,8 @@ impl PyOLS {
         let mut builder = OlsRegressor::builder()
             .with_intercept(slf.with_intercept)
             .compute_inference(slf.compute_inference)
-            .confidence_level(slf.confidence_level);
+            .confidence_level(slf.confidence_level)
+            .alias_tolerance(slf.alias_tolerance);
         if let Some(ref solver_str) = slf.solve_method {
             let solver = match solver_str.as_str() {
                 "svd" => SolverType::Svd,
@@ -331,6 +348,86 @@ impl PyOLS {
             .map(|pv| pv.into_numpy(py)))
     }
 
+    /// Get lower bounds of coefficient confidence intervals.
+    #[getter]
+    fn conf_interval_lower<'py>(
+        &self,
+        py: Python<'py>,
+    ) -> PyResult<Option<Bound<'py, PyArray1<f64>>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("OLS"))?;
+
+        Ok(fitted
+            .result()
+            .conf_interval_lower
+            .as_ref()
+            .map(|ci| ci.into_numpy(py)))
+    }
+
+    /// Get upper bounds of coefficient confidence intervals.
+    #[getter]
+    fn conf_interval_upper<'py>(
+        &self,
+        py: Python<'py>,
+    ) -> PyResult<Option<Bound<'py, PyArray1<f64>>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("OLS"))?;
+
+        Ok(fitted
+            .result()
+            .conf_interval_upper
+            .as_ref()
+            .map(|ci| ci.into_numpy(py)))
+    }
+
+    /// Get the standard error of the intercept.
+    #[getter]
+    fn intercept_std_error(&self) -> PyResult<Option<f64>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("OLS"))?;
+
+        Ok(fitted.result().intercept_std_error)
+    }
+
+    /// Get the t-statistic of the intercept.
+    #[getter]
+    fn intercept_t_statistic(&self) -> PyResult<Option<f64>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("OLS"))?;
+
+        Ok(fitted.result().intercept_t_statistic)
+    }
+
+    /// Get the p-value of the intercept.
+    #[getter]
+    fn intercept_p_value(&self) -> PyResult<Option<f64>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("OLS"))?;
+
+        Ok(fitted.result().intercept_p_value)
+    }
+
+    /// Get the confidence interval of the intercept, as ``(lower, upper)``.
+    #[getter]
+    fn intercept_conf_interval(&self) -> PyResult<Option<(f64, f64)>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("OLS"))?;
+
+        Ok(fitted.result().intercept_conf_interval)
+    }
+
     /// Get residuals.
     #[getter]
     fn residuals<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyArray1<f64>>> {
@@ -534,7 +631,8 @@ impl PyOLS {
         let mut builder = OlsRegressor::builder()
             .with_intercept(slf.with_intercept)
             .compute_inference(slf.compute_inference)
-            .confidence_level(slf.confidence_level);
+            .confidence_level(slf.confidence_level)
+            .alias_tolerance(slf.alias_tolerance);
         if let Some(ref solver_str) = slf.solve_method.clone() {
             let solver = match solver_str.as_str() {
                 "svd" => SolverType::Svd,
@@ -551,6 +649,89 @@ impl PyOLS {
         Ok(slf)
     }
 
+    /// Variance factor ``M`` with ``Var(x0' beta) = sigma^2 x0' M x0``
+    /// (``(X'X)^-1``). ``(p+1) x (p+1)`` with an intercept (index 0), ``p x
+    /// p`` without; aliased rows/columns are zero. ``None`` for fits from
+    /// moments (e.g. :meth:`fit_from_accumulator`).
+    fn variance_factor<'py>(&self, py: Python<'py>) -> PyResult<Option<Bound<'py, PyArray2<f64>>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("OLS"))?;
+
+        Ok(fitted.variance_factor().as_ref().map(|m| m.into_numpy(py)))
+    }
+
+    /// Leverage ``x0' M x0`` of new rows (one column per feature; aliased
+    /// columns are ignored). ``NaN`` when no variance factor is available
+    /// (e.g. a fit from moments).
+    fn leverage_new<'py>(
+        &self,
+        py: Python<'py>,
+        x_new: PyReadonlyArray2<'py, f64>,
+    ) -> PyResult<Bound<'py, PyArray1<f64>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("OLS"))?;
+
+        let x_new_mat = x_new.to_faer();
+        let expected = fitted.coefficients().nrows();
+        if x_new_mat.ncols() != expected {
+            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
+                "OLS.leverage_new: x_new has {} columns but the model was fit with {} \
+                 feature(s) — they must match.",
+                x_new_mat.ncols(),
+                expected
+            )));
+        }
+        Ok(fitted.leverage_new(&x_new_mat).into_numpy(py))
+    }
+
+    /// Per-observation diagnostics of the fit (R ``broom::augment``): pass the
+    /// training data (without the intercept column).
+    ///
+    /// Parameters
+    /// ----------
+    /// x : array-like of shape (n_samples, n_features)
+    ///     The feature matrix used to fit the model.
+    /// y : array-like of shape (n_samples,)
+    ///     The target values used to fit the model.
+    /// residual_type : str, optional
+    ///     ``"response"`` (default), ``"pearson"``, or ``"deviance"``.
+    ///
+    /// Returns
+    /// -------
+    /// dict
+    ///     Keys: fitted, residual, resid_type, std_residual, stud_residual,
+    ///     leverage, cooks_d, dffits.
+    #[pyo3(signature = (x, y, residual_type=None))]
+    fn augment<'py>(
+        &self,
+        py: Python<'py>,
+        x: PyReadonlyArray2<'py, f64>,
+        y: PyReadonlyArray1<'py, f64>,
+        residual_type: Option<String>,
+    ) -> PyResult<Bound<'py, pyo3::types::PyDict>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("OLS"))?;
+        crate::pymodels::augment::augment_dict(py, fitted, x, y, None, residual_type.as_deref())
+    }
+
+    /// Model type, error family (R naming; None for estimators without a
+    /// likelihood) and link of the fit (anofox-regression ModelInfo).
+    #[getter]
+    fn model_info<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, pyo3::types::PyDict>> {
+        use anofox_regression::HasModelInfo;
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("OLS"))?;
+        crate::pymodels::model_info::model_info_dict(py, fitted.model_info())
+    }
+
     /// Informative repr, e.g. ``OLS(fitted=True, r_squared=0.9820, ...)``.
     fn __repr__(slf: &Bound<'_, Self>) -> PyResult<String> {
         crate::pymodels::ergonomics::repr(slf.as_any())
@@ -559,5 +740,28 @@ impl PyOLS {
     /// Return the regression results as a plain Python ``dict``.
     fn to_dict<'py>(slf: &Bound<'py, Self>) -> PyResult<Bound<'py, pyo3::types::PyDict>> {
         crate::pymodels::ergonomics::to_dict(slf.as_any())
+    }
+}
+
+impl PyOLS {
+    /// Wrap an already-fitted [`FittedOls`] as a `PyOLS` instance.
+    ///
+    /// Used by `RANSAC.inlier_fit()` to hand back the inlier-rows OLS fit as a
+    /// real `OLS` object (`solve_method` is unknown for an already-fitted
+    /// model, so it is left `None`).
+    pub(crate) fn from_fitted(
+        fitted: FittedOls,
+        with_intercept: bool,
+        compute_inference: bool,
+        confidence_level: f64,
+    ) -> Self {
+        Self {
+            with_intercept,
+            compute_inference,
+            confidence_level,
+            solve_method: None,
+            alias_tolerance: anofox_regression::utils::LM_ALIAS_TOLERANCE,
+            fitted: Some(fitted),
+        }
     }
 }

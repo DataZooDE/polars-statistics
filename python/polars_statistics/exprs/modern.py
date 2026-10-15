@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Union
 
 import polars as pl
 from polars.plugins import register_plugin_function
@@ -11,7 +10,7 @@ from polars.plugins import register_plugin_function
 LIB = Path(__file__).parent.parent
 
 
-def _to_expr(x: Union[pl.Expr, str]) -> pl.Expr:
+def _to_expr(x: pl.Expr | str) -> pl.Expr:
     """Convert string column name to expression."""
     if isinstance(x, str):
         return pl.col(x)
@@ -19,8 +18,8 @@ def _to_expr(x: Union[pl.Expr, str]) -> pl.Expr:
 
 
 def energy_distance(
-    x: Union[pl.Expr, str],
-    y: Union[pl.Expr, str],
+    x: pl.Expr | str,
+    y: pl.Expr | str,
     n_permutations: int = 999,
     seed: int | None = None,
 ) -> pl.Expr:
@@ -154,8 +153,8 @@ def energy_distance_nd(
 
 
 def mmd_test(
-    x: Union[pl.Expr, str],
-    y: Union[pl.Expr, str],
+    x: pl.Expr | str,
+    y: pl.Expr | str,
     n_permutations: int = 999,
     seed: int | None = None,
 ) -> pl.Expr:

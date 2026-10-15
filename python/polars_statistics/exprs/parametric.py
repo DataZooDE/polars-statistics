@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Literal, Union
+from typing import Literal
 
 import polars as pl
 from polars.plugins import register_plugin_function
@@ -12,7 +12,7 @@ LIB = Path(__file__).parent.parent
 
 
 def one_way_anova(
-    *groups: Union[pl.Expr, str],
+    *groups: pl.Expr | str,
     kind: Literal["fisher", "welch"] = "fisher",
 ) -> pl.Expr:
     """
@@ -67,9 +67,9 @@ def one_way_anova(
 
 
 def two_way_anova(
-    value: Union[pl.Expr, str],
-    factor_a: Union[pl.Expr, str],
-    factor_b: Union[pl.Expr, str],
+    value: pl.Expr | str,
+    factor_a: pl.Expr | str,
+    factor_b: pl.Expr | str,
 ) -> pl.Expr:
     """
     Perform two-way ANOVA with two categorical factors.
@@ -145,9 +145,9 @@ def two_way_anova(
 
 
 def repeated_measures_anova(
-    value: Union[pl.Expr, str],
-    subject: Union[pl.Expr, str],
-    condition: Union[pl.Expr, str],
+    value: pl.Expr | str,
+    subject: pl.Expr | str,
+    condition: pl.Expr | str,
     compute_sphericity: bool = True,
 ) -> pl.Expr:
     """
@@ -238,8 +238,8 @@ def repeated_measures_anova(
 
 
 def ttest_ind(
-    x: Union[pl.Expr, str],
-    y: Union[pl.Expr, str],
+    x: pl.Expr | str,
+    y: pl.Expr | str,
     alternative: Literal["two-sided", "less", "greater"] = "two-sided",
     equal_var: bool = False,
     mu: float = 0.0,
@@ -314,8 +314,8 @@ def ttest_ind(
 
 
 def ttest_paired(
-    x: Union[pl.Expr, str],
-    y: Union[pl.Expr, str],
+    x: pl.Expr | str,
+    y: pl.Expr | str,
     alternative: Literal["two-sided", "less", "greater"] = "two-sided",
     mu: float = 0.0,
     conf_level: float = 0.95,
@@ -377,8 +377,8 @@ def ttest_paired(
 
 
 def brown_forsythe(
-    x: Union[pl.Expr, str],
-    y: Union[pl.Expr, str],
+    x: pl.Expr | str,
+    y: pl.Expr | str,
 ) -> pl.Expr:
     """
     Perform Brown-Forsythe test for equality of variances.
@@ -415,8 +415,8 @@ def brown_forsythe(
 
 
 def yuen_test(
-    x: Union[pl.Expr, str],
-    y: Union[pl.Expr, str],
+    x: pl.Expr | str,
+    y: pl.Expr | str,
     trim: float = 0.2,
     alternative: Literal["two-sided", "less", "greater"] = "two-sided",
     conf_level: float = 0.95,
@@ -475,6 +475,137 @@ def yuen_test(
             pl.lit(trim, dtype=pl.Float64),
             pl.lit(alternative, dtype=pl.String),
             pl.lit(conf_level, dtype=pl.Float64),
+        ],
+        returns_scalar=True,
+    )
+
+
+def cohens_d(
+    x: pl.Expr | str,
+    y: pl.Expr | str,
+    kind: Literal["student", "welch", "paired"] = "student",
+    mu: float = 0.0,
+) -> pl.Expr:
+    """
+    Compute Cohen's d (standardised mean difference) for a two-sample,
+    Welch, or paired comparison.
+
+    Parameters
+    ----------
+    x : pl.Expr or str
+        First sample expression or column name.
+    y : pl.Expr or str
+        Second sample expression or column name.
+    kind : {"student", "welch", "paired"}, default "student"
+        Standardiser variant:
+
+        - ``"student"``: pooled-SD standardiser
+          (``(mean(x) - mean(y) - mu) / s_pooled``), matching R
+          ``effectsize::cohens_d(x, y, pooled_sd = TRUE)``.
+        - ``"welch"``: average-variance standardiser that does not assume
+          equal variances (``pooled_sd = FALSE``).
+        - ``"paired"``: ``d_z = mean(x - y - mu) / sd(x - y)``, matching
+          ``effectsize::cohens_d(x, y, paired = TRUE)``. ``x`` and ``y``
+          are filtered jointly so only rows where both are finite are used.
+    mu : float, default 0.0
+        The null value of the mean difference.
+
+    Returns
+    -------
+    pl.Expr
+        Expression returning struct{estimate: f64}.
+
+    Notes
+    -----
+    Returns NaN when the standardiser is zero (e.g. constant samples) or
+    when either sample has fewer than 2 observations.
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> import polars_statistics as ps
+    >>>
+    >>> df = pl.DataFrame({
+    ...     "x": [5.1, 4.9, 6.2, 5.8, 6.05, 5.5, 5.3, 6.1],
+    ...     "y": [6.5, 7.1, 6.8, 7.4, 6.0, 7.9, 6.6, 7.2, 6.9, 7.05],
+    ... })
+    >>>
+    >>> df.select(ps.cohens_d("x", "y"))
+    """
+    if kind not in ("student", "welch", "paired"):
+        raise ValueError(f"kind must be 'student', 'welch', or 'paired', got {kind!r}")
+
+    if isinstance(x, str):
+        x = pl.col(x)
+    if isinstance(y, str):
+        y = pl.col(y)
+
+    if kind == "paired":
+        mask = x.is_finite() & y.is_finite()
+        x_clean = x.filter(mask)
+        y_clean = y.filter(mask)
+    else:
+        x_clean = x.filter(x.is_finite())
+        y_clean = y.filter(y.is_finite())
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_cohens_d",
+        args=[
+            x_clean,
+            y_clean,
+            pl.lit(kind, dtype=pl.String),
+            pl.lit(mu, dtype=pl.Float64),
+        ],
+        returns_scalar=True,
+    )
+
+
+def cohens_d_one_sample(
+    x: pl.Expr | str,
+    mu: float = 0.0,
+) -> pl.Expr:
+    """
+    Compute Cohen's d (standardised mean difference) for a one-sample t-test.
+
+    Parameters
+    ----------
+    x : pl.Expr or str
+        Sample expression or column name.
+    mu : float, default 0.0
+        The null value of the mean.
+
+    Returns
+    -------
+    pl.Expr
+        Expression returning struct{estimate: f64}.
+
+    Notes
+    -----
+    ``d = (mean(x) - mu) / sd(x)``, matching R
+    ``effectsize::cohens_d(x, mu = mu)``. Returns NaN when ``sd(x)`` is zero
+    or when ``x`` has fewer than 2 observations.
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> import polars_statistics as ps
+    >>>
+    >>> df = pl.DataFrame({"x": [5.1, 4.9, 6.2, 5.8, 6.05, 5.5, 5.3, 6.1]})
+    >>>
+    >>> df.select(ps.cohens_d_one_sample("x", mu=5.0))
+    """
+    if isinstance(x, str):
+        x = pl.col(x)
+
+    x_clean = x.filter(x.is_finite())
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_cohens_d_one_sample",
+        args=[
+            x_clean,
+            pl.lit(mu, dtype=pl.Float64),
         ],
         returns_scalar=True,
     )

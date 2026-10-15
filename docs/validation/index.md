@@ -225,6 +225,11 @@ Validated against R's `wilcox.test()` at tolerance **1e-10** (statistic) and **1
 | `estimate` (Hodges-Lehmann, exact mode) | 1e-10 |
 | `ci_lower`, `ci_upper` (exact, 90%/95%) | 1e-10 |
 
+*New in 0.8.0:* `ps.mann_whitney_u`'s `estimate`/`ci_lower`/`ci_upper` fields
+(above, previously `MannWhitneyU`-class-only) are now also validated at the
+expression layer, on the same 126 `wilcox.test(conf.int = TRUE)` reference
+cases as the `MannWhitneyU` class (`tests/fixtures/wilcox_ci_reference.csv`).
+
 ---
 
 #### Wilcoxon Signed-Rank
@@ -243,6 +248,11 @@ Validated against R's `wilcox.test(paired=TRUE)` at tolerance **1e-10** / **1e-6
     ```python
     df.select(ps.wilcoxon_signed_rank("x", "y").alias("wsr"))
     ```
+
+*New in 0.8.0:* `ps.wilcoxon_signed_rank`'s `estimate`/`ci_lower`/`ci_upper`
+fields are likewise now validated at the expression layer on the same 126
+`wilcox.test(conf.int = TRUE)` reference cases as the `WilcoxonSignedRank`
+class.
 
 ---
 
@@ -507,6 +517,45 @@ Validated against R's `lm()` with weights at tolerance **0.01** (relative).
 | `se_intercept` | 0.6773 | 0.01 |
 | `se_coefficients[0]` | 0.1913 | 0.01 |
 | `r_squared` | 0.8289 | 0.01 |
+
+---
+
+#### Rank-Deficient Designs (lm-style aliasing)
+
+Validated against R's own `lm()` aliasing rule (`dqrdc2`, limited pivoting,
+relative tolerance 1e-7) at tolerance **1e-8**, across every `solve_method`
+(`qr`, `svd`, `cholesky`).
+
+=== "R"
+
+    ```r
+    # anofox-regression-0.5.22 tests/r_scripts/issue64_lm_aliasing.R
+    lm(y ~ x1 + x1b)             # exact duplicate column
+    lm(y ~ x1 + x1b + x2)        # scaled copy (x1b <- 2*x1)
+    lm(y ~ x1 + x1b + x2, weights = w)   # WLS, scaled copy
+    lm(y ~ 0 + x1 + x2 + I(3*x2), weights = w)   # WLS, no intercept
+    ```
+
+=== "polars-statistics"
+
+    ```python
+    OLS(solve_method="qr").fit(X, y)    # also "svd", "cholesky"
+    ps.wls("y", "w", "x1", "b", "x2", solve_method=solver)
+    ```
+
+| Case | Output field | Tolerance |
+|:-----|:-------------|----------:|
+| Exact-duplicate / scaled-copy collinear column | later column's coefficient is `NaN` (every `solve_method`) | exact |
+| OLS collinear (exact duplicate) | `coefficients[0]`, `intercept`, `r_squared` | 1e-8 |
+| OLS collinear (scaled copy) | `coefficients[0]`, `coefficients[2]`, `intercept`, `r_squared` | 1e-8 |
+| WLS collinear (scaled copy) | `coefficients[0]`, `coefficients[2]`, `intercept`, `r_squared`, `wls_summary` `std_error` per term | 1e-8 (coef) / 1e-5 (SE) |
+| WLS without intercept, collinear | `coefficients[0]`, `coefficients[1]`, `r_squared` (later column `NaN`, SEs from the reduced fit) | 1e-8 |
+
+The aliasing decision is scale-independent — a column that is an exact
+multiple of another is aliased exactly like a byte-identical duplicate — and
+the **later** column is always the one aliased, matching R's `lm` (previously
+`qr` aliased the earlier column and `svd` returned a minimum-norm split across
+both). Source: `tests/test_upstream_regression_parity_v0521.py`.
 
 ---
 
@@ -827,6 +876,45 @@ Validated against R's `glm(family=binomial())` across three link functions.
 
 ---
 
+#### Intercept Inference and Probit Precision
+
+Validated against R's `summary.glm()` + `confint.default()` (Wald CI) on the
+`mtcars` dataset (`anofox-regression-0.5.22` `tests/fixtures/m1a_validation.rs`
+/ `generate_m1a_validation.R`).
+
+=== "R"
+
+    ```r
+    fit <- glm(vs ~ mpg, family = binomial)        # logit
+    fit <- glm(vs ~ mpg, family = binomial(link = "probit"))
+    fit <- glm(carb ~ wt + hp, family = poisson)
+    summary(fit)$coefficients          # std.error, z/t value, Pr(>|z|)
+    confint.default(fit)               # Wald confidence interval
+    ```
+
+=== "polars-statistics"
+
+    ```python
+    ps.logistic_summary("vs", "mpg")   # intercept row: std_error/statistic/p_value
+    ps.probit_summary("vs", "mpg")
+    ps.poisson_summary("carb", "wt", "hp")
+    ```
+
+| Case | Output field | Tolerance |
+|:-----|:-------------|----------:|
+| Binomial logit intercept row | `std_error`, `statistic`, `p_value` (previously `NaN`) | 1e-5 (SE/stat) / 1e-4 (p) |
+| Poisson intercept + slope rows | `std_error`, `statistic`, `p_value` | 1e-5 (SE/stat) / 1e-4 (p) |
+| Probit intercept + slope rows | `estimate`, `std_error`, `statistic`, `p_value` | 1e-5 (SE/stat) / 1e-4 (p) |
+| Tweedie / Gamma per-coefficient | `statistic`, `p_value` finite and `> 0.0` (no underflow) | n/a |
+
+Every GLM `*_summary` expression (Binomial, Poisson, Negative Binomial,
+Tweedie, Gamma, Probit, Cloglog) now reports a finite intercept
+`std_error`/`statistic`/`p_value` — previously `NaN`. Probit standard errors
+use `statrs` `erfc`/`erfc_inv` and match R to full precision (previously off R
+in the 5th decimal). Source: `tests/test_upstream_regression_parity_v0521.py`.
+
+---
+
 ### Negative Binomial GLM
 
 Validated against R's `MASS::glm.nb()`.
@@ -945,6 +1033,120 @@ Validated against R's `statmod::tweedie()` family across four variance powers.
 
 ---
 
+### Penalized GLM
+
+Validated against R 4.6.1 `glm()` / `MASS` 7.3.65 `glm.nb()` /
+`negative.binomial(theta)` / `quasipoisson` family, and an R Newton
+posterior-mode fit for the Gaussian-prior (ridge/MAP) cases. Source:
+`anofox-regression` 0.5.22 `tests/fixtures/penalized_glm_aft_reference.rs`
+(`tests/r_scripts/penalized_glm_aft_reference.R`).
+
+=== "R"
+
+    ```r
+    suppressPackageStartupMessages({ library(MASS) })
+    glm(yp ~ x1 + x2, family = poisson)                       # log link
+    glm(yp ~ x1 + x2, family = poisson(link = "sqrt"))
+    glm(yp ~ x1 + x2 + offset(off), family = poisson)
+    glm(yp ~ x1 + x2 - 1, family = poisson)                   # no intercept
+    glm(ynb ~ x1 + x2, family = poisson)                      # overdispersed
+    glm(ynb ~ x1 + x2, family = quasipoisson)                 # quasipoisson
+    glm(yb ~ x1 + x2, family = binomial)                      # logit
+    glm(yb ~ x1 + x2, family = binomial(link = "probit"))
+    glm(yb ~ x1 + x2, family = binomial(link = "cloglog"))
+    glm(yb ~ x1 + x2 + offset(off), family = binomial)
+    glm(yg ~ x1 + x2, family = Gamma(link = "log"))
+    glm(yg ~ x1 + x2 + offset(off), family = Gamma(link = "log"))
+    glm.nb(ynb ~ x1 + x2)                                     # estimated theta
+    glm(ynb ~ x1 + x2, family = negative.binomial(2.5))       # fixed theta
+    ```
+
+=== "polars-statistics"
+
+    ```python
+    ps.penalized_glm("y", "x1", "x2", family="poisson")
+    ps.penalized_glm("y", "x1", "x2", family="poisson", offset="log_exposure")
+    ps.penalized_glm("y", "x1", "x2", family="poisson", estimate_dispersion=True)
+    ps.penalized_glm("y", "x1", "x2", family="binomial", link="probit")
+    ps.penalized_glm("y", "x1", "x2", family="gamma")
+    ps.penalized_glm("y", "x1", "x2", family="negative_binomial")  # theta=None
+    ps.penalized_glm(
+        "y", "x1", "x2", family="poisson",
+        priors=[("intercept", "flat"), ("normal", 0.5, 0.5), ("normal", 0.0, 0.25)],
+        vcov_type="sandwich",
+    )
+    ```
+
+| Case | Output field | Tolerance |
+|:-----|:-------------|----------:|
+| Poisson log / sqrt / offset / no-intercept / overdispersed | `coefficients`, `intercept` | 1e-6 |
+| Every family's `std_error` (incl. quasipoisson, fixed-theta NegBin) | `std_error` | 1e-5 |
+| `deviance`, `null_deviance` (with offsets, without intercept), `log_likelihood`, `aic` | all families | 1e-7 |
+| Gamma `log_likelihood` (at deviance / n) | `log_likelihood` | 1e-9 |
+| Negative Binomial `theta` (ML-estimated) | `theta` | 1e-5 |
+| Quasipoisson `dispersion` | `dispersion` | 1e-7 |
+| Gaussian-prior posterior mode (Poisson, 3 priors × 3 `vcov_type`) | coefficients (MAP) | 1e-7 |
+| Gaussian-prior posterior covariance | `std_error` (laplace / sandwich / naive) | 1e-6 |
+
+Binomial logit/probit/cloglog/offset and Logistic are validated the same way
+as the Binomial/Logistic rows in [Binomial GLM](#binomial-glm) and
+[Intercept Inference and Probit Precision](#intercept-inference-and-probit-precision)
+above, applied to `ps.penalized_glm`'s Binomial/Logistic families. Tweedie's
+`p=1` (Poisson) and `p=2` (Gamma) special cases are checked against the
+Poisson/Gamma identities above (the log-likelihood/deviance formulas coincide
+exactly at those two variance powers). Source test file: `tests/test_penalized_glm.py`.
+
+---
+
+## AFT Survival Regression
+
+Validated against R `survival` 3.8.6 `survreg()` across all four supported
+distributions. Source: `anofox-regression` 0.5.22
+`tests/fixtures/penalized_glm_aft_reference.rs`
+(`tests/r_scripts/penalized_glm_aft_reference.R`; the same `time`/`ev`
+right-censored dataset for all four fits).
+
+=== "R"
+
+    ```r
+    library(survival)
+    survreg(Surv(time, ev) ~ x1 + x2, dist = "weibull")
+    survreg(Surv(time, ev) ~ x1 + x2, dist = "lognormal")
+    survreg(Surv(time, ev) ~ x1 + x2, dist = "loglogistic")
+    survreg(Surv(time, ev) ~ x1 + x2, dist = "exponential")
+    predict(fit, newdata = data.frame(x1 = 0.3, x2 = -0.2),
+            type = "quantile", p = c(0.25, 0.5, 0.9))
+    ```
+
+=== "polars-statistics"
+
+    ```python
+    ps.aft("time", "event", "x1", "x2", distribution="weibull")
+    ps.aft("time", "event", "x1", "x2", distribution="lognormal")
+    ps.aft("time", "event", "x1", "x2", distribution="loglogistic")
+    ps.aft("time", "event", "x1", "x2", distribution="exponential")
+    ps.aft_predict_quantile("time", "event", "x1", "x2", p=[0.25, 0.5, 0.9])
+    ```
+
+| Output field | Tolerance |
+|:--------------|----------:|
+| `coefficients`, `scale` | 1e-6 |
+| `log_likelihood` (`m$loglik`) | 1e-7 |
+| `std_error` incl. `log(scale)` SE (`sqrt(diag(vcov(m)))`) | 1e-5 |
+| `predict_quantile` at p = 0.25, 0.5, 0.9 | 1e-6 |
+| `S(quantile(p)) == 1 - p` identity | 1e-9 |
+
+The `log_scale` row's `statistic`/`p_value`/CI (absent for `exponential`, which
+has no free scale parameter) are computed locally via upstream's own
+`laplace::inference` Wald formula; the intercept and feature rows are read
+directly from upstream's `AftInference`, never recomputed — the two are
+confirmed identical on upstream's own module-doc example. Right censoring is
+via an explicit `event` column (`0`/`1` or boolean); any other coding (e.g.
+R's `1`/`2`) is rejected rather than silently misread. Source test file:
+`tests/test_aft.py`.
+
+---
+
 ## TOST Equivalence Tests
 
 Validated against R's `TOSTER` package (`TOSTone()`, `TOSTtwo()`, `TOSTpaired()`, `TOSTr()`, `TOSTtwo.prop()`, `wilcox_TOST()`, `boot_t_TOST()`).
@@ -963,6 +1165,241 @@ Tests verify both equivalence detection and non-equivalence detection:
 
 ---
 
+## Upstream API Wave 2 (v0.8.0, Phase 16.3)
+
+New capabilities from the `anofox-statistics` 0.4.7 / `anofox-regression`
+0.5.17–0.5.22 upstream refresh exposed in Phase 16.3, validated against R 4.6.1
+references (plus `dunn.test` 1.4.2, `lme4` 2.0.1, `metafor`, `broom` 1.0.13).
+
+### Post-hoc Tests & Multiple Comparisons
+
+Validated against R's `TukeyHSD()`, `pairwise.t.test()`, `dunn.test::dunn.test()`,
+`p.adjust()`, `ptukey()`/`qtukey()` (R 4.6.1).
+
+=== "R"
+
+    ```r
+    TukeyHSD(aov(values ~ groups))
+    pairwise.t.test(values, groups, pool.sd = TRUE, p.adjust.method = "holm")
+    dunn.test::dunn.test(values, groups, method = "holm")
+    p.adjust(p, method = "BH")
+    ptukey(q, nmeans, df)
+    qtukey(p, nmeans, df)
+    ```
+
+=== "polars-statistics"
+
+    ```python
+    ps.tukey_hsd("values", "groups", conf_level=0.95)
+    ps.pairwise_t_test("values", "groups", pooled_sd=True, p_adjust_method="holm")
+    ps.dunn_test("values", "groups", p_adjust_method="holm")
+    ps.p_adjust("p", method="fdr")
+    ps.ptukey("q", nmeans=4, df=20)
+    ps.qtukey("p", nmeans=4, df=20)
+    ```
+
+| Capability | R reference | Tolerance |
+|:-----------|:------------|----------:|
+| `p_adjust` (holm/hochberg/hommel/bonferroni/BH/BY/none, 56 cases) | `p.adjust()` | 1e-14 |
+| `ptukey` (630 rows, both tails) | `ptukey()` | 1e-10 |
+| `qtukey` (420 rows) | `qtukey()` | 1e-8 |
+| `tukey_hsd` / `pairwise_t_test` / `dunn_test` (1365 rows) | `TukeyHSD()` / `pairwise.t.test()` / `dunn.test()` | 1e-9 (Tukey `p_value` 1e-10 absolute) |
+
+Source test files: `tests/test_p_adjust.py`, `tests/test_posthoc.py`.
+
+### Empirical-Bayes Shrinkage (`eb_shrink`)
+
+Validated against R's `metafor::rma(method = "DL")` / `blup()`.
+
+=== "R"
+
+    ```r
+    library(metafor)
+    fit <- rma(yi, sei = sei, method = "DL")
+    blup(fit)
+    ```
+
+=== "polars-statistics"
+
+    ```python
+    ps.eb_shrink("estimate", "std_error", method="dl")
+    ```
+
+| Output field | R reference | Tolerance |
+|:-------------|:------------|----------:|
+| `mu`, `mu_se`, `tau_squared`, `q`, `i_squared` | `rma(method = "DL")` | 1e-10 |
+| `shrunken`, `shrunken_se`, `weight` | `blup()` | 1e-10 |
+
+Validated on the upstream crate's YI/SEI fixture and the 13-trial
+`metafor::dat.bcg` reference. Source test file: `tests/test_eb_shrink.py`.
+
+### Per-Observation Diagnostics (`augment`)
+
+Validated against R `broom::augment` conventions (`rstandard`/`rstudent`/
+`hatvalues`/`cooks.distance`/`dffits`) on the `mtcars`/`warpbreaks` m1a
+fixture (`anofox-regression` 0.5.22 `tests/fixtures/m1a_validation.rs`).
+
+=== "R"
+
+    ```r
+    fit <- lm(mpg ~ wt + hp, data = mtcars)
+    broom::augment(fit)   # .fitted, .resid, .std.resid, .hat, .cooksd, .sigma
+    rstandard(fit); rstudent(fit); hatvalues(fit); cooks.distance(fit); dffits(fit)
+    ```
+
+=== "polars-statistics"
+
+    ```python
+    ps.augment("mpg", "wt", "hp", model="ols")
+    OLS().fit(x, y).augment(x, y)
+    ```
+
+| Model | Output fields | Tolerance |
+|:------|:---------------|----------:|
+| OLS / WLS | `fitted`/`residual`/`std_residual`/`stud_residual`/`leverage`/`cooks_d`/`dffits` | 1e-8 |
+| Binomial-logit (deviance + Pearson), Poisson (deviance + Pearson), Gamma, Negative Binomial | same fields | 1e-6 |
+| Tweedie (`var_power=2.0`, `link_power=0.0`) | reproduces Gamma's `cooks_d` and response `residual` | 1e-6 |
+
+Cross-checked elementwise (rel 1e-8) against the pre-existing
+`ps.leverage`/`ps.cooks_distance`/`ps.dffits`/`ps.studentized_residuals`/
+`ps.externally_studentized_residuals` for OLS. Source test file:
+`tests/test_augment.py`.
+
+### GLMM Families, Offsets, Per-Factor Random Slopes
+
+Validated against `lme4` 2.0.1: `glmer.nb()`, `glmer(family = MASS::negative.binomial(theta))`,
+`glmer(family = Gamma(link = "log"))`, `glmer(family = statmod::tweedie(var.power = 1.5))`,
+`offset()`, and crossed random slopes `(x | a) + (1 | b)`.
+
+=== "R"
+
+    ```r
+    library(lme4)
+    glmer.nb(y ~ x + (1 | group))
+    glmer(y ~ x + offset(log(exposure)) + (1 | group), family = poisson)
+    glmer(y ~ x + (x | group_a) + (1 | group_b), family = binomial)
+    ```
+
+=== "polars-statistics"
+
+    ```python
+    from polars_statistics import GLMM
+
+    GLMM.negative_binomial(nb_theta=None).fit(x, y, group)
+    GLMM.poisson().fit(x, y, group, offset=exposure_log)
+    GLMM.binomial().fit_crossed(x, y, groups=[group_a, group_b],
+                                 random_slopes_per_factor=[[0], None])
+    ```
+
+| Capability | R reference | Tolerance |
+|:-----------|:------------|-----------|
+| NegBin / Gamma / Tweedie families | `glmer.nb()` / `glmer(MASS::negative.binomial)` / `glmer(Gamma(log))` / `glmer(statmod::tweedie)` | 2e-4 |
+| Estimated NB `theta` | `glmer.nb()`'s estimated `theta` | 2e-3 |
+| Offset (`offset=`) | `offset()` in the `lme4` formula | 2e-4 |
+| Crossed per-factor random slopes (`random_slopes_per_factor`) | `(x | a) + (1 | b)` | 2e-3 |
+
+Source test file: `tests/test_glmm.py`; fixture `tests/fixtures/glmm_families_reference.py`
+(verbatim transcription of `anofox-regression` 0.5.22's `glmm_families_validation.rs`).
+
+### OLS / WLS Alias Tolerance
+
+Validated against R `lm`'s own aliasing rule (`dqrdc2`) with a configurable
+relative tolerance, on `anofox-regression` 0.5.22's `tests/issue64_lm_aliasing.rs`
+near-collinear references (R reference intercept `2.023318557879104`,
+coefficients `1.490290680634032`/`-0.772169023108856` at `alias_tolerance=1e-6`).
+
+=== "R"
+
+    ```r
+    lm(y ~ x1 + x1b + x2)   # x1b is a scaled copy of x1 at ratio 2e-7
+    ```
+
+=== "polars-statistics"
+
+    ```python
+    OLS(alias_tolerance=1e-6).fit(x, y)   # tighter than the 1e-7 default -> aliases x1b
+    ps.ols("y", "x1", "x1b", "x2", alias_tolerance=1e-8)  # looser -> keeps x1b
+    ```
+
+| Output field | Tolerance |
+|:--------------|----------:|
+| `intercept`, `coefficients`, `std_errors`, `rmse`, `r_squared`, `adj_r_squared` | 1e-9 |
+
+Source test file: `tests/test_alias_tolerance.py`.
+
+### LARS Fit Statistics
+
+`LARS.adj_r_squared` / `.mse` / `.rmse`, validated against R `summary(lm())`
+(OLS convention, `df = active coefficients + intercept`), `anofox-regression`
+0.5.22 issue #65.
+
+| Case | R reference | Tolerance |
+|:-----|:------------|----------:|
+| Full LAR path | `summary(lm())$adj.r.squared` / `rmse` | 1e-9 |
+| LassoLars (`alpha=0.05`, active-set `df`) | `rmse == sqrt(RSS / df_resid)`, `adj = 1 - (1-R²)(n-1)/df_resid` | 1e-12 |
+| LAR without intercept vs `OLS(add_intercept=False)` | `rmse` | 1e-8 |
+
+Source test file: `tests/test_lars.py`.
+
+### GLM / OLS / WLS Intercept Inference Getters (PyModel)
+
+`intercept_std_error`/`intercept_t_statistic`/`intercept_p_value`/
+`intercept_conf_interval` and `t_statistics`/`conf_interval_lower`/`upper`
+getters on `Logistic`, `Probit`, `Cloglog`, `LogisticRegression`, `Poisson`,
+`NegativeBinomial`, `Tweedie`, `Gamma`, `OLS`, `WLS`, plus `compute_inference`/
+`confidence_level` constructor kwargs, validated against R's `summary.glm()`/
+`summary.lm()`/`confint.default()` on the `mtcars`/`warpbreaks` m1a fixture.
+
+=== "R"
+
+    ```r
+    fit <- glm(vs ~ mpg, family = binomial)
+    summary(fit)$coefficients["(Intercept)", ]   # std.error, z value, Pr(>|z|)
+    confint.default(fit)["(Intercept)", ]        # Wald CI
+    ```
+
+=== "polars-statistics"
+
+    ```python
+    m = Logistic(compute_inference=True, confidence_level=0.95).fit(x, y)
+    m.intercept_std_error, m.intercept_t_statistic, m.intercept_p_value
+    m.intercept_conf_interval
+    ```
+
+| Model family | Tolerance |
+|:-------------|----------:|
+| OLS / WLS | 1e-8 |
+| GLM (Binomial-logit/probit/cloglog, Poisson, Gamma, Tweedie, Negative Binomial) | 1e-6 |
+
+Source test file: `tests/test_glm_intercept_inference.py`.
+
+---
+
+## Upstream Refresh (v0.8.0)
+
+New capabilities and R-matching behaviour changes from the `anofox-statistics`
+0.4.2→0.4.6 / `anofox-regression` 0.5.13→0.5.16 upstream refresh, validated
+against R references.
+
+| Capability | R reference | Tolerance |
+|:-----------|:------------|----------:|
+| Cohen's d / rank-biserial | `effectsize::cohens_d()`, `effectsize::rank_biserial()` | 1e-12 |
+| Jarque-Bera normality test | `tseries::jarque.bera.test()` | 1e-10 |
+| Conditional Fisher's exact test | `fisher.test()` (conditional MLE odds ratio) | 1e-3 (OR/CI) |
+| `binom_test` / `prop_test_one` / `prop_test_two` / `fisher_exact` intervals | `binom.test()` / `prop.test()` | 1e-8 |
+| Shapiro-Wilk, n ≤ 11 | `shapiro.test()` (exact `swilk.c` coefficients) | 1e-6 |
+| Kendall's tau tie correction | `cor.test(method = "kendall")` | 1e-8 |
+| Huber robust-regression standard errors | `MASS::rlm(method = "XtX")` | 1e-6 |
+| RANSAC inlier-fit statistics | `summary(lm())` on inlier rows | 1e-8 |
+| Ridge sandwich standard errors | R reference script (sandwich `A X'X A`) | 1e-6 |
+| Negative Binomial standard errors / dispersion | `MASS::glm.nb()` / `summary.glm()` | 1e-5 |
+| Gamma GLM Pearson dispersion | `summary.glm()` | 1e-6 |
+| GLMM Wald inference (`z_values`/`p_values`/`conf_int`) | `lme4` 2.0.1 `confint(method = "Wald")` | 2e-3 |
+| Mann-Whitney / Wilcoxon Hodges-Lehmann estimate + CI | `wilcox.test(conf.int = TRUE)`, 126 reference cases | 1e-12 (exact) / 1e-9 (asymptotic) |
+| `mcnemar_exact` | `binom.test(b, b + c, 0.5)` up to `b + c = 10^6` | 1e-9 (relative) |
+
+---
+
 ## R Packages Used
 
 The full list of R packages referenced in validation:
@@ -974,7 +1411,8 @@ The full list of R packages referenced in validation:
 | `lmtest` | `coeftest()` for robust inference |
 | `glmnet` | Ridge (`alpha=0`) and Elastic Net regression |
 | `quantreg` | Quantile regression (`rq()`) |
-| `MASS` | Negative Binomial GLM (`glm.nb()`) |
+| `MASS` | Negative Binomial GLM (`glm.nb()`, `negative.binomial(theta)`), Huber robust regression (`rlm(method = "XtX")`) |
+| `survival` | AFT survival regression (`survreg()`) |
 | `statmod` | Tweedie GLM family |
 | `car` | Brown-Forsythe / Levene's test |
 | `WRS2` | Yuen's trimmed means test |
@@ -986,6 +1424,12 @@ The full list of R packages referenced in validation:
 | `irr` | Cohen's kappa |
 | `moments` | D'Agostino K-squared test |
 | `coin` | Permutation tests |
+| `effectsize` | Cohen's d, rank-biserial correlation |
+| `tseries` | Jarque-Bera normality test |
+| `lme4` | GLMM Wald inference (`z_values`/`p_values`/`conf_int`); NegBin/Gamma/Tweedie families, offsets, crossed per-factor random slopes |
+| `dunn.test` | Dunn's test for multiple comparisons (`dunn.test()`) |
+| `metafor` | Empirical-Bayes / random-effects meta-analysis (`rma(method = "DL")`, `blup()`) |
+| `broom` | Tidy per-observation model diagnostics (`augment()`) |
 
 ---
 
@@ -998,8 +1442,11 @@ The full list of R packages referenced in validation:
 | Correlation | Pearson, Spearman, Kendall | 1e-4 to 1e-10 |
 | Categorical tests | Chi-square, Fisher exact, Cramer's V, Phi, Contingency coefficient, Cohen's kappa, G-test | 1e-4 to 1e-10 |
 | Distributional tests | Shapiro-Wilk, D'Agostino K-squared | 1e-3 |
-| Linear regression | OLS, WLS, Ridge, Elastic Net, Quantile | 0.01 to 0.2 |
+| Linear regression | OLS, WLS, Ridge, Elastic Net, Quantile, rank-deficient (lm-style) aliasing | 1e-8 to 0.2 |
 | HC standard errors | HC0, HC1, HC2, HC3 | 0.01 |
 | Prediction intervals | Prediction and confidence intervals at multiple levels | 0.01 to 1.0 |
-| GLMs | Poisson (log/identity/sqrt), Binomial (logit/probit/cloglog), Gamma, Inverse Gaussian, Negative Binomial, Tweedie (4 powers) | 0.01 to 0.5 |
+| GLMs | Poisson (log/identity/sqrt), Binomial (logit/probit/cloglog), Gamma, Inverse Gaussian, Negative Binomial, Tweedie (4 powers), intercept inference, probit precision | 1e-5 to 0.5 |
+| Penalized GLM | 6 families, Normal/Laplace priors, 3 covariance types, offsets, quasipoisson | 1e-9 to 1e-5 |
+| AFT survival regression | Weibull, log-normal, log-logistic, exponential; right censoring; quantile/median/survival/cdf predictions | 1e-9 to 1e-5 |
 | Equivalence tests | TOST one-sample, two-sample, paired, proportion, correlation, Wilcoxon, bootstrap | 1e-6 |
+| Upstream refresh (v0.8.0) | Cohen's d/rank-biserial, Jarque-Bera, conditional Fisher, Huber/RANSAC/Ridge inference, NegBin/Gamma GLM dispersion, GLMM Wald, Mann-Whitney/Wilcoxon Hodges-Lehmann, McNemar exact | 1e-3 to 1e-12 |

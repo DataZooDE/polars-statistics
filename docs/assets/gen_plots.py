@@ -7,6 +7,7 @@ Run from the examples/ directory:
 import pathlib
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
@@ -92,7 +93,7 @@ def plot_reg_actual_vs_pred():
                       426.08, 548.95, 291.98, 463.82, 398.80, 634.66])
 
     order = np.argsort(actual)
-    actual_s, predicted_s = actual[order], predicted[order]
+    actual_s = actual[order]
     lower_s, upper_s = lower[order], upper[order]
 
     ax.fill_between(actual_s, lower_s, upper_s, alpha=0.2, color="#4C72B0",
@@ -395,7 +396,7 @@ def plot_reg_ci_vs_pi():
     # Use sorted actual for band plotting
     order = np.argsort(actual)
     a_s = actual[order]
-    p_s, ci_lo_s, ci_hi_s = predicted[order], ci_lo[order], ci_hi[order]
+    ci_lo_s, ci_hi_s = ci_lo[order], ci_hi[order]
     pi_lo_s, pi_hi_s = pi_lo[order], pi_hi[order]
 
     ax.fill_between(a_s, pi_lo_s, pi_hi_s, alpha=0.15, color="#DD8452",
@@ -571,7 +572,7 @@ def plot_abt_segment_forest():
     ax.invert_yaxis()
 
     # Significance markers
-    for i, (lo, p) in enumerate(zip(ci_lower, [0.168, 0.005, 0.078])):
+    for i, (_lo, p) in enumerate(zip(ci_lower, [0.168, 0.005, 0.078])):
         sig = "**" if p < 0.01 else "*" if p < 0.05 else "ns"
         ax.text(ci_upper[i] + 0.03, i, sig, va="center", fontsize=10,
                 color="#333333" if sig != "ns" else "#999999")
@@ -995,7 +996,7 @@ def plot_fcast_mcs_bars():
                        Patch(facecolor="#C44E52", label="Excluded")]
     ax.legend(handles=legend_elements, frameon=True, fancybox=True, fontsize=9)
 
-    for bar, v, inc in zip(bars, mse, included):
+    for bar, v, _inc in zip(bars, mse, included):
         label = f"{v:.2f}"
         ax.text(v + 0.05, bar.get_y() + bar.get_height() / 2, label,
                 va="center", fontsize=10)
@@ -1019,10 +1020,10 @@ def plot_cor2_nonlinear():
     m, b = np.polyfit(x, y, 1)
     x_fit = np.linspace(-3.5, 3.5, 100)
     ax.plot(x_fit, m * x_fit + b, color="#C44E52", ls="--", lw=1.5,
-            label=f"Pearson r = −0.01 (linear)")
+            label="Pearson r = −0.01 (linear)")
     # True relationship
     ax.plot(x_fit, x_fit**2, color="#55A868", lw=2,
-            label=f"Distance cor = 0.76 (nonlinear)")
+            label="Distance cor = 0.76 (nonlinear)")
 
     ax.set_xlabel("x")
     ax.set_ylabel("y")

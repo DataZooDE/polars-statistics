@@ -12,7 +12,6 @@ Scope notes:
 import numpy as np
 import polars as pl
 import pytest
-
 from polars_statistics import (
     isotonic_predict,
     lm_dynamic_predict,

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import List, Tuple
-
 import polars as pl
 
 from polars_statistics.formula.terms import (
@@ -15,7 +13,7 @@ from polars_statistics.formula.terms import (
 )
 
 
-def expand_terms_to_expressions(terms: List[Term]) -> Tuple[List[pl.Expr], List[str]]:
+def expand_terms_to_expressions(terms: list[Term]) -> tuple[list[pl.Expr], list[str]]:
     """Convert parsed terms to Polars expressions and term names.
 
     Parameters
@@ -29,8 +27,8 @@ def expand_terms_to_expressions(terms: List[Term]) -> Tuple[List[pl.Expr], List[
         (expressions, term_names) - parallel lists of Polars expressions
         and their corresponding string names for output
     """
-    expressions: List[pl.Expr] = []
-    names: List[str] = []
+    expressions: list[pl.Expr] = []
+    names: list[str] = []
 
     for term in terms:
         term_exprs, term_names = _expand_single_term(term)
@@ -40,7 +38,7 @@ def expand_terms_to_expressions(terms: List[Term]) -> Tuple[List[pl.Expr], List[
     return expressions, names
 
 
-def _expand_single_term(term: Term) -> Tuple[List[pl.Expr], List[str]]:
+def _expand_single_term(term: Term) -> tuple[list[pl.Expr], list[str]]:
     """Expand a single term to expressions and names."""
     if isinstance(term, SimpleTerm):
         return _expand_simple(term)
@@ -54,13 +52,13 @@ def _expand_single_term(term: Term) -> Tuple[List[pl.Expr], List[str]]:
         raise TypeError(f"Unknown term type: {type(term)}")
 
 
-def _expand_simple(term: SimpleTerm) -> Tuple[List[pl.Expr], List[str]]:
+def _expand_simple(term: SimpleTerm) -> tuple[list[pl.Expr], list[str]]:
     """Expand a simple term like 'x1'."""
     expr = pl.col(term.name).cast(pl.Float64)
     return [expr], [term.name]
 
 
-def _expand_interaction(term: InteractionTerm) -> Tuple[List[pl.Expr], List[str]]:
+def _expand_interaction(term: InteractionTerm) -> tuple[list[pl.Expr], list[str]]:
     """Expand an interaction term like 'x1:x2'.
 
     Creates the product of all variables.
@@ -74,7 +72,7 @@ def _expand_interaction(term: InteractionTerm) -> Tuple[List[pl.Expr], List[str]
     return [expr], [name]
 
 
-def _expand_poly(term: PolyTerm) -> Tuple[List[pl.Expr], List[str]]:
+def _expand_poly(term: PolyTerm) -> tuple[list[pl.Expr], list[str]]:
     """Expand a polynomial term like 'poly(x, 2)'.
 
     For raw=False (default): Centers each polynomial term for partial orthogonalization.
@@ -82,8 +80,8 @@ def _expand_poly(term: PolyTerm) -> Tuple[List[pl.Expr], List[str]]:
 
     Centering is computed using .mean() which works per-group in over()/group_by().
     """
-    expressions: List[pl.Expr] = []
-    names: List[str] = []
+    expressions: list[pl.Expr] = []
+    names: list[str] = []
 
     base = pl.col(term.variable).cast(pl.Float64)
 
@@ -110,7 +108,7 @@ def _expand_poly(term: PolyTerm) -> Tuple[List[pl.Expr], List[str]]:
     return expressions, names
 
 
-def _expand_transform(term: TransformTerm) -> Tuple[List[pl.Expr], List[str]]:
+def _expand_transform(term: TransformTerm) -> tuple[list[pl.Expr], list[str]]:
     """Expand an explicit transform like 'I(x^2)'."""
     expr = pl.col(term.variable).cast(pl.Float64).pow(term.power)
     name = f"I({term.variable}^{term.power})"

@@ -1,9 +1,22 @@
 """Tests for regression models."""
 
-import numpy as np
-import pytest
+import math
 
-from polars_statistics import OLS, Ridge, ElasticNet, WLS, Logistic, Poisson, LmDynamic, Aid
+import numpy as np
+import polars as pl
+import polars_statistics as ps
+import pytest
+from polars_statistics import OLS, WLS, Aid, ElasticNet, LmDynamic, Logistic, Poisson, Ridge
+
+
+def _d15() -> pl.DataFrame:
+    """Shared n=15 dataset for R-reference regression parity tests (anofox-regression
+    0.5.14/0.5.15 issues #37-#50)."""
+    i = list(range(1, 16))
+    x0 = [k / 3 for k in i]
+    x1 = [((k * 5) % 7) / 2 for k in i]
+    y = [2 + 1.5 * a - 0.8 * b + (((k * 3) % 5) - 2) * 0.5 for k, a, b in zip(i, x0, x1)]
+    return pl.DataFrame({"y": y, "x0": x0, "x1": x1})
 
 
 class TestOLS:
@@ -104,6 +117,34 @@ class TestRidge:
 
         # Ridge coefficients should be smaller in magnitude
         assert np.sum(ridge.coefficients**2) < np.sum(ols.coefficients**2)
+
+    def test_ridge_summary_lambda_positive_sandwich_se_no_t_test(self):
+        """anofox-regression 0.5.14 #37: for lambda_ > 0, ridge_summary reports the
+        sandwich standard error (matching R) but statistic/p_value are NaN because a
+        t-test on shrunken coefficients is not valid."""
+        df = _d15()
+        result = df.select(ps.ridge_summary("y", "x0", "x1", lambda_=1.0).alias("coef"))
+        rows = {row["term"]: row for row in result["coef"][0]}
+
+        assert rows["x1"]["estimate"] == pytest.approx(1.38008516740810094, abs=1e-8)
+        assert rows["x1"]["std_error"] == pytest.approx(0.13688648231466696, abs=1e-6)
+        assert rows["x2"]["std_error"] == pytest.approx(0.19112708153110064, abs=1e-6)
+        assert rows["intercept"]["std_error"] == pytest.approx(0.53418431237438180, abs=1e-6)
+
+        for term in ("intercept", "x1", "x2"):
+            assert math.isnan(rows[term]["statistic"])
+            assert math.isnan(rows[term]["p_value"])
+
+    def test_ridge_summary_tiny_lambda_matches_ols_se(self):
+        """anofox-regression 0.5.14 #37 continuity check: a near-zero lambda_ still
+        uses the sandwich SE path and the standard errors are close to the OLS SEs."""
+        df = _d15()
+        result = df.select(ps.ridge_summary("y", "x0", "x1", lambda_=1e-8).alias("coef"))
+        rows = {row["term"]: row for row in result["coef"][0]}
+
+        assert rows["x1"]["std_error"] == pytest.approx(0.14058832696496731, abs=1e-6)
+        assert rows["x2"]["std_error"] == pytest.approx(0.20292177104535755, abs=1e-6)
+        assert rows["intercept"]["std_error"] == pytest.approx(0.55492086380506511, abs=1e-6)
 
 
 class TestElasticNet:

@@ -1,8 +1,9 @@
 """Forecast comparison test expressions."""
 
 from __future__ import annotations
+
 from pathlib import Path
-from typing import Literal, Union
+from typing import Literal
 
 import polars as pl
 from polars.plugins import register_plugin_function
@@ -10,7 +11,7 @@ from polars.plugins import register_plugin_function
 LIB = Path(__file__).parent.parent
 
 
-def _to_expr(x: Union[pl.Expr, str]) -> pl.Expr:
+def _to_expr(x: pl.Expr | str) -> pl.Expr:
     """Convert string column name to expression."""
     if isinstance(x, str):
         return pl.col(x)
@@ -18,8 +19,8 @@ def _to_expr(x: Union[pl.Expr, str]) -> pl.Expr:
 
 
 def diebold_mariano(
-    e1: Union[pl.Expr, str],
-    e2: Union[pl.Expr, str],
+    e1: pl.Expr | str,
+    e2: pl.Expr | str,
     loss: Literal["squared", "absolute"] = "squared",
     horizon: int = 1,
     alternative: Literal["two-sided", "less", "greater"] = "two-sided",
@@ -72,8 +73,8 @@ def diebold_mariano(
 
 
 def permutation_t_test(
-    x: Union[pl.Expr, str],
-    y: Union[pl.Expr, str],
+    x: pl.Expr | str,
+    y: pl.Expr | str,
     alternative: Literal["two-sided", "less", "greater"] = "two-sided",
     n_permutations: int = 999,
     seed: int | None = None,
@@ -120,8 +121,8 @@ def permutation_t_test(
 
 
 def clark_west(
-    e1: Union[pl.Expr, str],
-    e2: Union[pl.Expr, str],
+    e1: pl.Expr | str,
+    e2: pl.Expr | str,
     horizon: int = 1,
 ) -> pl.Expr:
     """Clark-West test for nested model comparison.
@@ -164,8 +165,8 @@ def clark_west(
 
 
 def spa_test(
-    benchmark: Union[pl.Expr, str],
-    *models: Union[pl.Expr, str],
+    benchmark: pl.Expr | str,
+    *models: pl.Expr | str,
     n_bootstrap: int = 999,
     block_length: float = 5.0,
     seed: int | None = None,
@@ -216,7 +217,7 @@ def spa_test(
 
 
 def model_confidence_set(
-    *models: Union[pl.Expr, str],
+    *models: pl.Expr | str,
     alpha: float = 0.1,
     statistic: Literal["range", "max"] = "range",
     n_bootstrap: int = 999,
@@ -271,8 +272,8 @@ def model_confidence_set(
 
 
 def mspe_adjusted(
-    benchmark: Union[pl.Expr, str],
-    *models: Union[pl.Expr, str],
+    benchmark: pl.Expr | str,
+    *models: pl.Expr | str,
     n_bootstrap: int = 999,
     block_length: float = 5.0,
     seed: int | None = None,

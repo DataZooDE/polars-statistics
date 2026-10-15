@@ -1,6 +1,7 @@
 //! PyO3 wrapper for Negative Binomial regression.
 
 use numpy::{PyArray1, PyReadonlyArray1, PyReadonlyArray2};
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
 use anofox_regression::solvers::{
@@ -26,6 +27,15 @@ use crate::utils::{IntoNumpy, ToFaer};
 ///     Maximum number of IRLS iterations.
 /// tol : float, default 1e-6
 ///     Convergence tolerance.
+/// estimate_dispersion : bool, default False
+///     Whether to scale the coefficient covariance by the Pearson chi2/df
+///     dispersion estimate, matching R's ``summary.glm`` for
+///     ``family = negative.binomial(theta)``. When False (the default),
+///     dispersion is fixed at 1.0 (``MASS::glm.nb`` convention).
+/// compute_inference : bool, default True
+///     Whether to compute statistical inference.
+/// confidence_level : float, default 0.95
+///     Confidence level for confidence intervals.
 #[pyclass(name = "NegativeBinomial")]
 pub struct PyNegativeBinomial {
     theta: Option<f64>,
@@ -34,13 +44,16 @@ pub struct PyNegativeBinomial {
     max_iter: usize,
     tol: f64,
     lambda_: f64,
+    estimate_dispersion: bool,
+    compute_inference: bool,
+    confidence_level: f64,
     fitted: Option<FittedNegativeBinomial>,
 }
 
 #[pymethods]
 impl PyNegativeBinomial {
     #[new]
-    #[pyo3(signature = (theta=None, estimate_theta=true, add_intercept=None, with_intercept=None, max_iter=100, tol=1e-6, lambda_=0.0))]
+    #[pyo3(signature = (theta=None, estimate_theta=true, add_intercept=None, with_intercept=None, max_iter=100, tol=1e-6, lambda_=0.0, estimate_dispersion=false, compute_inference=true, confidence_level=0.95))]
     #[allow(clippy::too_many_arguments)]
     fn new(
         py: Python<'_>,
@@ -51,7 +64,15 @@ impl PyNegativeBinomial {
         max_iter: usize,
         tol: f64,
         lambda_: f64,
+        estimate_dispersion: bool,
+        compute_inference: bool,
+        confidence_level: f64,
     ) -> PyResult<Self> {
+        if !(confidence_level > 0.0 && confidence_level < 1.0) {
+            return Err(PyValueError::new_err(format!(
+                "confidence_level must be in (0, 1), got {confidence_level}"
+            )));
+        }
         let with_intercept =
             crate::pymodels::errors::resolve_intercept(py, add_intercept, with_intercept, true)?;
         Ok(Self {
@@ -61,6 +82,9 @@ impl PyNegativeBinomial {
             max_iter,
             tol,
             lambda_,
+            estimate_dispersion,
+            compute_inference,
+            confidence_level,
             fitted: None,
         })
     }
@@ -79,7 +103,10 @@ impl PyNegativeBinomial {
             .estimate_theta(slf.estimate_theta)
             .max_iterations(slf.max_iter)
             .tolerance(slf.tol)
-            .lambda(slf.lambda_);
+            .lambda(slf.lambda_)
+            .estimate_dispersion(slf.estimate_dispersion)
+            .compute_inference(slf.compute_inference)
+            .confidence_level(slf.confidence_level);
 
         if let Some(theta) = slf.theta {
             builder = builder.theta(theta);
@@ -145,6 +172,20 @@ impl PyNegativeBinomial {
         Ok(fitted.theta)
     }
 
+    /// Dispersion used for the coefficient covariance: 1.0 by default
+    /// (``MASS::glm.nb`` convention); the Pearson chi2/df estimate when
+    /// ``estimate_dispersion=True`` (matches R ``summary.glm`` for
+    /// ``family = negative.binomial(theta)``).
+    #[getter]
+    fn dispersion(&self) -> PyResult<f64> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("NegativeBinomial"))?;
+
+        Ok(fitted.dispersion)
+    }
+
     #[getter]
     fn std_errors<'py>(&self, py: Python<'py>) -> PyResult<Option<Bound<'py, PyArray1<f64>>>> {
         let fitted = self
@@ -173,6 +214,105 @@ impl PyNegativeBinomial {
             .map(|pv| pv.into_numpy(py)))
     }
 
+    /// Wald z statistics for coefficients (``None`` unless ``compute_inference=True``).
+    #[getter]
+    fn t_statistics<'py>(&self, py: Python<'py>) -> PyResult<Option<Bound<'py, PyArray1<f64>>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("NegativeBinomial"))?;
+
+        Ok(fitted
+            .result()
+            .t_statistics
+            .as_ref()
+            .map(|ts| ts.into_numpy(py)))
+    }
+
+    /// Lower bounds of coefficient confidence intervals (``None`` unless
+    /// ``compute_inference=True``).
+    #[getter]
+    fn conf_interval_lower<'py>(
+        &self,
+        py: Python<'py>,
+    ) -> PyResult<Option<Bound<'py, PyArray1<f64>>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("NegativeBinomial"))?;
+
+        Ok(fitted
+            .result()
+            .conf_interval_lower
+            .as_ref()
+            .map(|ci| ci.into_numpy(py)))
+    }
+
+    /// Upper bounds of coefficient confidence intervals (``None`` unless
+    /// ``compute_inference=True``).
+    #[getter]
+    fn conf_interval_upper<'py>(
+        &self,
+        py: Python<'py>,
+    ) -> PyResult<Option<Bound<'py, PyArray1<f64>>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("NegativeBinomial"))?;
+
+        Ok(fitted
+            .result()
+            .conf_interval_upper
+            .as_ref()
+            .map(|ci| ci.into_numpy(py)))
+    }
+
+    /// Standard error of the intercept (``None`` unless ``compute_inference=True``).
+    #[getter]
+    fn intercept_std_error(&self) -> PyResult<Option<f64>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("NegativeBinomial"))?;
+
+        Ok(fitted.result().intercept_std_error)
+    }
+
+    /// Wald z statistic of the intercept (R ``summary.glm``).
+    #[getter]
+    fn intercept_t_statistic(&self) -> PyResult<Option<f64>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("NegativeBinomial"))?;
+
+        Ok(fitted.result().intercept_t_statistic)
+    }
+
+    /// P-value for the intercept (``None`` unless ``compute_inference=True``).
+    #[getter]
+    fn intercept_p_value(&self) -> PyResult<Option<f64>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("NegativeBinomial"))?;
+
+        Ok(fitted.result().intercept_p_value)
+    }
+
+    /// Wald confidence interval of the intercept at ``confidence_level`` (R
+    /// ``confint.default``), as ``(lower, upper)`` (``None`` unless
+    /// ``compute_inference=True``).
+    #[getter]
+    fn intercept_conf_interval(&self) -> PyResult<Option<(f64, f64)>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("NegativeBinomial"))?;
+
+        Ok(fitted.result().intercept_conf_interval)
+    }
+
     #[getter]
     fn aic(&self) -> PyResult<Option<f64>> {
         let fitted = self
@@ -192,7 +332,53 @@ impl PyNegativeBinomial {
 
         Ok(Some(fitted.result().bic))
     }
+
+    /// Per-observation diagnostics of the fit (R ``broom::augment``; deviance
+    /// residuals by default, ``residual_type="pearson"`` / ``"response"``
+    /// also available); pass the training data.
+    ///
+    /// Parameters
+    /// ----------
+    /// x : array-like of shape (n_samples, n_features)
+    ///     The feature matrix used to fit the model.
+    /// y : array-like of shape (n_samples,)
+    ///     The target values used to fit the model.
+    /// residual_type : str, optional
+    ///     ``"deviance"`` (default), ``"pearson"``, or ``"response"``.
+    ///
+    /// Returns
+    /// -------
+    /// dict
+    ///     Keys: fitted, residual, resid_type, std_residual, stud_residual,
+    ///     leverage, cooks_d, dffits.
+    #[pyo3(signature = (x, y, residual_type=None))]
+    fn augment<'py>(
+        &self,
+        py: Python<'py>,
+        x: PyReadonlyArray2<'py, f64>,
+        y: PyReadonlyArray1<'py, f64>,
+        residual_type: Option<String>,
+    ) -> PyResult<Bound<'py, pyo3::types::PyDict>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("NegativeBinomial"))?;
+        crate::pymodels::augment::augment_dict(py, fitted, x, y, None, residual_type.as_deref())
+    }
+
     /// Informative repr: class name plus key state; never panics if unfitted.
+    /// Model type, error family (R naming; None for estimators without a
+    /// likelihood) and link of the fit (anofox-regression ModelInfo).
+    #[getter]
+    fn model_info<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, pyo3::types::PyDict>> {
+        use anofox_regression::HasModelInfo;
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("NegativeBinomial"))?;
+        crate::pymodels::model_info::model_info_dict(py, fitted.model_info())
+    }
+
     fn __repr__(slf: &Bound<'_, Self>) -> PyResult<String> {
         crate::pymodels::ergonomics::repr(slf.as_any())
     }

@@ -69,23 +69,29 @@ nav:
   - Statistical Tests:
       - Parametric Tests: api/tests/parametric.md
       - Non-Parametric Tests: api/tests/nonparametric.md
+      - Post-hoc & Multiple Comparisons: api/tests/posthoc.md
       - Distributional Tests: api/tests/distributional.md
       - Correlation Tests: api/tests/correlation.md
       - Forecast Comparison: api/tests/forecast.md
       - Categorical Tests: api/tests/categorical.md
       - TOST Equivalence: api/tests/tost.md
+      - Effect Sizes & Bootstrap CIs: api/tests/effect-sizes.md
   - Regression:
       - Linear Models: api/regression/linear.md
       - GLM: api/regression/glm.md
+      - Penalized GLM: api/regression/penalized-glm.md
+      - Survival (AFT): api/regression/survival.md
       - ALM: api/regression/alm.md
       - Formula Syntax: api/regression/formula.md
       - Summary & Prediction: api/regression/summary-predict.md
       - Diagnostics: api/regression/diagnostics.md
+      - Empirical-Bayes Shrinkage: api/regression/shrinkage.md
       - Dynamic Models: api/regression/dynamic.md
       - Demand Classification (AID): api/regression/aid.md
   - Model Classes:
       - Linear: api/classes/linear.md
       - GLM: api/classes/glm.md
+      - Survival (AFT): api/classes/survival.md
       - ALM: api/classes/alm.md
       - AID: api/classes/aid.md
       - Test Classes: api/classes/tests.md

@@ -5,6 +5,7 @@ use pyo3::prelude::*;
 
 use anofox_regression::solvers::{FittedRansac, FittedRegressor, RansacRegressor, Regressor};
 
+use super::PyOLS;
 use crate::utils::{IntoNumpy, ToFaer};
 
 /// RANSAC (Random Sample Consensus) robust regression.
@@ -31,6 +32,21 @@ use crate::utils::{IntoNumpy, ToFaer};
 ///     Stop early once this many inliers are found. None → no early stop.
 /// random_state : int, default 0
 ///     Seed for reproducible subsample draws.
+/// compute_inference : bool, default False
+///     Whether to compute standard errors / t-statistics / p-values /
+///     confidence intervals for the final OLS fit on the inliers. This
+///     inference ignores the data-driven inlier selection and is therefore
+///     optimistic (anofox-regression >= 0.5.14).
+/// confidence_level : float, default 0.95
+///     Confidence level for confidence intervals (used only when
+///     ``compute_inference=True``).
+///
+/// Since anofox-regression 0.5.14, the fit statistics reported by
+/// ``r_squared`` / ``n_observations`` / the other fit-stat getters are those
+/// of the final OLS fit on the inliers (previously computed over all rows);
+/// ``residuals`` / ``fitted_values`` still cover every row. A constant
+/// response now fits cleanly (MAD threshold 0, inlier test ``|r| <=
+/// threshold``).
 ///
 /// Examples
 /// --------
@@ -54,13 +70,15 @@ pub struct PyRANSAC {
     stop_probability: f64,
     stop_n_inliers: Option<usize>,
     random_state: u64,
+    compute_inference: bool,
+    confidence_level: f64,
     fitted: Option<FittedRansac>,
 }
 
 #[pymethods]
 impl PyRANSAC {
     #[new]
-    #[pyo3(signature = (add_intercept=None, with_intercept=None, min_samples=None, residual_threshold=None, max_trials=100, stop_probability=0.99, stop_n_inliers=None, random_state=0))]
+    #[pyo3(signature = (add_intercept=None, with_intercept=None, min_samples=None, residual_threshold=None, max_trials=100, stop_probability=0.99, stop_n_inliers=None, random_state=0, compute_inference=false, confidence_level=0.95))]
     #[allow(clippy::too_many_arguments)]
     fn new(
         py: Python<'_>,
@@ -72,6 +90,8 @@ impl PyRANSAC {
         stop_probability: f64,
         stop_n_inliers: Option<usize>,
         random_state: u64,
+        compute_inference: bool,
+        confidence_level: f64,
     ) -> PyResult<Self> {
         let with_intercept =
             crate::pymodels::errors::resolve_intercept(py, add_intercept, with_intercept, true)?;
@@ -83,6 +103,8 @@ impl PyRANSAC {
             stop_probability,
             stop_n_inliers,
             random_state,
+            compute_inference,
+            confidence_level,
             fitted: None,
         })
     }
@@ -103,7 +125,9 @@ impl PyRANSAC {
             .with_intercept(slf.with_intercept)
             .max_trials(slf.max_trials)
             .stop_probability(slf.stop_probability)
-            .random_state(slf.random_state);
+            .random_state(slf.random_state)
+            .compute_inference(slf.compute_inference)
+            .confidence_level(slf.confidence_level);
         if let Some(ms) = slf.min_samples {
             b = b.min_samples(ms);
         }
@@ -193,7 +217,8 @@ impl PyRANSAC {
         Ok(fitted.intercept())
     }
 
-    /// Coefficient of determination R² on the full dataset (inliers + outliers).
+    /// R² of the OLS fit on the inliers (anofox-regression >= 0.5.14;
+    /// previously computed over all rows).
     #[getter]
     fn r_squared(&self) -> PyResult<f64> {
         let fitted = self
@@ -259,7 +284,8 @@ impl PyRANSAC {
         Ok(fitted.residual_threshold())
     }
 
-    /// Total number of observations (inliers + outliers) in the training data.
+    /// Number of inlier rows used by the final OLS fit (anofox-regression
+    /// >= 0.5.14; residuals and fitted values still cover every row).
     #[getter]
     fn n_observations(&self) -> PyResult<usize> {
         let fitted = self
@@ -269,7 +295,256 @@ impl PyRANSAC {
 
         Ok(fitted.result().n_observations)
     }
+
+    /// Standard errors of coefficients (``None`` unless ``compute_inference=True``).
+    #[getter]
+    fn std_errors<'py>(&self, py: Python<'py>) -> PyResult<Option<Bound<'py, PyArray1<f64>>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("RANSAC"))?;
+
+        Ok(fitted
+            .result()
+            .std_errors
+            .as_ref()
+            .map(|se| se.into_numpy(py)))
+    }
+
+    /// t-statistics for coefficients (``None`` unless ``compute_inference=True``).
+    #[getter]
+    fn t_statistics<'py>(&self, py: Python<'py>) -> PyResult<Option<Bound<'py, PyArray1<f64>>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("RANSAC"))?;
+
+        Ok(fitted
+            .result()
+            .t_statistics
+            .as_ref()
+            .map(|ts| ts.into_numpy(py)))
+    }
+
+    /// P-values for coefficient significance tests (``None`` unless ``compute_inference=True``).
+    #[getter]
+    fn p_values<'py>(&self, py: Python<'py>) -> PyResult<Option<Bound<'py, PyArray1<f64>>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("RANSAC"))?;
+
+        Ok(fitted
+            .result()
+            .p_values
+            .as_ref()
+            .map(|pv| pv.into_numpy(py)))
+    }
+
+    /// Lower bounds of coefficient confidence intervals (``None`` unless
+    /// ``compute_inference=True``).
+    #[getter]
+    fn conf_interval_lower<'py>(
+        &self,
+        py: Python<'py>,
+    ) -> PyResult<Option<Bound<'py, PyArray1<f64>>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("RANSAC"))?;
+
+        Ok(fitted
+            .result()
+            .conf_interval_lower
+            .as_ref()
+            .map(|ci| ci.into_numpy(py)))
+    }
+
+    /// Upper bounds of coefficient confidence intervals (``None`` unless
+    /// ``compute_inference=True``).
+    #[getter]
+    fn conf_interval_upper<'py>(
+        &self,
+        py: Python<'py>,
+    ) -> PyResult<Option<Bound<'py, PyArray1<f64>>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("RANSAC"))?;
+
+        Ok(fitted
+            .result()
+            .conf_interval_upper
+            .as_ref()
+            .map(|ci| ci.into_numpy(py)))
+    }
+
+    /// Standard error of the intercept (``None`` unless ``compute_inference=True``).
+    #[getter]
+    fn intercept_std_error(&self) -> PyResult<Option<f64>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("RANSAC"))?;
+
+        Ok(fitted.result().intercept_std_error)
+    }
+
+    /// t-statistic for the intercept (``None`` unless ``compute_inference=True``).
+    #[getter]
+    fn intercept_t_statistic(&self) -> PyResult<Option<f64>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("RANSAC"))?;
+
+        Ok(fitted.result().intercept_t_statistic)
+    }
+
+    /// P-value for the intercept (``None`` unless ``compute_inference=True``).
+    #[getter]
+    fn intercept_p_value(&self) -> PyResult<Option<f64>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("RANSAC"))?;
+
+        Ok(fitted.result().intercept_p_value)
+    }
+
+    /// Confidence interval for the intercept, as ``(lower, upper)`` (``None``
+    /// unless ``compute_inference=True``).
+    #[getter]
+    fn intercept_conf_interval(&self) -> PyResult<Option<(f64, f64)>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("RANSAC"))?;
+
+        Ok(fitted.result().intercept_conf_interval)
+    }
+
+    /// Adjusted R² of the OLS fit on the inliers.
+    #[getter]
+    fn adj_r_squared(&self) -> PyResult<f64> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("RANSAC"))?;
+
+        Ok(fitted.result().adj_r_squared)
+    }
+
+    /// Mean squared error of the OLS fit on the inliers.
+    #[getter]
+    fn mse(&self) -> PyResult<f64> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("RANSAC"))?;
+
+        Ok(fitted.result().mse)
+    }
+
+    /// Root mean squared error of the OLS fit on the inliers.
+    #[getter]
+    fn rmse(&self) -> PyResult<f64> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("RANSAC"))?;
+
+        Ok(fitted.result().rmse)
+    }
+
+    /// F-statistic for overall significance of the OLS fit on the inliers.
+    #[getter]
+    fn f_statistic(&self) -> PyResult<f64> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("RANSAC"))?;
+
+        Ok(fitted.result().f_statistic)
+    }
+
+    /// P-value for the F-statistic.
+    #[getter]
+    fn f_pvalue(&self) -> PyResult<f64> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("RANSAC"))?;
+
+        Ok(fitted.result().f_pvalue)
+    }
+
+    /// Akaike Information Criterion of the OLS fit on the inliers.
+    #[getter]
+    fn aic(&self) -> PyResult<f64> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("RANSAC"))?;
+
+        Ok(fitted.result().aic)
+    }
+
+    /// Bayesian Information Criterion of the OLS fit on the inliers.
+    #[getter]
+    fn bic(&self) -> PyResult<f64> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("RANSAC"))?;
+
+        Ok(fitted.result().bic)
+    }
+
+    /// Log-likelihood of the OLS fit on the inliers.
+    #[getter]
+    fn log_likelihood(&self) -> PyResult<f64> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("RANSAC"))?;
+
+        Ok(fitted.result().log_likelihood)
+    }
+
+    /// Ordinary least-squares fit on the inlier rows (the final RANSAC model)
+    /// as a fitted OLS object; its residuals/fitted values cover only the
+    /// inliers, and ``hc_inference(x)`` needs the inlier rows of ``X``.
+    fn inlier_fit(&self, py: Python<'_>) -> PyResult<Py<PyOLS>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("RANSAC"))?;
+
+        Py::new(
+            py,
+            PyOLS::from_fitted(
+                fitted.inlier_fit().clone(),
+                self.with_intercept,
+                self.compute_inference,
+                self.confidence_level,
+            ),
+        )
+    }
+
     /// Informative repr: class name plus key state; never panics if unfitted.
+    /// Model type, error family (R naming; None for estimators without a
+    /// likelihood) and link of the fit (anofox-regression ModelInfo).
+    #[getter]
+    fn model_info<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, pyo3::types::PyDict>> {
+        use anofox_regression::HasModelInfo;
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("RANSAC"))?;
+        crate::pymodels::model_info::model_info_dict(py, fitted.model_info())
+    }
+
     fn __repr__(slf: &Bound<'_, Self>) -> PyResult<String> {
         crate::pymodels::ergonomics::repr(slf.as_any())
     }

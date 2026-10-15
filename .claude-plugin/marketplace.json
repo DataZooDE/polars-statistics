@@ -1,0 +1,20 @@
+{
+  "name": "polars-statistics",
+  "description": "Claude Code plugin marketplace for polars-statistics — statistical tests and regression for Polars DataFrames (Rust-backed). Ships five Agent Skills covering hypothesis tests, ANOVA, regression, result ergonomics, and getting started.",
+  "owner": {
+    "name": "Simon Müller",
+    "email": "sm@data-zoo.de",
+    "url": "https://github.com/DataZooDE/polars-statistics"
+  },
+  "plugins": [
+    {
+      "name": "polars-statistics",
+      "source": "./plugins/polars-statistics",
+      "description": "polars-statistics Agent Skills: hypothesis tests, ANOVA, regression, result ergonomics, and getting started cheat-sheets for the Polars statistical plugin.",
+      "version": "0.8.0",
+      "homepage": "https://datazoode.github.io/polars-statistics/",
+      "license": "MIT",
+      "keywords": ["polars", "statistics", "hypothesis-testing", "regression", "anova", "skills"]
+    }
+  ]
+}

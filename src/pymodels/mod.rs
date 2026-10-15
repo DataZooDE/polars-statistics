@@ -6,6 +6,12 @@ pub(crate) mod ergonomics;
 // Shared contextual error constructors (not-fitted / shape validation).
 pub(crate) mod errors;
 
+// Shared `broom::augment`-style per-observation diagnostics helper.
+pub(crate) mod augment;
+
+// Shared `ModelInfo` -> dict helper (UPST-09).
+pub(crate) mod model_info;
+
 // Regression models
 mod py_aid;
 mod py_alm;
@@ -27,6 +33,7 @@ mod py_moment_accumulator;
 mod py_negative_binomial;
 mod py_ols;
 mod py_passive_aggressive;
+mod py_penalized_glm;
 mod py_pls;
 mod py_poisson;
 mod py_probit;
@@ -38,6 +45,9 @@ mod py_rls;
 mod py_theil_sen;
 mod py_tweedie;
 mod py_wls;
+
+// Survival models
+mod py_aft;
 
 // Statistical test models
 mod py_brown_forsythe;
@@ -72,6 +82,7 @@ pub use py_moment_accumulator::PyMomentAccumulator;
 pub use py_negative_binomial::PyNegativeBinomial;
 pub use py_ols::PyOLS;
 pub use py_passive_aggressive::PyPassiveAggressive;
+pub use py_penalized_glm::PyPenalizedGLM;
 pub use py_pls::PyPls;
 pub use py_poisson::PyPoisson;
 pub use py_probit::PyProbit;
@@ -83,6 +94,9 @@ pub use py_rls::PyRLS;
 pub use py_theil_sen::PyTheilSen;
 pub use py_tweedie::PyTweedie;
 pub use py_wls::PyWLS;
+
+// Survival model exports
+pub use py_aft::PyAFT;
 
 // Statistical test model exports
 pub use py_brown_forsythe::PyBrownForsythe;

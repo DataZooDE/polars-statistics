@@ -61,7 +61,7 @@ model = result["model"][0]
 print(f"Intercept:    {model['intercept']:.4f}")
 print(f"Coefficients: {model['coefficients']}")
 print(f"AIC:          {model['aic']:.2f}")
-print(f"N:            {model['n']}")
+print(f"N:            {model['n_observations']}")
 ```
 
 Expected output:
@@ -69,7 +69,7 @@ Expected output:
 ```
 Intercept:    -1.7597
 Coefficients: [0.0472]
-AIC:          11.82
+AIC:          73.23
 N:            30
 ```
 
@@ -88,8 +88,8 @@ print(poisson_coefs)
 # ┌───────────┬───────────┬───────────┬───────────┬──────────┐
 # │ term      ┆ estimate  ┆ std_error ┆ statistic ┆ p_value  │
 # ╞═══════════╪═══════════╪═══════════╪═══════════╪══════════╡
-# │ intercept ┆ -1.7597   ┆ 0.5766    ┆ -3.0517   ┆ 0.002274 │
-# │ x1        ┆ 0.0472    ┆ 0.0108    ┆ 4.3518    ┆ 0.000014 │
+# │ intercept ┆ -1.7597   ┆ 0.5774    ┆ -3.0479   ┆ 0.002304 │
+# │ x1        ┆ 0.0472    ┆ 0.0108    ┆ 4.3481    ┆ 0.000014 │
 # └───────────┴───────────┴───────────┴───────────┴──────────┘
 ```
 
@@ -152,7 +152,7 @@ print(formula_preds.select("claims", "age", "poisson_prediction").head(5))
 Expected output:
 
 ```
-AIC (formula): 11.82
+AIC (formula): 73.23
 ```
 
 ### Sparsity Check
@@ -221,12 +221,21 @@ print(f"AIC:          {nb['aic']:.2f}")
 Expected output:
 
 ```
-Intercept:    -2.1277
-Coefficients: [0.0551]
-AIC:          5.65
+Intercept:    -1.7597
+Coefficients: [0.0472]
+AIC:          75.23
 ```
 
-Note: Lower AIC than Poisson (5.65 vs 11.82) — the Negative Binomial model accounts for overdispersion.
+!!! note "This toy dataset has essentially no overdispersion"
+    anofox-regression 0.5.22 (#72) warm-starts the `MASS::glm.nb` theta
+    alternation; on data without real overdispersion the ML theta correctly
+    diverges (estimated theta ~1e5 here, matching the crate's own
+    `negbinomial_on_near_poisson_data_reaches_the_poisson_limit` reference
+    test), so the fitted coefficients converge to the Poisson ones. The
+    extra dispersion parameter then costs one more AIC degree of freedom for
+    no better fit (75.23 vs Poisson's 73.23) — Negative Binomial only beats
+    Poisson on data with real overdispersion; always compare AIC rather than
+    assuming NegBin is better.
 
 ### Coefficient Summary
 
@@ -243,8 +252,8 @@ print(nb_coefs)
 # ┌───────────┬───────────┬───────────┬───────────┬──────────┐
 # │ term      ┆ estimate  ┆ std_error ┆ statistic ┆ p_value  │
 # ╞═══════════╪═══════════╪═══════════╪═══════════╪══════════╡
-# │ intercept ┆ -2.1277   ┆ 5.6900    ┆ -0.3740   ┆ 0.708500 │
-# │ x1        ┆ 0.0551    ┆ 0.1280    ┆ 0.4305    ┆ 0.666900 │
+# │ intercept ┆ -1.7597   ┆ 0.5774    ┆ -3.0479   ┆ 0.002305 │
+# │ x1        ┆ 0.0472    ┆ 0.0108    ┆ 4.3481    ┆ 0.000014 │
 # └───────────┴───────────┴───────────┴───────────┴──────────┘
 ```
 
@@ -262,13 +271,15 @@ print(nb_preds.select("claims", "negative_binomial_prediction").head(5))
 # ┌────────┬────────────────────────────────┐
 # │ claims ┆ negative_binomial_prediction   │
 # ╞════════╪════════════════════════════════╡
-# │ 0.0    ┆ 0.4003                         │
-# │ 0.0    ┆ 0.4470                         │
-# │ 1.0    ┆ 0.4723                         │
-# │ 0.0    ┆ 0.4230                         │
-# │ 1.0    ┆ 0.4991                         │
+# │ 0.0    ┆ 0.4856                         │
+# │ 0.0    ┆ 0.5337                         │
+# │ 1.0    ┆ 0.5594                         │
+# │ 0.0    ┆ 0.5091                         │
+# │ 1.0    ┆ 0.5864                         │
 # └────────┴────────────────────────────────┘
 ```
+
+(Nearly identical to the Poisson predictions above — the estimated theta is so large the two models agree to 4 decimal places.)
 
 ### Formula Syntax
 
@@ -283,7 +294,7 @@ print(f"AIC (formula): {nb_formula['model'][0]['aic']:.2f}")
 Expected output:
 
 ```
-AIC (formula): 5.65
+AIC (formula): 75.23
 ```
 
 ## Insurance Claims — Tweedie
@@ -306,8 +317,14 @@ Expected output:
 ```
 Intercept:    0.1489
 Coefficients: [-0.0016]
-AIC:          148.32
+AIC:          nan
 ```
+
+!!! note "Tweedie AIC/BIC require a closed-form density"
+    `var_power=1.5` has no closed-form Tweedie density, so `aic`/`bic` are
+    not-a-number (coefficient estimates and standard errors are unaffected).
+    A closed form exists only for `var_power` in `{0, 1, 2, 3}` (Normal,
+    Poisson, Gamma, inverse Gaussian).
 
 ### Coefficient Summary
 
@@ -321,13 +338,20 @@ tw_coefs = (
 )
 
 print(tw_coefs)
-# ┌───────────┬───────────┬───────────┬───────────┬─────────┐
-# │ term      ┆ estimate  ┆ std_error ┆ statistic ┆ p_value │
-# ╞═══════════╪═══════════╪═══════════╪═══════════╪═════════╡
-# │ intercept ┆ 0.1489    ┆ 0.0191    ┆ NaN       ┆ NaN     │
-# │ x1        ┆ -0.0016   ┆ 0.0003    ┆ NaN       ┆ NaN     │
-# └───────────┴───────────┴───────────┴───────────┴─────────┘
+# ┌───────────┬───────────┬───────────┬───────────┬────────────┐
+# │ term      ┆ estimate  ┆ std_error ┆ statistic ┆ p_value    │
+# ╞═══════════╪═══════════╪═══════════╪═══════════╪════════════╡
+# │ intercept ┆ 0.1489    ┆ 0.0122    ┆ 12.2258   ┆ 9.5835e-13 │
+# │ x1        ┆ -0.0016   ┆ 0.0002    ┆ -7.7682   ┆ 1.8382e-08 │
+# └───────────┴───────────┴───────────┴───────────┴────────────┘
 ```
+
+!!! note "Intercept inference since 0.8.0"
+    Before the anofox-regression 0.5.20 bump, the Tweedie (and Gamma) summary
+    reported not-a-number for `statistic`/`p_value` on every row. Since 0.5.20
+    (upstream issue #66), every GLM summary reports a Wald `statistic` and
+    `p_value` (t on the residual degrees of freedom, as R's `summary.glm`),
+    computed via the survival function so it never underflows to exactly 0.
 
 ### Predictions
 
@@ -364,7 +388,7 @@ print(f"AIC (formula): {tw_formula['model'][0]['aic']:.2f}")
 Expected output:
 
 ```
-AIC (formula): 148.32
+AIC (formula): nan
 ```
 
 ## Binary Alternatives — Probit & Cloglog
@@ -405,11 +429,18 @@ print(probit_coefs)
 # ┌───────────┬───────────┬───────────┬───────────┬──────────┐
 # │ term      ┆ estimate  ┆ std_error ┆ statistic ┆ p_value  │
 # ╞═══════════╪═══════════╪═══════════╪═══════════╪══════════╡
-# │ intercept ┆ 24.0555   ┆ 14.1300   ┆ 1.7024    ┆ 0.088700 │
-# │ x1        ┆ -0.5256   ┆ 0.2580    ┆ -2.0372   ┆ 0.041600 │
-# │ x2        ┆ -0.1947   ┆ 0.1270    ┆ -1.5331   ┆ 0.125200 │
+# │ intercept ┆ 24.0555   ┆ 14.1290   ┆ 1.7026    ┆ 0.088650 │
+# │ x1        ┆ -0.5256   ┆ 0.2575    ┆ -2.0408   ┆ 0.041271 │
+# │ x2        ┆ -0.1947   ┆ 0.1275    ┆ -1.5273   ┆ 0.126674 │
 # └───────────┴───────────┴───────────┴───────────┴──────────┘
 ```
+
+!!! note "Probit SE precision since 0.8.0"
+    anofox-regression 0.5.20 (#66) switched the probit link from an
+    Abramowitz-Stegun erf approximation to `statrs` `erfc`/`erfc_inv`,
+    shifting standard errors (and therefore `statistic`/`p_value`) in the
+    3rd-4th decimal to match R's `summary.glm(binomial(link = "probit"))`
+    exactly. Coefficient estimates are unaffected.
 
 ```python
 probit_preds = (
@@ -479,9 +510,9 @@ print(cloglog_coefs)
 # ┌───────────┬───────────┬───────────┬───────────┬──────────┐
 # │ term      ┆ estimate  ┆ std_error ┆ statistic ┆ p_value  │
 # ╞═══════════╪═══════════╪═══════════╪═══════════╪══════════╡
-# │ intercept ┆ 28.1936   ┆ 16.2200   ┆ 1.7382    ┆ 0.082200 │
-# │ x1        ┆ -0.6287   ┆ 0.3150    ┆ -1.9959   ┆ 0.045900 │
-# │ x2        ┆ -0.2337   ┆ 0.1430    ┆ -1.6343   ┆ 0.102200 │
+# │ intercept ┆ 28.1936   ┆ 16.2233   ┆ 1.7378    ┆ 0.082238 │
+# │ x1        ┆ -0.6287   ┆ 0.3150    ┆ -1.9962   ┆ 0.045913 │
+# │ x2        ┆ -0.2337   ┆ 0.1428    ┆ -1.6367   ┆ 0.101701 │
 # └───────────┴───────────┴───────────┴───────────┴──────────┘
 ```
 

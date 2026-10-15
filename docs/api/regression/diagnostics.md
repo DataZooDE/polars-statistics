@@ -2,6 +2,95 @@
 
 Tools for detecting multicollinearity, quasi-separation, influence and outliers, plus residual batteries for OLS and GLM fits.
 
+## Augment (per-observation diagnostics)
+
+### `augment`
+
+One combined, row-aligned expression returning R `broom::augment`-style per-observation
+diagnostics for any of nine supported models — an alternative to composing the individual
+OLS residual/leverage/Cook's-distance functions below, and the only way to get these
+diagnostics for a GLM fit in one call.
+
+```python title="Signature"
+ps.augment(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    model: str = "ols",
+    weights: Union[pl.Expr, str, None] = None,
+    residual_type: str | None = None,
+    add_intercept: bool = True,
+    theta: float | None = None,
+    var_power: float = 1.5,
+    link_power: float | None = None,
+    max_iter: int = 100,
+    tol: float = 1e-8,
+) -> pl.Expr
+```
+
+**Parameters:**
+- `model` (default `"ols"`) — one of `"ols"`, `"wls"`, `"logistic"`, `"probit"`, `"cloglog"`,
+  `"poisson"`, `"negative_binomial"`, `"tweedie"`, `"gamma"`.
+- `weights` — prior weights; required (and only valid) with `model="wls"`.
+- `residual_type` — `"response"`, `"pearson"`, or `"deviance"`. Defaults to `"response"` for
+  `ols`/`wls` and `"deviance"` for every GLM (matching R's `broom::augment`).
+- `add_intercept` (default `True`).
+- `theta` — fixed negative-binomial dispersion (`model="negative_binomial"` only); `None`
+  estimates it from the data.
+- `var_power` (default `1.5`) — Tweedie variance power (`model="tweedie"` only): `0` Gaussian,
+  `1` Poisson, `2` Gamma, `3` inverse Gaussian.
+- `link_power` (default `None`) — Tweedie link power (`model="tweedie"` only). `None` uses the
+  canonical link (`1 - var_power`), matching `ps.tweedie()` and `Tweedie(link_power=None)` — the
+  same model the user fits with the same arguments. Pass an explicit value (e.g. `0.0` for the
+  log link) to override it.
+- `max_iter`/`tol` — IRLS iteration limit/tolerance (GLMs only).
+
+**Returns:** `Struct{fitted, residual, std_residual, stud_residual, leverage, cooks_d, dffits}`
+— see [Augment Output](../outputs.md#augment-output) for the R-name mapping
+(`std_residual` = `rstandard`, `stud_residual` = `rstudent`, `leverage` = `hatvalues`,
+`cooks_d` = `cooks.distance`). One row per input row (`returns_scalar=False`, like the
+`*_predict` expressions).
+
+**NA handling:** rows with a null/non-finite `y`, `x`, or (for `wls`) `weights` entry come back
+`NaN` in every field; the remaining rows equal a fit computed without that row — this is not an
+error condition, it is standard broom behaviour (a dropped observation legitimately changes
+every remaining row's leverage/Cook's distance/etc.).
+
+**R equivalent:** `broom::augment(model, type.predict = residual_type, type.residuals = residual_type)`.
+
+**Cross-check:** for `model="ols"`, `augment`'s `leverage`/`cooks_d`/`dffits`/`std_residual`/
+`stud_residual` agree elementwise with `ps.leverage`/`ps.cooks_distance`/`ps.dffits`/
+`ps.studentized_residuals`/`ps.externally_studentized_residuals` below.
+
+**PyModel equivalent:** every model listed above also has a `.augment(x, y, residual_type=None)`
+method on its PyModel class (`WLS.augment` additionally takes `weights=None`, defaulting to the
+fit's own weights) — see [Model Classes](../classes/linear.md) and
+[GLM Model Classes](../classes/glm.md). It returns the same seven fields as a `dict` of numpy
+arrays, plus a trailing `resid_type` key (the resolved `residual_type` string), and always
+describes exactly what that PyModel instance was fit with.
+
+**Example:**
+```python
+import numpy as np
+import polars as pl
+import polars_statistics as ps
+
+np.random.seed(0)
+n = 50
+x1 = np.random.normal(0, 1, n)
+y = 1.0 + 2.0 * x1 + np.random.normal(0, 0.5, n)
+df = pl.DataFrame({"y": y, "x1": x1})
+
+result = df.select(ps.augment("y", "x1", model="ols").alias("aug")).unnest("aug")
+print(result.head(3))
+
+# Per-group diagnostics
+grouped = pl.DataFrame({"group": ["A"] * n, "y": y, "x1": x1}).group_by("group").agg(
+    ps.augment("y", "x1", model="ols").alias("aug")
+)
+```
+
+---
+
 ## `condition_number`
 
 Compute condition number diagnostics to detect multicollinearity in design matrices.
@@ -600,7 +689,16 @@ else:
 # 3. After fitting OLS, scan for outliers and influential points
 df.select(ps.residual_outliers("y", "x1", "x2").alias("outliers"))
 df.select(ps.influential_cooks("y", "x1", "x2").alias("influence"))
+
+# 4. Or get the full per-observation diagnostic battery in one call (OLS or any GLM)
+df.select(ps.augment("y", "x1", "x2", model="ols").alias("aug")).unnest("aug")
 ```
+
+> **Note:** The list-shaped OLS diagnostics above (`leverage`, `cooks_distance`, `dffits`,
+> `studentized_residuals`, `externally_studentized_residuals`) and `augment`'s equivalent
+> row-aligned fields agree elementwise for the same data — they are two different shapes
+> (`List[Float64]` per call vs. one `Struct` row per observation) over the same underlying
+> computation, not two different implementations.
 
 ---
 

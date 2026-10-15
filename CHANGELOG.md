@@ -5,6 +5,323 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [0.8.0] - 2026-10-16
+
+polars-statistics now ships a Claude Code plugin with five Agent Skills,
+bundled inside the wheel, so Claude can discover and apply the library's
+API from accurate, version-pinned cheat-sheets.
+
+Upstream crate refresh: `anofox-statistics` 0.4.2 → 0.4.7 and `anofox-regression`
+0.5.13 → 0.5.22 — new API exposed and R-matching fixes adopted, plus two new
+model families (penalized GLM, AFT survival regression). This release is an
+exposure/correctness pass on the existing `anofox-*` surface — the
+confidence-level/effect-size/bootstrap additions those crates now provide — and
+also exposes the family-generic penalized GLM and accelerated-failure-time
+survival engines `anofox-regression` added in 0.5.16.
+
+### Added
+
+- **Claude Code plugin & Agent Skills** — the repo-root
+  `.claude-plugin/marketplace.json` plus the `plugins/polars-statistics/`
+  plugin (`plugin.json`; five auto-surfaced skills: getting-started,
+  hypothesis-tests, anova, regression, results; `ROUTING.md`). Every skill
+  code example is executed against the live API. Install with:
+  ```
+  /plugin marketplace add DataZooDE/polars-statistics
+  /plugin install polars-statistics@polars-statistics
+  ```
+- **Skills bundled in the wheel** — after `pip install polars-statistics`
+  the plugin tree is present at `polars_statistics/_plugin/`
+  (`marketplace.json`, `.claude-plugin/plugin.json`, `skills/*/SKILL.md`,
+  `ROUTING.md`), found via
+  `pathlib.Path(polars_statistics.__file__).parent / "_plugin"`.
+- **Effect sizes** — `ps.cohens_d("x", "y", kind="student"|"welch"|"paired", mu)` and
+  `ps.cohens_d_one_sample("x", mu)`, matching R `effectsize::cohens_d` exactly.
+- **Rank-biserial correlation** — `ps.rank_biserial("x", "y", mu)`,
+  `ps.matched_pairs_rank_biserial("x", "y", mu)`, and
+  `ps.rank_biserial_from_u(u1, n1, n2)` (scalar literal args), cross-checked
+  against `MannWhitneyU.statistic`.
+- **Normality** — `ps.jarque_bera("x")` returns
+  `struct{statistic, p_value, skewness, kurtosis, n}`, matching R
+  `tseries::jarque.bera.test`.
+- **Bootstrap confidence intervals** — `ps.bootstrap_mean_ci("x", n_bootstrap,
+  conf_level, block_length, seed)` with IID, stationary, and circular-block
+  resampling; `ps.bootstrap_ci("x", statistic="mean"|"median"|"std", n_bootstrap,
+  conf_level, seed)` — a fixed-statistic dispatch to native Rust closures (no
+  arbitrary Python callables; the upstream generic closure cannot cross the
+  Python FFI boundary without a GIL-reentrancy hazard). `bootstrap_ci("mean", ...)`
+  is bit-identical to `bootstrap_mean_ci(block_length=0, ...)` for the same seed.
+- **`conf_level` kwarg** (default `0.95`, unchanged default behaviour) on
+  `ps.binom_test`, `ps.prop_test_one`, `ps.prop_test_two`, and `ps.fisher_exact`.
+- **`ps.fisher_exact_conditional(a, b, c, d, alternative, conf_level)`** — R
+  `fisher.test`-semantics conditional-MLE odds ratio and exact conditional
+  interval, distinct from `fisher_exact`'s sample odds ratio + Woolf interval.
+- **Robust regression inference** — `Huber(compute_inference=False,
+  confidence_level=0.95)` and `RANSAC(compute_inference=False,
+  confidence_level=0.95)` PyModel kwargs, each with 9 Option-safe inference
+  getters (`std_errors`, `t_statistics`, `p_values`, `conf_interval_lower`,
+  `conf_interval_upper`, `intercept_std_error`, `intercept_t_statistic`,
+  `intercept_p_value`, `intercept_conf_interval`); validated against
+  `MASS::rlm(method="XtX")`.
+- **`RANSAC` inlier-fit statistics** — 9 inlier-OLS fit-stat getters
+  (`adj_r_squared`, `mse`, `rmse`, `f_statistic`, `f_pvalue`, `aic`, `bic`,
+  `log_likelihood`) and `RANSAC.inlier_fit()`, which returns a real fitted `OLS`
+  instance over the inlier rows.
+- **`TheilSen(univariate_pairwise=True)`** — selects the classical
+  median-of-pairwise-slopes estimator (Sen 1968); `False` restores sklearn's
+  spatial-median-over-subsamples estimator.
+- **`NegativeBinomial(estimate_dispersion=False)`** PyModel kwarg + `.dispersion`
+  getter, plus the `estimate_dispersion` kwarg on `ps.negative_binomial` /
+  `negative_binomial_summary` / `negative_binomial_predict` /
+  `negative_binomial_formula`; validated against `MASS::glm.nb()` Pearson-dispersion
+  standard errors.
+- **`RLS(initial_p_diagonal=1e6)`** PyModel kwarg (sets `P0 = delta * I`) +
+  `initial_p_diagonal_value()` getter, plus the `initial_p_diagonal` kwarg on
+  `ps.rls` / `rls_summary` / `rls_predict` / `rls_formula`.
+- **`GLMM.z_values`, `GLMM.p_values`, `GLMM.conf_int(level=0.95)`** — Wald
+  inference getters/method, validated against `lme4` 2.0.1.
+- **`variance_factor()` / `leverage_new(x_new)`** on `OLS`, `WLS`, and `Ridge` —
+  shared variance-factor and leverage API (column-count mismatches raise
+  `ValueError`, never a panic).
+- **`Ridge.std_errors` / `t_statistics` / `p_values` / `intercept_std_error`** —
+  sandwich standard errors for `lambda_ > 0` (t-statistics/p-values are `None`,
+  since a t-test is not valid on shrunken coefficients), delegating fully to OLS
+  inference at `lambda_ = 0`; R-reference validated.
+- **Penalized GLM** — `PenalizedGLM` class (`family="poisson"|"binomial"|
+  "logistic"|"negative_binomial"|"gamma"|"tweedie"` with links, per-coefficient
+  Normal/Laplace priors as plain tuples or dicts, ridge `lambda_`,
+  `vcov_type="laplace"|"sandwich"|"naive"`, offsets, `estimate_dispersion` for
+  quasipoisson standard errors, inference including the intercept, scaled
+  `vcov`, `information`, separation) and the expressions `ps.penalized_glm`,
+  `ps.penalized_glm_summary` (tidy table with confidence intervals),
+  `ps.penalized_glm_predict` (response/link scale), `ps.penalized_glm_formula`,
+  `_formula_summary`, `_formula_predict`; validated against R `glm`,
+  `MASS::glm.nb()`, `negative.binomial(theta)`, and `quasipoisson`.
+- **AFT survival regression** — `AFT` class (`distribution="weibull"|
+  "exponential"|"lognormal"|"loglogistic"`, right censoring via an event
+  indicator, priors, `vcov_type`, inference, `predict_quantile`/`_median`/
+  `_survival`/`_cdf`) and `ps.aft`, `ps.aft_summary`, `ps.aft_predict_quantile`/
+  `_median`/`_survival`/`_cdf`, `ps.aft_formula`, `ps.aft_formula_summary`,
+  `ps.aft_formula_predict_quantile`/`_median`/`_survival`/`_cdf`; validated
+  against R `survival::survreg`.
+- **Post-hoc tests & multiple comparisons** — `ps.tukey_hsd(values, groups,
+  conf_level=0.95)`, `ps.pairwise_t_test(values, groups, pooled_sd=True,
+  p_adjust_method="holm", alternative="two-sided")`, `ps.dunn_test(values,
+  groups, p_adjust_method="holm")` — long-format `(values, groups)` expressions
+  returning a `List[Struct{group1, group2, n1, n2, estimate, statistic, df,
+  p_value, p_adj, ci_lower, ci_upper}]` of pairwise rows, matching R's
+  `TukeyHSD`, `pairwise.t.test`, and `dunn.test`. `ps.p_adjust(p,
+  method="holm"|"hochberg"|"hommel"|"bonferroni"|"BH"/"fdr"|"BY"|"none")`
+  reproduces R `p.adjust` for all seven methods. `ps.ptukey(q, nmeans, df,
+  nranges=1, lower_tail=True)` / `ps.qtukey(p, nmeans, df, nranges=1,
+  lower_tail=True)` expose the studentized-range distribution CDF/quantile.
+- **`ps.augment(y, *x, model=..., weights=None, residual_type=None, ...)`** —
+  one combined, row-aligned per-observation diagnostics expression (`fitted`,
+  `residual`, `std_residual`, `stud_residual`, `leverage`, `cooks_d`, `dffits`
+  per input row) covering `ols`/`wls`/`logistic`/`probit`/`cloglog`/`poisson`/
+  `negative_binomial`/`tweedie`/`gamma`, with `residual_type="response"|
+  "pearson"|"deviance"` and an explicit Tweedie `link_power` kwarg; matches R
+  `broom::augment` conventions. `.augment(x, y, residual_type=None)` is also
+  available as a method on `OLS`, `WLS`, and all eight GLM PyModel classes
+  (`Logistic`, `Probit`, `Cloglog`, `LogisticRegression`, `Poisson`,
+  `NegativeBinomial`, `Tweedie`, `Gamma`).
+- **`ps.eb_shrink(estimate, std_error, method="dl", tau_squared=None)`** —
+  row-aligned empirical-Bayes (DerSimonian-Laird) shrinkage, returning
+  `{shrunken, shrunken_se, weight, mu, mu_se, tau_squared, i_squared, q,
+  n_groups}` per input row; matches R `metafor::rma(method = "DL")`/`blup()`.
+- **GLMM families, offsets, per-factor random slopes** — `GLMM.negative_binomial
+  (nb_theta=None)`, `GLMM.gamma()`, `GLMM.tweedie(power=1.5)` factories (log
+  link); `offset=None` on `fit`/`fit_crossed`/`predict_fixed` (every family);
+  `random_slopes_per_factor` on all six factories (crossed per-factor random
+  slopes); `factor_random_cov(f)`/`factor_random_sd(f)`/
+  `factor_random_effects_matrix(f)` per-factor accessors; `random_cov`/
+  `random_effects_matrix`/`random_corr`/`n_random_effects`/`n_factors`/
+  `is_reml`/`nb_theta` getters; validated against `lme4` 2.0.1.
+- **`model_info`** — a `{model_type, family, link}` getter on all 30 fitted
+  PyModel classes whose upstream type implements `HasModelInfo` (every linear,
+  robust, sparse, smoother, GLM, GLMM, penalized-GLM, and AFT class).
+- **GLM/OLS/WLS intercept inference and CI getters** — `intercept_std_error`,
+  `intercept_t_statistic`/z, `intercept_p_value`, `intercept_conf_interval`,
+  `t_statistics`, `conf_interval_lower`/`upper` (plus `std_errors`/`p_values`
+  where missing) on `Logistic`, `Probit`, `Cloglog`, `LogisticRegression`,
+  `Poisson`, `NegativeBinomial`, `Tweedie`, `Gamma`, `OLS`, and `WLS`; plus
+  additive `compute_inference=True, confidence_level=0.95` constructor kwargs
+  on `Probit`, `Cloglog`, `NegativeBinomial`, `Tweedie` (incl. its `gaussian`/
+  `gamma`/`inverse_gaussian` factories), and `Gamma`; validated against R
+  `summary.glm`/`summary.lm`/`confint.default`.
+- **`OLS(alias_tolerance=1e-7)` / `WLS(alias_tolerance=1e-7)`** — configurable
+  R `lm`-style rank-deficiency (aliasing) tolerance, also available on
+  `ps.ols`/`ps.wls`/`ps.ols_summary`/`ps.wls_summary`/`ps.ols_predict`/
+  `ps.wls_predict` and their formula wrappers; default unchanged.
+- **`LARS.adj_r_squared` / `.mse` / `.rmse`** getters (R `summary(lm())`
+  convention, `df = active coefficients + intercept`).
+- **Not exposed (by design):** `TestResult` (every test class already has
+  `to_dict()`/`summary()` via `ergonomics.rs`; reversible later via a
+  `.to_test_result()` per-class wrapper over the upstream `From` impls) and
+  the AID heuristic `compute_aid`/`compute_aid_anomalies` (redundant with the
+  richer IC-based `Aid`/`AidClassifier` PyModel, which upstream says this
+  complements rather than replaces).
+
+### Changed
+
+- **Python 3.9 introspection** — public expression builders now use PEP 604
+  annotations (under `from __future__ import annotations`), so on Python 3.9
+  `typing.get_type_hints()` no longer resolves for most builders; it still
+  resolves on 3.10+. Runtime behaviour, signatures, and the `.pyi` stubs are
+  unchanged.
+- **CI / tooling** — a pinned ruff lint gate (`ruff check .`, ruff 0.16.8)
+  over the whole repo, a wheel-bundling drift guard, and a version-alignment
+  test across every version source.
+- **`ps.fisher_exact`** output struct gains trailing `ci_lower` / `ci_upper`
+  fields (Woolf/logit interval). `statistic` and `p_value` are unchanged in
+  name, order, and value.
+- **`ps.mann_whitney_u` / `ps.wilcoxon_signed_rank`** output structs gain
+  trailing `estimate`, `ci_lower`, `ci_upper` fields (Hodges-Lehmann estimate
+  and interval, `NaN` unless `conf_level` is given, matching R
+  `wilcox.test(conf.int = TRUE)`). `statistic` and `p_value` are unchanged in
+  name, order, and value — code that unnests the struct will see three more
+  trailing columns.
+
+### Behaviour changes (results now match R)
+
+- **Statistics** (`anofox-statistics` 0.4.3–0.4.6): Shapiro-Wilk now uses R's
+  exact `swilk.c` coefficients for n ≤ 11; Kendall's tau uses tie-corrected
+  variance (tau-b); Mann-Whitney / Wilcoxon no longer apply a continuity
+  correction at the null centre, and report p = 1 when all observations are
+  tied; `binom_test` uses the exact Clopper-Pearson interval and R's relative
+  tolerance for the exact two-sided p-value; proportion and Fisher intervals
+  use a qnorm-based calculation with R's continuity correction, and one-sided
+  alternatives now produce one-sided intervals; the exact two-sided
+  Mann-Whitney p-value is computed correctly (previously capped at 1 above the
+  mean); constant input data now produces a NaN p-value (t-test, ANOVA,
+  Brown-Forsythe, Yuen, Pearson) instead of crashing; NaN input to the test
+  classes raises `ValueError` ("non-finite value") instead of panicking,
+  ±Inf is ranked the way R ranks it, and Inf − Inf pairs are dropped (the
+  expression builders already drop non-finite values first, so this only
+  affects direct test-class use).
+- **Regression** (`anofox-regression` 0.5.14–0.5.16): linear-solver
+  log-likelihood / AIC / AICc / BIC now equal R's `logLik.lm` for OLS, WLS,
+  Ridge, Huber, ElasticNet, BLS/NNLS, PLS, and RLS; no-intercept R² / adjusted
+  R² / F-statistic use the uncentred TSS; Ridge standard errors are sandwich
+  SEs, and t-statistics/p-values are unavailable (`NaN` in `ridge_summary`)
+  for `lambda > 0`; Ridge prediction intervals use the sandwich variance
+  factor; a constant column in a design without an intercept is now kept as
+  the intercept rather than producing a singular fit; RANSAC's reported
+  statistics are those of the inlier-only OLS fit — `n_observations` is the
+  inlier count, inliers are selected by `|r| <= threshold`, and a constant
+  response now fits; Poisson / Negative Binomial log-likelihood is the full
+  family log-likelihood (NegBin's AIC counts `theta` as a parameter only when
+  it is estimated); GLMM Poisson/binomial `log_likelihood` includes the
+  saturated-model term; Tweedie / Gamma standard errors use the Pearson
+  dispersion, and log-likelihood / AIC / BIC are `NaN` unless `var_power` is
+  0, 1, 2, or 3 — the default `var_power=1.5` now reports `NaN` `aic`/`bic`;
+  Negative Binomial standard errors use dispersion 1 by default (matching
+  `MASS::glm.nb()`; opt into Pearson dispersion with
+  `estimate_dispersion=True`); NegBin's `theta` is now the exact ML estimate,
+  and zero counts no longer produce negative deviances; WLS with constant
+  non-unit weights now scales the way R's `lm(weights=)` does; one-feature
+  Theil-Sen is the classical pairwise-median estimator, and rank-deficient
+  designs are now aliased instead of failing; quantile regression now reaches
+  the exact LP optimum; GLMs with a constant column plus an intercept now
+  alias the constant column.
+- **Statistics** (`anofox-statistics` 0.4.5 / 0.4.6): the `MannWhitneyU` /
+  `WilcoxonSignedRank` Hodges-Lehmann estimate and confidence interval now
+  follow R `wilcox.test(conf.int = TRUE)` — a root-found asymptotic interval
+  with the continuity correction applied, one-sided intervals for one-sided
+  alternatives, and the signed-rank interval computed on `x - y`; `exact=True`
+  is now honoured only for `n1 * n2 <= 10,000` (rank sum) or `<= 300` non-zero
+  differences (signed rank) — larger samples fall back to the normal
+  approximation instead of overflowing; `mcnemar_exact` p-values now come from
+  the binomial CDF (matching R `binom.test(b, b + c, 0.5)`), fixing `NaN`
+  results for large discordant-pair counts.
+- **Regression** (`anofox-regression` 0.5.19–0.5.21): `OLS` / `WLS` alias
+  rank-deficient designs the way R's `lm` does (`dqrdc2`, relative tolerance
+  1e-7) for every `solve_method` — the **later** of two exactly or
+  near-exactly collinear columns gets a `NaN` coefficient (previously `qr`
+  aliased the earlier column and `svd` returned a minimum-norm split across
+  both collinear columns), and the aliasing decision is scale-independent;
+  `WLS` without an intercept now reports standard errors from the reduced
+  (non-aliased) fit. Every GLM `*_summary` expression (Binomial, Poisson,
+  Negative Binomial, Tweedie, Gamma, Probit, Cloglog) now reports a finite
+  intercept `std_error` / `statistic` / `p_value` (previously `NaN`), and
+  Tweedie / Gamma also report per-coefficient `statistic` / `p_value`; probit
+  standard errors use `statrs` `erfc` / `erfc_inv` and match R to full
+  precision (previously off R in the 5th digit); GLM Wald p-values use the
+  survival function and no longer underflow to `0`. `LARS` / `LassoLars` now
+  alias the **later** of exactly collinear columns (previously
+  platform-dependent).
+
+### Fixed
+
+- `ps.negative_binomial` / `ps.negative_binomial_summary` (and formula
+  variants) now honour a fixed `theta`; previously it was silently
+  re-estimated.
+- No panics on NaN/±Inf input anywhere in the statistics layer.
+- Exact rank-sum and signed-rank null distributions no longer overflow for
+  larger samples (`n1 + n2 > ~62`, `n >= 64`).
+- `mcnemar_exact` no longer returns `NaN` for more than ~1,074 discordant
+  pairs.
+- Removed O(n²) memory usage from the Mann-Whitney / Wilcoxon confidence
+  intervals, Kendall's tau, distance correlation, the Wilcoxon TOST
+  equivalence tests (which also no longer panic for `alpha > 0.5`), 1-D MMD,
+  and 1-D energy distance.
+- Removed O(n²) memory usage from the QR/SVD regression solvers, fixing
+  out-of-memory failures on large-n designs.
+
+### Added (Rust API)
+
+For `rlib` consumers (all additive; no existing `*_fit` signature or input
+index changed):
+
+- New `*_fit` functions: `cohens_d_fit`, `cohens_d_one_sample_fit`,
+  `rank_biserial_fit`, `matched_pairs_rank_biserial_fit`,
+  `rank_biserial_from_u_fit`, `jarque_bera_fit`, `bootstrap_mean_ci_fit`,
+  `bootstrap_ci_fit`, `fisher_exact_conditional_fit`.
+- `negative_binomial_fit_with` / `negative_binomial_summary_fit_with`
+  (`NegativeBinomialKwargs`), `negative_binomial_predict_fit_with`
+  (`NegativeBinomialPredictKwargs`); `rls_fit_with` / `rls_summary_fit_with`
+  (`RlsKwargs`), `rls_predict_fit_with` (`RlsPredictKwargs`).
+- `binom_test_fit` / `prop_test_one_fit` / `prop_test_two_fit` /
+  `fisher_exact_fit` now accept an optional trailing `conf_level` input — the
+  old arity still works unchanged.
+- New `*_fit` functions: `penalized_glm_fit`, `penalized_glm_summary_fit`,
+  `penalized_glm_predict_fit` (`PenalizedGlmKwargs`, `PriorKwarg`), `aft_fit`,
+  `aft_summary_fit`, `aft_predict_quantile_fit`, `aft_predict_median_fit`,
+  `aft_predict_survival_fit`, `aft_predict_cdf_fit` (`AftKwargs`), plus the
+  shared helpers `parse_penalized_glm_family`, `prior_spec_from_parts`,
+  `parse_vcov_type`, `parse_aft_distribution`, and the output-dtype builders
+  `inference_summary_output_dtype` / `rank_location_output_dtype`.
+- `mann_whitney_u_fit` / `wilcoxon_signed_rank_fit` keep their existing input
+  contract unchanged and now return the widened (5-field) struct.
+- New `*_fit` functions: `p_adjust_fit`, `ptukey_fit`, `qtukey_fit`,
+  `tukey_hsd_fit`, `pairwise_t_test_fit`, `dunn_test_fit` (post-hoc tests;
+  `src/expressions/posthoc.rs`).
+- `eb_shrink_fit` (empirical-Bayes shrinkage; `src/expressions/shrinkage.rs`).
+- `augment_fit` + `AugmentKwargs` (one combined row-aligned diagnostics
+  function for all nine `Augmentable` models; `src/expressions/regression.rs`).
+- `ols_fit_with` / `wls_fit_with` / `ols_summary_fit_with` /
+  `wls_summary_fit_with` / `ols_predict_fit_with` / `wls_predict_fit_with`
+  (`LinearAliasKwargs` / `LinearAliasPredictKwargs`) — additive
+  `alias_tolerance` kwargs shim; the positional `ols_fit`/`wls_fit`/
+  `ols_summary_fit`/`wls_summary_fit`/`ols_predict_fit`/`wls_predict_fit`
+  signatures are unchanged and delegate with the default tolerance.
+
+### Dependencies
+
+- `anofox-statistics` 0.4.2 → 0.4.7.
+- `anofox-regression` 0.5.13 → 0.5.22 — the 0.5.16 penalized GLM and AFT
+  survival solvers are now exposed (see Added).
+- `anofox-statistics` and `anofox-regression` are pinned exactly (`=0.4.7` /
+  `=0.5.22`, commit `d0accad`) for this release. The 0.4.7 / 0.5.17–0.5.22
+  additions named above (post-hoc tests, `p_adjust`, `ptukey`/`qtukey`,
+  `augment`, `model_info`, GLMM NegBin/Gamma/Tweedie families, offsets,
+  per-factor random slopes, empirical-Bayes shrinkage, GLM/OLS/WLS intercept
+  inference getters, `alias_tolerance`, LARS fit statistics) are now fully
+  exposed in this release. Newer upstream releases (`anofox-statistics` 0.4.8+ /
+  `anofox-regression` 0.5.23+) are deferred to v0.9.0.
+
 ## [0.7.0] - 2026-09-20
 
 Ergonomics, adoption & documentation release. Additive and backward-compatible —
@@ -362,6 +679,8 @@ because the new kwargs default to `None` / `"likelihood"`.
   - SIMD-optimized linear algebra via faer
   - Automatic parallelization for group operations
 
+[Unreleased]: https://github.com/DataZooDE/polars-statistics/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/DataZooDE/polars-statistics/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/DataZooDE/polars-statistics/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/DataZooDE/polars-statistics/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/DataZooDE/polars-statistics/compare/v0.4.0...v0.5.0

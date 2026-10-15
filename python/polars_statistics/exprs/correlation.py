@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List, Literal, Optional, Union
+from typing import Literal
 
 import polars as pl
 from polars.plugins import register_plugin_function
@@ -12,9 +12,9 @@ LIB = Path(__file__).parent.parent
 
 
 def pearson(
-    x: Union[pl.Expr, str],
-    y: Union[pl.Expr, str],
-    conf_level: Optional[float] = 0.95,
+    x: pl.Expr | str,
+    y: pl.Expr | str,
+    conf_level: float | None = 0.95,
 ) -> pl.Expr:
     """
     Compute Pearson correlation coefficient with hypothesis test.
@@ -66,9 +66,9 @@ def pearson(
 
 
 def spearman(
-    x: Union[pl.Expr, str],
-    y: Union[pl.Expr, str],
-    conf_level: Optional[float] = 0.95,
+    x: pl.Expr | str,
+    y: pl.Expr | str,
+    conf_level: float | None = 0.95,
 ) -> pl.Expr:
     """
     Compute Spearman rank correlation coefficient with hypothesis test.
@@ -119,8 +119,8 @@ def spearman(
 
 
 def kendall(
-    x: Union[pl.Expr, str],
-    y: Union[pl.Expr, str],
+    x: pl.Expr | str,
+    y: pl.Expr | str,
     variant: Literal["a", "b", "c"] = "b",
 ) -> pl.Expr:
     """
@@ -177,10 +177,10 @@ def kendall(
 
 
 def distance_cor(
-    x: Union[pl.Expr, str],
-    y: Union[pl.Expr, str],
+    x: pl.Expr | str,
+    y: pl.Expr | str,
     n_permutations: int = 999,
-    seed: Optional[int] = None,
+    seed: int | None = None,
 ) -> pl.Expr:
     """
     Compute distance correlation with permutation test.
@@ -241,9 +241,9 @@ def distance_cor(
 
 
 def partial_cor(
-    x: Union[pl.Expr, str],
-    y: Union[pl.Expr, str],
-    covariates: List[Union[pl.Expr, str]],
+    x: pl.Expr | str,
+    y: pl.Expr | str,
+    covariates: list[pl.Expr | str],
 ) -> pl.Expr:
     """
     Compute partial correlation controlling for covariates.
@@ -309,9 +309,9 @@ def partial_cor(
 
 
 def semi_partial_cor(
-    x: Union[pl.Expr, str],
-    y: Union[pl.Expr, str],
-    covariates: List[Union[pl.Expr, str]],
+    x: pl.Expr | str,
+    y: pl.Expr | str,
+    covariates: list[pl.Expr | str],
 ) -> pl.Expr:
     """
     Compute semi-partial (part) correlation.
@@ -375,7 +375,7 @@ def semi_partial_cor(
 
 
 def icc(
-    *rater_cols: Union[pl.Expr, str],
+    *rater_cols: pl.Expr | str,
     icc_type: Literal["icc1", "icc2", "icc3", "icc1k", "icc2k", "icc3k"] = "icc2",
 ) -> pl.Expr:
     """

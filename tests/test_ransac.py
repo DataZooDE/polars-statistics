@@ -2,8 +2,7 @@
 
 import numpy as np
 import pytest
-
-from polars_statistics import RANSAC
+from polars_statistics import OLS, RANSAC
 
 
 class TestRANSAC:
@@ -27,7 +26,7 @@ class TestRANSAC:
 
     def test_not_fitted_raises(self):
         model = RANSAC()
-        with pytest.raises(Exception):
+        with pytest.raises(RuntimeError, match="not fitted"):
             _ = model.coefficients
 
     def test_inlier_mask_length(self):
@@ -92,12 +91,16 @@ class TestRANSAC:
         assert len(model.inlier_mask) == 50
 
     def test_n_observations(self):
+        """anofox-regression 0.5.14 #35: n_observations now reports the inlier count
+        (the sample size the inference statistics were fit on), not the total row
+        count. residuals still covers every row regardless of inlier/outlier status."""
         np.random.seed(9)
         n = 55
         X = np.random.randn(n, 2)
         y = X @ np.array([1.0, -1.0]) + 0.1 * np.random.randn(n)
         model = RANSAC().fit(X, y)
-        assert model.n_observations == n
+        assert model.n_observations == model.n_inliers
+        assert len(model.residuals) == n
 
     def test_recovers_known_slope_with_outliers(self):
         """RANSAC recovers the true slope even with 20% outliers.
@@ -137,3 +140,77 @@ class TestRANSAC:
             f"RANSAC vs sklearn slope mismatch: "
             f"ps={ps_model.coefficients[0]:.4f}, sk={sk_model.estimator_.coef_[0]:.4f}"
         )
+
+
+class TestRANSACInference:
+    """R reference: summary(lm(y[inl] ~ x[inl])); anofox-regression
+    tests/issue35_ransac.rs."""
+
+    def _data(self):
+        i = np.arange(1, 21, dtype=float)
+        base = 1 + 2 * i + (((i * 7) % 5) - 2) * 0.3
+        y = base.copy()
+        for outlier_i in (4, 11, 17):
+            y[int(outlier_i) - 1] += 25.0
+        return i.reshape(-1, 1), y
+
+    def test_default_inference_is_none_but_fit_stats_finite(self):
+        x, y = self._data()
+        m = RANSAC(residual_threshold=2.0, random_state=42).fit(x, y)
+        assert m.std_errors is None
+        assert m.t_statistics is None
+        assert m.p_values is None
+        assert m.conf_interval_lower is None
+        assert m.conf_interval_upper is None
+        assert m.intercept_std_error is None
+        assert m.intercept_t_statistic is None
+        assert m.intercept_p_value is None
+        assert m.intercept_conf_interval is None
+        for attr in ("adj_r_squared", "mse", "rmse", "f_statistic", "f_pvalue", "aic", "bic", "log_likelihood"):
+            assert np.isfinite(getattr(m, attr)), attr
+
+    def test_compute_inference_matches_r_lm_on_inliers(self):
+        x, y = self._data()
+        m = RANSAC(residual_threshold=2.0, random_state=42, compute_inference=True).fit(
+            x, y
+        )
+        assert m.n_inliers == 17
+        assert m.rmse == pytest.approx(0.44666920869378707, abs=1e-8)
+        assert m.adj_r_squared == pytest.approx(0.99860732006386344, abs=1e-8)
+        assert m.std_errors[0] == pytest.approx(0.018543168475545296, abs=1e-8)
+        assert m.mse == pytest.approx(m.rmse**2, rel=1e-12)
+        for attr in ("f_statistic", "f_pvalue", "aic", "bic", "log_likelihood"):
+            assert np.isfinite(getattr(m, attr)), attr
+
+    def test_inlier_fit_returns_consistent_ols(self):
+        x, y = self._data()
+        m = RANSAC(residual_threshold=2.0, random_state=42, compute_inference=True).fit(
+            x, y
+        )
+        inlier = m.inlier_fit()
+        assert isinstance(inlier, OLS)
+        assert inlier.is_fitted()
+        assert inlier.coefficients[0] == pytest.approx(m.coefficients[0], abs=1e-12)
+        assert inlier.intercept == pytest.approx(m.intercept, abs=1e-12)
+        assert inlier.n_observations == 17
+        assert len(inlier.residuals) == 17
+        assert inlier.std_errors[0] == pytest.approx(m.std_errors[0], abs=1e-12)
+
+    def test_inlier_fit_unfitted_raises(self):
+        m = RANSAC()
+        with pytest.raises(RuntimeError, match="not fitted"):
+            m.inlier_fit()
+
+    def test_constant_response_fits_cleanly(self):
+        """sklearn semantics (0.5.14): MAD threshold 0, |r| <= threshold inlier
+        test, so a constant response fits with every row as an inlier."""
+        n = 12
+        x = np.column_stack(
+            [np.arange(n, dtype=float), np.array([(i * 5) % 7 for i in range(n)], dtype=float)]
+        )
+        y = np.full(n, 5.0)
+        m = RANSAC(random_state=42).fit(x, y)
+        assert m.n_inliers == n
+        assert m.intercept == pytest.approx(5.0, abs=1e-12)
+        assert abs(m.coefficients[0]) < 1e-12
+        assert abs(m.coefficients[1]) < 1e-12

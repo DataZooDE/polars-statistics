@@ -7,7 +7,6 @@ distributions, and exposed no link / loss / extra_parameter kwargs.
 import numpy as np
 import polars as pl
 import pytest
-
 from polars_statistics import alm
 
 

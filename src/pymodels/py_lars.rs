@@ -203,7 +203,55 @@ impl PyLARS {
             .ok_or_else(|| crate::pymodels::errors::not_fitted_err("LARS"))?;
         Ok(fitted.result().n_observations)
     }
+
+    /// Adjusted R-squared, OLS convention with `df = active coefficients +
+    /// intercept` (filled since anofox-regression 0.5.21 #65). `NaN` when
+    /// `n <= df`.
+    #[getter]
+    fn adj_r_squared(&self) -> PyResult<f64> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("LARS"))?;
+        Ok(fitted.result().adj_r_squared)
+    }
+
+    /// Mean squared error of the residuals (filled since anofox-regression
+    /// 0.5.21 #65). Equals `rmse ** 2`.
+    #[getter]
+    fn mse(&self) -> PyResult<f64> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("LARS"))?;
+        Ok(fitted.result().mse)
+    }
+
+    /// Root mean squared error (residual standard error), OLS convention with
+    /// `df = active coefficients + intercept` (filled since anofox-regression
+    /// 0.5.21 #65).
+    #[getter]
+    fn rmse(&self) -> PyResult<f64> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("LARS"))?;
+        Ok(fitted.result().rmse)
+    }
+
     /// Informative repr: class name plus key state; never panics if unfitted.
+    /// Model type, error family (R naming; None for estimators without a
+    /// likelihood) and link of the fit (anofox-regression ModelInfo).
+    #[getter]
+    fn model_info<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, pyo3::types::PyDict>> {
+        use anofox_regression::HasModelInfo;
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("LARS"))?;
+        crate::pymodels::model_info::model_info_dict(py, fitted.model_info())
+    }
+
     fn __repr__(slf: &Bound<'_, Self>) -> PyResult<String> {
         crate::pymodels::ergonomics::repr(slf.as_any())
     }

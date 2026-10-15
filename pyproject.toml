@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "polars-statistics"
-version = "0.7.0"
+version = "0.8.0"
 description = "Statistical tests, regression, and machine learning for Polars - t-tests, ANOVA, chi-square, correlation, OLS, GLM, quantile regression, and more"
 readme = "README.md"
 license = { text = "MIT" }
@@ -107,11 +107,20 @@ addopts = "-v --tb=short"
 [tool.ruff]
 line-length = 100
 target-version = "py39"
+# .planning/ holds GSD planning artefacts (archived ad-hoc helper scripts and
+# phase verification helpers) that are not packaged, imported or tested, so
+# they are outside the lint gate (Phase 16.4).
+extend-exclude = [".planning"]
+# CI pins ruff 0.16.8 (.github/workflows/ci.yml, lint job); `uv run ruff
+# check .` should use the same version locally so results always agree.
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "C4"]
 ignore = ["E501"]
 
+# `ruff format` is not enforced in CI: the repo is not ruff-formatted (139
+# files would be reformatted / 249 already formatted, measured 2026-10-15,
+# Phase 16.4). Reformatting would be a large diff unrelated to lint.
 [tool.ruff.format]
 docstring-code-format = true
 

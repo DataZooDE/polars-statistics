@@ -1,20 +1,19 @@
 """Tests for R-style formula parsing and integration."""
 
 import math
+
 import numpy as np
 import polars as pl
-import pytest
-
 import polars_statistics as ps
+import pytest
 from polars_statistics.formula import (
     FormulaParser,
-    expand_terms_to_expressions,
-    SimpleTerm,
     InteractionTerm,
     PolyTerm,
+    SimpleTerm,
     TransformTerm,
+    expand_terms_to_expressions,
 )
-
 
 # =============================================================================
 # Helper Functions
@@ -27,7 +26,7 @@ def has_valid_numbers(result: pl.DataFrame, col: str = "result") -> bool:
         if row is None:
             return False
         if isinstance(row, dict):
-            for key, val in row.items():
+            for val in row.values():
                 if val is None:
                     return False
                 if isinstance(val, float) and math.isnan(val):

@@ -5,12 +5,15 @@
 [![PyPI version](https://badge.fury.io/py/polars-statistics.svg)](https://badge.fury.io/py/polars-statistics)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![Claude Code Plugin](https://img.shields.io/badge/Claude_Code-plugin-8A2BE2)](#claude-code-plugin)
 
 > **Note:** This extension is in early stage development. APIs may change and some features are experimental.
 
 High-performance statistical hypothesis testing and regression for [Polars](https://pola.rs/) DataFrames, powered by Rust — with results **validated against R**.
 
 Usable from **Python** (as a Polars plugin *and* an sklearn-style class API) and from **Rust** (as an rlib that other Rust crates depend on directly — see [Use from Rust](#use-from-rust)).
+
+> The repository includes a **[Claude Code plugin](#claude-code-plugin)** with five skills that document the Python API (expressions, model classes, result fields) for the Claude Code assistant.
 
 ## Why polars-statistics?
 
@@ -91,15 +94,52 @@ ps.distance_cor("x", "y")               # Distance correlation (detects nonlinea
 ps.partial_cor("x", "y", ["z1", "z2"])  # Partial correlation
 
 # Categorical tests
-ps.binom_test(successes=7, n=10, p0=0.5)  # Exact binomial test
+ps.binom_test(successes=7, n=10, p0=0.5)  # Exact binomial test (conf_level=0.95)
 ps.chisq_test("counts", n_rows=2, n_cols=2)  # Chi-square independence
-ps.fisher_exact(a=10, b=2, c=3, d=15)   # Fisher's exact test
+ps.fisher_exact(a=10, b=2, c=3, d=15)   # Fisher's exact test (+ ci_lower/ci_upper)
+ps.fisher_exact_conditional(a=10, b=2, c=3, d=15)  # R fisher.test conditional MLE odds ratio
 ps.mcnemar_test(a=45, b=15, c=5, d=35)  # McNemar's test
 ps.cohen_kappa("counts", n_categories=3) # Inter-rater agreement
 ps.cramers_v("counts", n_rows=3, n_cols=3) # Association strength
+
+# Effect sizes
+ps.cohens_d("x", "y")                    # Cohen's d (student/welch/paired)
+ps.rank_biserial("x", "y")                # Rank-biserial correlation (Mann-Whitney effect size)
+
+# Normality
+ps.jarque_bera("x")                       # Jarque-Bera normality test
+
+# Bootstrap confidence intervals
+ps.bootstrap_mean_ci("x", seed=42)        # Percentile bootstrap CI for the mean
 ```
 
 All tests return a struct with `statistic` and `p_value` fields.
+
+### Post-hoc Tests & Multiple Comparisons
+
+After a significant omnibus test, find out *which* group pairs actually differ:
+
+```python
+import polars as pl
+import polars_statistics as ps
+
+# 1. Omnibus test (wide format: one column per group)
+wide = pl.DataFrame({"a": [5.1, 5.3, 4.9], "b": [6.2, 6.5, 6.1], "c": [7.8, 8.0, 7.5]})
+wide.select(ps.one_way_anova("a", "b", "c").alias("anova")).unnest("anova")
+
+# 2. Post-hoc pairwise comparisons (long format: one values + one groups column)
+long_df = pl.DataFrame({
+    "value": [5.1, 5.3, 4.9, 6.2, 6.5, 6.1, 7.8, 8.0, 7.5],
+    "group": ["a", "a", "a", "b", "b", "b", "c", "c", "c"],
+})
+pairs = long_df.select(
+    ps.tukey_hsd("value", "group").alias("ph")  # or ps.pairwise_t_test / ps.dunn_test
+).select(pl.col("ph").explode().struct.unnest())
+# Columns: group1, group2, n1, n2, estimate, statistic, df, p_value, p_adj, ci_lower, ci_upper
+
+ps.p_adjust("p_values", method="BH")      # Any R p.adjust method, standalone
+ps.ptukey("q", nmeans=4, df=20)           # Studentized-range CDF/quantile
+```
 
 ### TOST Equivalence Tests
 
@@ -147,6 +187,12 @@ ps.logistic("y", "x1", "x2", lambda_=0.1)             # Binary classification (B
 ps.logistic_regression("y", "x1", "x2", penalty="l2", C=1.0)  # sklearn-style logistic
 ps.poisson("y", "x1", "x2")                            # Count data
 
+# Penalized GLM - priors, ridge, offsets, 6 families
+ps.penalized_glm("claims", "age", "risk", family="poisson", offset="log_exposure")
+
+# AFT - accelerated failure time survival regression (right censoring)
+ps.aft("time", "event", "age", distribution="weibull")
+
 # ALM - 25 distributions, loss/link/extra_parameter exposed
 ps.alm("y", "x1", "x2", distribution="laplace", loss="mle")
 ```
@@ -187,6 +233,40 @@ ps.poisson_working_residuals("y", "x1")
 # GLM goodness-of-fit
 ps.pearson_chi_squared_logistic("y", "x1")   # Σ pearson_resid² + df_resid
 ps.pearson_chi_squared_poisson("y", "x1")
+```
+
+Per-observation diagnostics (R `broom::augment`), one combined expression for
+`ols`/`wls`/`logistic`/`probit`/`cloglog`/`poisson`/`negative_binomial`/`tweedie`/`gamma`
+— also available as `OLS().fit(x, y).augment(x, y)`, and on `WLS` and every GLM class:
+
+```python
+import polars as pl
+import polars_statistics as ps
+
+reg = pl.DataFrame({"y": [1.0, 2.0, 3.0, 4.0, 10.0], "x1": [1.0, 2.0, 3.0, 4.0, 5.0]})
+reg.select(
+    ps.augment("y", "x1", model="ols", residual_type="pearson").alias("diag")
+).unnest("diag")
+# -> fitted, residual, std_residual, stud_residual, leverage, cooks_d, dffits
+```
+
+### Empirical-Bayes Shrinkage
+
+Shrink noisy per-group estimates (e.g. per-store effect sizes) toward a pooled mean,
+matching R `metafor::rma(method = "DL")` / `blup()`:
+
+```python
+import polars as pl
+import polars_statistics as ps
+
+df = pl.DataFrame({
+    "estimate": [0.12, -0.05, 0.30, 0.02, 0.18],
+    "std_error": [0.08, 0.15, 0.05, 0.20, 0.07],
+})
+df.select(
+    ps.eb_shrink("estimate", "std_error", method="dl").alias("eb")
+).unnest("eb")
+# Columns: shrunken, shrunken_se, weight, mu, mu_se, tau_squared, i_squared, q, n_groups
 ```
 
 ### Formula Syntax
@@ -249,9 +329,17 @@ lr.predict_proba(X)
 lr.decision_function(X)
 lr.score(X, y)
 
-# Huber M-estimator (robust to outliers)
-hb = Huber(epsilon=1.35).fit(X, y)
-print(hb.coefficients, hb.n_outliers, hb.scale)
+# Huber M-estimator (robust to outliers), with MASS::rlm-validated inference
+hb = Huber(epsilon=1.35, compute_inference=True, confidence_level=0.95).fit(X, y)
+print(hb.coefficients, hb.n_outliers, hb.scale, hb.std_errors)
+
+# RANSAC: random sample consensus, with inlier-fit statistics
+from polars_statistics import RANSAC
+
+rs = RANSAC(compute_inference=True).fit(X, y)
+print(rs.std_errors, rs.rmse)       # inlier-only inference getters
+inlier_ols = rs.inlier_fit()        # fitted OLS over the inlier rows
+print(inlier_ols.r_squared)
 
 # Partial Least Squares
 pls = PLS(n_components=2).fit(X, y)
@@ -264,6 +352,8 @@ alm = ALM.laplace().fit(X, y)  # Robust to outliers
 Available model classes:
 - **Linear / robust**: `OLS`, `Ridge`, `ElasticNet`, `WLS`, `RLS`, `BLS`, `Quantile`, `Isotonic`, `Huber`, `PLS`
 - **GLMs**: `Logistic`, `LogisticRegression` (sklearn-style), `Poisson`, `NegativeBinomial`, `Tweedie`, `Probit`, `Cloglog`
+- **PenalizedGLM**: penalized / prior-regularized GLM (6 families, Normal/Laplace priors, ridge, offsets)
+- **AFT**: accelerated failure time survival regression (Weibull, exponential, log-normal, log-logistic; right censoring)
 - **Augmented**: `ALM` (25 distributions), `LmDynamic`, `Aid`
 
 ## Test Model Classes
@@ -353,10 +443,35 @@ Every Polars expression has a `*_fit` Rust entry point in `polars_statistics::ex
   - Goodness-of-fit: `pearson_chi_squared_logistic_fit`, `pearson_chi_squared_poisson_fit`
   - Influence / leverage: `leverage_fit`, `cooks_distance_fit`, `dffits_fit`, `influential_cooks_fit`, `influential_dffits_fit`, `high_leverage_points_fit`
 - **Summaries / predictions**: `ols_summary_fit`, `ols_predict_fit`, …; plus `quantile_summary_fit`, `quantile_predict_fit`, `isotonic_predict_fit`, `lm_dynamic_predict_fit`
-- **Hypothesis tests**: `ttest_ind_fit`, `ttest_paired_fit`, `mann_whitney_fit`, `wilcoxon_fit`, `kruskal_wallis_fit`, `brunner_munzel_fit`, `brown_forsythe_fit`, `yuen_fit`, `shapiro_wilk_fit`, `dagostino_fit`
+- **Hypothesis tests**: `ttest_ind_fit`, `ttest_paired_fit`, `mann_whitney_fit`, `wilcoxon_fit`, `kruskal_wallis_fit`, `brunner_munzel_fit`, `brown_forsythe_fit`, `yuen_fit`, `shapiro_wilk_fit`, `dagostino_fit`, `jarque_bera_fit`
 - **Correlation**: `pearson_fit`, `spearman_fit`, `kendall_fit`, `distance_cor_fit`, `partial_cor_fit`, `semi_partial_cor_fit`, `icc_fit`
-- **Categorical**: `binom_test_fit`, `prop_test_one_fit`, `prop_test_two_fit`, `chisq_test_fit`, `fisher_exact_fit`, `mcnemar_test_fit`, `cohen_kappa_fit`, `cramers_v_fit`, …
+- **Categorical**: `binom_test_fit`, `prop_test_one_fit`, `prop_test_two_fit`, `chisq_test_fit`, `fisher_exact_fit`, `fisher_exact_conditional_fit`, `mcnemar_test_fit`, `cohen_kappa_fit`, `cramers_v_fit`, … (`binom_test_fit`/`prop_test_one_fit`/`prop_test_two_fit`/`fisher_exact_fit` accept an optional trailing `conf_level` input; old arity still works)
+- **Effect sizes / bootstrap**: `cohens_d_fit`, `cohens_d_one_sample_fit`, `rank_biserial_fit`, `matched_pairs_rank_biserial_fit`, `rank_biserial_from_u_fit`, `bootstrap_mean_ci_fit`, `bootstrap_ci_fit`
+- **Additive GLM-family options** (named kwargs structs, old `*_fit` signatures unchanged): `negative_binomial_fit_with`/`negative_binomial_summary_fit_with` (`NegativeBinomialKwargs`), `negative_binomial_predict_fit_with` (`NegativeBinomialPredictKwargs`), `rls_fit_with`/`rls_summary_fit_with` (`RlsKwargs`), `rls_predict_fit_with` (`RlsPredictKwargs`)
+- **Penalized GLM** (`PenalizedGlmKwargs`, `PriorKwarg`):
+  - `penalized_glm_fit`
+  - `penalized_glm_summary_fit`
+  - `penalized_glm_predict_fit`
+- **AFT survival regression** (`AftKwargs`):
+  - `aft_fit`
+  - `aft_summary_fit`
+  - `aft_predict_quantile_fit`
+  - `aft_predict_median_fit`
+  - `aft_predict_survival_fit`
+  - `aft_predict_cdf_fit`
 - **Forecast comparison / TOST / modern**: see `expressions::forecast`, `expressions::tost`, `expressions::modern`.
+- **Post-hoc tests** (`src/expressions/posthoc.rs`):
+  - `p_adjust_fit`
+  - `ptukey_fit`
+  - `qtukey_fit`
+  - `tukey_hsd_fit`
+  - `pairwise_t_test_fit`
+  - `dunn_test_fit`
+- **Empirical-Bayes shrinkage** (`src/expressions/shrinkage.rs`):
+  - `eb_shrink_fit`
+- **Per-observation diagnostics** (`AugmentKwargs`):
+  - `augment_fit`
+- **OLS/WLS alias tolerance** (named kwargs structs, old `*_fit` signatures unchanged — `LinearAliasKwargs` / `LinearAliasPredictKwargs`): `ols_fit_with`/`wls_fit_with`/`ols_summary_fit_with`/`wls_summary_fit_with`/`ols_predict_fit_with`/`wls_predict_fit_with`
 
 The input slice layout (which input is `y`, which are scalars, which are `x` columns) is documented above each function — same contract that the Polars plugin uses.
 
@@ -414,6 +529,27 @@ shape — so you can see exactly what columns and data types each method require
 - **[Migration Guide](docs/migration.md)** - `icc` matrix contract and `with_intercept` → `add_intercept`
 
 For the legacy monolithic reference, see [docs/API_REFERENCE.md](docs/API_REFERENCE.md).
+
+## Claude Code Plugin
+
+The repository ships a [Claude Code](https://claude.com/claude-code) plugin with five skills. Each skill documents a part of the Python API (expression builders, model classes, options and result fields), so that Claude Code can write polars-statistics code from a plain-language request such as *"compare conversion rates per region with a t-test and report Cohen's d"*.
+
+Install it in a Claude Code session:
+
+```
+/plugin marketplace add DataZooDE/polars-statistics
+/plugin install polars-statistics@polars-statistics
+```
+
+| Skill | Covers |
+|-------|--------|
+| `polars-statistics-getting-started` | Installation, the two API styles (expressions vs. model classes), model-selection decision matrix, migration notes |
+| `polars-statistics-hypothesis-tests` | Parametric and nonparametric tests, normality, correlation, categorical tests, effect sizes, bootstrap CIs, TOST equivalence, distribution comparison |
+| `polars-statistics-anova` | One-way (Fisher/Welch), two-way and repeated-measures ANOVA, intraclass correlation |
+| `polars-statistics-regression` | OLS, Ridge/Lasso/Elastic Net, WLS/RLS, BLS/NNLS, quantile, robust (Huber/RANSAC/Theil-Sen), PLS, ALM, GLMs, GLMM, formulas, `group_by`/`over` fitting |
+| `polars-statistics-results` | Extracting struct fields, unnesting results, `to_dict()` / `summary()`, error handling, type stubs |
+
+The skills live in [`plugins/polars-statistics/`](plugins/polars-statistics/). To use a local checkout instead of the marketplace, start Claude Code with `claude --plugin-dir ./plugins/polars-statistics`.
 
 ## Performance
 

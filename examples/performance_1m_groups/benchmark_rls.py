@@ -17,7 +17,7 @@ print("=" * 50)
 print("RLS Fit Benchmark")
 print("=" * 50)
 print(f"Configuration: {N_GROUPS:,} groups, {N_ROWS:,} rows, 3 features")
-print(f"Parameters: forgetting_factor=0.99")
+print("Parameters: forgetting_factor=0.99")
 print()
 
 print("Generating data...")

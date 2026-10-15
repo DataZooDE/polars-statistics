@@ -16,6 +16,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # QUAL-01 / Phase 16.4: ruff version is pinned so CI and local agree.
+      # Format checking is intentionally not run here because the repo is
+      # not ruff-formatted (see pyproject.toml [tool.ruff.format] comment).
+      - name: Set up Python (ruff)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install ruff (pinned)
+        run: python -m pip install 'ruff==0.16.8'
+
+      - name: Ruff lint
+        run: ruff check . --output-format=github
+
+      # PKG-01 / Phase 16: fail fast if a skill edit under plugins/ was not
+      # re-synced into python/polars_statistics/_plugin/ — stdlib-only, no
+      # wheel build required, so this stays cheap in the lint job.
+      - name: Verify wheel-bundled plugin is not stale (drift-only)
+        run: python scripts/verify_wheel_bundling.py --drift-only
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -29,6 +49,19 @@ jobs:
 
       - name: Clippy
         run: cargo clippy --all-targets -- -D warnings
+
+      # WR-03: `tests/rust_api.rs` cannot link under the default `python`
+      # feature set — pyo3's `extension-module` feature (pulled in by the
+      # default `python` feature) deliberately omits linking against
+      # libpython, which is correct for the cdylib but breaks a standalone
+      # test binary. `cargo clippy --all-targets` above type-checks this
+      # test but never links it, so it was silently never exercised. Running
+      # under `--no-default-features` builds the rlib without pyo3/numpy and
+      # links cleanly; this is currently the *only* Rust test target in the
+      # crate (`tests/rust_api.rs`), so no other target is affected by this
+      # same linking gap. Do not change the crate's feature defaults.
+      - name: Rust API tests (no-default-features)
+        run: cargo test --no-default-features --test rust_api
 
   type-check:
     name: Type Stubs

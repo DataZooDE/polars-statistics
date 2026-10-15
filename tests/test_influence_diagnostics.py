@@ -3,7 +3,6 @@
 import numpy as np
 import polars as pl
 import pytest
-
 from polars_statistics import (
     dffits,
     high_leverage_points,

@@ -4,7 +4,6 @@
 Usage: python run_all_benchmarks.py
 """
 
-import os
 import re
 import subprocess
 import sys
@@ -158,7 +157,7 @@ def main():
             print(f"  Peak Memory: {result['peak_memory_mb']:.0f} MB")
             print(f"  Throughput: {result['throughput']} rows/sec")
         else:
-            print(f"  FAILED")
+            print("  FAILED")
             print(result["output"])
 
         results.append({

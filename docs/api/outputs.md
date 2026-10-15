@@ -241,6 +241,56 @@ Struct {
 
 ---
 
+## Penalized GLM Output
+
+Returned by `penalized_glm`. See [Penalized GLM](regression/penalized-glm.md).
+
+```
+Struct {
+    intercept: Float64,
+    coefficients: List[Float64],
+    deviance: Float64,
+    null_deviance: Float64,
+    pseudo_r_squared: Float64,
+    log_likelihood: Float64,
+    aic: Float64,
+    bic: Float64,
+    dispersion: Float64,       # 1.0 (Poisson unless estimate_dispersion=True; Binomial; Logistic),
+                                # Pearson estimate (Gamma, Tweedie, quasipoisson), or theta (Negative Binomial)
+    theta: Float64,            # NaN unless family="negative_binomial"
+    accuracy: Float64,         # NaN unless family="logistic"
+    has_separation: Boolean,   # family="binomial"/"logistic" only; False otherwise
+    iterations: UInt32,
+    converged: Boolean,
+    n_observations: UInt32,
+}
+```
+
+---
+
+## AFT Output
+
+Returned by `aft`. See [Survival Regression (AFT)](regression/survival.md).
+
+```
+Struct {
+    intercept: Float64,
+    coefficients: List[Float64],
+    scale: Float64,                 # sigma; 1.0 (not estimated) for distribution="exponential"
+    log_likelihood: Float64,        # on the time scale, as survreg reports it
+    null_log_likelihood: Float64,   # intercept(+scale)-only model
+    aic: Float64,
+    bic: Float64,
+    iterations: UInt32,
+    converged: Boolean,
+    n_observations: UInt32,
+    n_events: UInt32,
+    n_censored: UInt32,
+}
+```
+
+---
+
 ## ALM Output
 
 Returned by `alm`.
@@ -335,6 +385,33 @@ List[Struct {
 
 ---
 
+## Inference Summary Output
+
+Returned by `penalized_glm_summary` and `aft_summary`. See
+[Penalized GLM](regression/penalized-glm.md#penalized_glm_summary) and
+[Survival Regression (AFT)](regression/survival.md#aft_summary).
+
+```
+List[Struct {
+    term: String,
+    estimate: Float64,
+    std_error: Float64,
+    statistic: Float64,   # Wald z, normal reference
+    p_value: Float64,
+    ci_lower: Float64,
+    ci_upper: Float64,
+}]
+```
+
+A widened, 7-field variant of [Summary Output](#summary-output) (adds `ci_lower`/`ci_upper`) —
+additive, not a replacement; the shared `summary_output_dtype` and every other `*_summary`
+expression are unchanged. Rows are `intercept` (when an intercept is fitted), `x1..xp`, and for
+`aft_summary` a trailing `log_scale` row (omitted for `distribution="exponential"`). The
+`intercept` row is read directly from the upstream engine's own intercept inference fields,
+never recomputed locally.
+
+---
+
 ## Prediction Output
 
 Returned by `*_predict` functions.
@@ -361,6 +438,121 @@ Struct {
 ```
 
 Some tests include additional fields like `df`, `n`, `estimate`, `ci_lower`, `ci_upper`.
+
+---
+
+## Pairwise Comparison Output
+
+Returned by `tukey_hsd`, `pairwise_t_test`, `dunn_test`. See
+[Post-hoc Tests & Multiple Comparisons](tests/posthoc.md).
+
+```
+List[Struct {
+    group1: String,
+    group2: String,
+    n1: UInt32,
+    n2: UInt32,
+    estimate: Float64,     # mean/mean-rank difference, group2 - group1
+    statistic: Float64,
+    df: Float64,           # NaN for pairwise_t_test (Welch df varies per pair, not reported) and dunn_test
+    p_value: Float64,
+    p_adj: Float64,        # == p_value for tukey_hsd (already simultaneous)
+    ci_lower: Float64,     # NaN for pairwise_t_test and dunn_test
+    ci_upper: Float64,     # NaN for pairwise_t_test and dunn_test
+}]
+```
+
+One row per call (`returns_scalar=True`); explode to one row per pairwise comparison with
+`.explode("col").struct.unnest()`. For `k` groups there are `k(k-1)/2` rows. Rows with a
+null/NaN value or a null group are dropped before computing; fewer than 2 usable groups give
+an empty list, never an exception.
+
+---
+
+## Elementwise Float64 Output
+
+Returned by `p_adjust`, `ptukey`, `qtukey`. See
+[Post-hoc Tests & Multiple Comparisons](tests/posthoc.md).
+
+A bare `Float64` expression — no `Struct` wrapper — the same length as the input column(s).
+`p_adjust` is a whole-column operation (adjusts the full family together, not value-by-value);
+`ptukey`/`qtukey` are genuinely elementwise and broadcast scalar arguments against column
+arguments. All three return `NaN` (never an exception) for invalid input rather than raising.
+
+---
+
+## Augment Output
+
+Returned by `ps.augment` and every `.augment(x, y, ...)` PyModel method (`OLS`, `WLS`,
+`Poisson`, `Logistic`, `Probit`, `Cloglog`, `LogisticRegression`, `NegativeBinomial`,
+`Tweedie`, `Gamma`). See [Diagnostics](regression/diagnostics.md#augment-per-observation-diagnostics).
+
+```
+Struct {
+    fitted: Float64,          # fitted value (response scale)
+    residual: Float64,        # residual of residual_type
+    std_residual: Float64,    # standardized residual (R's rstandard)
+    stud_residual: Float64,   # externally studentized residual (R's rstudent)
+    leverage: Float64,        # hat-matrix diagonal (R's hatvalues)
+    cooks_d: Float64,         # Cook's distance (R's cooks.distance)
+    dffits: Float64,          # scaled change in fitted value when the row is dropped
+}
+```
+
+One row per input row (`returns_scalar=False`, like the `*_predict` expressions). Rows with a
+non-finite `y`/`x` (or, for `wls`/`model="wls"`, a non-finite/negative weight) come back all
+`NaN`; the surviving rows equal a fit without that row. The PyModel `.augment()` dict uses the
+same keys plus a trailing `resid_type` (the resolved `residual_type` string).
+
+---
+
+## EB Shrinkage Output
+
+Returned by `ps.eb_shrink`. See [Empirical-Bayes Shrinkage](regression/shrinkage.md).
+
+```
+Struct {
+    shrunken: Float64,       # empirical-Bayes shrunken estimate (BLUP)
+    shrunken_se: Float64,    # SE of the shrunken estimate
+    weight: Float64,         # inverse-variance weight used for this row
+    mu: Float64,             # pooled mean (repeated on every row)
+    mu_se: Float64,          # SE of the pooled mean (repeated on every row)
+    tau_squared: Float64,    # between-group variance estimate (repeated on every row)
+    i_squared: Float64,      # Higgins-Thompson I^2 (repeated on every row)
+    q: Float64,              # Cochran's Q heterogeneity statistic (repeated on every row)
+    n_groups: UInt32,        # number of usable rows (repeated on every row)
+}
+```
+
+One row per input row (`returns_scalar=False`) — every shrunken value belongs to an input row,
+so `.over(family)` shrinks per family directly. Rows with a null/non-finite `estimate` or a
+non-positive/non-finite `std_error` stay `NaN`-aligned and are excluded from `mu`/`tau_squared`/
+`n_groups`; fewer than 2 usable rows give all-`NaN` rows with `n_groups == 0`, never an
+exception.
+
+---
+
+## Mann-Whitney / Wilcoxon Output
+
+Returned by `mann_whitney_u` and `wilcoxon_signed_rank`. See
+[Non-Parametric Tests](tests/nonparametric.md).
+
+```
+Struct {
+    statistic: Float64,
+    p_value: Float64,
+    estimate: Float64,    # Hodges-Lehmann shift (mann_whitney_u) / pseudo-median (wilcoxon_signed_rank)
+    ci_lower: Float64,
+    ci_upper: Float64,
+}
+```
+
+`estimate`/`ci_lower`/`ci_upper` are trailing fields added in 0.8.0 — the first two fields
+(`statistic`, `p_value`) are unchanged in order and value. They are `NaN` unless `conf_level`
+is given (R reports them only with `conf.int = TRUE`); a one-sided `alternative` gives an
+infinite bound. Values match R `wilcox.test(conf.int = TRUE)` on 126 upstream reference cases
+and equal the [`MannWhitneyU`/`WilcoxonSignedRank`](classes/tests.md) classes' `estimate`/
+`conf_int` exactly.
 
 ---
 
@@ -398,3 +590,81 @@ Struct {
     n: UInt32,
 }
 ```
+
+---
+
+## Effect Size Output
+
+Returned by `cohens_d`, `cohens_d_one_sample`, `rank_biserial`,
+`matched_pairs_rank_biserial`, `rank_biserial_from_u`. See
+[Effect Sizes & Bootstrap CIs](tests/effect-sizes.md).
+
+```
+Struct {
+    estimate: Float64,
+}
+```
+
+---
+
+## Jarque-Bera Output
+
+Returned by `jarque_bera`. See [Distributional Tests](tests/distributional.md).
+
+```
+Struct {
+    statistic: Float64,
+    p_value: Float64,
+    skewness: Float64,
+    kurtosis: Float64,
+    n: UInt32,
+}
+```
+
+Fewer than 3 finite values, a non-finite input, or constant data yield NaN
+`statistic`/`p_value`/`skewness`/`kurtosis` and `n == 0` (never an exception).
+
+---
+
+## Bootstrap CI Output
+
+Returned by `bootstrap_mean_ci` and `bootstrap_ci`. See
+[Effect Sizes & Bootstrap CIs](tests/effect-sizes.md).
+
+```
+Struct {
+    estimate: Float64,
+    se: Float64,
+    ci_lower: Float64,
+    ci_upper: Float64,
+    conf_level: Float64,
+    n_bootstrap: UInt32,
+}
+```
+
+`se` is the bootstrap standard error (the sample SD of the resampled replicates).
+Invalid parameters (`n_bootstrap < 2`, `conf_level` outside `(0, 1)`, fewer than 2
+finite observations) yield an all-NaN struct, never an exception.
+
+---
+
+## Fisher Exact Output
+
+Returned by `fisher_exact` and `fisher_exact_conditional`. See
+[Categorical Tests](tests/categorical.md).
+
+```
+Struct {
+    statistic: Float64,
+    p_value: Float64,
+    ci_lower: Float64,
+    ci_upper: Float64,
+}
+```
+
+`statistic` is the odds ratio: for `fisher_exact` this is the sample odds ratio
+(`ad/bc`) with a two-sided Woolf (logit) interval; for `fisher_exact_conditional`
+it is R `fisher.test`'s conditional maximum-likelihood odds ratio with the exact
+conditional interval. `ci_lower`/`ci_upper` were added to `fisher_exact` in 0.8.0 —
+previously the struct had only `statistic`/`p_value`. One-sided `alternative` values
+give a one-sided interval (`"greater"` → `ci_upper = +inf`, `"less"` → `ci_lower = 0.0`).

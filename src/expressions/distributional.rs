@@ -3,9 +3,11 @@
 use polars::prelude::*;
 use pyo3_polars::derive::polars_expr;
 
-use anofox_statistics::{dagostino_k_squared, shapiro_wilk};
+use anofox_statistics::{dagostino_k_squared, jarque_bera, shapiro_wilk};
 
-use crate::expressions::output_types::{generic_stats_output, stats_output_dtype};
+use crate::expressions::output_types::{
+    generic_stats_output, jarque_bera_output, jarque_bera_output_dtype, stats_output_dtype,
+};
 
 /// Public Rust-callable variant. Same input contract as the `pl_shapiro_wilk` expression shim.
 pub fn shapiro_wilk_fit(inputs: &[Series]) -> PolarsResult<Series> {
@@ -41,4 +43,34 @@ pub fn dagostino_fit(inputs: &[Series]) -> PolarsResult<Series> {
 #[polars_expr(output_type_func=stats_output_dtype)]
 fn pl_dagostino(inputs: &[Series]) -> PolarsResult<Series> {
     dagostino_fit(inputs)
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_jarque_bera` expression shim.
+///
+/// # Input contract
+/// `inputs[0]`: x (f64 Series).
+pub fn jarque_bera_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    let x = inputs[0].f64()?;
+
+    let x_vec: Vec<f64> = x.into_no_null_iter().collect();
+
+    match jarque_bera(&x_vec) {
+        Ok(result) => jarque_bera_output(
+            result.statistic,
+            result.p_value,
+            result.skewness,
+            result.kurtosis,
+            result.n as u32,
+            "jarque_bera",
+        ),
+        Err(_) => jarque_bera_output(f64::NAN, f64::NAN, f64::NAN, f64::NAN, 0, "jarque_bera"),
+    }
+}
+
+/// Jarque-Bera test for normality: asymptotic chi-squared(2) test on sample
+/// skewness and excess kurtosis (population moments), matching R
+/// `tseries::jarque.bera.test`. Requires at least 3 finite, non-constant values.
+#[polars_expr(output_type_func=jarque_bera_output_dtype)]
+fn pl_jarque_bera(inputs: &[Series]) -> PolarsResult<Series> {
+    jarque_bera_fit(inputs)
 }

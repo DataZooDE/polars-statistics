@@ -13,7 +13,6 @@ import numpy as np
 import polars as pl
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -153,6 +152,13 @@ class TestGammaPearsonChiSquared:
             f"Pearson dispersion phi={phi_pearson:.4f} outside plausible range [0.05, 20]"
         )
 
+        # chi2 / n_obs is in a reasonable range for a Gamma fit (0.01 to 100), as promised above.
+        chi2_per_obs = chi2 / n_obs
+        assert 0.01 <= chi2_per_obs <= 100.0, (
+            f"chi2 / n_obs={chi2_per_obs:.4f} outside plausible range [0.01, 100]"
+        )
+        assert n_obs == DF.height
+
 
 # ---------------------------------------------------------------------------
 # Task 1 — Gamma standardized Pearson residuals
@@ -265,7 +271,7 @@ class TestRidgeHcInference:
     def test_not_fitted_raises(self):
         Ridge = pytest.importorskip("polars_statistics").Ridge
         X, _ = self._xy()
-        with pytest.raises(Exception):
+        with pytest.raises(RuntimeError, match="not fitted"):
             Ridge().hc_inference(X)
 
 
@@ -297,5 +303,5 @@ class TestWlsHcInference:
     def test_not_fitted_raises(self):
         WLS = pytest.importorskip("polars_statistics").WLS
         X, _, _ = self._xyw()
-        with pytest.raises(Exception):
+        with pytest.raises(RuntimeError, match="not fitted"):
             WLS().hc_inference(X)

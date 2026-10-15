@@ -8,12 +8,13 @@ use pyo3_polars::derive::polars_expr;
 use serde::Deserialize;
 
 use anofox_regression::diagnostics::{
-    check_binary_separation, check_count_sparsity, compute_leverage, condition_diagnostic,
-    cooks_distance, dffits, estimate_dispersion_deviance, estimate_dispersion_pearson,
-    externally_studentized_residuals, generalized_vif, high_leverage_points, high_vif_predictors,
-    influential_cooks, influential_dffits, pearson_chi_squared, residual_outliers,
-    standardized_deviance_residuals, standardized_pearson_residuals, standardized_residuals,
-    studentized_residuals, variance_inflation_factor, ConditionSeverity, SeparationCheck,
+    augment, augment_with, check_binary_separation, check_count_sparsity, compute_leverage,
+    condition_diagnostic, cooks_distance, dffits, estimate_dispersion_deviance,
+    estimate_dispersion_pearson, externally_studentized_residuals, generalized_vif,
+    high_leverage_points, high_vif_predictors, influential_cooks, influential_dffits,
+    pearson_chi_squared, residual_outliers, standardized_deviance_residuals,
+    standardized_pearson_residuals, standardized_residuals, studentized_residuals,
+    variance_inflation_factor, Augment, ConditionSeverity, ResidualType, SeparationCheck,
     SeparationType,
 };
 use anofox_regression::solvers::{
@@ -24,6 +25,7 @@ use anofox_regression::solvers::{
     PlsRegressor, PoissonRegressor, QuantileRegressor, Regressor, RidgeRegressor, RlsRegressor,
     TweedieRegressor, WlsRegressor,
 };
+use anofox_regression::utils::LM_ALIAS_TOLERANCE;
 use anofox_regression::{HcType, IntervalType, SolverType, TweedieFamily};
 
 /// Result type for build_xy_with_null_policy: (X_fit, y, valid_mask, X_pred)
@@ -533,11 +535,44 @@ fn summary_nan_output() -> PolarsResult<Series> {
 // Linear Regression Expressions
 // ============================================================================
 
-/// OLS fit callable from Rust callers.
+/// Default tolerance of the R-`lm`-style rank-deficiency (aliasing) test:
+/// `anofox_regression::utils::LM_ALIAS_TOLERANCE` (= R `lm.fit`'s `tol`, `1e-7`).
+fn default_alias_tolerance() -> f64 {
+    LM_ALIAS_TOLERANCE
+}
+
+/// Named kwargs for the OLS/WLS fit/summary shims (additive — default matches
+/// R `lm`'s rank-deficiency tolerance).
+#[derive(Deserialize, Clone, Debug)]
+pub struct LinearAliasKwargs {
+    /// Relative tolerance of R `lm`'s rank-deficiency test: a column whose
+    /// residual norm, after projecting out the intercept and the earlier
+    /// kept columns, is below `alias_tolerance` times its own norm is
+    /// aliased (NaN coefficient). Default [`LM_ALIAS_TOLERANCE`] = `1e-7`,
+    /// as R's `lm`.
+    #[serde(default = "default_alias_tolerance")]
+    pub alias_tolerance: f64,
+}
+
+impl Default for LinearAliasKwargs {
+    fn default() -> Self {
+        Self {
+            alias_tolerance: default_alias_tolerance(),
+        }
+    }
+}
+
+/// OLS fit callable from Rust callers (default R-`lm` aliasing tolerance).
 ///
 /// Input contract: `[y, with_intercept (bool), solve_method (str|null), x_0, x_1, ...]`.
 /// Returns a one-row struct Series matching [`linear_regression_output_dtype`].
 pub fn ols_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    ols_fit_with(inputs, &LinearAliasKwargs::default())
+}
+
+/// Additive variant of [`ols_fit`] taking the named `alias_tolerance` option.
+/// Same positional input contract.
+pub fn ols_fit_with(inputs: &[Series], kwargs: &LinearAliasKwargs) -> PolarsResult<Series> {
     let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
     let solve_method = parse_solver_type(inputs[2].str()?.get(0));
 
@@ -546,7 +581,9 @@ pub fn ols_fit(inputs: &[Series]) -> PolarsResult<Series> {
         Err(_) => return linear_nan_output(),
     };
 
-    let mut builder = OlsRegressor::builder().with_intercept(with_intercept);
+    let mut builder = OlsRegressor::builder()
+        .with_intercept(with_intercept)
+        .alias_tolerance(kwargs.alias_tolerance);
     if let Some(solver) = solve_method {
         builder = builder.solve_method(solver);
     }
@@ -575,9 +612,10 @@ pub fn ols_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// OLS regression expression.
 /// inputs[0] = y, inputs[1] = with_intercept (bool), inputs[2] = solve_method (string or null), inputs[3..] = x columns
+/// kwargs: `alias_tolerance` (named, additive — see [`LinearAliasKwargs`]).
 #[polars_expr(output_type_func=linear_regression_output_dtype)]
-fn pl_ols(inputs: &[Series]) -> PolarsResult<Series> {
-    ols_fit(inputs)
+fn pl_ols(inputs: &[Series], kwargs: LinearAliasKwargs) -> PolarsResult<Series> {
+    ols_fit_with(inputs, &kwargs)
 }
 
 /// Ridge fit callable from Rust callers.
@@ -674,10 +712,16 @@ fn pl_elastic_net(inputs: &[Series]) -> PolarsResult<Series> {
     elastic_net_fit(inputs)
 }
 
-/// WLS fit callable from Rust callers.
+/// WLS fit callable from Rust callers (default R-`lm` aliasing tolerance).
 ///
 /// Input contract: `[y, weights (f64), with_intercept (bool), solve_method (str|null), x_0, ...]`.
 pub fn wls_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    wls_fit_with(inputs, &LinearAliasKwargs::default())
+}
+
+/// Additive variant of [`wls_fit`] taking the named `alias_tolerance` option.
+/// Same positional input contract.
+pub fn wls_fit_with(inputs: &[Series], kwargs: &LinearAliasKwargs) -> PolarsResult<Series> {
     let weights_series = inputs[1].f64()?;
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let solve_method = parse_solver_type(inputs[3].str()?.get(0));
@@ -692,7 +736,8 @@ pub fn wls_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
     let mut builder = WlsRegressor::builder()
         .with_intercept(with_intercept)
-        .weights(weights);
+        .weights(weights)
+        .alias_tolerance(kwargs.alias_tolerance);
     if let Some(solver) = solve_method {
         builder = builder.solve_method(solver);
     }
@@ -721,13 +766,55 @@ pub fn wls_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// WLS regression expression.
 /// inputs[0] = y, inputs[1] = weights, inputs[2] = with_intercept, inputs[3] = solve_method (string or null), inputs[4..] = x columns
+/// kwargs: `alias_tolerance` (named, additive — see [`LinearAliasKwargs`]).
 #[polars_expr(output_type_func=linear_regression_output_dtype)]
-fn pl_wls(inputs: &[Series]) -> PolarsResult<Series> {
-    wls_fit(inputs)
+fn pl_wls(inputs: &[Series], kwargs: LinearAliasKwargs) -> PolarsResult<Series> {
+    wls_fit_with(inputs, &kwargs)
+}
+
+/// Default diagonal of the initial RLS P matrix (P0 = delta*I), matching
+/// `anofox_regression::solvers::RlsRegressorBuilder`'s own default.
+fn default_initial_p_diagonal() -> f64 {
+    1e6
+}
+
+/// Named kwargs for the RLS fit/summary shims (additive — default matches the
+/// pre-existing RlsRegressorBuilder default of 1e6).
+#[derive(Deserialize, Clone, Debug)]
+pub struct RlsKwargs {
+    /// Diagonal of the initial covariance P0 = delta*I. Default 1e6 (vague
+    /// prior); smaller values shrink early estimates toward zero.
+    #[serde(default = "default_initial_p_diagonal")]
+    pub initial_p_diagonal: f64,
+}
+
+impl Default for RlsKwargs {
+    fn default() -> Self {
+        Self {
+            initial_p_diagonal: default_initial_p_diagonal(),
+        }
+    }
+}
+
+/// Named kwargs for the RLS predict shim: output-column `prefix` plus the
+/// `initial_p_diagonal` option.
+#[derive(Deserialize, Clone, Debug)]
+pub struct RlsPredictKwargs {
+    /// Prefix for output column names.
+    pub prefix: String,
+    /// See [`RlsKwargs::initial_p_diagonal`].
+    #[serde(default = "default_initial_p_diagonal")]
+    pub initial_p_diagonal: f64,
 }
 
 /// Public Rust-callable variant. Same input contract as the `pl_rls` expression shim.
 pub fn rls_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    rls_fit_with(inputs, &RlsKwargs::default())
+}
+
+/// Additive variant of [`rls_fit`] taking the named `initial_p_diagonal`
+/// option. Same positional input contract.
+pub fn rls_fit_with(inputs: &[Series], kwargs: &RlsKwargs) -> PolarsResult<Series> {
     let forgetting_factor = inputs[1].f64()?.get(0).unwrap_or(0.99);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
 
@@ -739,6 +826,7 @@ pub fn rls_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let model = RlsRegressor::builder()
         .forgetting_factor(forgetting_factor)
         .with_intercept(with_intercept)
+        .initial_p_diagonal(kwargs.initial_p_diagonal)
         .build();
 
     match model.fit(&x, &y) {
@@ -764,9 +852,10 @@ pub fn rls_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// RLS regression expression.
 /// inputs[0] = y, inputs[1] = forgetting_factor, inputs[2] = with_intercept, inputs[3..] = x columns
+/// kwargs: `initial_p_diagonal` (named, additive — see [`RlsKwargs`]).
 #[polars_expr(output_type_func=linear_regression_output_dtype)]
-fn pl_rls(inputs: &[Series]) -> PolarsResult<Series> {
-    rls_fit(inputs)
+fn pl_rls(inputs: &[Series], kwargs: RlsKwargs) -> PolarsResult<Series> {
+    rls_fit_with(inputs, &kwargs)
 }
 
 /// Public Rust-callable variant. Same input contract as the `pl_bls` expression shim.
@@ -2529,8 +2618,41 @@ fn pl_gamma_standardized_deviance_residuals(inputs: &[Series]) -> PolarsResult<S
     gamma_standardized_deviance_residuals_fit(inputs)
 }
 
+/// Named kwargs for the Negative Binomial fit/summary shims (additive — default
+/// matches the pre-existing behaviour of dispersion fixed at 1.0).
+#[derive(Deserialize, Default, Clone, Debug)]
+pub struct NegativeBinomialKwargs {
+    /// Whether to scale the coefficient covariance by the Pearson chi2/df
+    /// dispersion estimate (R `summary.glm` convention for
+    /// `family = negative.binomial(theta)`). Default `false` keeps dispersion
+    /// fixed at 1.0 (`MASS::glm.nb` convention).
+    #[serde(default)]
+    pub estimate_dispersion: bool,
+}
+
+/// Named kwargs for the Negative Binomial predict shim: output-column `prefix`
+/// plus the `estimate_dispersion` option (affects interval width only, not the
+/// point prediction).
+#[derive(Deserialize, Clone, Debug)]
+pub struct NegativeBinomialPredictKwargs {
+    /// Prefix for output column names.
+    pub prefix: String,
+    /// See [`NegativeBinomialKwargs::estimate_dispersion`].
+    #[serde(default)]
+    pub estimate_dispersion: bool,
+}
+
 /// Public Rust-callable variant. Same input contract as the `pl_negative_binomial` expression shim.
 pub fn negative_binomial_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    negative_binomial_fit_with(inputs, &NegativeBinomialKwargs::default())
+}
+
+/// Additive variant of [`negative_binomial_fit`] taking the named
+/// `estimate_dispersion` option. Same positional input contract.
+pub fn negative_binomial_fit_with(
+    inputs: &[Series],
+    kwargs: &NegativeBinomialKwargs,
+) -> PolarsResult<Series> {
     let theta = inputs[1].f64()?.get(0);
     let lambda = inputs[2].f64()?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[3].bool()?.get(0).unwrap_or(true);
@@ -2540,10 +2662,12 @@ pub fn negative_binomial_fit(inputs: &[Series]) -> PolarsResult<Series> {
         Err(_) => return glm_nan_output(),
     };
 
-    let mut builder = NegativeBinomialRegressor::builder().with_intercept(with_intercept);
+    let mut builder = NegativeBinomialRegressor::builder()
+        .with_intercept(with_intercept)
+        .estimate_dispersion(kwargs.estimate_dispersion);
 
     if let Some(t) = theta {
-        builder = builder.theta(t);
+        builder = builder.theta(t).estimate_theta(false);
     } else {
         builder = builder.estimate_theta(true);
     }
@@ -2571,9 +2695,10 @@ pub fn negative_binomial_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Negative Binomial regression expression.
 /// inputs[0] = y, inputs[1] = theta (optional), inputs[2] = lambda (L2 regularization), inputs[3] = with_intercept, inputs[4..] = x columns
+/// kwargs: `estimate_dispersion` (named, additive — see [`NegativeBinomialKwargs`]).
 #[polars_expr(output_type_func=glm_output_dtype)]
-fn pl_negative_binomial(inputs: &[Series]) -> PolarsResult<Series> {
-    negative_binomial_fit(inputs)
+fn pl_negative_binomial(inputs: &[Series], kwargs: NegativeBinomialKwargs) -> PolarsResult<Series> {
+    negative_binomial_fit_with(inputs, &kwargs)
 }
 
 /// Public Rust-callable variant. Same input contract as the `pl_tweedie` expression shim.
@@ -2693,6 +2818,366 @@ pub fn cloglog_fit(inputs: &[Series]) -> PolarsResult<Series> {
 #[polars_expr(output_type_func=glm_output_dtype)]
 fn pl_cloglog(inputs: &[Series]) -> PolarsResult<Series> {
     cloglog_fit(inputs)
+}
+
+// ============================================================================
+// Augment (per-observation diagnostics) — issue #66, UPST-09
+//
+// `anofox_regression::diagnostics::augment`/`augment_with` as one combined,
+// row-aligned expression (`returns_scalar=False`, one struct per input row)
+// for every `Augmentable` model: ols, wls, logistic, probit, cloglog, poisson,
+// negative_binomial, tweedie, gamma. Mirrors `shrinkage.rs`'s `eb_shrink_fit`
+// row-scatter pattern: rows with a null/non-finite y, x, or (for wls) weight
+// are excluded from the fit and come back as NaN in every field; the
+// remaining rows equal a fit without them.
+// ============================================================================
+
+/// Named kwargs for the `pl_augment` expression shim.
+#[derive(Deserialize, Clone, Debug)]
+#[serde(default)]
+pub struct AugmentKwargs {
+    /// Which model to fit: "ols", "wls", "logistic", "probit", "cloglog",
+    /// "poisson", "negative_binomial", "tweedie", or "gamma".
+    pub model: String,
+    /// Residual type: "response", "pearson", or "deviance". `None` uses the
+    /// upstream default (response for linear models, deviance for GLMs).
+    pub residual_type: Option<String>,
+    /// Whether to include an intercept term.
+    pub with_intercept: bool,
+    /// Fixed negative-binomial theta (dispersion); `None` estimates it.
+    pub theta: Option<f64>,
+    /// Tweedie variance power (0=Gaussian, 1=Poisson, 2=Gamma, 3=Inverse Gaussian).
+    pub var_power: f64,
+    /// Tweedie link power (`model="tweedie"` only); `None` uses
+    /// `TweedieRegressorBuilder`'s own canonical-link default (`1 -
+    /// var_power`), matching `ps.tweedie()` and `Tweedie(link_power=None)`.
+    pub link_power: Option<f64>,
+    /// Maximum IRLS iterations for the GLM models.
+    pub max_iter: usize,
+    /// Convergence tolerance for the GLM models.
+    pub tol: f64,
+}
+
+impl Default for AugmentKwargs {
+    fn default() -> Self {
+        Self {
+            model: "ols".to_string(),
+            residual_type: None,
+            with_intercept: true,
+            theta: None,
+            var_power: 1.5,
+            link_power: None,
+            max_iter: 100,
+            tol: 1e-8,
+        }
+    }
+}
+
+/// Parse an `augment` residual-type name (case-insensitive): "response",
+/// "pearson", or "deviance".
+pub fn parse_residual_type(s: &str) -> Result<ResidualType, String> {
+    match s.to_lowercase().as_str() {
+        "response" => Ok(ResidualType::Response),
+        "pearson" => Ok(ResidualType::Pearson),
+        "deviance" => Ok(ResidualType::Deviance),
+        other => Err(format!(
+            "unknown residual_type '{other}' (expected 'response', 'pearson', or 'deviance')"
+        )),
+    }
+}
+
+/// Output dtype for `pl_augment`: one combined struct of the seven
+/// `broom::augment` fields, in order.
+fn augment_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
+    let fields = vec![
+        Field::new("fitted".into(), DataType::Float64),
+        Field::new("residual".into(), DataType::Float64),
+        Field::new("std_residual".into(), DataType::Float64),
+        Field::new("stud_residual".into(), DataType::Float64),
+        Field::new("leverage".into(), DataType::Float64),
+        Field::new("cooks_d".into(), DataType::Float64),
+        Field::new("dffits".into(), DataType::Float64),
+    ];
+    Ok(Field::new("augment".into(), DataType::Struct(fields)))
+}
+
+/// Scatter the `n_valid`-length `Augment` fields back into `n_rows`-length
+/// per-field vectors (NaN for rows excluded from the fit) and build the
+/// output struct.
+fn augment_output(n_rows: usize, valid_indices: &[usize], a: &Augment) -> PolarsResult<Series> {
+    let mut fitted = vec![f64::NAN; n_rows];
+    let mut residual = vec![f64::NAN; n_rows];
+    let mut std_residual = vec![f64::NAN; n_rows];
+    let mut stud_residual = vec![f64::NAN; n_rows];
+    let mut leverage = vec![f64::NAN; n_rows];
+    let mut cooks_d = vec![f64::NAN; n_rows];
+    let mut dffits_v = vec![f64::NAN; n_rows];
+    for (k, &i) in valid_indices.iter().enumerate() {
+        fitted[i] = a.fitted[k];
+        residual[i] = a.residual[k];
+        std_residual[i] = a.std_residual[k];
+        stud_residual[i] = a.stud_residual[k];
+        leverage[i] = a.leverage[k];
+        cooks_d[i] = a.cooks_d[k];
+        dffits_v[i] = a.dffits[k];
+    }
+
+    let fitted_s = Series::new("fitted".into(), fitted);
+    let residual_s = Series::new("residual".into(), residual);
+    let std_residual_s = Series::new("std_residual".into(), std_residual);
+    let stud_residual_s = Series::new("stud_residual".into(), stud_residual);
+    let leverage_s = Series::new("leverage".into(), leverage);
+    let cooks_d_s = Series::new("cooks_d".into(), cooks_d);
+    let dffits_s = Series::new("dffits".into(), dffits_v);
+
+    StructChunked::from_series(
+        "augment".into(),
+        n_rows,
+        [
+            &fitted_s,
+            &residual_s,
+            &std_residual_s,
+            &stud_residual_s,
+            &leverage_s,
+            &cooks_d_s,
+            &dffits_s,
+        ]
+        .into_iter(),
+    )
+    .map(|ca| ca.into_series())
+}
+
+/// `n_rows` of NaN in every field — degenerate input (no valid rows, or no
+/// feature columns) stays aligned with the input, never an exception.
+fn augment_nan_output(n_rows: usize) -> PolarsResult<Series> {
+    augment_output(
+        n_rows,
+        &[],
+        &Augment {
+            fitted: Col::zeros(0),
+            residual: Col::zeros(0),
+            resid_type: ResidualType::Response,
+            std_residual: Col::zeros(0),
+            stud_residual: Col::zeros(0),
+            leverage: Col::zeros(0),
+            cooks_d: Col::zeros(0),
+            dffits: Col::zeros(0),
+        },
+    )
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_augment`
+/// expression shim.
+///
+/// Input contract: `inputs[0]` = y, `inputs[1]` = weights (nullable; a
+/// length-1 null unless `model == "wls"`, where it is full-length prior
+/// weights), `inputs[2..]` = x columns (at least one).
+pub fn augment_fit(inputs: &[Series], kwargs: &AugmentKwargs) -> PolarsResult<Series> {
+    if inputs.len() < 3 {
+        return Err(
+            polars_err!(ComputeError: "augment: expected y, weights, and at least one x column"),
+        );
+    }
+    let n_rows = inputs[0].len();
+    let n_features = inputs.len() - 2;
+
+    let residual_type = match &kwargs.residual_type {
+        Some(s) => {
+            Some(parse_residual_type(s).map_err(|e| polars_err!(ComputeError: "augment: {}", e))?)
+        }
+        None => None,
+    };
+
+    let model = kwargs.model.to_lowercase();
+    let needs_weights = model == "wls";
+
+    let y_ca = inputs[0].f64()?;
+
+    let mut valid = vec![true; n_rows];
+    for (i, ok) in valid.iter_mut().enumerate() {
+        match y_ca.get(i) {
+            Some(v) if v.is_finite() => {}
+            _ => *ok = false,
+        }
+    }
+    for col in inputs.iter().skip(2) {
+        let ca = col.f64()?;
+        for (i, ok) in valid.iter_mut().enumerate() {
+            match ca.get(i) {
+                Some(v) if v.is_finite() => {}
+                _ => *ok = false,
+            }
+        }
+    }
+    if needs_weights {
+        let w_ca = inputs[1].f64()?;
+        if w_ca.len() != n_rows {
+            return Err(
+                polars_err!(ComputeError: "augment: model 'wls' requires a weights column"),
+            );
+        }
+        for (i, ok) in valid.iter_mut().enumerate() {
+            match w_ca.get(i) {
+                Some(v) if v.is_finite() && v >= 0.0 => {}
+                _ => *ok = false,
+            }
+        }
+    }
+
+    let valid_indices: Vec<usize> = (0..n_rows).filter(|&i| valid[i]).collect();
+    let n_valid = valid_indices.len();
+    if n_valid == 0 || n_features == 0 {
+        return augment_nan_output(n_rows);
+    }
+
+    // Invariant relied on below: every index in `valid_indices` was proven, in
+    // the validity scan above, to have a `Some(v)` with `v.is_finite()` in
+    // every `x` column (and in `y`, and in `weights` when `needs_weights`) —
+    // that is exactly how `valid`/`valid_indices` were constructed. So
+    // `.f64()` and `.get(valid_indices[..])` cannot fail for these rows
+    // today. Still, follow `build_xy_data`'s convention (a few hundred lines
+    // above) of falling back to `f64::NAN` rather than `.unwrap()`-panicking,
+    // so a future refactor that reorders or short-circuits the validity scan
+    // degrades to NaN output instead of a reachable panic on user input.
+    let x = Mat::from_fn(n_valid, n_features, |row, col| {
+        inputs[2 + col]
+            .f64()
+            .ok()
+            .and_then(|ca| ca.get(valid_indices[row]))
+            .unwrap_or(f64::NAN)
+    });
+    let y = Col::from_fn(n_valid, |i| y_ca.get(valid_indices[i]).unwrap_or(f64::NAN));
+    let weights: Option<Col<f64>> = if needs_weights {
+        let w_ca = inputs[1].f64()?;
+        Some(Col::from_fn(n_valid, |i| {
+            w_ca.get(valid_indices[i]).unwrap_or(f64::NAN)
+        }))
+    } else {
+        None
+    };
+
+    let with_intercept = kwargs.with_intercept;
+
+    macro_rules! run_augment {
+        ($fit_result:expr) => {{
+            let fitted = match $fit_result {
+                Ok(f) => f,
+                Err(_) => return augment_nan_output(n_rows),
+            };
+            let aug = match residual_type {
+                Some(rt) => augment_with(&fitted, &x, &y, weights.as_ref(), rt),
+                None => augment(&fitted, &x, &y, weights.as_ref()),
+            };
+            match aug {
+                Ok(a) => augment_output(n_rows, &valid_indices, &a),
+                Err(_) => augment_nan_output(n_rows),
+            }
+        }};
+    }
+
+    match model.as_str() {
+        "ols" => {
+            let m = OlsRegressor::builder()
+                .with_intercept(with_intercept)
+                .build();
+            run_augment!(m.fit(&x, &y))
+        }
+        "wls" => {
+            let w = weights.clone().ok_or_else(
+                || polars_err!(ComputeError: "augment: model 'wls' requires weights"),
+            )?;
+            let m = WlsRegressor::builder()
+                .with_intercept(with_intercept)
+                .weights(w)
+                .build();
+            run_augment!(m.fit(&x, &y))
+        }
+        "logistic" => {
+            let m = BinomialRegressor::logistic()
+                .with_intercept(with_intercept)
+                .max_iterations(kwargs.max_iter)
+                .tolerance(kwargs.tol)
+                .build();
+            run_augment!(m.fit(&x, &y))
+        }
+        "probit" => {
+            let m = BinomialRegressor::probit()
+                .with_intercept(with_intercept)
+                .max_iterations(kwargs.max_iter)
+                .tolerance(kwargs.tol)
+                .build();
+            run_augment!(m.fit(&x, &y))
+        }
+        "cloglog" => {
+            let m = BinomialRegressor::cloglog()
+                .with_intercept(with_intercept)
+                .max_iterations(kwargs.max_iter)
+                .tolerance(kwargs.tol)
+                .build();
+            run_augment!(m.fit(&x, &y))
+        }
+        "poisson" => {
+            let m = PoissonRegressor::log()
+                .with_intercept(with_intercept)
+                .max_iterations(kwargs.max_iter)
+                .tolerance(kwargs.tol)
+                .build();
+            run_augment!(m.fit(&x, &y))
+        }
+        "negative_binomial" => {
+            let mut b = NegativeBinomialRegressor::builder()
+                .with_intercept(with_intercept)
+                .max_iterations(kwargs.max_iter)
+                .tolerance(kwargs.tol);
+            b = match kwargs.theta {
+                Some(t) => b.theta(t).estimate_theta(false),
+                None => b.estimate_theta(true),
+            };
+            let m = b.build();
+            run_augment!(m.fit(&x, &y))
+        }
+        "tweedie" => {
+            // `link_power=None` (the default) leaves
+            // `TweedieRegressorBuilder`'s own canonical-link default (`1 -
+            // var_power`) untouched, exactly like `ps.tweedie()` and
+            // `Tweedie(link_power=None)` — so augment describes the same
+            // model the user fits with the same arguments. Passing an
+            // explicit `link_power` (e.g. `0.0` for the log link, matching R's
+            // `statmod::tweedie()` default and `GammaRegressor`'s convention)
+            // overrides it, same as `py_tweedie.rs`.
+            let mut builder = TweedieRegressor::builder()
+                .var_power(kwargs.var_power)
+                .with_intercept(with_intercept)
+                .max_iterations(kwargs.max_iter)
+                .tolerance(kwargs.tol);
+            if let Some(lp) = kwargs.link_power {
+                builder = builder.link_power(lp);
+            }
+            let m = builder.build();
+            run_augment!(m.fit(&x, &y))
+        }
+        "gamma" => {
+            let m = GammaRegressor::builder()
+                .with_intercept(with_intercept)
+                .max_iterations(kwargs.max_iter)
+                .tolerance(kwargs.tol)
+                .build();
+            run_augment!(m.fit(&x, &y))
+        }
+        other => {
+            Err(polars_err!(ComputeError: "augment: unknown or unsupported model '{}'", other))
+        }
+    }
+}
+
+/// Per-observation regression diagnostics (R `broom::augment`), one combined
+/// row-aligned expression for every `Augmentable` model.
+/// inputs[0] = y, inputs[1] = weights (nullable), inputs[2..] = x columns.
+/// kwargs: model / residual_type / with_intercept / theta / var_power / link_power / max_iter / tol
+/// — see [`AugmentKwargs`].
+#[polars_expr(output_type_func=augment_output_dtype)]
+fn pl_augment(inputs: &[Series], kwargs: AugmentKwargs) -> PolarsResult<Series> {
+    augment_fit(inputs, &kwargs)
 }
 
 // ============================================================================
@@ -2842,7 +3327,7 @@ fn pl_alm(inputs: &[Series]) -> PolarsResult<Series> {
 // ============================================================================
 
 /// Helper to build term names for coefficients
-fn build_term_names(n_features: usize, with_intercept: bool) -> Vec<String> {
+pub(crate) fn build_term_names(n_features: usize, with_intercept: bool) -> Vec<String> {
     let mut terms = Vec::with_capacity(n_features + if with_intercept { 1 } else { 0 });
     if with_intercept {
         terms.push("intercept".to_string());
@@ -2855,6 +3340,12 @@ fn build_term_names(n_features: usize, with_intercept: bool) -> Vec<String> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_ols_summary` expression shim.
 pub fn ols_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    ols_summary_fit_with(inputs, &LinearAliasKwargs::default())
+}
+
+/// Additive variant of [`ols_summary_fit`] taking the named `alias_tolerance`
+/// option. Same positional input contract.
+pub fn ols_summary_fit_with(inputs: &[Series], kwargs: &LinearAliasKwargs) -> PolarsResult<Series> {
     let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
     let solve_method = parse_solver_type(inputs[2].str()?.get(0));
     let hc_type = parse_hc_type(inputs[3].str()?.get(0));
@@ -2867,7 +3358,8 @@ pub fn ols_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
     let mut builder = OlsRegressor::builder()
         .with_intercept(with_intercept)
-        .compute_inference(true);
+        .compute_inference(true)
+        .alias_tolerance(kwargs.alias_tolerance);
     if let Some(solver) = solve_method {
         builder = builder.solve_method(solver);
     }
@@ -2951,9 +3443,10 @@ pub fn ols_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
 /// OLS summary expression - returns tidy coefficient table
 /// inputs[0] = y, inputs[1] = with_intercept (bool), inputs[2] = solve_method (string or null),
 /// inputs[3] = hc_type (string or null), inputs[4..] = x columns
+/// kwargs: `alias_tolerance` (named, additive — see [`LinearAliasKwargs`]).
 #[polars_expr(output_type_func=summary_output_dtype)]
-fn pl_ols_summary(inputs: &[Series]) -> PolarsResult<Series> {
-    ols_summary_fit(inputs)
+fn pl_ols_summary(inputs: &[Series], kwargs: LinearAliasKwargs) -> PolarsResult<Series> {
+    ols_summary_fit_with(inputs, &kwargs)
 }
 
 /// Public Rust-callable variant. Same input contract as the `pl_ridge_summary` expression shim.
@@ -3098,6 +3591,12 @@ fn pl_elastic_net_summary(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_wls_summary` expression shim.
 pub fn wls_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    wls_summary_fit_with(inputs, &LinearAliasKwargs::default())
+}
+
+/// Additive variant of [`wls_summary_fit`] taking the named `alias_tolerance`
+/// option. Same positional input contract.
+pub fn wls_summary_fit_with(inputs: &[Series], kwargs: &LinearAliasKwargs) -> PolarsResult<Series> {
     let weights_series = inputs[1].f64()?;
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let solve_method = parse_solver_type(inputs[3].str()?.get(0));
@@ -3113,7 +3612,8 @@ pub fn wls_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
     let mut builder = WlsRegressor::builder()
         .with_intercept(with_intercept)
-        .weights(weights);
+        .weights(weights)
+        .alias_tolerance(kwargs.alias_tolerance);
     if let Some(solver) = solve_method {
         builder = builder.solve_method(solver);
     }
@@ -3165,13 +3665,20 @@ pub fn wls_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// WLS summary expression
 /// inputs[0] = y, inputs[1] = weights, inputs[2] = with_intercept, inputs[3] = solve_method (string or null), inputs[4..] = x columns
+/// kwargs: `alias_tolerance` (named, additive — see [`LinearAliasKwargs`]).
 #[polars_expr(output_type_func=summary_output_dtype)]
-fn pl_wls_summary(inputs: &[Series]) -> PolarsResult<Series> {
-    wls_summary_fit(inputs)
+fn pl_wls_summary(inputs: &[Series], kwargs: LinearAliasKwargs) -> PolarsResult<Series> {
+    wls_summary_fit_with(inputs, &kwargs)
 }
 
 /// Public Rust-callable variant. Same input contract as the `pl_rls_summary` expression shim.
 pub fn rls_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    rls_summary_fit_with(inputs, &RlsKwargs::default())
+}
+
+/// Additive variant of [`rls_summary_fit`] taking the named
+/// `initial_p_diagonal` option. Same positional input contract.
+pub fn rls_summary_fit_with(inputs: &[Series], kwargs: &RlsKwargs) -> PolarsResult<Series> {
     let forgetting_factor = inputs[1].f64()?.get(0).unwrap_or(0.99);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let n_features = inputs.len() - 3;
@@ -3184,6 +3691,7 @@ pub fn rls_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let model = RlsRegressor::builder()
         .forgetting_factor(forgetting_factor)
         .with_intercept(with_intercept)
+        .initial_p_diagonal(kwargs.initial_p_diagonal)
         .build();
 
     match model.fit(&x, &y) {
@@ -3232,9 +3740,10 @@ pub fn rls_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// RLS summary expression
 /// inputs[0] = y, inputs[1] = forgetting_factor, inputs[2] = with_intercept, inputs[3..] = x columns
+/// kwargs: `initial_p_diagonal` (named, additive — see [`RlsKwargs`]).
 #[polars_expr(output_type_func=summary_output_dtype)]
-fn pl_rls_summary(inputs: &[Series]) -> PolarsResult<Series> {
-    rls_summary_fit(inputs)
+fn pl_rls_summary(inputs: &[Series], kwargs: RlsKwargs) -> PolarsResult<Series> {
+    rls_summary_fit_with(inputs, &kwargs)
 }
 
 /// Public Rust-callable variant. Same input contract as the `pl_bls_summary` expression shim.
@@ -3453,6 +3962,15 @@ fn pl_poisson_summary(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_negative_binomial_summary` expression shim.
 pub fn negative_binomial_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
+    negative_binomial_summary_fit_with(inputs, &NegativeBinomialKwargs::default())
+}
+
+/// Additive variant of [`negative_binomial_summary_fit`] taking the named
+/// `estimate_dispersion` option. Same positional input contract.
+pub fn negative_binomial_summary_fit_with(
+    inputs: &[Series],
+    kwargs: &NegativeBinomialKwargs,
+) -> PolarsResult<Series> {
     let theta = inputs[1].f64()?.get(0);
     let lambda = inputs[2].f64()?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[3].bool()?.get(0).unwrap_or(true);
@@ -3463,10 +3981,12 @@ pub fn negative_binomial_summary_fit(inputs: &[Series]) -> PolarsResult<Series> 
         Err(_) => return summary_nan_output(),
     };
 
-    let mut builder = NegativeBinomialRegressor::builder().with_intercept(with_intercept);
+    let mut builder = NegativeBinomialRegressor::builder()
+        .with_intercept(with_intercept)
+        .estimate_dispersion(kwargs.estimate_dispersion);
 
     if let Some(t) = theta {
-        builder = builder.theta(t);
+        builder = builder.theta(t).estimate_theta(false);
     } else {
         builder = builder.estimate_theta(true);
     }
@@ -3523,9 +4043,13 @@ pub fn negative_binomial_summary_fit(inputs: &[Series]) -> PolarsResult<Series> 
 
 /// Negative Binomial summary expression
 /// inputs[0] = y, inputs[1] = theta, inputs[2] = lambda (L2 regularization), inputs[3] = with_intercept, inputs[4..] = x columns
+/// kwargs: `estimate_dispersion` (named, additive — see [`NegativeBinomialKwargs`]).
 #[polars_expr(output_type_func=summary_output_dtype)]
-fn pl_negative_binomial_summary(inputs: &[Series]) -> PolarsResult<Series> {
-    negative_binomial_summary_fit(inputs)
+fn pl_negative_binomial_summary(
+    inputs: &[Series],
+    kwargs: NegativeBinomialKwargs,
+) -> PolarsResult<Series> {
+    negative_binomial_summary_fit_with(inputs, &kwargs)
 }
 
 /// Public Rust-callable variant. Same input contract as the `pl_tweedie_summary` expression shim.
@@ -3749,7 +4273,7 @@ pub struct PredictKwargs {
 }
 
 /// Output type for prediction with intervals - uses prefix from kwargs
-fn predict_output_dtype_with_prefix(
+pub(crate) fn predict_output_dtype_with_prefix(
     _input_fields: &[Field],
     kwargs: PredictKwargs,
 ) -> PolarsResult<Field> {
@@ -3766,7 +4290,7 @@ fn predict_output_dtype_with_prefix(
 }
 
 /// Create prediction output with prefixed field names
-fn prediction_output_with_prefix(
+pub(crate) fn prediction_output_with_prefix(
     predictions: Vec<f64>,
     lower: Vec<f64>,
     upper: Vec<f64>,
@@ -3788,7 +4312,7 @@ fn prediction_output_with_prefix(
 }
 
 /// Create empty prediction output with prefixed field names
-fn prediction_nan_output_with_prefix(n: usize, prefix: &str) -> PolarsResult<Series> {
+pub(crate) fn prediction_nan_output_with_prefix(n: usize, prefix: &str) -> PolarsResult<Series> {
     prediction_output_with_prefix(
         vec![f64::NAN; n],
         vec![f64::NAN; n],
@@ -3799,7 +4323,7 @@ fn prediction_nan_output_with_prefix(n: usize, prefix: &str) -> PolarsResult<Ser
 
 /// Build X matrix and y vector with null handling based on policy.
 /// Returns (X, y, valid_mask) where valid_mask indicates which original rows were used.
-fn build_xy_with_null_policy(
+pub(crate) fn build_xy_with_null_policy(
     inputs: &[Series],
     y_idx: usize,
     x_start_idx: usize,
@@ -3916,8 +4440,49 @@ fn build_xy_with_null_policy(
     }
 }
 
+/// Named kwargs for the OLS/WLS predict shims: output-column `prefix` plus
+/// the `alias_tolerance` option.
+#[derive(Deserialize, Clone, Debug)]
+pub struct LinearAliasPredictKwargs {
+    /// Prefix for output column names.
+    pub prefix: String,
+    /// See [`LinearAliasKwargs::alias_tolerance`].
+    #[serde(default = "default_alias_tolerance")]
+    pub alias_tolerance: f64,
+}
+
+/// Output dtype for `pl_ols_predict`/`pl_wls_predict` — delegates to the
+/// shared prefix-based prediction schema (`alias_tolerance` does not affect
+/// shape).
+pub(crate) fn linear_alias_predict_output_dtype(
+    input_fields: &[Field],
+    kwargs: LinearAliasPredictKwargs,
+) -> PolarsResult<Field> {
+    predict_output_dtype_with_prefix(
+        input_fields,
+        PredictKwargs {
+            prefix: kwargs.prefix,
+        },
+    )
+}
+
 /// Public Rust-callable variant. Same input contract as the `pl_ols_predict` expression shim.
 pub fn ols_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
+    ols_predict_fit_with(
+        inputs,
+        LinearAliasPredictKwargs {
+            prefix: kwargs.prefix,
+            alias_tolerance: LM_ALIAS_TOLERANCE,
+        },
+    )
+}
+
+/// Additive variant of [`ols_predict_fit`] taking the named `alias_tolerance`
+/// option. Same positional input contract.
+pub fn ols_predict_fit_with(
+    inputs: &[Series],
+    kwargs: LinearAliasPredictKwargs,
+) -> PolarsResult<Series> {
     let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
     let solve_method = parse_solver_type(inputs[2].str()?.get(0));
     let interval = inputs[3].str()?.get(0); // None, "confidence", or "prediction"
@@ -3935,7 +4500,9 @@ pub fn ols_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult
         Err(_) => return prediction_nan_output_with_prefix(n_rows, prefix),
     };
 
-    let mut builder = OlsRegressor::builder().with_intercept(with_intercept);
+    let mut builder = OlsRegressor::builder()
+        .with_intercept(with_intercept)
+        .alias_tolerance(kwargs.alias_tolerance);
     if let Some(solver) = solve_method {
         builder = builder.solve_method(solver);
     }
@@ -3997,9 +4564,10 @@ pub fn ols_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult
 /// OLS prediction expression - returns predictions with optional intervals.
 /// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = solve_method (string or null),
 /// inputs[3] = interval (string or null), inputs[4] = level, inputs[5] = null_policy, inputs[6..] = x columns
-#[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
-fn pl_ols_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
-    ols_predict_fit(inputs, kwargs)
+/// kwargs: `prefix`, `alias_tolerance` (named, additive — see [`LinearAliasPredictKwargs`]).
+#[polars_expr(output_type_func_with_kwargs=linear_alias_predict_output_dtype)]
+fn pl_ols_predict(inputs: &[Series], kwargs: LinearAliasPredictKwargs) -> PolarsResult<Series> {
+    ols_predict_fit_with(inputs, kwargs)
 }
 
 /// Public Rust-callable variant. Same input contract as the `pl_ridge_predict` expression shim.
@@ -4170,6 +4738,21 @@ fn pl_elastic_net_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsRes
 
 /// Public Rust-callable variant. Same input contract as the `pl_wls_predict` expression shim.
 pub fn wls_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
+    wls_predict_fit_with(
+        inputs,
+        LinearAliasPredictKwargs {
+            prefix: kwargs.prefix,
+            alias_tolerance: LM_ALIAS_TOLERANCE,
+        },
+    )
+}
+
+/// Additive variant of [`wls_predict_fit`] taking the named `alias_tolerance`
+/// option. Same positional input contract.
+pub fn wls_predict_fit_with(
+    inputs: &[Series],
+    kwargs: LinearAliasPredictKwargs,
+) -> PolarsResult<Series> {
     let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
     let solve_method = parse_solver_type(inputs[2].str()?.get(0));
     let interval = inputs[3].str()?.get(0);
@@ -4199,7 +4782,8 @@ pub fn wls_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult
 
     let mut builder = WlsRegressor::builder()
         .with_intercept(with_intercept)
-        .weights(weights_fit);
+        .weights(weights_fit)
+        .alias_tolerance(kwargs.alias_tolerance);
     if let Some(solver) = solve_method {
         builder = builder.solve_method(solver);
     }
@@ -4258,13 +4842,26 @@ pub fn wls_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult
 /// WLS prediction expression (weights column is inputs[7])
 /// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = solve_method (string or null),
 /// inputs[3] = interval, inputs[4] = level, inputs[5] = null_policy, inputs[6] = weights, inputs[7..] = x columns
-#[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
-fn pl_wls_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
-    wls_predict_fit(inputs, kwargs)
+/// kwargs: `prefix`, `alias_tolerance` (named, additive — see [`LinearAliasPredictKwargs`]).
+#[polars_expr(output_type_func_with_kwargs=linear_alias_predict_output_dtype)]
+fn pl_wls_predict(inputs: &[Series], kwargs: LinearAliasPredictKwargs) -> PolarsResult<Series> {
+    wls_predict_fit_with(inputs, kwargs)
 }
 
 /// Public Rust-callable variant. Same input contract as the `pl_rls_predict` expression shim.
 pub fn rls_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
+    rls_predict_fit_with(
+        inputs,
+        RlsPredictKwargs {
+            prefix: kwargs.prefix,
+            initial_p_diagonal: default_initial_p_diagonal(),
+        },
+    )
+}
+
+/// Additive variant of [`rls_predict_fit`] taking the named
+/// `initial_p_diagonal` option. Same positional input contract.
+pub fn rls_predict_fit_with(inputs: &[Series], kwargs: RlsPredictKwargs) -> PolarsResult<Series> {
     let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
     let interval = inputs[2].str()?.get(0);
     let level = inputs[3].f64()?.get(0).unwrap_or(0.95);
@@ -4283,6 +4880,7 @@ pub fn rls_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult
     let model = RlsRegressor::builder()
         .forgetting_factor(forgetting_factor)
         .with_intercept(with_intercept)
+        .initial_p_diagonal(kwargs.initial_p_diagonal)
         .build();
 
     match model.fit(&x_fit, &y) {
@@ -4335,12 +4933,27 @@ pub fn rls_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult
     }
 }
 
+/// Output dtype for `pl_rls_predict` — delegates to the shared prefix-based
+/// prediction schema (`initial_p_diagonal` does not affect shape).
+fn rls_predict_output_dtype(
+    input_fields: &[Field],
+    kwargs: RlsPredictKwargs,
+) -> PolarsResult<Field> {
+    predict_output_dtype_with_prefix(
+        input_fields,
+        PredictKwargs {
+            prefix: kwargs.prefix,
+        },
+    )
+}
+
 /// RLS prediction expression
 /// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval, inputs[3] = level,
 /// inputs[4] = null_policy, inputs[5] = forgetting_factor, inputs[6..] = x columns
-#[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
-fn pl_rls_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
-    rls_predict_fit(inputs, kwargs)
+/// kwargs: `prefix`, `initial_p_diagonal` (named, additive — see [`RlsPredictKwargs`]).
+#[polars_expr(output_type_func_with_kwargs=rls_predict_output_dtype)]
+fn pl_rls_predict(inputs: &[Series], kwargs: RlsPredictKwargs) -> PolarsResult<Series> {
+    rls_predict_fit_with(inputs, kwargs)
 }
 
 /// Public Rust-callable variant. Same input contract as the `pl_bls_predict` expression shim.
@@ -4688,6 +5301,22 @@ pub fn negative_binomial_predict_fit(
     inputs: &[Series],
     kwargs: PredictKwargs,
 ) -> PolarsResult<Series> {
+    negative_binomial_predict_fit_with(
+        inputs,
+        NegativeBinomialPredictKwargs {
+            prefix: kwargs.prefix,
+            estimate_dispersion: false,
+        },
+    )
+}
+
+/// Additive variant of [`negative_binomial_predict_fit`] taking the named
+/// `estimate_dispersion` option (affects interval width, not the point prediction).
+/// Same positional input contract.
+pub fn negative_binomial_predict_fit_with(
+    inputs: &[Series],
+    kwargs: NegativeBinomialPredictKwargs,
+) -> PolarsResult<Series> {
     let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let interval = inputs[3].str()?.get(0);
@@ -4703,7 +5332,9 @@ pub fn negative_binomial_predict_fit(
         Err(_) => return prediction_nan_output_with_prefix(n_rows, prefix),
     };
 
-    let mut builder = NegativeBinomialRegressor::builder().with_intercept(with_intercept);
+    let mut builder = NegativeBinomialRegressor::builder()
+        .with_intercept(with_intercept)
+        .estimate_dispersion(kwargs.estimate_dispersion);
     if lambda > 0.0 {
         builder = builder.lambda(lambda);
     }
@@ -4759,12 +5390,30 @@ pub fn negative_binomial_predict_fit(
     }
 }
 
+/// Output dtype for `pl_negative_binomial_predict` — delegates to the shared
+/// prefix-based prediction schema (`estimate_dispersion` does not affect shape).
+fn negative_binomial_predict_output_dtype(
+    input_fields: &[Field],
+    kwargs: NegativeBinomialPredictKwargs,
+) -> PolarsResult<Field> {
+    predict_output_dtype_with_prefix(
+        input_fields,
+        PredictKwargs {
+            prefix: kwargs.prefix,
+        },
+    )
+}
+
 /// Negative Binomial prediction expression
 /// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3] = interval, inputs[4] = level,
 /// inputs[5] = null_policy, inputs[6..] = x columns
-#[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
-fn pl_negative_binomial_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
-    negative_binomial_predict_fit(inputs, kwargs)
+/// kwargs: `prefix`, `estimate_dispersion` (named, additive — see [`NegativeBinomialPredictKwargs`]).
+#[polars_expr(output_type_func_with_kwargs=negative_binomial_predict_output_dtype)]
+fn pl_negative_binomial_predict(
+    inputs: &[Series],
+    kwargs: NegativeBinomialPredictKwargs,
+) -> PolarsResult<Series> {
+    negative_binomial_predict_fit_with(inputs, kwargs)
 }
 
 /// Public Rust-callable variant. Same input contract as the `pl_tweedie_predict` expression shim.

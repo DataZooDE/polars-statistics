@@ -43,8 +43,8 @@ result = ab_test_df.select(
 )
 
 ttest = result["ttest"][0]
-print(f"H0: Mean(control) = Mean(treatment)")
-print(f"H1: Mean(control) != Mean(treatment)")
+print("H0: Mean(control) = Mean(treatment)")
+print("H1: Mean(control) != Mean(treatment)")
 print()
 print(f"Test statistic: {ttest['statistic']:.4f}")
 print(f"P-value:        {ttest['p_value']:.4f}")
@@ -69,8 +69,8 @@ result = ab_test_df.select(
 )
 
 ttest = result["ttest"][0]
-print(f"H0: Mean(control) >= Mean(treatment)")
-print(f"H1: Mean(control) < Mean(treatment)")
+print("H0: Mean(control) >= Mean(treatment)")
+print("H1: Mean(control) < Mean(treatment)")
 print()
 print(f"Test statistic: {ttest['statistic']:.4f}")
 print(f"P-value (one-sided): {ttest['p_value']:.4f}")
@@ -99,8 +99,8 @@ result = training_df.select(
 )
 
 ttest = result["ttest"][0]
-print(f"H0: Mean(after - before) = 0")
-print(f"H1: Mean(after - before) != 0")
+print("H0: Mean(after - before) = 0")
+print("H1: Mean(after - before) != 0")
 print()
 print(f"Test statistic: {ttest['statistic']:.4f}")
 print(f"P-value:        {ttest['p_value']:.4f}")
@@ -148,11 +148,11 @@ sw_treatment = treatment_normality["sw"][0]
 
 print("H0: Data comes from a normal distribution")
 print()
-print(f"Control group:")
+print("Control group:")
 print(f"  W statistic: {sw_control['statistic']:.4f}")
 print(f"  P-value:     {sw_control['p_value']:.4f}")
 print()
-print(f"Treatment group:")
+print("Treatment group:")
 print(f"  W statistic: {sw_treatment['statistic']:.4f}")
 print(f"  P-value:     {sw_treatment['p_value']:.4f}")
 print()
@@ -181,7 +181,7 @@ result = multi_version_df.select(
 )
 
 kw = result["kw"][0]
-print(f"H0: All groups come from the same distribution")
+print("H0: All groups come from the same distribution")
 print()
 print(f"H statistic: {kw['statistic']:.4f}")
 print(f"P-value:     {kw['p_value']:.4f}")
@@ -245,7 +245,7 @@ result = ab_test_df.select(
 )
 
 bf = result["bf"][0]
-print(f"H0: Variances are equal")
+print("H0: Variances are equal")
 print()
 print(f"F statistic: {bf['statistic']:.4f}")
 print(f"P-value:     {bf['p_value']:.4f}")

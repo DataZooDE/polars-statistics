@@ -118,6 +118,16 @@ df.select(ps.kendall("rank_a", "rank_b"))
 df.select(ps.kendall("x", "y", variant="a"))
 ```
 
+!!! info "Behaviour changes in 0.8.0"
+    - **Kendall's tau test statistic uses the full tie-corrected variance**
+      (anofox-statistics 0.4.3 #8), matching R
+      `cor.test(method = "kendall", exact = FALSE)` exactly when ties are present.
+      For example, `x = [1, 2, 2, 3, 4, 4, 4, 5, 6, 7, 8, 8]`,
+      `y = [2, 1, 3, 3, 5, 4, 6, 6, 5, 8, 7, 9]` gives `estimate = 0.80655653082638`,
+      `statistic = 3.4987518043922514`, `p_value = 0.00046744148056981807`.
+    - **Pearson on a constant variable returns NaN** `estimate`/`statistic`/`p_value`
+      (with `n` still populated) instead of crashing or dividing by zero.
+
 ---
 
 ## `distance_cor`

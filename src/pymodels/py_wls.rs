@@ -1,9 +1,10 @@
 //! PyO3 wrapper for Weighted Least Squares regression.
 
-use numpy::{PyArray1, PyReadonlyArray1, PyReadonlyArray2};
+use numpy::{PyArray1, PyArray2, PyReadonlyArray1, PyReadonlyArray2};
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
-use anofox_regression::solvers::{FittedRegressor, Regressor, WlsRegressor};
+use anofox_regression::solvers::{FittedRegressor, FittedWls, Regressor, WlsRegressor};
 
 use crate::utils::{IntoNumpy, ToFaer};
 
@@ -20,6 +21,9 @@ use crate::utils::{IntoNumpy, ToFaer};
 ///     Whether to compute statistical inference.
 /// confidence_level : float, default 0.95
 ///     Confidence level for confidence intervals.
+/// alias_tolerance : float, default 1e-7
+///     Relative tolerance of R `lm`'s rank-deficiency (aliasing) test. See
+///     ``OLS``'s parameter of the same name.
 ///
 /// Notes
 /// -----
@@ -45,26 +49,34 @@ pub struct PyWLS {
     with_intercept: bool,
     compute_inference: bool,
     confidence_level: f64,
-    fitted: Option<Box<dyn FittedRegressor + Send + Sync>>,
+    alias_tolerance: f64,
+    fitted: Option<FittedWls>,
 }
 
 #[pymethods]
 impl PyWLS {
     #[new]
-    #[pyo3(signature = (add_intercept=None, with_intercept=None, compute_inference=true, confidence_level=0.95))]
+    #[pyo3(signature = (add_intercept=None, with_intercept=None, compute_inference=true, confidence_level=0.95, alias_tolerance=1e-7))]
     fn new(
         py: Python<'_>,
         add_intercept: Option<bool>,
         with_intercept: Option<bool>,
         compute_inference: bool,
         confidence_level: f64,
+        alias_tolerance: f64,
     ) -> PyResult<Self> {
+        if !(alias_tolerance.is_finite() && alias_tolerance >= 0.0) {
+            return Err(PyValueError::new_err(format!(
+                "alias_tolerance must be finite and >= 0, got {alias_tolerance}"
+            )));
+        }
         let with_intercept =
             crate::pymodels::errors::resolve_intercept(py, add_intercept, with_intercept, true)?;
         Ok(Self {
             with_intercept,
             compute_inference,
             confidence_level,
+            alias_tolerance,
             fitted: None,
         })
     }
@@ -94,6 +106,7 @@ impl PyWLS {
             .with_intercept(slf.with_intercept)
             .compute_inference(slf.compute_inference)
             .confidence_level(slf.confidence_level)
+            .alias_tolerance(slf.alias_tolerance)
             .weights(w_col)
             .build();
 
@@ -101,7 +114,7 @@ impl PyWLS {
             .fit(&x_mat, &y_col)
             .map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>(e.to_string()))?;
 
-        slf.fitted = Some(Box::new(fitted));
+        slf.fitted = Some(fitted);
         Ok(slf)
     }
 
@@ -188,6 +201,134 @@ impl PyWLS {
         Ok(fitted.r_squared())
     }
 
+    /// Standard errors of coefficients (``None`` unless ``compute_inference=True``).
+    #[getter]
+    fn std_errors<'py>(&self, py: Python<'py>) -> PyResult<Option<Bound<'py, PyArray1<f64>>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("WLS"))?;
+
+        Ok(fitted
+            .result()
+            .std_errors
+            .as_ref()
+            .map(|se| se.into_numpy(py)))
+    }
+
+    /// t-statistics for coefficients (``None`` unless ``compute_inference=True``).
+    #[getter]
+    fn t_statistics<'py>(&self, py: Python<'py>) -> PyResult<Option<Bound<'py, PyArray1<f64>>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("WLS"))?;
+
+        Ok(fitted
+            .result()
+            .t_statistics
+            .as_ref()
+            .map(|ts| ts.into_numpy(py)))
+    }
+
+    /// P-values for coefficient significance tests (``None`` unless ``compute_inference=True``).
+    #[getter]
+    fn p_values<'py>(&self, py: Python<'py>) -> PyResult<Option<Bound<'py, PyArray1<f64>>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("WLS"))?;
+
+        Ok(fitted
+            .result()
+            .p_values
+            .as_ref()
+            .map(|pv| pv.into_numpy(py)))
+    }
+
+    /// Lower bounds of coefficient confidence intervals (``None`` unless
+    /// ``compute_inference=True``).
+    #[getter]
+    fn conf_interval_lower<'py>(
+        &self,
+        py: Python<'py>,
+    ) -> PyResult<Option<Bound<'py, PyArray1<f64>>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("WLS"))?;
+
+        Ok(fitted
+            .result()
+            .conf_interval_lower
+            .as_ref()
+            .map(|ci| ci.into_numpy(py)))
+    }
+
+    /// Upper bounds of coefficient confidence intervals (``None`` unless
+    /// ``compute_inference=True``).
+    #[getter]
+    fn conf_interval_upper<'py>(
+        &self,
+        py: Python<'py>,
+    ) -> PyResult<Option<Bound<'py, PyArray1<f64>>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("WLS"))?;
+
+        Ok(fitted
+            .result()
+            .conf_interval_upper
+            .as_ref()
+            .map(|ci| ci.into_numpy(py)))
+    }
+
+    /// Standard error of the intercept (``None`` unless ``compute_inference=True``).
+    #[getter]
+    fn intercept_std_error(&self) -> PyResult<Option<f64>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("WLS"))?;
+
+        Ok(fitted.result().intercept_std_error)
+    }
+
+    /// t-statistic for the intercept (``None`` unless ``compute_inference=True``).
+    #[getter]
+    fn intercept_t_statistic(&self) -> PyResult<Option<f64>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("WLS"))?;
+
+        Ok(fitted.result().intercept_t_statistic)
+    }
+
+    /// P-value for the intercept (``None`` unless ``compute_inference=True``).
+    #[getter]
+    fn intercept_p_value(&self) -> PyResult<Option<f64>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("WLS"))?;
+
+        Ok(fitted.result().intercept_p_value)
+    }
+
+    /// Confidence interval of the intercept, as ``(lower, upper)`` (``None``
+    /// unless ``compute_inference=True``).
+    #[getter]
+    fn intercept_conf_interval(&self) -> PyResult<Option<(f64, f64)>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("WLS"))?;
+
+        Ok(fitted.result().intercept_conf_interval)
+    }
+
     /// Compute HC (heteroskedasticity-consistent) standard errors.
     ///
     /// **Not implemented for WLS.** Always raises ``NotImplementedError``.
@@ -223,24 +364,111 @@ impl PyWLS {
             return Err(crate::pymodels::errors::not_fitted_err("WLS"));
         }
         // CR-03: WLS HC inference requires the weight-aware sandwich
-        // (X'WX)^{-1}(X'diag(w·e²)X)(X'WX)^{-1}, but the fitted object is stored
-        // as Box<dyn FittedRegressor> which cannot be downcast to FittedWls to
-        // retrieve the weight vector.  Returning the unweighted OLS sandwich is
-        // silently wrong for heterogeneous weights — the primary use case of WLS.
-        // Raise NotImplementedError so callers are not misled.
+        // (X'WX)^{-1}(X'diag(w·e²)X)(X'WX)^{-1}. `self.fitted` now stores a
+        // concrete `FittedWls` (16.1-05 Task 3) so the weight vector itself is
+        // reachable via `fitted.weights()`, but computing this sandwich is out
+        // of this plan's scope — not implemented yet. Returning the unweighted
+        // OLS sandwich would be silently wrong for heterogeneous weights — the
+        // primary use case of WLS. Raise NotImplementedError so callers are not
+        // misled.
         //
         // Workaround: scale X and y by sqrt(w_i), fit OLS on the scaled data,
         // and call OLS.hc_inference on the result.
         let _ = (x, hc_type);
         Err(PyErr::new::<pyo3::exceptions::PyNotImplementedError, _>(
             "WLS.hc_inference is not yet implemented: the weight-correct sandwich \
-             (X'WX)^{-1}(X'diag(w·e²)X)(X'WX)^{-1} requires the stored observation \
-             weights, which are not accessible through the FittedRegressor trait. \
+             (X'WX)^{-1}(X'diag(w·e²)X)(X'WX)^{-1} has not been wired up yet. \
              Workaround: scale X and y by sqrt(w_i), fit OLS on the scaled data, \
              and call OLS.hc_inference on the result.",
         ))
     }
+    /// Variance factor ``M`` with ``Var(x0' beta) = sigma^2 x0' M x0``
+    /// (``(X'WX)^-1``). ``(p+1) x (p+1)`` with an intercept (index 0), ``p x
+    /// p`` without; aliased rows/columns are zero. ``None`` for fits from
+    /// moments.
+    fn variance_factor<'py>(&self, py: Python<'py>) -> PyResult<Option<Bound<'py, PyArray2<f64>>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("WLS"))?;
+
+        Ok(fitted.variance_factor().as_ref().map(|m| m.into_numpy(py)))
+    }
+
+    /// Leverage ``x0' M x0`` of new rows (one column per feature; aliased
+    /// columns are ignored). ``NaN`` when no variance factor is available.
+    fn leverage_new<'py>(
+        &self,
+        py: Python<'py>,
+        x_new: PyReadonlyArray2<'py, f64>,
+    ) -> PyResult<Bound<'py, PyArray1<f64>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("WLS"))?;
+
+        let x_new_mat = x_new.to_faer();
+        let expected = fitted.coefficients().nrows();
+        if x_new_mat.ncols() != expected {
+            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
+                "WLS.leverage_new: x_new has {} columns but the model was fit with {} \
+                 feature(s) — they must match.",
+                x_new_mat.ncols(),
+                expected
+            )));
+        }
+        Ok(fitted.leverage_new(&x_new_mat).into_numpy(py))
+    }
+
+    /// Per-observation diagnostics (R ``broom::augment``): pass the training
+    /// data (without the intercept column). Weights default to the fit's own
+    /// weights.
+    ///
+    /// Parameters
+    /// ----------
+    /// x : array-like of shape (n_samples, n_features)
+    ///     The feature matrix used to fit the model.
+    /// y : array-like of shape (n_samples,)
+    ///     The target values used to fit the model.
+    /// weights : array-like of shape (n_samples,), optional
+    ///     Prior weights. Defaults to the fit's own weights.
+    /// residual_type : str, optional
+    ///     ``"response"`` (default), ``"pearson"``, or ``"deviance"``.
+    ///
+    /// Returns
+    /// -------
+    /// dict
+    ///     Keys: fitted, residual, resid_type, std_residual, stud_residual,
+    ///     leverage, cooks_d, dffits.
+    #[pyo3(signature = (x, y, weights=None, residual_type=None))]
+    fn augment<'py>(
+        &self,
+        py: Python<'py>,
+        x: PyReadonlyArray2<'py, f64>,
+        y: PyReadonlyArray1<'py, f64>,
+        weights: Option<PyReadonlyArray1<'py, f64>>,
+        residual_type: Option<String>,
+    ) -> PyResult<Bound<'py, pyo3::types::PyDict>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("WLS"))?;
+        crate::pymodels::augment::augment_dict(py, fitted, x, y, weights, residual_type.as_deref())
+    }
+
     /// Informative repr: class name plus key state; never panics if unfitted.
+    /// Model type, error family (R naming; None for estimators without a
+    /// likelihood) and link of the fit (anofox-regression ModelInfo).
+    #[getter]
+    fn model_info<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, pyo3::types::PyDict>> {
+        use anofox_regression::HasModelInfo;
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("WLS"))?;
+        crate::pymodels::model_info::model_info_dict(py, fitted.model_info())
+    }
+
     fn __repr__(slf: &Bound<'_, Self>) -> PyResult<String> {
         crate::pymodels::ergonomics::repr(slf.as_any())
     }

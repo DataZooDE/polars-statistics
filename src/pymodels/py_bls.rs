@@ -4,6 +4,7 @@ use numpy::{PyArray1, PyReadonlyArray1, PyReadonlyArray2};
 use pyo3::prelude::*;
 
 use anofox_regression::solvers::{BlsRegressor, FittedRegressor, Regressor};
+use anofox_regression::{HasModelInfo, ModelInfo};
 
 use crate::utils::{IntoNumpy, ToFaer};
 
@@ -32,6 +33,11 @@ pub struct PyBLS {
     max_iter: usize,
     tol: f64,
     fitted: Option<Box<dyn FittedRegressor + Send + Sync>>,
+    /// Captured from the concrete fit at `fit` time — `HasModelInfo` is not a
+    /// supertrait of `FittedRegressor`, so it cannot be read back from the
+    /// boxed `fitted` field once type-erased. Reports `"nnls"` or `"bls"`
+    /// depending on the bounds (upstream `BlsRegressor::model_info`).
+    model_info: Option<ModelInfo>,
 }
 
 #[pymethods]
@@ -56,6 +62,7 @@ impl PyBLS {
             max_iter,
             tol,
             fitted: None,
+            model_info: None,
         })
     }
 
@@ -70,6 +77,7 @@ impl PyBLS {
             max_iter,
             tol,
             fitted: None,
+            model_info: None,
         }
     }
 
@@ -100,6 +108,7 @@ impl PyBLS {
             .fit(&x_mat, &y_col)
             .map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>(e.to_string()))?;
 
+        slf.model_info = Some(fitted.model_info());
         slf.fitted = Some(Box::new(fitted));
         Ok(slf)
     }
@@ -171,6 +180,17 @@ impl PyBLS {
 
         Ok(fitted.r_squared())
     }
+
+    /// Model type (`"nnls"` when every bound is `[0, inf)`, else `"bls"`),
+    /// error family and link of the fit (anofox-regression ModelInfo).
+    #[getter]
+    fn model_info<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, pyo3::types::PyDict>> {
+        let info = self
+            .model_info
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("BLS"))?;
+        crate::pymodels::model_info::model_info_dict(py, info)
+    }
+
     /// Informative repr: class name plus key state; never panics if unfitted.
     fn __repr__(slf: &Bound<'_, Self>) -> PyResult<String> {
         crate::pymodels::ergonomics::repr(slf.as_any())

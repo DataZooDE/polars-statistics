@@ -59,7 +59,7 @@ logit_result = churn_df.select(
 model = logit_result["model"][0]
 print("Logistic Regression Results:")
 print(f"  Intercept: {model['intercept']:.4f}")
-print(f"  Coefficients:")
+print("  Coefficients:")
 print(f"    - tenure_months:   {model['coefficients'][0]:.4f}")
 print(f"    - monthly_charges: {model['coefficients'][1]:.4f}")
 print(f"  AIC:           {model['aic']:.2f}")
@@ -142,7 +142,7 @@ poisson_result = claims_df.select(
 model = poisson_result["model"][0]
 print("Poisson Regression Results:")
 print(f"  Intercept: {model['intercept']:.4f}")
-print(f"  Coefficients:")
+print("  Coefficients:")
 print(f"    - age: {model['coefficients'][0]:.4f}")
 print(f"  AIC:     {model['aic']:.2f}")
 print(f"  N:       {model['n_observations']}")

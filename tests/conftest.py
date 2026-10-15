@@ -3,7 +3,6 @@
 import numpy as np
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Reference-library skip guards (TEST-03)
 #

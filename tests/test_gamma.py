@@ -2,7 +2,6 @@
 
 import numpy as np
 import pytest
-
 from polars_statistics import Gamma
 
 
@@ -47,7 +46,7 @@ class TestGamma:
     def test_not_fitted_raises(self):
         """Accessing .coefficients before fit raises an exception."""
         model = Gamma()
-        with pytest.raises(Exception):
+        with pytest.raises(RuntimeError, match="not fitted"):
             _ = model.coefficients
 
     def test_converged(self):
@@ -106,7 +105,7 @@ class TestGamma:
         """predict() before fit raises an exception."""
         model = Gamma()
         X = np.ones((10, 2))
-        with pytest.raises(Exception):
+        with pytest.raises(RuntimeError, match="not fitted"):
             model.predict(X)
 
     def test_coefficients_vs_statsmodels(self, require_statsmodels):
@@ -116,7 +115,6 @@ class TestGamma:
         recovered by polars-statistics is within 0.15 of statsmodels' MLE estimate.
         Guarded by require_statsmodels so the test skips when statsmodels is absent.
         """
-        sm = require_statsmodels
         X, y, _ = _gamma_design(seed=7, n=200)
         ps_model = Gamma(with_intercept=True).fit(X, y)
         ps_slope = ps_model.coefficients[0]

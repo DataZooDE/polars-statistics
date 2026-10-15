@@ -12,6 +12,10 @@
 //!   known coefficients on synthetic linear data.
 //! - All other `*_fit` functions are smoke-tested for reachability and no-panic
 //!   behaviour on legitimate inputs.
+//! - Categorical functions whose arity grew a trailing `conf_level` input
+//!   (`binom_test_fit`, `prop_test_one_fit`, `prop_test_two_fit`, `fisher_exact_fit`)
+//!   are each called at both the old and new arity, proving the tolerant trailing
+//!   read keeps previous rlib callers working.
 
 use polars::prelude::*;
 use polars_statistics::expressions::*;
@@ -40,6 +44,14 @@ fn series_f64(name: &str, vals: &[f64]) -> Series {
 
 fn scalar_f64(name: &str, v: f64) -> Series {
     Series::new(name.into(), &[v])
+}
+
+fn series_bool(name: &str, vals: &[bool]) -> Series {
+    Series::new(name.into(), vals)
+}
+
+fn series_str(name: &str, vals: &[&str]) -> Series {
+    Series::new(name.into(), vals)
 }
 
 fn scalar_bool(name: &str, v: bool) -> Series {
@@ -94,6 +106,20 @@ fn assert_f64_finite_or_zero(s: &Series, field: &str) {
     // We accept any value (including NaN) as long as the call didn't panic — but
     // for the headline asserts below we use the dedicated helpers.
     let _ = v;
+}
+
+/// Helper: assert a struct f64 field is NaN for every row (proves a
+/// reject-path all-NaN fill, not merely "didn't panic").
+fn assert_f64_all_nan(s: &Series, field: &str) {
+    let ca = s.struct_().expect("expected struct series");
+    let f = ca
+        .field_by_name(field)
+        .unwrap_or_else(|_| panic!("missing field `{field}`"));
+    let fca = f.f64().expect("expected f64 column");
+    for i in 0..fca.len() {
+        let v = fca.get(i).unwrap_or(f64::NAN);
+        assert!(v.is_nan(), "expected `{field}`[{i}] to be NaN, got {v}");
+    }
 }
 
 // =============================================================================
@@ -285,6 +311,20 @@ fn linear_regression_fits() {
         ];
         let out = rls_fit(&inputs).expect("rls_fit failed");
         assert_n_obs_nonzero(&out, "n_observations");
+
+        // Additive `_with` variant (#16.1-03): old contract == new default.
+        let default_kwargs = RlsKwargs::default();
+        let out_with = rls_fit_with(&inputs, &default_kwargs).expect("rls_fit_with failed");
+        assert_eq!(
+            out, out_with,
+            "rls_fit must equal fit_with at default kwargs"
+        );
+
+        let tight_kwargs = RlsKwargs {
+            initial_p_diagonal: 1e-3,
+        };
+        let _ = rls_fit_with(&inputs, &tight_kwargs)
+            .expect("rls_fit_with(initial_p_diagonal=1e-3) failed");
     }
 
     // -----------------------------------------------------------------
@@ -410,6 +450,13 @@ fn linear_regression_fits() {
             series_f64("x1", &x),
         ];
         let _ = rls_summary_fit(&inputs).expect("rls_summary_fit failed");
+        let _ = rls_summary_fit_with(
+            &inputs,
+            &RlsKwargs {
+                initial_p_diagonal: 1e-3,
+            },
+        )
+        .expect("rls_summary_fit_with(initial_p_diagonal=1e-3) failed");
     }
     {
         let inputs = vec![
@@ -507,6 +554,29 @@ fn linear_regression_fits() {
         ];
         let out = rls_predict_fit(&inputs, kwargs()).expect("rls_predict_fit failed");
         assert_eq!(out.len(), y.len());
+
+        let out_with = rls_predict_fit_with(
+            &inputs,
+            RlsPredictKwargs {
+                prefix: "p".to_string(),
+                initial_p_diagonal: 1e6,
+            },
+        )
+        .expect("rls_predict_fit_with failed");
+        assert_eq!(
+            out, out_with,
+            "rls_predict_fit must equal predict_fit_with at default kwargs"
+        );
+
+        let out_tight = rls_predict_fit_with(
+            &inputs,
+            RlsPredictKwargs {
+                prefix: "p".to_string(),
+                initial_p_diagonal: 1e-3,
+            },
+        )
+        .expect("rls_predict_fit_with(initial_p_diagonal=1e-3) failed");
+        assert_eq!(out_tight.len(), y.len());
     }
 
     // bls_predict: + lower + upper.
@@ -672,6 +742,23 @@ fn glm_fits() {
         assert_n_obs_nonzero(&out, "n_observations");
         let _ =
             negative_binomial_summary_fit(&inputs).expect("negative_binomial_summary_fit failed");
+
+        // Additive `_with` variants (#16.1-03): old contract == new default.
+        let default_kwargs = NegativeBinomialKwargs::default();
+        let out_with = negative_binomial_fit_with(&inputs, &default_kwargs)
+            .expect("negative_binomial_fit_with failed");
+        assert_eq!(
+            out, out_with,
+            "negative_binomial_fit must equal fit_with at default kwargs"
+        );
+
+        let dispersion_kwargs = NegativeBinomialKwargs {
+            estimate_dispersion: true,
+        };
+        let _ = negative_binomial_fit_with(&inputs, &dispersion_kwargs)
+            .expect("negative_binomial_fit_with(estimate_dispersion=true) failed");
+        let _ = negative_binomial_summary_fit_with(&inputs, &dispersion_kwargs)
+            .expect("negative_binomial_summary_fit_with(estimate_dispersion=true) failed");
     }
 
     // tweedie_fit: y, var_power, lambda, with_intercept, x...
@@ -791,6 +878,29 @@ fn glm_fits() {
         let out = negative_binomial_predict_fit(&inputs, kwargs())
             .expect("negative_binomial_predict_fit failed");
         assert_eq!(out.len(), y_cnt.len());
+
+        let out_with = negative_binomial_predict_fit_with(
+            &inputs,
+            NegativeBinomialPredictKwargs {
+                prefix: "p".to_string(),
+                estimate_dispersion: false,
+            },
+        )
+        .expect("negative_binomial_predict_fit_with failed");
+        assert_eq!(
+            out, out_with,
+            "negative_binomial_predict_fit must equal predict_fit_with at default kwargs"
+        );
+
+        let out_dispersion = negative_binomial_predict_fit_with(
+            &inputs,
+            NegativeBinomialPredictKwargs {
+                prefix: "p".to_string(),
+                estimate_dispersion: true,
+            },
+        )
+        .expect("negative_binomial_predict_fit_with(estimate_dispersion=true) failed");
+        assert_eq!(out_dispersion.len(), y_cnt.len());
     }
 
     // tweedie_predict: y, lambda, with_intercept, interval, level, null_policy, var_power, x...
@@ -852,6 +962,148 @@ fn glm_fits() {
         ];
         let out = alm_predict_fit(&inputs, kwargs()).expect("alm_predict_fit failed");
         assert_eq!(out.len(), y_pos.len());
+    }
+
+    // penalized_glm_*_fit: y, offset, x... + PenalizedGlmKwargs (phase 16.2 plan 04, UPST-05)
+    {
+        let inputs = vec![
+            series_f64("y", &y_cnt),
+            scalar_f64("offset", 0.0),
+            series_f64("x1", &x_cnt),
+        ];
+        let poisson_kwargs = PenalizedGlmKwargs {
+            family: "poisson".to_string(),
+            ..Default::default()
+        };
+
+        let out = penalized_glm_fit(&inputs, &poisson_kwargs).expect("penalized_glm_fit failed");
+        assert_n_obs_nonzero(&out, "n_observations");
+
+        let summary = penalized_glm_summary_fit(&inputs, &poisson_kwargs)
+            .expect("penalized_glm_summary_fit failed");
+        let summary_list = summary
+            .list()
+            .expect("summary must be List type")
+            .get_as_series(0)
+            .expect("summary list must have one element");
+        assert!(
+            !summary_list.is_empty(),
+            "expected a non-empty penalized_glm_summary_fit list"
+        );
+
+        let predict = penalized_glm_predict_fit(&inputs, &poisson_kwargs)
+            .expect("penalized_glm_predict_fit failed");
+        assert_eq!(predict.len(), y_cnt.len());
+
+        // Err (no panic) for an invalid family.
+        let bad_family = PenalizedGlmKwargs {
+            family: "poison".to_string(),
+            ..Default::default()
+        };
+        assert!(penalized_glm_fit(&inputs, &bad_family).is_err());
+
+        // Err (no panic) for estimate_dispersion on a non-Poisson family.
+        let bad_dispersion = PenalizedGlmKwargs {
+            family: "gamma".to_string(),
+            estimate_dispersion: true,
+            ..Default::default()
+        };
+        assert!(penalized_glm_fit(&inputs, &bad_dispersion).is_err());
+    }
+
+    // aft_*_fit: time, event, x... + AftKwargs (phase 16.2 plan 05, UPST-06)
+    {
+        let time: Vec<f64> = x_cnt.iter().map(|&xi| xi + 1.0).collect();
+        let event: Vec<bool> = (0..time.len()).map(|i| i % 3 != 0).collect();
+        let inputs = vec![
+            series_f64("time", &time),
+            series_bool("event", &event),
+            series_f64("x1", &x_cnt),
+        ];
+        let weibull_kwargs = AftKwargs {
+            distribution: "weibull".to_string(),
+            ..Default::default()
+        };
+
+        let out = aft_fit(&inputs, &weibull_kwargs).expect("aft_fit failed");
+        assert_n_obs_nonzero(&out, "n_observations");
+
+        let summary = aft_summary_fit(&inputs, &weibull_kwargs).expect("aft_summary_fit failed");
+        let summary_list = summary
+            .list()
+            .expect("summary must be List type")
+            .get_as_series(0)
+            .expect("summary list must have one element");
+        assert!(
+            !summary_list.is_empty(),
+            "expected a non-empty aft_summary_fit list"
+        );
+
+        let median_kwargs = AftKwargs {
+            distribution: "weibull".to_string(),
+            p: 0.5,
+            ..Default::default()
+        };
+        let quantile = aft_predict_quantile_fit(&inputs, &median_kwargs)
+            .expect("aft_predict_quantile_fit failed");
+        assert_eq!(quantile.len(), time.len());
+
+        let median =
+            aft_predict_median_fit(&inputs, &median_kwargs).expect("aft_predict_median_fit failed");
+        assert_eq!(median.len(), time.len());
+
+        let survival_kwargs = AftKwargs {
+            distribution: "weibull".to_string(),
+            t: 1.0,
+            ..Default::default()
+        };
+        let survival = aft_predict_survival_fit(&inputs, &survival_kwargs)
+            .expect("aft_predict_survival_fit failed");
+        assert_eq!(survival.len(), time.len());
+
+        let cdf =
+            aft_predict_cdf_fit(&inputs, &survival_kwargs).expect("aft_predict_cdf_fit failed");
+        assert_eq!(cdf.len(), time.len());
+
+        // CR-01 regression: an invalid numeric event code (e.g. R's 1/2
+        // coding) must produce the same all-NaN prediction struct `aft_fit`
+        // returns for the equivalent input across all four predict
+        // expressions — never be silently misread as "censored".
+        let bad_event: Vec<f64> = (0..time.len())
+            .map(|i| {
+                if i == 0 {
+                    2.0
+                } else if event[i] {
+                    1.0
+                } else {
+                    0.0
+                }
+            })
+            .collect();
+        let bad_inputs = vec![
+            series_f64("time", &time),
+            series_f64("event", &bad_event),
+            series_f64("x1", &x_cnt),
+        ];
+        let bad_quantile = aft_predict_quantile_fit(&bad_inputs, &median_kwargs)
+            .expect("aft_predict_quantile_fit should NaN-fill, not error, on invalid event");
+        assert_f64_all_nan(&bad_quantile, "aft_prediction");
+        let bad_median = aft_predict_median_fit(&bad_inputs, &median_kwargs)
+            .expect("aft_predict_median_fit should NaN-fill, not error, on invalid event");
+        assert_f64_all_nan(&bad_median, "aft_prediction");
+        let bad_survival = aft_predict_survival_fit(&bad_inputs, &survival_kwargs)
+            .expect("aft_predict_survival_fit should NaN-fill, not error, on invalid event");
+        assert_f64_all_nan(&bad_survival, "aft_prediction");
+        let bad_cdf = aft_predict_cdf_fit(&bad_inputs, &survival_kwargs)
+            .expect("aft_predict_cdf_fit should NaN-fill, not error, on invalid event");
+        assert_f64_all_nan(&bad_cdf, "aft_prediction");
+
+        // Err (no panic) for an invalid distribution.
+        let bad_distribution = AftKwargs {
+            distribution: "gompertz".to_string(),
+            ..Default::default()
+        };
+        assert!(aft_fit(&inputs, &bad_distribution).is_err());
     }
 }
 
@@ -1175,6 +1427,10 @@ fn nonparametric_tests() {
     let (a, b) = two_samples();
 
     // mann_whitney_u_fit: x, y, alternative, continuity_correction, exact, conf_level, mu
+    //
+    // Phase 16.2 UPST-07: the struct widened to statistic/p_value/estimate/ci_lower/ci_upper.
+    // Assert the field-name contract and that `estimate` is finite with conf_level set and
+    // NaN without it.
     {
         let inputs = vec![
             series_f64("x", &a),
@@ -1185,10 +1441,60 @@ fn nonparametric_tests() {
             scalar_f64("conf_level", 0.95),
             scalar_f64("mu", 0.0),
         ];
-        let _ = mann_whitney_u_fit(&inputs).expect("mann_whitney_u_fit failed");
+        let out = mann_whitney_u_fit(&inputs).expect("mann_whitney_u_fit failed");
+        let st = out.struct_().expect("expected struct series");
+        let field_names: Vec<String> = st
+            .struct_fields()
+            .iter()
+            .map(|f| f.name().to_string())
+            .collect();
+        assert_eq!(
+            field_names,
+            vec!["statistic", "p_value", "estimate", "ci_lower", "ci_upper"],
+            "mann_whitney_u_fit struct field names changed"
+        );
+        let estimate_val = st
+            .field_by_name("estimate")
+            .unwrap()
+            .f64()
+            .unwrap()
+            .get(0)
+            .unwrap();
+        assert!(
+            estimate_val.is_finite(),
+            "mann_whitney_u_fit estimate should be finite with conf_level set, got {estimate_val}"
+        );
+
+        let inputs_no_conf = vec![
+            series_f64("x", &a),
+            series_f64("y", &b),
+            scalar_str("alternative", "two-sided"),
+            scalar_bool("continuity_correction", true),
+            scalar_bool("exact", false),
+            scalar_f64_null("conf_level"),
+            scalar_f64("mu", 0.0),
+        ];
+        let out_no_conf = mann_whitney_u_fit(&inputs_no_conf).expect("mann_whitney_u_fit failed");
+        let estimate_no_conf = out_no_conf
+            .struct_()
+            .unwrap()
+            .field_by_name("estimate")
+            .unwrap()
+            .f64()
+            .unwrap()
+            .get(0)
+            .unwrap();
+        assert!(
+            estimate_no_conf.is_nan(),
+            "mann_whitney_u_fit estimate should be NaN without conf_level, got {estimate_no_conf}"
+        );
     }
 
     // wilcoxon_signed_rank_fit: x, y, alternative, continuity_correction, exact, conf_level, mu
+    //
+    // Phase 16.2 UPST-07: the struct widened to statistic/p_value/estimate/ci_lower/ci_upper.
+    // Assert the field-name contract and that `estimate` is finite with conf_level set and
+    // NaN without it.
     {
         let inputs = vec![
             series_f64("x", &a),
@@ -1199,7 +1505,54 @@ fn nonparametric_tests() {
             scalar_f64("conf_level", 0.95),
             scalar_f64("mu", 0.0),
         ];
-        let _ = wilcoxon_signed_rank_fit(&inputs).expect("wilcoxon_signed_rank_fit failed");
+        let out = wilcoxon_signed_rank_fit(&inputs).expect("wilcoxon_signed_rank_fit failed");
+        let st = out.struct_().expect("expected struct series");
+        let field_names: Vec<String> = st
+            .struct_fields()
+            .iter()
+            .map(|f| f.name().to_string())
+            .collect();
+        assert_eq!(
+            field_names,
+            vec!["statistic", "p_value", "estimate", "ci_lower", "ci_upper"],
+            "wilcoxon_signed_rank_fit struct field names changed"
+        );
+        let estimate_val = st
+            .field_by_name("estimate")
+            .unwrap()
+            .f64()
+            .unwrap()
+            .get(0)
+            .unwrap();
+        assert!(
+            estimate_val.is_finite(),
+            "wilcoxon_signed_rank_fit estimate should be finite with conf_level set, got {estimate_val}"
+        );
+
+        let inputs_no_conf = vec![
+            series_f64("x", &a),
+            series_f64("y", &b),
+            scalar_str("alternative", "two-sided"),
+            scalar_bool("continuity_correction", true),
+            scalar_bool("exact", false),
+            scalar_f64_null("conf_level"),
+            scalar_f64("mu", 0.0),
+        ];
+        let out_no_conf =
+            wilcoxon_signed_rank_fit(&inputs_no_conf).expect("wilcoxon_signed_rank_fit failed");
+        let estimate_no_conf = out_no_conf
+            .struct_()
+            .unwrap()
+            .field_by_name("estimate")
+            .unwrap()
+            .f64()
+            .unwrap()
+            .get(0)
+            .unwrap();
+        assert!(
+            estimate_no_conf.is_nan(),
+            "wilcoxon_signed_rank_fit estimate should be NaN without conf_level, got {estimate_no_conf}"
+        );
     }
 
     // kruskal_wallis_fit: each input series is a separate group.
@@ -1357,7 +1710,8 @@ fn correlation_fits() {
 
 #[test]
 fn categorical_fits() {
-    // binom_test_fit: successes (u32), n (u32), p0 (f64), alternative (str)
+    // binom_test_fit: successes (u32), n (u32), p0 (f64), alternative (str) [old arity:
+    // no conf_level — proves the tolerant trailing read still works]
     {
         let inputs = vec![
             scalar_u32("successes", 7),
@@ -1365,10 +1719,21 @@ fn categorical_fits() {
             scalar_f64("p0", 0.5),
             scalar_str("alternative", "two-sided"),
         ];
-        let _ = binom_test_fit(&inputs).expect("binom_test_fit failed");
+        let _ = binom_test_fit(&inputs).expect("binom_test_fit failed (old arity)");
+    }
+    // binom_test_fit: new arity, trailing conf_level
+    {
+        let inputs = vec![
+            scalar_u32("successes", 7),
+            scalar_u32("n", 10),
+            scalar_f64("p0", 0.5),
+            scalar_str("alternative", "two-sided"),
+            scalar_f64("conf_level", 0.9),
+        ];
+        let _ = binom_test_fit(&inputs).expect("binom_test_fit failed (new arity)");
     }
 
-    // prop_test_one_fit
+    // prop_test_one_fit [old arity]
     {
         let inputs = vec![
             scalar_u32("successes", 30),
@@ -1376,10 +1741,21 @@ fn categorical_fits() {
             scalar_f64("p0", 0.4),
             scalar_str("alternative", "two-sided"),
         ];
-        let _ = prop_test_one_fit(&inputs).expect("prop_test_one_fit failed");
+        let _ = prop_test_one_fit(&inputs).expect("prop_test_one_fit failed (old arity)");
+    }
+    // prop_test_one_fit: new arity, trailing conf_level
+    {
+        let inputs = vec![
+            scalar_u32("successes", 30),
+            scalar_u32("n", 100),
+            scalar_f64("p0", 0.4),
+            scalar_str("alternative", "two-sided"),
+            scalar_f64("conf_level", 0.9),
+        ];
+        let _ = prop_test_one_fit(&inputs).expect("prop_test_one_fit failed (new arity)");
     }
 
-    // prop_test_two_fit
+    // prop_test_two_fit [old arity]
     {
         let inputs = vec![
             scalar_u32("s1", 30),
@@ -1389,7 +1765,20 @@ fn categorical_fits() {
             scalar_str("alternative", "two-sided"),
             scalar_bool("correction", false),
         ];
-        let _ = prop_test_two_fit(&inputs).expect("prop_test_two_fit failed");
+        let _ = prop_test_two_fit(&inputs).expect("prop_test_two_fit failed (old arity)");
+    }
+    // prop_test_two_fit: new arity, trailing conf_level
+    {
+        let inputs = vec![
+            scalar_u32("s1", 30),
+            scalar_u32("n1", 100),
+            scalar_u32("s2", 25),
+            scalar_u32("n2", 100),
+            scalar_str("alternative", "two-sided"),
+            scalar_bool("correction", false),
+            scalar_f64("conf_level", 0.9),
+        ];
+        let _ = prop_test_two_fit(&inputs).expect("prop_test_two_fit failed (new arity)");
     }
 
     // chisq_test_fit: 2x2 flattened table (u32 series of length 4), n_rows, n_cols, correction.
@@ -1418,7 +1807,7 @@ fn categorical_fits() {
         let _ = g_test_fit(&inputs).expect("g_test_fit failed");
     }
 
-    // fisher_exact_fit: a, b, c, d, alternative
+    // fisher_exact_fit: a, b, c, d, alternative [old arity — no conf_level]
     {
         let inputs = vec![
             scalar_u32("a", 8),
@@ -1427,8 +1816,30 @@ fn categorical_fits() {
             scalar_u32("d", 5),
             scalar_str("alternative", "two-sided"),
         ];
-        let _ = fisher_exact_fit(&inputs).expect("fisher_exact_fit failed");
+        let out = fisher_exact_fit(&inputs).expect("fisher_exact_fit failed (old arity)");
+        let n_fields = match out.dtype() {
+            DataType::Struct(fields) => fields.len(),
+            other => panic!("expected a Struct dtype, got {other:?}"),
+        };
+        assert_eq!(
+            n_fields, 4,
+            "fisher_exact_fit output must have exactly 4 struct fields"
+        );
     }
+    // fisher_exact_fit: new arity, trailing conf_level
+    {
+        let inputs = vec![
+            scalar_u32("a", 8),
+            scalar_u32("b", 2),
+            scalar_u32("c", 1),
+            scalar_u32("d", 5),
+            scalar_str("alternative", "two-sided"),
+            scalar_f64("conf_level", 0.9),
+        ];
+        let _ = fisher_exact_fit(&inputs).expect("fisher_exact_fit failed (new arity)");
+    }
+    // fisher_exact_conditional_fit is smoke-tested in effect_size_and_resampling_fits
+    // below, alongside the other new-this-phase statistics functions.
 
     // mcnemar_test_fit: a, b, c, d, correction
     {
@@ -1488,6 +1899,165 @@ fn categorical_fits() {
         let table = Series::new("table".into(), &[10u32, 20, 30, 40]);
         let inputs = vec![table, scalar_u32("n_rows", 2), scalar_u32("n_cols", 2)];
         let _ = contingency_coef_fit(&inputs).expect("contingency_coef_fit failed");
+    }
+}
+
+// =============================================================================
+// Effect sizes (Plan 02), Jarque-Bera and bootstrap CIs (Plan 04) — statistics
+// *_fit smoke tests added/changed in Phase 16.1.
+// =============================================================================
+
+#[test]
+#[allow(clippy::excessive_precision)]
+fn effect_size_and_resampling_fits() {
+    // Same X/Y fixture as tests/test_effect_sizes.py (R effectsize reference values).
+    let x: Vec<f64> = vec![5.1, 4.9, 6.2, 5.8, 6.05, 5.5, 5.3, 6.1];
+    let y: Vec<f64> = vec![6.5, 7.1, 6.8, 7.4, 6.0, 7.9, 6.6, 7.2, 6.9, 7.05];
+    let y8 = &y[..8];
+
+    fn effect_size_estimate(s: &Series) -> f64 {
+        let st = s.struct_().unwrap();
+        st.field_by_name("estimate")
+            .unwrap()
+            .f64()
+            .unwrap()
+            .get(0)
+            .unwrap_or(f64::NAN)
+    }
+
+    // cohens_d_fit: x, y, kind, mu — "student" kind matches the R reference.
+    {
+        let inputs = vec![
+            series_f64("x", &x),
+            series_f64("y", &y),
+            scalar_str("kind", "student"),
+            scalar_f64("mu", 0.0),
+        ];
+        let out = cohens_d_fit(&inputs).expect("cohens_d_fit failed (student)");
+        let d = effect_size_estimate(&out);
+        assert!(
+            (d - (-2.606655378290357)).abs() < 1e-10,
+            "cohens_d student estimate mismatch: {d}"
+        );
+    }
+    {
+        let inputs = vec![
+            series_f64("x", &x),
+            series_f64("y", &y),
+            scalar_str("kind", "welch"),
+            scalar_f64("mu", 0.0),
+        ];
+        let _ = cohens_d_fit(&inputs).expect("cohens_d_fit failed (welch)");
+    }
+    {
+        let inputs = vec![
+            series_f64("x", &x),
+            series_f64("y", y8),
+            scalar_str("kind", "paired"),
+            scalar_f64("mu", 0.0),
+        ];
+        let _ = cohens_d_fit(&inputs).expect("cohens_d_fit failed (paired)");
+    }
+
+    // cohens_d_one_sample_fit: x, mu
+    {
+        let inputs = vec![series_f64("x", &x), scalar_f64("mu", 0.0)];
+        let _ = cohens_d_one_sample_fit(&inputs).expect("cohens_d_one_sample_fit failed");
+    }
+
+    // rank_biserial_fit: x, y, mu (nullable) — matches the R reference (0.925).
+    {
+        let inputs = vec![
+            series_f64("x", &x),
+            series_f64("y", &y),
+            scalar_f64_null("mu"),
+        ];
+        let out = rank_biserial_fit(&inputs).expect("rank_biserial_fit failed");
+        let r = effect_size_estimate(&out);
+        assert!(
+            (r - 0.925).abs() < 1e-12,
+            "rank_biserial estimate mismatch: {r}"
+        );
+    }
+
+    // matched_pairs_rank_biserial_fit: x, y (equal length), mu (nullable)
+    {
+        let inputs = vec![
+            series_f64("x", &x),
+            series_f64("y", y8),
+            scalar_f64_null("mu"),
+        ];
+        let _ = matched_pairs_rank_biserial_fit(&inputs)
+            .expect("matched_pairs_rank_biserial_fit failed");
+    }
+
+    // rank_biserial_from_u_fit: u1 (f64), n1 (u32), n2 (u32)
+    {
+        let inputs = vec![
+            scalar_f64("u1", 10.0),
+            scalar_u32("n1", 8),
+            scalar_u32("n2", 10),
+        ];
+        let _ = rank_biserial_from_u_fit(&inputs).expect("rank_biserial_from_u_fit failed");
+    }
+
+    // jarque_bera_fit: x only — matches the R tseries::jarque.bera.test reference.
+    {
+        let jb_x: Vec<f64> = vec![2.1, 3.4, 1.9, 5.6, 4.4, 3.3, 2.8, 9.7, 3.0, 4.1];
+        let inputs = vec![series_f64("x", &jb_x)];
+        let out = jarque_bera_fit(&inputs).expect("jarque_bera_fit failed");
+        let st = out.struct_().unwrap();
+        let statistic = st
+            .field_by_name("statistic")
+            .unwrap()
+            .f64()
+            .unwrap()
+            .get(0)
+            .unwrap_or(f64::NAN);
+        assert!(
+            (statistic - 6.1833442919626558).abs() < 1e-10,
+            "jarque_bera statistic mismatch: {statistic}"
+        );
+    }
+
+    // bootstrap_mean_ci_fit: x, n_bootstrap, conf_level, block_length, seed (nullable)
+    let boot_x: Vec<f64> = (1..=10).map(|v| v as f64).collect();
+    for block_length in [0u32, 3u32] {
+        let inputs = vec![
+            series_f64("x", &boot_x),
+            scalar_u32("n_bootstrap", 1000),
+            scalar_f64("conf_level", 0.95),
+            scalar_u32("block_length", block_length),
+            scalar_u64("seed", 7),
+        ];
+        let _ = bootstrap_mean_ci_fit(&inputs)
+            .expect("bootstrap_mean_ci_fit failed (block_length variant)");
+    }
+
+    // bootstrap_ci_fit: x, statistic (str), n_bootstrap, conf_level, seed (nullable)
+    for statistic in ["mean", "median", "std"] {
+        let inputs = vec![
+            series_f64("x", &boot_x),
+            scalar_str("statistic", statistic),
+            scalar_u32("n_bootstrap", 1000),
+            scalar_f64("conf_level", 0.95),
+            scalar_u64("seed", 7),
+        ];
+        let _ = bootstrap_ci_fit(&inputs)
+            .unwrap_or_else(|_| panic!("bootstrap_ci_fit failed (statistic = {statistic})"));
+    }
+
+    // fisher_exact_conditional_fit: a, b, c, d, alternative, conf_level
+    {
+        let inputs = vec![
+            scalar_u32("a", 8),
+            scalar_u32("b", 2),
+            scalar_u32("c", 1),
+            scalar_u32("d", 5),
+            scalar_str("alternative", "two-sided"),
+            scalar_f64("conf_level", 0.95),
+        ];
+        let _ = fisher_exact_conditional_fit(&inputs).expect("fisher_exact_conditional_fit failed");
     }
 }
 
@@ -2506,4 +3076,460 @@ fn bls_column_pivot_fix_differently_scaled() {
         (c2 - 3.0).abs() < 1e-6,
         "pivot BLS x2 coef: expected 3.0, got {c2}"
     );
+}
+
+#[test]
+fn posthoc_fits() {
+    // p_adjust_fit: p, method
+    {
+        let inputs = vec![
+            series_f64("p", &[0.01, 0.02, 0.03, 0.04]),
+            scalar_str("method", "holm"),
+        ];
+        let out = p_adjust_fit(&inputs).expect("p_adjust_fit failed");
+        assert_eq!(
+            out.len(),
+            4,
+            "p_adjust_fit output length must equal input length"
+        );
+    }
+
+    // ptukey_fit / qtukey_fit: q|p, nmeans, df, nranges, lower_tail
+    {
+        let inputs = vec![
+            series_f64("q", &[1.0, 2.0, 3.0]),
+            scalar_f64("nmeans", 3.0),
+            scalar_f64("df", 10.0),
+            scalar_f64("nranges", 1.0),
+            scalar_bool("lower_tail", true),
+        ];
+        let out = ptukey_fit(&inputs).expect("ptukey_fit failed");
+        assert_eq!(
+            out.len(),
+            3,
+            "ptukey_fit output length must equal input length"
+        );
+    }
+    {
+        let inputs = vec![
+            series_f64("p", &[0.5, 0.9, 0.95]),
+            scalar_f64("nmeans", 3.0),
+            scalar_f64("df", 10.0),
+            scalar_f64("nranges", 1.0),
+            scalar_bool("lower_tail", true),
+        ];
+        let out = qtukey_fit(&inputs).expect("qtukey_fit failed");
+        assert_eq!(
+            out.len(),
+            3,
+            "qtukey_fit output length must equal input length"
+        );
+    }
+
+    // tukey_hsd_fit / pairwise_t_test_fit / dunn_test_fit: values, groups, ...
+    // 3 groups ("a", "b", "c") x 4 values each -> 3 pairwise rows (k(k-1)/2 with k=3).
+    let values: Vec<f64> = vec![
+        1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0,
+    ];
+    let groups = ["a", "a", "a", "a", "b", "b", "b", "b", "c", "c", "c", "c"];
+
+    {
+        let inputs = vec![
+            series_f64("values", &values),
+            series_str("groups", &groups),
+            scalar_f64("conf_level", 0.95),
+        ];
+        let out = tukey_hsd_fit(&inputs).expect("tukey_hsd_fit failed");
+        let rows = out.list().unwrap().get_as_series(0).unwrap();
+        assert_eq!(rows.len(), 3, "3 groups must give 3 pairwise rows");
+    }
+    {
+        let inputs = vec![
+            series_f64("values", &values),
+            series_str("groups", &groups),
+            scalar_bool("pooled_sd", true),
+            scalar_str("p_adjust_method", "holm"),
+            scalar_str("alternative", "two-sided"),
+        ];
+        let out = pairwise_t_test_fit(&inputs).expect("pairwise_t_test_fit failed");
+        let rows = out.list().unwrap().get_as_series(0).unwrap();
+        assert_eq!(rows.len(), 3, "3 groups must give 3 pairwise rows");
+    }
+    {
+        let inputs = vec![
+            series_f64("values", &values),
+            series_str("groups", &groups),
+            scalar_str("p_adjust_method", "holm"),
+        ];
+        let out = dunn_test_fit(&inputs).expect("dunn_test_fit failed");
+        let rows = out.list().unwrap().get_as_series(0).unwrap();
+        assert_eq!(rows.len(), 3, "3 groups must give 3 pairwise rows");
+    }
+}
+
+#[test]
+fn eb_shrink_fits() {
+    // eb_shrink_fit: estimate, std_error, method, tau_squared
+    let yi = [0.10, 0.30, 0.35, 0.65, 1.00];
+    let sei = [0.30, 0.10, 0.50, 0.20, 0.40];
+    let inputs = vec![
+        series_f64("estimate", &yi),
+        series_f64("std_error", &sei),
+        scalar_str("method", "dl"),
+        scalar_f64_null("tau_squared"),
+    ];
+    let out = eb_shrink_fit(&inputs).expect("eb_shrink_fit failed");
+    assert_eq!(
+        out.len(),
+        5,
+        "eb_shrink_fit output length must equal input length"
+    );
+    let ca = out.struct_().expect("expected struct series");
+    let mu_s = ca
+        .field_by_name("mu")
+        .expect("eb_shrink_fit output missing mu field");
+    let mu = mu_s.f64().unwrap().get(0).expect("mu must not be null");
+    assert!(mu.is_finite(), "mu must be finite, got {mu}");
+}
+
+#[test]
+fn augment_fits() {
+    // augment_fit: y, weights (nullable), x...
+    let y = [1.0, 2.0, 3.0, 4.0, 5.0];
+    let x0 = [1.0, 2.0, 1.5, 3.0, 2.5];
+    let x1 = [2.0, 1.0, 3.0, 1.5, 2.0];
+
+    {
+        let inputs = vec![
+            series_f64("y", &y),
+            scalar_f64_null("weights"),
+            series_f64("x0", &x0),
+            series_f64("x1", &x1),
+        ];
+        let kwargs = AugmentKwargs {
+            model: "ols".to_string(),
+            ..Default::default()
+        };
+        let out = augment_fit(&inputs, &kwargs).expect("augment_fit (ols) failed");
+        assert_eq!(
+            out.len(),
+            y.len(),
+            "augment_fit (ols) output length must equal input length"
+        );
+        let ca = out.struct_().expect("expected struct series");
+        let lev_s = ca
+            .field_by_name("leverage")
+            .expect("augment_fit output missing leverage field");
+        let lev = lev_s
+            .f64()
+            .unwrap()
+            .get(0)
+            .expect("leverage must not be null");
+        assert!(lev.is_finite(), "leverage must be finite, got {lev}");
+    }
+
+    {
+        let carb = [1.0, 2.0, 4.0, 1.0, 2.0, 1.0, 4.0, 2.0];
+        let wt = [2.62, 2.875, 2.32, 3.215, 3.44, 3.46, 3.57, 3.19];
+        let hp = [110.0, 110.0, 93.0, 110.0, 175.0, 105.0, 245.0, 62.0];
+        let inputs = vec![
+            series_f64("carb", &carb),
+            scalar_f64_null("weights"),
+            series_f64("wt", &wt),
+            series_f64("hp", &hp),
+        ];
+        let kwargs = AugmentKwargs {
+            model: "poisson".to_string(),
+            ..Default::default()
+        };
+        let out = augment_fit(&inputs, &kwargs).expect("augment_fit (poisson) failed");
+        assert_eq!(
+            out.len(),
+            carb.len(),
+            "augment_fit (poisson) output length must equal input length"
+        );
+        let ca = out.struct_().expect("expected struct series");
+        let lev_s = ca
+            .field_by_name("leverage")
+            .expect("augment_fit output missing leverage field");
+        let lev = lev_s
+            .f64()
+            .unwrap()
+            .get(0)
+            .expect("leverage must not be null");
+        assert!(lev.is_finite(), "leverage must be finite, got {lev}");
+    }
+}
+
+// =============================================================================
+// alias_tolerance (anofox-regression 0.5.21 #64): the six `*_fit_with`
+// variants on a near-collinear design (issue #64 data, ratio=2e-7 -- the
+// default R-lm tolerance (1e-7) keeps this column; alias_tolerance=1e-6
+// aliases it).
+// =============================================================================
+
+fn alias_t64(i: usize) -> f64 {
+    i as f64
+}
+
+fn alias_x1_64() -> Vec<f64> {
+    (0..60).map(|i| alias_t64(i) / 10.0).collect()
+}
+
+fn alias_x2_64() -> Vec<f64> {
+    (0..60).map(|i| alias_t64(i).sin()).collect()
+}
+
+fn alias_y_64() -> Vec<f64> {
+    (0..60)
+        .map(|i| {
+            let t = alias_t64(i);
+            2.0 + 1.5 * t / 10.0 - 0.8 * t.sin() + 0.3 * (7.0 * t).cos()
+        })
+        .collect()
+}
+
+/// Unit vector: residual of sin(13t) regressed on [1, x1, x2] (OLS with
+/// intercept), matching the upstream/Python `near_direction()` generator.
+fn alias_near_direction_64() -> Vec<f64> {
+    let x1 = alias_x1_64();
+    let x2 = alias_x2_64();
+    let e0: Vec<f64> = (0..60).map(|i| (13.0 * alias_t64(i)).sin()).collect();
+
+    let inputs = vec![
+        series_f64("y", &e0),
+        scalar_bool("with_intercept", true),
+        scalar_str_null("solve_method"),
+        series_f64("x1", &x1),
+        series_f64("x2", &x2),
+    ];
+    let out = ols_fit_with(&inputs, &LinearAliasKwargs::default()).expect("ols_fit_with failed");
+    let st = out.struct_().unwrap();
+    let intercept = st
+        .field_by_name("intercept")
+        .unwrap()
+        .f64()
+        .unwrap()
+        .get(0)
+        .unwrap();
+    let coefs = st
+        .field_by_name("coefficients")
+        .unwrap()
+        .list()
+        .unwrap()
+        .get_as_series(0)
+        .unwrap();
+    let c0 = coefs.f64().unwrap().get(0).unwrap();
+    let c1 = coefs.f64().unwrap().get(1).unwrap();
+
+    let residual: Vec<f64> = (0..60)
+        .map(|i| e0[i] - (intercept + c0 * x1[i] + c1 * x2[i]))
+        .collect();
+    let norm: f64 = residual.iter().map(|v| v * v).sum::<f64>().sqrt();
+    residual.iter().map(|v| v / norm).collect()
+}
+
+/// `(x1, x2, x3)` where x3 is `ratio`-near-collinear with `[x1, x2]`.
+fn alias_near_64(ratio: f64) -> (Vec<f64>, Vec<f64>, Vec<f64>) {
+    let x1 = alias_x1_64();
+    let x2 = alias_x2_64();
+    let base: Vec<f64> = (0..60).map(|i| x1[i] + x2[i]).collect();
+    let nb: f64 = base.iter().map(|v| v * v).sum::<f64>().sqrt();
+    let e = alias_near_direction_64();
+    let x3: Vec<f64> = (0..60).map(|i| base[i] + ratio * nb * e[i]).collect();
+    (x1, x2, x3)
+}
+
+#[test]
+fn alias_tolerance_fits() {
+    let (x1, x2, x3) = alias_near_64(2e-7);
+    let y = alias_y_64();
+    let n = y.len();
+    let tight_kwargs = LinearAliasKwargs {
+        alias_tolerance: 1e-6,
+    };
+
+    // ols_fit_with: x3 (3rd feature) is aliased -> NaN coefficient; the
+    // default (omitted) tolerance keeps it.
+    {
+        let inputs = vec![
+            series_f64("y", &y),
+            scalar_bool("with_intercept", true),
+            scalar_str_null("solve_method"),
+            series_f64("x1", &x1),
+            series_f64("x2", &x2),
+            series_f64("x3", &x3),
+        ];
+        let out = ols_fit_with(&inputs, &tight_kwargs).expect("ols_fit_with failed");
+        let st = out.struct_().unwrap();
+        let coefs = st
+            .field_by_name("coefficients")
+            .unwrap()
+            .list()
+            .unwrap()
+            .get_as_series(0)
+            .unwrap();
+        let c2 = coefs.f64().unwrap().get(2).unwrap();
+        assert!(
+            c2.is_nan(),
+            "ols_fit_with: x3 coefficient should be NaN, got {c2}"
+        );
+
+        let out_default = ols_fit(&inputs).expect("ols_fit failed");
+        let st_default = out_default.struct_().unwrap();
+        let coefs_default = st_default
+            .field_by_name("coefficients")
+            .unwrap()
+            .list()
+            .unwrap()
+            .get_as_series(0)
+            .unwrap();
+        let c2_default = coefs_default.f64().unwrap().get(2).unwrap();
+        assert!(
+            !c2_default.is_nan(),
+            "ols_fit (default tol): x3 should be kept, got NaN"
+        );
+    }
+
+    // wls_fit_with: same, with unit weights.
+    {
+        let w = vec![1.0_f64; n];
+        let inputs = vec![
+            series_f64("y", &y),
+            series_f64("w", &w),
+            scalar_bool("with_intercept", true),
+            scalar_str_null("solve_method"),
+            series_f64("x1", &x1),
+            series_f64("x2", &x2),
+            series_f64("x3", &x3),
+        ];
+        let out = wls_fit_with(&inputs, &tight_kwargs).expect("wls_fit_with failed");
+        let st = out.struct_().unwrap();
+        let coefs = st
+            .field_by_name("coefficients")
+            .unwrap()
+            .list()
+            .unwrap()
+            .get_as_series(0)
+            .unwrap();
+        let c2 = coefs.f64().unwrap().get(2).unwrap();
+        assert!(
+            c2.is_nan(),
+            "wls_fit_with: x3 coefficient should be NaN, got {c2}"
+        );
+    }
+
+    // ols_summary_fit_with: x3 row's estimate (last term) is NaN.
+    {
+        let inputs = vec![
+            series_f64("y", &y),
+            scalar_bool("with_intercept", true),
+            scalar_str_null("solve_method"),
+            scalar_str_null("hc_type"),
+            series_f64("x1", &x1),
+            series_f64("x2", &x2),
+            series_f64("x3", &x3),
+        ];
+        let out =
+            ols_summary_fit_with(&inputs, &tight_kwargs).expect("ols_summary_fit_with failed");
+        let rows = out.list().unwrap().get_as_series(0).unwrap();
+        let struct_ca = rows.struct_().unwrap();
+        let estimates = struct_ca.field_by_name("estimate").unwrap();
+        let estimates = estimates.f64().unwrap();
+        let last = estimates.get(estimates.len() - 1).unwrap();
+        assert!(
+            last.is_nan(),
+            "ols_summary_fit_with: x3 estimate should be NaN, got {last}"
+        );
+    }
+
+    // wls_summary_fit_with: same.
+    {
+        let w = vec![1.0_f64; n];
+        let inputs = vec![
+            series_f64("y", &y),
+            series_f64("w", &w),
+            scalar_bool("with_intercept", true),
+            scalar_str_null("solve_method"),
+            series_f64("x1", &x1),
+            series_f64("x2", &x2),
+            series_f64("x3", &x3),
+        ];
+        let out =
+            wls_summary_fit_with(&inputs, &tight_kwargs).expect("wls_summary_fit_with failed");
+        let rows = out.list().unwrap().get_as_series(0).unwrap();
+        let struct_ca = rows.struct_().unwrap();
+        let estimates = struct_ca.field_by_name("estimate").unwrap();
+        let estimates = estimates.f64().unwrap();
+        let last = estimates.get(estimates.len() - 1).unwrap();
+        assert!(
+            last.is_nan(),
+            "wls_summary_fit_with: x3 estimate should be NaN, got {last}"
+        );
+    }
+
+    // ols_predict_fit_with / wls_predict_fit_with: finite predictions despite
+    // the aliased column.
+    {
+        let inputs = vec![
+            series_f64("y", &y),
+            scalar_bool("with_intercept", true),
+            scalar_str_null("solve_method"),
+            scalar_str_null("interval"),
+            scalar_f64("level", 0.95),
+            scalar_str("null_policy", "drop"),
+            series_f64("x1", &x1),
+            series_f64("x2", &x2),
+            series_f64("x3", &x3),
+        ];
+        let predict_kwargs = LinearAliasPredictKwargs {
+            prefix: "p".to_string(),
+            alias_tolerance: 1e-6,
+        };
+        let out =
+            ols_predict_fit_with(&inputs, predict_kwargs).expect("ols_predict_fit_with failed");
+        assert_eq!(out.len(), n);
+        let ca = out.struct_().unwrap();
+        let preds = ca.field_by_name("p_prediction").unwrap();
+        let preds = preds.f64().unwrap();
+        for i in 0..n {
+            let v = preds.get(i).unwrap();
+            assert!(
+                v.is_finite(),
+                "ols_predict_fit_with: prediction {i} not finite: {v}"
+            );
+        }
+    }
+    {
+        let w = vec![1.0_f64; n];
+        let inputs = vec![
+            series_f64("y", &y),
+            scalar_bool("with_intercept", true),
+            scalar_str_null("solve_method"),
+            scalar_str_null("interval"),
+            scalar_f64("level", 0.95),
+            scalar_str("null_policy", "drop"),
+            series_f64("weights", &w),
+            series_f64("x1", &x1),
+            series_f64("x2", &x2),
+            series_f64("x3", &x3),
+        ];
+        let predict_kwargs = LinearAliasPredictKwargs {
+            prefix: "p".to_string(),
+            alias_tolerance: 1e-6,
+        };
+        let out =
+            wls_predict_fit_with(&inputs, predict_kwargs).expect("wls_predict_fit_with failed");
+        assert_eq!(out.len(), n);
+        let ca = out.struct_().unwrap();
+        let preds = ca.field_by_name("p_prediction").unwrap();
+        let preds = preds.f64().unwrap();
+        for i in 0..n {
+            let v = preds.get(i).unwrap();
+            assert!(
+                v.is_finite(),
+                "wls_predict_fit_with: prediction {i} not finite: {v}"
+            );
+        }
+    }
 }

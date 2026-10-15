@@ -37,7 +37,7 @@ class TestPSpline:
     def test_not_fitted_raises(self):
         """Reading edf before fit raises RuntimeError."""
         model = PSpline()
-        with pytest.raises(Exception):
+        with pytest.raises(RuntimeError, match="not fitted"):
             _ = model.edf
 
     def test_sigma2(self):

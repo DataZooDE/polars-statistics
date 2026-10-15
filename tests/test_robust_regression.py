@@ -1,10 +1,7 @@
 """Tests for robust regression and diagnostic expressions."""
 
-import math
 import numpy as np
 import polars as pl
-import pytest
-
 import polars_statistics as ps
 
 

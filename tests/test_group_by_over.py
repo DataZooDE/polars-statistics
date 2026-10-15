@@ -5,26 +5,33 @@ and return actual numeric results (not NaN/null). Correctness tests to be added 
 """
 
 import math
+
 import numpy as np
 import polars as pl
-import pytest
-
 import polars_statistics as ps
-
+import pytest
 
 # =============================================================================
 # Helper Functions
 # =============================================================================
 
 
-def has_valid_numbers(result: pl.DataFrame, col: str = "result") -> bool:
-    """Check that result column contains valid (non-null, non-NaN) numbers."""
+def has_valid_numbers(result: pl.DataFrame, col: str = "result", *, nan_ok=()) -> bool:
+    """Check that result column contains valid (non-null, non-NaN) numbers.
+
+    `nan_ok` is a tuple of struct field names whose value is permitted to be NaN
+    (e.g. Tweedie `aic`/`bic` have no closed-form density for non-integer
+    `var_power`, so upstream reports NaN there by design — anofox-regression
+    0.5.14 #43). All other fields are checked as before.
+    """
     for row in result[col]:
         if row is None:
             return False
         # Check struct fields for NaN/null
         if isinstance(row, dict):
             for key, val in row.items():
+                if key in nan_ok:
+                    continue
                 if val is None:
                     return False
                 if isinstance(val, float) and math.isnan(val):
@@ -194,11 +201,29 @@ class TestNonParametricGroupBy:
             ps.mann_whitney_u("x", "y").alias("result")
         )
         assert result.shape[0] == 2
+        assert has_valid_numbers(
+            result, nan_ok=("estimate", "ci_lower", "ci_upper")
+        )
+
+    def test_mann_whitney_u_group_by_conf_level(self, df_two_sample):
+        result = df_two_sample.group_by("group").agg(
+            ps.mann_whitney_u("x", "y", conf_level=0.95).alias("result")
+        )
+        assert result.shape[0] == 2
         assert has_valid_numbers(result)
 
     def test_wilcoxon_signed_rank_group_by(self, df_two_sample):
         result = df_two_sample.group_by("group").agg(
             ps.wilcoxon_signed_rank("x", "y").alias("result")
+        )
+        assert result.shape[0] == 2
+        assert has_valid_numbers(
+            result, nan_ok=("estimate", "ci_lower", "ci_upper")
+        )
+
+    def test_wilcoxon_signed_rank_group_by_conf_level(self, df_two_sample):
+        result = df_two_sample.group_by("group").agg(
+            ps.wilcoxon_signed_rank("x", "y", conf_level=0.95).alias("result")
         )
         assert result.shape[0] == 2
         assert has_valid_numbers(result)
@@ -412,8 +437,22 @@ class TestGLMRegressionGroupBy:
         assert has_valid_numbers(result, "model")
 
     def test_tweedie_group_by(self, df_positive):
+        # var_power=1.5 (the Tweedie default) has no closed-form density, so
+        # aic/bic are NaN by design (anofox-regression 0.5.14 #43); coefficients
+        # and dispersion stay finite.
         result = df_positive.group_by("group").agg(
             ps.tweedie("y", "x1", var_power=1.5).alias("model")
+        )
+        assert result.shape[0] == 2
+        assert has_valid_numbers(result, "model", nan_ok=("aic", "bic"))
+        for row in result["model"]:
+            assert math.isnan(row["aic"])
+            assert math.isnan(row["bic"])
+
+    def test_tweedie_closed_form_power_group_by(self, df_positive):
+        # var_power=2.0 (Gamma) has a closed-form density, so aic/bic are finite.
+        result = df_positive.group_by("group").agg(
+            ps.tweedie("y", "x1", var_power=2.0).alias("model")
         )
         assert result.shape[0] == 2
         assert has_valid_numbers(result, "model")
@@ -533,11 +572,29 @@ class TestNonParametricOver:
             ps.mann_whitney_u("x", "y").over("group").alias("result")
         )
         assert result.shape[0] == 100
+        assert has_valid_numbers(
+            result, nan_ok=("estimate", "ci_lower", "ci_upper")
+        )
+
+    def test_mann_whitney_u_over_conf_level(self, df_two_sample):
+        result = df_two_sample.with_columns(
+            ps.mann_whitney_u("x", "y", conf_level=0.95).over("group").alias("result")
+        )
+        assert result.shape[0] == 100
         assert has_valid_numbers(result)
 
     def test_wilcoxon_signed_rank_over(self, df_two_sample):
         result = df_two_sample.with_columns(
             ps.wilcoxon_signed_rank("x", "y").over("group").alias("result")
+        )
+        assert result.shape[0] == 100
+        assert has_valid_numbers(
+            result, nan_ok=("estimate", "ci_lower", "ci_upper")
+        )
+
+    def test_wilcoxon_signed_rank_over_conf_level(self, df_two_sample):
+        result = df_two_sample.with_columns(
+            ps.wilcoxon_signed_rank("x", "y", conf_level=0.95).over("group").alias("result")
         )
         assert result.shape[0] == 100
         assert has_valid_numbers(result)
@@ -722,11 +779,16 @@ class TestGLMRegressionOver:
         assert has_valid_numbers(result, "model")
 
     def test_tweedie_over(self, df_positive):
+        # var_power=1.5 (the Tweedie default) has no closed-form density, so
+        # aic/bic are NaN by design (anofox-regression 0.5.14 #43).
         result = df_positive.with_columns(
             ps.tweedie("y", "x1", var_power=1.5).over("group").alias("model")
         )
         assert result.shape[0] == 100
-        assert has_valid_numbers(result, "model")
+        assert has_valid_numbers(result, "model", nan_ok=("aic", "bic"))
+        for row in result["model"]:
+            assert math.isnan(row["aic"])
+            assert math.isnan(row["bic"])
 
     def test_probit_over(self, df_binary):
         # Note: GLM can fail to converge on some platforms with small/imbalanced data

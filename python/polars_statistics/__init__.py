@@ -7,6 +7,8 @@ from polars_statistics import exprs
 
 # Import Rust bindings
 from polars_statistics._polars_statistics import (
+    # Survival
+    AFT,
     # Augmented Linear Model
     ALM,
     ARD,
@@ -44,6 +46,8 @@ from polars_statistics._polars_statistics import (
     MomentAccumulator,
     NegativeBinomial,
     PassiveAggressive,
+    # Penalized GLM
+    PenalizedGLM,
     Poisson,
     Probit,
     # Smoothers
@@ -65,6 +69,19 @@ from polars_statistics._polars_statistics import (
     YuenTest,
 )
 from polars_statistics.exprs import (
+    # Survival (AFT) expressions
+    aft,
+    aft_formula,
+    aft_formula_predict_cdf,
+    aft_formula_predict_median,
+    aft_formula_predict_quantile,
+    aft_formula_predict_survival,
+    aft_formula_summary,
+    aft_predict_cdf,
+    aft_predict_median,
+    aft_predict_quantile,
+    aft_predict_survival,
+    aft_summary,
     # AID and Dynamic Linear Model expressions
     aid,
     aid_anomalies,
@@ -74,12 +91,16 @@ from polars_statistics.exprs import (
     alm_formula_summary,
     alm_predict,
     alm_summary,
+    # Augment (per-observation diagnostics)
+    augment,
     # Categorical tests
     binom_test,
     bls,
     bls_formula,
     bls_predict,
     bls_summary,
+    bootstrap_ci,
+    bootstrap_mean_ci,
     brown_forsythe,
     brunner_munzel,
     check_binary_separation,
@@ -92,6 +113,8 @@ from polars_statistics.exprs import (
     cloglog_predict,
     cloglog_summary,
     cohen_kappa,
+    cohens_d,
+    cohens_d_one_sample,
     # Diagnostics expressions
     condition_number,
     contingency_coef,
@@ -102,6 +125,9 @@ from polars_statistics.exprs import (
     # Forecast tests
     diebold_mariano,
     distance_cor,
+    dunn_test,
+    # Empirical-Bayes shrinkage expression
+    eb_shrink,
     elastic_net,
     elastic_net_formula,
     elastic_net_formula_predict,
@@ -114,6 +140,7 @@ from polars_statistics.exprs import (
     expanding_ols,
     externally_studentized_residuals,
     fisher_exact,
+    fisher_exact_conditional,
     g_test,
     gamma_dispersion_deviance,
     gamma_dispersion_pearson,
@@ -129,6 +156,7 @@ from polars_statistics.exprs import (
     influential_dffits,
     isotonic,
     isotonic_predict,
+    jarque_bera,
     kendall,
     kruskal_wallis,
     lasso,
@@ -153,6 +181,7 @@ from polars_statistics.exprs import (
     logistic_working_residuals,
     # Non-parametric tests
     mann_whitney_u,
+    matched_pairs_rank_biserial,
     mcnemar_exact,
     mcnemar_test,
     mmd_test,
@@ -178,11 +207,21 @@ from polars_statistics.exprs import (
     # Summary expressions
     ols_summary,
     one_way_anova,
+    # Post-hoc / p-value adjustment expressions
+    p_adjust,
+    pairwise_t_test,
     partial_cor,
     # Correlation tests
     pearson,
     pearson_chi_squared_logistic,
     pearson_chi_squared_poisson,
+    # Penalized GLM expressions
+    penalized_glm,
+    penalized_glm_formula,
+    penalized_glm_formula_predict,
+    penalized_glm_formula_summary,
+    penalized_glm_predict,
+    penalized_glm_summary,
     permutation_t_test,
     phi_coefficient,
     pls,
@@ -201,10 +240,14 @@ from polars_statistics.exprs import (
     probit_summary,
     prop_test_one,
     prop_test_two,
+    ptukey,
+    qtukey,
     quantile,
     quantile_predict,
     # Summary / predict completeness (issue #18)
     quantile_summary,
+    rank_biserial,
+    rank_biserial_from_u,
     repeated_measures_anova,
     residual_outliers,
     ridge,
@@ -238,6 +281,7 @@ from polars_statistics.exprs import (
     # Parametric tests
     ttest_ind,
     ttest_paired,
+    tukey_hsd,
     tweedie,
     tweedie_formula,
     tweedie_predict,
@@ -255,7 +299,7 @@ from polars_statistics.exprs import (
 # Result-ergonomics helpers for the expression (Struct-column) surface
 from polars_statistics.results import struct_to_dict, unnest
 
-__version__ = "0.7.0"
+__version__ = "0.8.0"
 
 # Library path for plugin registration
 LIB = Path(__file__).parent
@@ -294,6 +338,9 @@ __all__ = [
     "Tweedie",
     "Probit",
     "Cloglog",
+    "PenalizedGLM",
+    # Survival
+    "AFT",
     # Augmented Linear Model
     "ALM",
     # Dynamic Linear Model
@@ -327,14 +374,32 @@ __all__ = [
     "one_way_anova",
     "two_way_anova",
     "repeated_measures_anova",
+    "cohens_d",
+    "cohens_d_one_sample",
     # Non-parametric test expressions
     "mann_whitney_u",
     "wilcoxon_signed_rank",
     "kruskal_wallis",
     "brunner_munzel",
+    "rank_biserial",
+    "matched_pairs_rank_biserial",
+    "rank_biserial_from_u",
     # Distributional test expressions
     "shapiro_wilk",
     "dagostino",
+    "jarque_bera",
+    # Resampling (bootstrap CI) expressions
+    "bootstrap_mean_ci",
+    "bootstrap_ci",
+    # Post-hoc / p-value adjustment expressions
+    "p_adjust",
+    "ptukey",
+    "qtukey",
+    "tukey_hsd",
+    "pairwise_t_test",
+    "dunn_test",
+    # Empirical-Bayes shrinkage expression
+    "eb_shrink",
     # Forecast test expressions
     "diebold_mariano",
     "permutation_t_test",
@@ -373,6 +438,7 @@ __all__ = [
     "chisq_goodness_of_fit",
     "g_test",
     "fisher_exact",
+    "fisher_exact_conditional",
     "mcnemar_test",
     "mcnemar_exact",
     "cohen_kappa",
@@ -432,6 +498,10 @@ __all__ = [
     "probit",
     "cloglog",
     "alm",
+    # Penalized GLM expressions
+    "penalized_glm",
+    # Survival (AFT) expressions
+    "aft",
     # Summary expressions
     "ols_summary",
     "ridge_summary",
@@ -446,6 +516,8 @@ __all__ = [
     "tweedie_summary",
     "probit_summary",
     "cloglog_summary",
+    "penalized_glm_summary",
+    "aft_summary",
     "alm_summary",
     # Prediction expressions
     "ols_predict",
@@ -462,6 +534,11 @@ __all__ = [
     "tweedie_predict",
     "probit_predict",
     "cloglog_predict",
+    "penalized_glm_predict",
+    "aft_predict_quantile",
+    "aft_predict_median",
+    "aft_predict_survival",
+    "aft_predict_cdf",
     "alm_predict",
     # Formula-based regression expressions
     "ols_formula",
@@ -478,6 +555,8 @@ __all__ = [
     "tweedie_formula",
     "probit_formula",
     "cloglog_formula",
+    "penalized_glm_formula",
+    "aft_formula",
     "alm_formula",
     # Formula-based summary expressions
     "ols_formula_summary",
@@ -486,6 +565,8 @@ __all__ = [
     "lasso_formula_summary",
     "logistic_formula_summary",
     "poisson_formula_summary",
+    "penalized_glm_formula_summary",
+    "aft_formula_summary",
     "alm_formula_summary",
     # Formula-based prediction expressions
     "ols_formula_predict",
@@ -494,11 +575,18 @@ __all__ = [
     "lasso_formula_predict",
     "logistic_formula_predict",
     "poisson_formula_predict",
+    "penalized_glm_formula_predict",
+    "aft_formula_predict_quantile",
+    "aft_formula_predict_median",
+    "aft_formula_predict_survival",
+    "aft_formula_predict_cdf",
     "alm_formula_predict",
     # AID and Dynamic Linear Model expressions
     "aid",
     "aid_anomalies",
     "lm_dynamic",
+    # Augment (per-observation diagnostics)
+    "augment",
     # Summary / predict completeness (issue #18)
     "quantile_summary",
     "quantile_predict",

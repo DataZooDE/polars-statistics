@@ -2,7 +2,6 @@
 
 import numpy as np
 import pytest
-
 from polars_statistics import TheilSen
 
 
@@ -27,7 +26,7 @@ class TestTheilSen:
 
     def test_not_fitted_raises(self):
         model = TheilSen()
-        with pytest.raises(Exception):
+        with pytest.raises(RuntimeError, match="not fitted"):
             _ = model.coefficients
 
     def test_intercept_finite(self):
@@ -115,3 +114,45 @@ class TestTheilSen:
             ps_model.coefficients, sk_model.coef_, atol=0.25,
             err_msg="TheilSen vs sklearn coefficient mismatch"
         )
+
+    def _pairwise_median_data(self):
+        x = np.arange(20, dtype=float)
+        y = 3 + 0.5 * x
+        y[3] += 20.0
+        y[11] += 20.0
+        return x, y
+
+    def _pairwise_median_slope_intercept(self, x, y):
+        slopes = []
+        for i in range(len(x)):
+            for j in range(i + 1, len(x)):
+                if x[i] != x[j]:
+                    slopes.append((y[j] - y[i]) / (x[j] - x[i]))
+        slope = float(np.median(slopes))
+        intercept = float(np.median(y - slope * x))
+        return slope, intercept
+
+    def test_univariate_pairwise_is_median_of_pairwise_slopes(self):
+        x, y = self._pairwise_median_data()
+        exp_slope, exp_intercept = self._pairwise_median_slope_intercept(x, y)
+
+        default_model = TheilSen().fit(x.reshape(-1, 1), y)
+        explicit_model = TheilSen(univariate_pairwise=True).fit(x.reshape(-1, 1), y)
+
+        for model in (default_model, explicit_model):
+            assert model.coefficients[0] == pytest.approx(exp_slope, abs=1e-12)
+            assert model.intercept == pytest.approx(exp_intercept, abs=1e-12)
+
+    def test_univariate_pairwise_false_matches_sklearn_spatial_median(self):
+        sklearn_linear = pytest.importorskip("sklearn.linear_model")
+        x, y = self._pairwise_median_data()
+        exp_slope, _ = self._pairwise_median_slope_intercept(x, y)
+
+        model = TheilSen(univariate_pairwise=False).fit(x.reshape(-1, 1), y)
+        assert model.coefficients[0] != pytest.approx(exp_slope, abs=1e-6)
+
+        sk_model = sklearn_linear.TheilSenRegressor(random_state=0).fit(
+            x.reshape(-1, 1), y
+        )
+        assert model.coefficients[0] == pytest.approx(sk_model.coef_[0], abs=1e-6)
+        assert model.intercept == pytest.approx(sk_model.intercept_, abs=1e-6)

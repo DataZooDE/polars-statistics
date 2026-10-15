@@ -23,10 +23,45 @@ model.std_errors        # np.ndarray (if compute_inference=True)
 model.p_values          # np.ndarray (if compute_inference=True)
 model.aic               # float
 model.bic               # float
+model.model_info        # dict — see "model_info" below
 
 # Predict
 predictions = model.predict(X_new)
 ```
+
+### `model_info`
+
+Every class on this page (plus every [GLM Model Class](glm.md)) exposes
+`model_info -> dict` — `{"model_type": str, "family": str | None, "link": str}` — read from
+the fitted model's own upstream `HasModelInfo` implementation, raising if the model is unfit.
+`family`/`link` default to `"gaussian"`/`"identity"` for classes without an explicit family
+(e.g. `OLS`); some classes have no family concept at all (`family: None`).
+
+| Class | `model_type` | `family` | `link` |
+|-------|--------------|----------|--------|
+| `OLS` | `"ols"` | `"gaussian"` | `"identity"` |
+| `Ridge` | `"ridge"` | `"gaussian"` | `"identity"` |
+| `ElasticNet` | `"elastic_net"` | `"gaussian"` | `"identity"` |
+| `WLS` | `"wls"` | `"gaussian"` | `"identity"` |
+| `RLS` | `"rls"` | `"gaussian"` | `"identity"` |
+| `BLS` (`lower_bound`/`upper_bound` not both `0`/unbounded-below) | `"bls"` | `"gaussian"` | `"identity"` |
+| `BLS(lower_bound=0.0)` (non-negative least squares) | `"nnls"` | `"gaussian"` | `"identity"` |
+| `PLS` | `"pls"` | `"gaussian"` | `"identity"` |
+| `Quantile` | `"quantile"` | `None` | `"identity"` |
+| `Isotonic` | `"isotonic"` | `None` | `"identity"` |
+| `Huber` | `"huber"` | `None` | `"identity"` |
+| `TheilSen` | `"theil_sen"` | `None` | `"identity"` |
+| `RANSAC` | `"ransac"` | `None` | `"identity"` |
+| `BayesianRidge` | `"bayesian_ridge"` | `"gaussian"` | `"identity"` |
+| `ARD` | `"ard"` | `"gaussian"` | `"identity"` |
+| `LARS` | `"lars"` | `"gaussian"` | `"identity"` |
+| `PassiveAggressive` | `"passive_aggressive"` | `None` | `"identity"` |
+
+`BLS` reports `"nnls"` vs. `"bls"` per upstream's own bound-based dispatch (a pure
+non-negativity constraint on every coefficient is treated as the NNLS special case) — this is
+not a separate constructor kwarg, it is inferred from the `lower_bound`/`upper_bound` you pass.
+See [GLM Model Classes](glm.md#common-interface) for the GLM-family `model_type`/`family`/
+`link` table (`Logistic`/`Probit`/`Cloglog` share `family="binomial"` but differ by `link`).
 
 ---
 
@@ -40,9 +75,44 @@ from polars_statistics import OLS
 model = OLS(
     with_intercept: bool = True,
     compute_inference: bool = True,
+    alias_tolerance: float = 1e-7,
 )
 model.fit(X, y)
+
+# Inference getters (populated when compute_inference=True)
+model.intercept_std_error, model.intercept_t_statistic   # float | None
+model.intercept_p_value, model.intercept_conf_interval    # float | None, tuple[float, float] | None
+model.conf_interval_lower, model.conf_interval_upper      # np.ndarray | None — feature coefficients
+
+# Per-observation diagnostics
+diag = model.augment(X, y, residual_type=None)   # dict: fitted/residual/std_residual/
+                                                   # stud_residual/leverage/cooks_d/dffits/resid_type
 ```
+
+**`alias_tolerance`** (default `1e-7`, R `lm`'s own tolerance): see
+[Rank-deficient designs](#rank-deficient-designs-ols-wls) below.
+
+**`.augment(x, y, residual_type=None)`:** R `broom::augment`-style per-observation
+diagnostics — see [`ps.augment`](../regression/diagnostics.md#augment-per-observation-diagnostics)
+for the full field semantics; `residual_type` defaults to `"response"` for OLS/WLS.
+
+### `variance_factor` / `leverage_new` (OLS, WLS, Ridge)
+
+```python
+model.variance_factor()       # np.ndarray | None — (p+1)x(p+1) with intercept, p x p without
+model.leverage_new(x_new)     # np.ndarray — leverage h_ii for new rows
+```
+
+`variance_factor()` returns the matrix that, multiplied by the residual variance
+(`inv(X'X)` for OLS, `inv(X'WX)` for WLS, the ridge sandwich `A @ X'X @ A'` for
+Ridge), gives the coefficient covariance. Returns `None` when the model was fit
+from moments (`fit_from_accumulator`) — the raw design matrix isn't available to
+compute it.
+
+`leverage_new(x_new)` computes the hat-matrix diagonal for new observations
+(`x_new @ variance_factor() @ x_new.T`, diagonal only). Raises `ValueError` (never
+a faer panic) when `x_new`'s column count doesn't match the fitted model's feature
+count. Returns `NaN` for moments-fits (same reason as `variance_factor()`).
 
 ### `fit_from_accumulator` (OLS)
 
@@ -53,6 +123,31 @@ streaming or distributed workflows where raw data is unavailable at fit time.
 model = OLS(with_intercept=True, compute_inference=True)
 model.fit_from_accumulator(accumulator)  # accumulator: MomentAccumulator
 ```
+
+### Rank-deficient designs (OLS, WLS)
+
+Since 0.8.0 (anofox-regression 0.5.21 #64), OLS and WLS alias rank-deficient designs
+like R's `lm`: columns are kept in their given order, and a column that is a linear
+combination of the intercept and the earlier kept columns gets a `NaN` coefficient
+(`coefficients[j] = NaN`) and is excluded from `rank`/`n_parameters`. When two or more
+columns are collinear, the **later** column in argument order is aliased — this holds
+for every `solve_method` (`"qr"`, `"svd"`, `"cholesky"`) and is independent of column
+scaling (a scaled copy, e.g. `x2 = 2 * x1`, aliases exactly like an exact duplicate).
+
+Previously, `solve_method="svd"` silently returned a minimum-norm split of collinear
+columns with no `NaN` flag, and `"qr"` aliased the *earlier* column of a collinear
+pair — both now match `"cholesky"` and R's `dqrdc2` convention.
+
+```python
+model = OLS(solve_method="qr").fit(X, y)   # X columns 1 and 2 are collinear
+model.coefficients  # e.g. [1.49, nan] — column 2 (the later one) is aliased
+```
+
+**`alias_tolerance`** (default `1e-7`, matching `anofox_regression::utils::LM_ALIAS_TOLERANCE`
+and R `lm`'s own tolerance) controls how close to exactly collinear a column must be before it
+is aliased: a **tighter** tolerance (smaller value) aliases more columns, a **looser**
+tolerance (larger value) keeps more. The default reproduces the behaviour documented above
+exactly.
 
 ---
 
@@ -69,7 +164,21 @@ model = Ridge(
     compute_inference: bool = True,
 )
 model.fit(X, y)
+
+# Inference (readable for the first time at lambda_ > 0)
+model.std_errors           # np.ndarray | None — sandwich SE: sigma^2 * A @ X'X @ A'
+model.intercept_std_error  # float | None
+model.t_statistics         # np.ndarray | None — None when lambda_ > 0
+model.p_values             # np.ndarray | None — None when lambda_ > 0
+model.variance_factor()    # np.ndarray | None — the sandwich A @ X'X @ A' matrix
+model.leverage_new(x_new)  # np.ndarray — see the shared note above
 ```
+
+**`lambda_ > 0` inference rule:** `std_errors`/`intercept_std_error` are always the
+ridge sandwich standard errors (matching R). `t_statistics`/`p_values` are `None`
+when `lambda_ > 0` — a classical t-test on shrunken/biased coefficients is not
+statistically valid. At `lambda_ = 0`, Ridge delegates fully to OLS inference
+(`t_statistics`/`p_values` populated, matching OLS to machine precision).
 
 ### `hc_inference` (Ridge)
 
@@ -125,9 +234,29 @@ from polars_statistics import WLS
 model = WLS(
     with_intercept: bool = True,
     compute_inference: bool = True,
+    alias_tolerance: float = 1e-7,
 )
 model.fit(X, y, weights)  # weights: 1D numpy array
+
+model.variance_factor()    # np.ndarray | None — inv(X'WX); see the OLS note above
+model.leverage_new(x_new)  # np.ndarray — weighted hat-diagonal leverage; see the OLS note above
+
+# Inference getters (populated when compute_inference=True)
+model.std_errors, model.t_statistics, model.p_values      # np.ndarray | None — feature coefficients
+model.conf_interval_lower, model.conf_interval_upper       # np.ndarray | None
+model.intercept_std_error, model.intercept_t_statistic     # float | None
+model.intercept_p_value, model.intercept_conf_interval      # float | None, tuple[float, float] | None
+
+# Per-observation diagnostics
+diag = model.augment(X, y, weights=None, residual_type=None)  # weights=None reuses the fit's own weights
 ```
+
+**`alias_tolerance`** (default `1e-7`): same rank-deficiency tolerance as OLS — see
+[Rank-deficient designs](#rank-deficient-designs-ols-wls) below.
+
+**`.augment(x, y, weights=None, residual_type=None)`:** same R `broom::augment` semantics as
+`OLS.augment` — see [`ps.augment`](../regression/diagnostics.md#augment-per-observation-diagnostics).
+`weights=None` (default) reuses the fit's own weights rather than requiring them again.
 
 > **Known limitation:** `WLS.hc_inference` raises `NotImplementedError` — HC-robust inference
 > is not yet implemented for WLS. Use `OLS.hc_inference` or `Ridge.hc_inference` instead.
@@ -144,9 +273,20 @@ from polars_statistics import RLS
 model = RLS(
     forgetting_factor: float = 0.99,
     with_intercept: bool = True,
+    initial_p_diagonal: float = 1e6,
 )
 model.fit(X, y)
+
+model.initial_p_diagonal_value  # float — the P0 = delta * I value used
 ```
+
+**`initial_p_diagonal`** (default `1e6`, matching the upstream crate's own default —
+omitting it is identical to passing `1e6`): sets the diagonal value `delta` for the
+initial covariance prior `P0 = delta * I`. A smaller value (e.g. `1e-3`) is a
+"tighter" prior that measurably shifts early coefficient estimates toward zero
+before enough observations have accumulated; a larger value is a "looser"
+(less informative) prior. An invalid `delta` (negative or `NaN`) raises `ValueError`
+at `.fit()` time (never a panic).
 
 ---
 
@@ -180,6 +320,8 @@ model = Huber(
     with_intercept: bool = True,
     max_iter: int = 100,
     tol: float = 1e-5,
+    compute_inference: bool = False,
+    confidence_level: float = 0.95,
 )
 model.fit(X, y)
 
@@ -194,7 +336,25 @@ model.r_squared         # float
 model.mse               # float
 model.rmse              # float
 model.n_observations    # int
+
+# Inference (only populated when compute_inference=True; all None otherwise)
+model.std_errors               # np.ndarray | None
+model.t_statistics              # np.ndarray | None
+model.p_values                  # np.ndarray | None
+model.conf_interval_lower       # np.ndarray | None
+model.conf_interval_upper       # np.ndarray | None
+model.intercept_std_error       # float | None
+model.intercept_t_statistic     # float | None
+model.intercept_p_value         # float | None
+model.intercept_conf_interval   # tuple[float, float] | None
 ```
+
+**`compute_inference=True`** validates against R `MASS::rlm(method = "XtX")`'s
+covariance (the nine getters above). Default `False` keeps every getter `None`
+(no inference computed, faster fit). `confidence_level` controls the width of
+`conf_interval_lower`/`conf_interval_upper`/`intercept_conf_interval` — a narrower
+`confidence_level` (e.g. `0.90`) gives a strictly narrower interval around the
+same point estimate.
 
 ---
 
@@ -317,6 +477,7 @@ model = TheilSen(
     with_intercept: bool = True,
     max_iter: int = 300,
     tol: float = 1e-3,
+    univariate_pairwise: bool = True,
 )
 model.fit(X, y)
 
@@ -326,6 +487,17 @@ model.intercept         # float or None
 model.r_squared         # float
 model.n_observations    # int
 ```
+
+**`univariate_pairwise`** (default `True`): for a single-feature `X`, use the
+classical Theil-Sen estimator — the median of all pairwise slopes (Sen, 1968).
+Set `univariate_pairwise=False` to use sklearn's spatial-median-over-subsamples
+estimator instead (the original behaviour for single-feature data; this is always
+the estimator used for multi-feature `X` regardless of this flag).
+
+**Rank-deficient design (anofox-regression 0.5.15 #50):** a column that is exactly
+linearly dependent on another is aliased to `NaN` in `coefficients` (not a huge
+near-`1e14` value) — the same aliasing convention used elsewhere in this library
+for genuinely rank-deficient designs.
 
 **Example:**
 ```python
@@ -352,31 +524,72 @@ random minimal subsets and identifying consensus inliers.
 from polars_statistics import RANSAC
 
 model = RANSAC(
-    min_samples: int | float = 0.5,    # Fraction or count of min samples per trial
-    residual_threshold: float = 1.0,   # Max residual to count as inlier
-    max_iter: int = 100,
+    min_samples: int | float | None = None,  # Fraction or count of min samples per trial
+    residual_threshold: float | None = None, # Max residual to count as inlier
+    max_trials: int = 100,
+    stop_probability: float = 0.99,
     stop_n_inliers: int | None = None,
-    seed: int | None = None,
+    random_state: int = 0,
     with_intercept: bool = True,
+    compute_inference: bool = False,
+    confidence_level: float = 0.95,
 )
 model.fit(X, y)
 
-# Properties
+# Properties — describe the inlier-only fit (anofox-regression 0.5.14 #35)
 model.coefficients      # np.ndarray (fitted on inlier set)
 model.intercept         # float or None
 model.inlier_mask       # np.ndarray[bool] — per-observation inlier flag
 model.n_inliers         # int
 model.r_squared         # float (on inlier set)
-model.n_observations    # int
+model.n_observations    # int — now reports n_inliers, not the full sample size
+
+# Inference (only populated when compute_inference=True; same 9 getters as Huber)
+model.std_errors               # np.ndarray | None
+model.t_statistics              # np.ndarray | None
+model.p_values                  # np.ndarray | None
+model.conf_interval_lower       # np.ndarray | None
+model.conf_interval_upper       # np.ndarray | None
+model.intercept_std_error       # float | None
+model.intercept_t_statistic     # float | None
+model.intercept_p_value         # float | None
+model.intercept_conf_interval   # tuple[float, float] | None
+
+# Inlier-OLS fit statistics (now meaningful — computed on the inlier subset)
+model.adj_r_squared     # float
+model.mse               # float
+model.rmse              # float
+model.f_statistic       # float
+model.f_pvalue          # float
+model.aic               # float
+model.bic               # float
+model.log_likelihood    # float
+
+model.inlier_fit()      # OLS — a real fitted OLS instance on just the inliers
 ```
+
+**0.8.0 semantics (anofox-regression 0.5.14 #35):** `r_squared`, `n_observations`,
+and every fit-stat getter above describe the **inlier-only OLS fit**
+(`|residual| <= residual_threshold`), not the full sample — `n_observations` equals
+`n_inliers`, not the original row count. `residuals` still covers every row (not
+just inliers). A constant-response design (sklearn's MAD=0 semantics) fits cleanly.
+
+**`inlier_fit()`** returns a real, independently usable `OLS` instance (via
+`PyOLS::from_fitted`) fit on exactly the inlier rows — its `coefficients`,
+`intercept`, and `std_errors` match RANSAC's own to `1e-12`. Use it when you want
+the full `OLS` API (e.g. `.summary()`, `.leverage_new()`) on the inlier subset.
 
 **Example:**
 ```python
 from polars_statistics import RANSAC
 
-model = RANSAC(residual_threshold=2.0, seed=42)
+model = RANSAC(residual_threshold=2.0, random_state=42, compute_inference=True)
 model.fit(X, y)
 print(f"Inliers: {model.n_inliers}/{model.n_observations}")
+print(model.std_errors, model.p_values)
+
+inlier_ols = model.inlier_fit()
+print(inlier_ols.summary())
 ```
 
 ---
@@ -466,8 +679,18 @@ model.intercept            # float or None
 model.coef_path            # list[np.ndarray] — coefficients at each knot
 model.alphas               # list[float] — regularization values at each knot
 model.r_squared            # float
+model.adj_r_squared        # float (0.8.0) — R convention, df = active coefficients + intercept
+model.mse                  # float (0.8.0)
+model.rmse                 # float (0.8.0)
+model.model_info           # dict (0.8.0) — {"model_type": "lars", "family": "gaussian", "link": "identity"}
 model.n_observations       # int
 ```
+
+**`adj_r_squared`/`mse`/`rmse` (0.8.0, anofox-regression 0.5.21 #65):** use R's `summary(lm())`
+convention, `df = active coefficients + intercept`. For the full LAR path this matches
+`summary(lm())` exactly; for `n_nonzero_coefs` stopping early (the active-set df formula) or a
+fit without an intercept, `rmse`/`adj_r_squared` match `OLS(add_intercept=False)` fit on the
+same active features.
 
 **Example:**
 ```python
@@ -477,6 +700,12 @@ model = LARS(n_nonzero_coefs=5)
 model.fit(X, y)
 print(f"Active features: {(model.coefficients != 0).sum()}")
 ```
+
+**Collinear columns** (anofox-regression 0.5.19 #62): when two feature columns are
+exactly collinear (e.g. `x2 = 2 * x1`), LARS aliases the *later* column — its
+coefficient is `NaN` and the fit equals the reduced model without it — instead of a
+platform-dependent result that could previously raise on one architecture and fit on
+another.
 
 ---
 
@@ -523,19 +752,19 @@ model.fit(X_train, y_train)
 
 | Class | Parameters |
 |-------|------------|
-| `OLS` | `with_intercept`, `compute_inference` |
+| `OLS` | `with_intercept`, `compute_inference`, `alias_tolerance` |
 | `Ridge` | `lambda_`, `with_intercept`, `compute_inference` |
 | `ElasticNet` | `lambda_`, `alpha`, `with_intercept`, `compute_inference` |
-| `WLS` | `with_intercept`, `compute_inference` |
-| `RLS` | `forgetting_factor`, `with_intercept` |
+| `WLS` | `with_intercept`, `compute_inference`, `alias_tolerance` |
+| `RLS` | `forgetting_factor`, `with_intercept`, `initial_p_diagonal` |
 | `BLS` | `lower_bound`, `upper_bound`, `with_intercept` |
-| `Huber` | `epsilon`, `alpha`, `with_intercept`, `max_iter`, `tol` |
+| `Huber` | `epsilon`, `alpha`, `with_intercept`, `max_iter`, `tol`, `compute_inference`, `confidence_level` |
 | `PLS` | `n_components`, `with_intercept`, `tol`, `scale` |
 | `Quantile` | `tau`, `with_intercept` |
 | `Isotonic` | `increasing` |
 | `MomentAccumulator` | `n_features`, `with_intercept` |
-| `TheilSen` | `with_intercept`, `max_iter`, `tol` |
-| `RANSAC` | `min_samples`, `residual_threshold`, `max_iter`, `stop_n_inliers`, `seed`, `with_intercept` |
+| `TheilSen` | `with_intercept`, `max_iter`, `tol`, `univariate_pairwise` |
+| `RANSAC` | `min_samples`, `residual_threshold`, `max_trials`, `stop_probability`, `stop_n_inliers`, `random_state`, `with_intercept`, `compute_inference`, `confidence_level` |
 | `BayesianRidge` | `max_iter`, `tol`, `alpha_1`, `alpha_2`, `lambda_1`, `lambda_2`, `with_intercept`, `compute_score` |
 | `ARD` | `max_iter`, `tol`, `alpha_1`, `alpha_2`, `lambda_1`, `lambda_2`, `threshold_lambda`, `with_intercept` |
 | `LARS` | `n_nonzero_coefs`, `with_intercept` |

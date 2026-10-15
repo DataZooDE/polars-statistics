@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Literal, Optional, Union
+from typing import Literal
 
 import polars as pl
 from polars.plugins import register_plugin_function
@@ -12,7 +12,7 @@ LIB = Path(__file__).parent.parent
 
 
 def tost_t_test_one_sample(
-    x: Union[pl.Expr, str],
+    x: pl.Expr | str,
     mu: float = 0.0,
     bounds_type: Literal["symmetric", "raw", "cohen_d"] = "symmetric",
     delta: float = 0.5,
@@ -74,8 +74,8 @@ def tost_t_test_one_sample(
 
 
 def tost_t_test_two_sample(
-    x: Union[pl.Expr, str],
-    y: Union[pl.Expr, str],
+    x: pl.Expr | str,
+    y: pl.Expr | str,
     bounds_type: Literal["symmetric", "raw", "cohen_d"] = "symmetric",
     delta: float = 0.5,
     lower: float = -0.5,
@@ -139,8 +139,8 @@ def tost_t_test_two_sample(
 
 
 def tost_t_test_paired(
-    x: Union[pl.Expr, str],
-    y: Union[pl.Expr, str],
+    x: pl.Expr | str,
+    y: pl.Expr | str,
     bounds_type: Literal["symmetric", "raw", "cohen_d"] = "symmetric",
     delta: float = 0.5,
     lower: float = -0.5,
@@ -201,8 +201,8 @@ def tost_t_test_paired(
 
 
 def tost_correlation(
-    x: Union[pl.Expr, str],
-    y: Union[pl.Expr, str],
+    x: pl.Expr | str,
+    y: pl.Expr | str,
     method: Literal["pearson", "spearman"] = "pearson",
     rho_null: float = 0.0,
     bounds_type: Literal["symmetric", "raw"] = "symmetric",
@@ -388,8 +388,8 @@ def tost_prop_two(
 
 
 def tost_wilcoxon_paired(
-    x: Union[pl.Expr, str],
-    y: Union[pl.Expr, str],
+    x: pl.Expr | str,
+    y: pl.Expr | str,
     bounds_type: Literal["symmetric", "raw"] = "symmetric",
     delta: float = 0.5,
     lower: float = -0.5,
@@ -449,8 +449,8 @@ def tost_wilcoxon_paired(
 
 
 def tost_wilcoxon_two_sample(
-    x: Union[pl.Expr, str],
-    y: Union[pl.Expr, str],
+    x: pl.Expr | str,
+    y: pl.Expr | str,
     bounds_type: Literal["symmetric", "raw"] = "symmetric",
     delta: float = 0.5,
     lower: float = -0.5,
@@ -510,15 +510,15 @@ def tost_wilcoxon_two_sample(
 
 
 def tost_bootstrap(
-    x: Union[pl.Expr, str],
-    y: Union[pl.Expr, str],
+    x: pl.Expr | str,
+    y: pl.Expr | str,
     bounds_type: Literal["symmetric", "raw"] = "symmetric",
     delta: float = 0.5,
     lower: float = -0.5,
     upper: float = 0.5,
     alpha: float = 0.05,
     n_bootstrap: int = 1000,
-    seed: Optional[int] = None,
+    seed: int | None = None,
 ) -> pl.Expr:
     """
     Bootstrap TOST equivalence test.
@@ -581,8 +581,8 @@ def tost_bootstrap(
 
 
 def tost_yuen(
-    x: Union[pl.Expr, str],
-    y: Union[pl.Expr, str],
+    x: pl.Expr | str,
+    y: pl.Expr | str,
     trim: float = 0.2,
     bounds_type: Literal["symmetric", "raw"] = "symmetric",
     delta: float = 0.5,

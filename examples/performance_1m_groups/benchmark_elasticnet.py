@@ -17,7 +17,7 @@ print("=" * 50)
 print("Elastic Net Fit Benchmark")
 print("=" * 50)
 print(f"Configuration: {N_GROUPS:,} groups, {N_ROWS:,} rows, 3 features")
-print(f"Parameters: lambda=1.0, alpha=0.5")
+print("Parameters: lambda=1.0, alpha=0.5")
 print()
 
 print("Generating data...")

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List, Literal, Optional, Union
+from typing import Literal
 
 import polars as pl
 from polars.plugins import register_plugin_function
@@ -16,6 +16,7 @@ def binom_test(
     n: int,
     p0: float = 0.5,
     alternative: Literal["two-sided", "less", "greater"] = "two-sided",
+    conf_level: float = 0.95,
 ) -> pl.Expr:
     """
     Exact binomial test.
@@ -33,6 +34,11 @@ def binom_test(
         Hypothesized probability of success.
     alternative : {"two-sided", "less", "greater"}, default "two-sided"
         Alternative hypothesis direction.
+    conf_level : float, default 0.95
+        Confidence level of the reported interval (default 0.95 = previous
+        behaviour). The Clopper-Pearson interval is two-sided for
+        ``"two-sided"`` and one-sided (``[0, U]`` / ``[L, 1]``) for
+        ``"less"`` / ``"greater"``, matching R's ``binom.test``.
 
     Returns
     -------
@@ -56,6 +62,7 @@ def binom_test(
             pl.lit(n, dtype=pl.UInt32),
             pl.lit(p0, dtype=pl.Float64),
             pl.lit(alternative, dtype=pl.String),
+            pl.lit(conf_level, dtype=pl.Float64),
         ],
         returns_scalar=True,
     )
@@ -66,6 +73,7 @@ def prop_test_one(
     n: int,
     p0: float = 0.5,
     alternative: Literal["two-sided", "less", "greater"] = "two-sided",
+    conf_level: float = 0.95,
 ) -> pl.Expr:
     """
     One-sample proportion test.
@@ -82,6 +90,11 @@ def prop_test_one(
         Hypothesized probability of success.
     alternative : {"two-sided", "less", "greater"}, default "two-sided"
         Alternative hypothesis direction.
+    conf_level : float, default 0.95
+        Confidence level of the reported interval (default 0.95 = previous
+        behaviour). The Wilson score interval is two-sided for
+        ``"two-sided"`` and one-sided for ``"less"`` / ``"greater"``,
+        matching R's ``prop.test(correct = FALSE)``.
 
     Returns
     -------
@@ -97,6 +110,7 @@ def prop_test_one(
             pl.lit(n, dtype=pl.UInt32),
             pl.lit(p0, dtype=pl.Float64),
             pl.lit(alternative, dtype=pl.String),
+            pl.lit(conf_level, dtype=pl.Float64),
         ],
         returns_scalar=True,
     )
@@ -109,6 +123,7 @@ def prop_test_two(
     n2: int,
     alternative: Literal["two-sided", "less", "greater"] = "two-sided",
     correction: bool = False,
+    conf_level: float = 0.95,
 ) -> pl.Expr:
     """
     Two-sample proportion test.
@@ -129,6 +144,11 @@ def prop_test_two(
         Alternative hypothesis direction.
     correction : bool, default False
         Apply Yates' continuity correction.
+    conf_level : float, default 0.95
+        Confidence level of the reported interval (default 0.95 = previous
+        behaviour). The interval for ``p1 - p2`` is two-sided for
+        ``"two-sided"`` and one-sided for ``"less"`` / ``"greater"``,
+        matching R's ``prop.test``.
 
     Returns
     -------
@@ -146,13 +166,14 @@ def prop_test_two(
             pl.lit(n2, dtype=pl.UInt32),
             pl.lit(alternative, dtype=pl.String),
             pl.lit(correction, dtype=pl.Boolean),
+            pl.lit(conf_level, dtype=pl.Float64),
         ],
         returns_scalar=True,
     )
 
 
 def chisq_test(
-    data: Union[pl.Expr, str],
+    data: pl.Expr | str,
     n_rows: int = 2,
     n_cols: int = 2,
     correction: bool = False,
@@ -202,8 +223,8 @@ def chisq_test(
 
 
 def chisq_goodness_of_fit(
-    observed: Union[pl.Expr, str],
-    expected: Optional[Union[pl.Expr, str]] = None,
+    observed: pl.Expr | str,
+    expected: pl.Expr | str | None = None,
 ) -> pl.Expr:
     """
     Chi-square goodness-of-fit test.
@@ -260,7 +281,7 @@ def chisq_goodness_of_fit(
 
 
 def g_test(
-    data: Union[pl.Expr, str],
+    data: pl.Expr | str,
     n_rows: int = 2,
     n_cols: int = 2,
 ) -> pl.Expr:
@@ -304,6 +325,7 @@ def fisher_exact(
     c: int,
     d: int,
     alternative: Literal["two-sided", "less", "greater"] = "two-sided",
+    conf_level: float = 0.95,
 ) -> pl.Expr:
     """
     Fisher's exact test for 2x2 contingency tables.
@@ -318,11 +340,19 @@ def fisher_exact(
          [c, d]]
     alternative : {"two-sided", "less", "greater"}, default "two-sided"
         Alternative hypothesis direction.
+    conf_level : float, default 0.95
+        Confidence level of the reported interval (default 0.95 = previous
+        behaviour).
 
     Returns
     -------
     pl.Expr
-        Expression returning struct{statistic (odds ratio), p_value}.
+        Expression returning struct{statistic (sample odds ratio ad/bc),
+        p_value, ci_lower, ci_upper}. The interval is the two-sided Woolf
+        (logit) interval at ``conf_level``. For R's conditional
+        maximum-likelihood odds ratio and exact conditional interval (full
+        ``fisher.test`` semantics, including one-sided intervals), use
+        :func:`fisher_exact_conditional`.
 
     Examples
     --------
@@ -341,6 +371,67 @@ def fisher_exact(
             pl.lit(c, dtype=pl.UInt32),
             pl.lit(d, dtype=pl.UInt32),
             pl.lit(alternative, dtype=pl.String),
+            pl.lit(conf_level, dtype=pl.Float64),
+        ],
+        returns_scalar=True,
+    )
+
+
+def fisher_exact_conditional(
+    a: int,
+    b: int,
+    c: int,
+    d: int,
+    alternative: Literal["two-sided", "less", "greater"] = "two-sided",
+    conf_level: float = 0.95,
+) -> pl.Expr:
+    """
+    Fisher's exact test for 2x2 tables with full R `fisher.test` semantics.
+
+    Unlike :func:`fisher_exact` (which reports the *sample* odds ratio
+    ``ad/bc`` and a Woolf interval), this reports the conditional
+    maximum-likelihood estimate of the odds ratio and the exact conditional
+    confidence interval, exactly as R's ``fisher.test``.
+
+    Parameters
+    ----------
+    a, b, c, d : int
+        Cell counts in the 2x2 table:
+        [[a, b],
+         [c, d]]
+    alternative : {"two-sided", "less", "greater"}, default "two-sided"
+        Alternative hypothesis direction. One-sided alternatives give
+        one-sided intervals: ``"greater"`` gives ``ci_upper = +inf``,
+        ``"less"`` gives ``ci_lower = 0.0``.
+    conf_level : float, default 0.95
+        Confidence level of the reported interval (default 0.95 = previous
+        behaviour).
+
+    Returns
+    -------
+    pl.Expr
+        Expression returning struct{statistic (conditional MLE odds ratio),
+        p_value (identical to :func:`fisher_exact`), ci_lower, ci_upper
+        (exact conditional interval)}.
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> import polars_statistics as ps
+    >>>
+    >>> # R: fisher.test(matrix(c(18, 9, 7, 16), 2))
+    >>> ps.fisher_exact_conditional(18, 7, 9, 16)
+    """
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_fisher_exact_conditional",
+        args=[
+            pl.lit(a, dtype=pl.UInt32),
+            pl.lit(b, dtype=pl.UInt32),
+            pl.lit(c, dtype=pl.UInt32),
+            pl.lit(d, dtype=pl.UInt32),
+            pl.lit(alternative, dtype=pl.String),
+            pl.lit(conf_level, dtype=pl.Float64),
         ],
         returns_scalar=True,
     )
@@ -430,7 +521,7 @@ def mcnemar_exact(
 
 
 def cohen_kappa(
-    data: Union[pl.Expr, str],
+    data: pl.Expr | str,
     n_categories: int = 2,
     weighted: bool = False,
 ) -> pl.Expr:
@@ -478,7 +569,7 @@ def cohen_kappa(
 
 
 def cramers_v(
-    data: Union[pl.Expr, str],
+    data: pl.Expr | str,
     n_rows: int = 2,
     n_cols: int = 2,
 ) -> pl.Expr:
@@ -553,7 +644,7 @@ def phi_coefficient(
 
 
 def contingency_coef(
-    data: Union[pl.Expr, str],
+    data: pl.Expr | str,
     n_rows: int = 2,
     n_cols: int = 2,
 ) -> pl.Expr:
