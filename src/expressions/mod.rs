@@ -16,6 +16,7 @@ mod penalized_glm;
 mod posthoc;
 mod regression;
 mod resampling;
+mod shrinkage;
 mod tost;
 
 // Re-exports for polars plugin FFI - these are used via Python
@@ -45,5 +46,7 @@ pub use posthoc::*;
 pub use regression::*;
 #[allow(unused_imports)]
 pub use resampling::*;
+#[allow(unused_imports)]
+pub use shrinkage::*;
 #[allow(unused_imports)]
 pub use tost::*;

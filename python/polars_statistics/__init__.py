@@ -196,6 +196,8 @@ from polars_statistics.exprs import (
     tukey_hsd,
     pairwise_t_test,
     dunn_test,
+    # Empirical-Bayes shrinkage expression
+    eb_shrink,
     # Penalized GLM expressions
     penalized_glm,
     penalized_glm_formula,
@@ -394,6 +396,8 @@ __all__ = [
     "tukey_hsd",
     "pairwise_t_test",
     "dunn_test",
+    # Empirical-Bayes shrinkage expression
+    "eb_shrink",
     # Forecast test expressions
     "diebold_mariano",
     "permutation_t_test",

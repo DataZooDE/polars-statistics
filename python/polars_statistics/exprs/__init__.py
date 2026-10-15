@@ -87,6 +87,9 @@ from polars_statistics.exprs.posthoc import (
     pairwise_t_test,
     dunn_test,
 )
+from polars_statistics.exprs.shrinkage import (
+    eb_shrink,
+)
 from polars_statistics.exprs.regression import (
     ols,
     ridge,
@@ -267,6 +270,8 @@ __all__ = [
     "tukey_hsd",
     "pairwise_t_test",
     "dunn_test",
+    # Empirical-Bayes shrinkage expression
+    "eb_shrink",
     # Forecast tests
     "diebold_mariano",
     "permutation_t_test",
