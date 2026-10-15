@@ -307,9 +307,13 @@ fn from_pairwise_result(result: &PairwiseResult<String>) -> PolarsResult<Series>
 }
 
 /// Build `(values, groups)` from a values column (f64, nullable) and a
-/// groups column (String, nullable), dropping rows where the value is null
-/// or NaN or the group is null (R's `NA` row-drop semantics for the
-/// pairwise tests).
+/// groups column (String, nullable), dropping rows where the value is null,
+/// NaN, or ±Inf, or the group is null (R's `NA` row-drop semantics for the
+/// pairwise tests). Dropping non-finite values (not just NaN) keeps a single
+/// `Inf`/`-Inf` row from reaching `anofox_statistics::{tukey_hsd,
+/// pairwise_t_test, dunn_test}`'s `ensure_finite` check, which otherwise
+/// rejects the whole call and silently empties every pairwise comparison,
+/// not just the ones touching the offending row.
 fn long_format(values: &Series, groups: &Series) -> PolarsResult<(Vec<f64>, Vec<String>)> {
     let v_ca = values.f64()?;
     let g_ca = groups.str()?;
@@ -317,7 +321,7 @@ fn long_format(values: &Series, groups: &Series) -> PolarsResult<(Vec<f64>, Vec<
     let mut out_groups = Vec::new();
     for i in 0..v_ca.len() {
         if let (Some(v), Some(g)) = (v_ca.get(i), g_ca.get(i)) {
-            if !v.is_nan() {
+            if v.is_finite() {
                 out_values.push(v);
                 out_groups.push(g.to_string());
             }
@@ -333,8 +337,9 @@ fn long_format(values: &Series, groups: &Series) -> PolarsResult<(Vec<f64>, Vec<
 /// `inputs[0]`: values (f64, nullable). `inputs[1]`: groups (String,
 /// nullable). `inputs[2]`: conf_level (f64 scalar, default 0.95).
 ///
-/// Fewer than 2 usable groups, or an invalid `conf_level`, give an empty
-/// list — never an exception.
+/// Rows with a null, NaN, or non-finite (±Inf) value, or a null group, are
+/// dropped first (see [`long_format`]). Fewer than 2 usable groups, or an
+/// invalid `conf_level`, give an empty list — never an exception.
 pub fn tukey_hsd_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let conf_level = inputs[2].f64()?.get(0).unwrap_or(0.95);
     let (values, groups) = long_format(&inputs[0], &inputs[1])?;
@@ -359,6 +364,9 @@ fn pl_tukey_hsd(inputs: &[Series]) -> PolarsResult<Series> {
 /// nullable). `inputs[2]`: pooled_sd (bool scalar, default true).
 /// `inputs[3]`: p_adjust_method (String scalar, default "holm").
 /// `inputs[4]`: alternative (String scalar, default "two-sided").
+///
+/// Rows with a null, NaN, or non-finite (±Inf) value, or a null group, are
+/// dropped first (see [`long_format`]).
 pub fn pairwise_t_test_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let pooled_sd = inputs[2].bool()?.get(0).unwrap_or(true);
     let method_str = inputs[3].str()?.get(0).unwrap_or("holm");
@@ -386,6 +394,9 @@ fn pl_pairwise_t_test(inputs: &[Series]) -> PolarsResult<Series> {
 /// # Input contract
 /// `inputs[0]`: values (f64, nullable). `inputs[1]`: groups (String,
 /// nullable). `inputs[2]`: p_adjust_method (String scalar, default "holm").
+///
+/// Rows with a null, NaN, or non-finite (±Inf) value, or a null group, are
+/// dropped first (see [`long_format`]).
 pub fn dunn_test_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let method_str = inputs[2].str()?.get(0).unwrap_or("holm");
     let method = parse_p_adjust_method(method_str)?;

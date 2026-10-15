@@ -255,10 +255,11 @@ def tukey_hsd(
 
     Notes
     -----
-    Rows with a null/NaN value or a null group are dropped first (R's
-    ``NA`` row-drop semantics). Fewer than 2 usable groups give an empty
-    list, never an exception. Inside ``group_by().agg()``, each group is
-    analysed independently (same caveat as ``ps.one_way_anova``).
+    Rows with a null, NaN, or non-finite (``+Inf``/``-Inf``) value, or a
+    null group, are dropped first (R's ``NA`` row-drop semantics). Fewer
+    than 2 usable groups give an empty list, never an exception. Inside
+    ``group_by().agg()``, each group is analysed independently (same
+    caveat as ``ps.one_way_anova``).
 
     Raises
     ------
@@ -334,10 +335,11 @@ def pairwise_t_test(
 
     Notes
     -----
-    Rows with a null/NaN value or a null group are dropped first (R's
-    ``NA`` row-drop semantics). Fewer than 2 usable groups give an empty
-    list, never an exception. Inside ``group_by().agg()``, each group is
-    analysed independently (same caveat as ``ps.one_way_anova``).
+    Rows with a null, NaN, or non-finite (``+Inf``/``-Inf``) value, or a
+    null group, are dropped first (R's ``NA`` row-drop semantics). Fewer
+    than 2 usable groups give an empty list, never an exception. Inside
+    ``group_by().agg()``, each group is analysed independently (same
+    caveat as ``ps.one_way_anova``).
 
     Raises
     ------
@@ -411,10 +413,11 @@ def dunn_test(
 
     Notes
     -----
-    Rows with a null/NaN value or a null group are dropped first (R's
-    ``NA`` row-drop semantics). Fewer than 2 usable groups give an empty
-    list, never an exception. Inside ``group_by().agg()``, each group is
-    analysed independently (same caveat as ``ps.one_way_anova``).
+    Rows with a null, NaN, or non-finite (``+Inf``/``-Inf``) value, or a
+    null group, are dropped first (R's ``NA`` row-drop semantics). Fewer
+    than 2 usable groups give an empty list, never an exception. Inside
+    ``group_by().agg()``, each group is analysed independently (same
+    caveat as ``ps.one_way_anova``).
 
     Raises
     ------

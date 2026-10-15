@@ -430,6 +430,43 @@ def test_pairwise_na_rows_dropped():
     assert _rows_equal(got, expected)
 
 
+def test_pairwise_inf_row_dropped():
+    """A +Inf or -Inf value is dropped like a null/NaN row -- it must not
+    silently empty out the whole comparison list (WR-02 regression: before
+    the fix, `long_format` only checked `is_nan()`, so a single non-finite
+    value reached upstream `ensure_finite`, which errored and was mapped to
+    an empty list for the *entire* call)."""
+    values = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]
+    groups = ["a", "a", "b", "b", "c", "c"]
+
+    clean = pl.DataFrame({"x": values, "g": groups})
+    expected = (
+        clean.select(ps.pairwise_t_test("x", "g").alias("ph"))
+        .explode("ph")
+        .unnest("ph")
+        .to_dicts()
+    )
+
+    for bad in (float("inf"), float("-inf")):
+        dirty = pl.DataFrame({"x": values + [bad], "g": groups + ["a"]})
+        for expr, label in (
+            (ps.tukey_hsd("x", "g"), "tukey_hsd"),
+            (ps.pairwise_t_test("x", "g"), "pairwise_t_test"),
+            (ps.dunn_test("x", "g"), "dunn_test"),
+        ):
+            out = dirty.select(expr.alias("ph"))["ph"][0]
+            assert out is not None, label
+            assert len(out) > 0, f"{label}: a single {bad} row emptied the whole result"
+
+    got = (
+        dirty.select(ps.pairwise_t_test("x", "g").alias("ph"))
+        .explode("ph")
+        .unnest("ph")
+        .to_dicts()
+    )
+    assert _rows_equal(got, expected)
+
+
 def test_pairwise_degenerate_inputs():
     """A single group, or an empty frame, returns an empty list without an
     exception (for all three tests)."""

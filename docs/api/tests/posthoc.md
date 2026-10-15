@@ -61,9 +61,10 @@ rows, ordered like R's `TukeyHSD` (B-A, C-A, C-B, ...).
 
 **R equivalent:** `TukeyHSD(aov(values ~ factor(groups)), conf.level = conf_level)`.
 
-**Notes:** Rows with a null/NaN value or a null group are dropped first (R's `NA` row-drop
-semantics). Fewer than 2 usable groups give an empty list, never an exception. Inside
-`group_by().agg()`, each group is analysed independently (same caveat as `one_way_anova`).
+**Notes:** Rows with a non-finite value (`NaN`, `+Inf`, `-Inf`) or null — in either the value or
+the group — are dropped first (R's `NA` row-drop semantics). Fewer than 2 usable groups give an
+empty list, never an exception. Inside `group_by().agg()`, each group is analysed independently
+(same caveat as `one_way_anova`).
 
 **Example:**
 ```python
