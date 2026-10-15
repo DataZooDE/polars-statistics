@@ -4,10 +4,9 @@ import math
 
 import numpy as np
 import polars as pl
-import pytest
-
 import polars_statistics as ps
-from polars_statistics import OLS, Ridge, ElasticNet, WLS, Logistic, Poisson, LmDynamic, Aid
+import pytest
+from polars_statistics import OLS, WLS, Aid, ElasticNet, LmDynamic, Logistic, Poisson, Ridge
 
 
 def _d15() -> pl.DataFrame:

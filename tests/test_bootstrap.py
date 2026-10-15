@@ -1,9 +1,7 @@
 """Tests for bootstrap methods."""
 
 import numpy as np
-import pytest
-
-from polars_statistics import StationaryBootstrap, CircularBlockBootstrap
+from polars_statistics import CircularBlockBootstrap, StationaryBootstrap
 
 
 class TestStationaryBootstrap:

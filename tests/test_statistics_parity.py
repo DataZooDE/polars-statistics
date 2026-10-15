@@ -442,9 +442,8 @@ class TestEnergyDistanceNd:
 
     def test_mismatched_dims_raises(self):
         """energy_distance_nd raises ValueError when x_cols and y_cols have different lengths."""
-        from polars_statistics.exprs.modern import energy_distance_nd
-
         import pytest
+        from polars_statistics.exprs.modern import energy_distance_nd
 
         with pytest.raises(ValueError):
             energy_distance_nd(["x1", "x2"], ["y1"])

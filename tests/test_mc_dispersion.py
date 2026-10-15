@@ -3,14 +3,12 @@
 import numpy as np
 import polars as pl
 import pytest
-
 from polars_statistics import (
     generalized_vif,
     high_vif_predictors,
     pearson_chi_squared_logistic,
     pearson_chi_squared_poisson,
 )
-
 
 # ----------------------------------------------------------------------------
 # high_vif_predictors

@@ -7,6 +7,7 @@ Run from the examples/ directory:
 import pathlib
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
@@ -1019,10 +1020,10 @@ def plot_cor2_nonlinear():
     m, b = np.polyfit(x, y, 1)
     x_fit = np.linspace(-3.5, 3.5, 100)
     ax.plot(x_fit, m * x_fit + b, color="#C44E52", ls="--", lw=1.5,
-            label=f"Pearson r = −0.01 (linear)")
+            label="Pearson r = −0.01 (linear)")
     # True relationship
     ax.plot(x_fit, x_fit**2, color="#55A868", lw=2,
-            label=f"Distance cor = 0.76 (nonlinear)")
+            label="Distance cor = 0.76 (nonlinear)")
 
     ax.set_xlabel("x")
     ax.set_ylabel("y")

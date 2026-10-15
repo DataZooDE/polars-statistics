@@ -1,9 +1,8 @@
 """Tests for categorical statistical test expressions."""
 
 import polars as pl
-import pytest
-
 import polars_statistics as ps
+import pytest
 
 
 class TestBinomTest:

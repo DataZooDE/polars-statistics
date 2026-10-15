@@ -22,7 +22,6 @@ import sys
 import textwrap
 import traceback
 
-
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
@@ -332,7 +331,7 @@ def main() -> int:
     else:
         skill_paths = discovered
 
-    print(f"polars-statistics SKILL.md verification harness")
+    print("polars-statistics SKILL.md verification harness")
     print(f"Skills: {[skill_name_from_path(p) for p in skill_paths]}")
 
     all_results: list[dict] = []

@@ -1,7 +1,7 @@
 """Smoke tests for MomentAccumulator PyModel and OLS/Ridge fit_from_accumulator."""
 import numpy as np
 import pytest
-from polars_statistics import MomentAccumulator, OLS, Ridge
+from polars_statistics import OLS, MomentAccumulator, Ridge
 
 
 class TestMomentAccumulator:

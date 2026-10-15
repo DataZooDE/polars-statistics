@@ -3,7 +3,6 @@
 import numpy as np
 import polars as pl
 import pytest
-
 from polars_statistics import (
     logistic_deviance_residuals,
     logistic_pearson_residuals,

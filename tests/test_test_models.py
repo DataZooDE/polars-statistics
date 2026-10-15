@@ -2,20 +2,18 @@
 
 import numpy as np
 import pytest
-
 from polars_statistics import (
+    BrownForsythe,
+    BrunnerMunzel,
+    DAgostino,
+    KruskalWallis,
+    MannWhitneyU,
+    ShapiroWilk,
     TTestInd,
     TTestPaired,
-    BrownForsythe,
-    YuenTest,
-    MannWhitneyU,
     WilcoxonSignedRank,
-    KruskalWallis,
-    BrunnerMunzel,
-    ShapiroWilk,
-    DAgostino,
+    YuenTest,
 )
-
 
 # =============================================================================
 # Test Fixtures

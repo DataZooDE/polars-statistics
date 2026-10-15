@@ -2,8 +2,6 @@
 
 import numpy as np
 import polars as pl
-import pytest
-
 import polars_statistics as ps
 
 
