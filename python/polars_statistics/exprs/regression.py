@@ -2152,8 +2152,10 @@ def augment(
         ``"cloglog"``, ``"poisson"``, ``"negative_binomial"``, ``"tweedie"``,
         or ``"gamma"``.
     weights : pl.Expr or str, optional
-        Prior weights. Required (and only valid) with ``model="wls"``; when
-        omitted for WLS the fit's own weights are used.
+        Prior weights. Required with ``model="wls"`` (``ValueError`` if
+        omitted) — this expression always fits a fresh model, so there is no
+        already-fitted model to borrow weights from, unlike
+        ``WLS.augment()``. Invalid (``ValueError``) with any other model.
     residual_type : str, optional
         ``"response"``, ``"pearson"``, or ``"deviance"``. Defaults to
         ``"response"`` for ``ols``/``wls`` and ``"deviance"`` for every GLM
