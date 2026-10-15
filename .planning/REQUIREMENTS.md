@@ -58,7 +58,7 @@ Requirements for this milestone. Each maps to exactly one roadmap phase.
 
 - [x] **UPST-08**: Post-hoc tests (Tukey HSD, pairwise t, Dunn), p_adjust and ptukey/qtukey from anofox-statistics 0.4.7 are exposed and match R
 - [x] **UPST-09**: anofox-regression 0.5.17–0.5.21 additions (augment diagnostics, ModelInfo, GLM intercept inference, GLMM NegBin/Gamma/Tweedie + offset + per-factor random slopes, alias_tolerance, LARS fit-statistic getters, EB shrinkage) are exposed and match R
-- [ ] **UPST-10**: The 16.3 surface is documented in stubs, mkdocs, CHANGELOG and skills, with opt-outs recorded in COVERAGE.md
+- [x] **UPST-10**: The 16.3 surface is documented in stubs, mkdocs, CHANGELOG and skills, with opt-outs recorded in COVERAGE.md
 
 ### Code Quality
 
@@ -112,7 +112,7 @@ Deferred to future releases.
 | UPST-07 | Phase 16.2 | Complete |
 | UPST-08 | Phase 16.3 | Complete |
 | UPST-09 | Phase 16.3 | Complete |
-| UPST-10 | Phase 16.3 | Pending |
+| UPST-10 | Phase 16.3 | Complete |
 | QUAL-01 | Phase 16.4 | Pending |
 | REL-07 | Phase 17 | Pending |
 | REL-08 | Phase 17 | Pending |
