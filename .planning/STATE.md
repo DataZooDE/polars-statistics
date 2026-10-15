@@ -4,18 +4,18 @@ milestone: v0.8.0
 milestone_name: Claude Code Skills Plugin
 current_phase: "16.3"
 current_phase_name: Upstream API Wave 2
-current_plan: 6
+current_plan: 7
 status: executing
-stopped_at: Completed 16.3-05-PLAN.md
-last_updated: "2026-10-15T17:51:33.395Z"
+stopped_at: Completed 16.3-06-PLAN.md
+last_updated: "2026-10-15T18:20:32.612Z"
 last_activity: 2026-10-09
 last_activity_desc: Phase 16.3 execution started
-state_head: 6adf782d16d1d45f77485f42df6d6a9a88cdedfa
+state_head: 59ace138473bd7c38bc2da8dd99b7e2ecb5a4ace
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 36
-  completed_plans: 29
+  completed_plans: 30
   percent: 0
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 ## Current Position
 
 Phase: 16.3 (Upstream API Wave 2) — EXECUTING
-Current Plan: 6
+Current Plan: 7
 Total Plans in Phase: 11
 Status: Ready to execute
 Last activity: 2026-10-09 — Phase 16.3 execution started
@@ -124,6 +124,7 @@ Execution order: 13 → 14 → 15 → 16 → 17
 | Phase 16.3 P03 | 50min | 3 tasks | 4 files |
 | Phase 16.3 P04 | 25min | 2 tasks | 7 files |
 | Phase 16.3 P05 | 50min | 3 tasks | 11 files |
+| Phase 16.3 P06 | 30min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -204,6 +205,8 @@ Recent decisions affecting current work:
 - [Phase 16.3]: [Phase 16.3]: 16.3-05: py_wls.rs's fitted field was already a concrete Option<FittedWls> (16.1-05), so WLS.augment needed no storage-type change
 - [Phase 16.3]: [Phase 16.3]: 16.3-05: augment's tweedie dispatch sets .link_power(0.0) explicitly (log link) since TweedieRegressorBuilder's own unset-link default (canonical link, 1 - var_power) does not reproduce GammaRegressor's Cook's distance at var_power=2.0 -- the pre-existing ps.tweedie() expression is untouched
 - [Phase 16.3]: [Phase 16.3]: 16.3-05: Did not flip UPST-09 to Complete in REQUIREMENTS.md -- still shared with 16.3-06 through 16.3-11
+- [Phase 16.3]: [Phase 16.3]: 16.3-06: Confirmed anofox-regression's Augmentable impls read family/link/theta from the fitted object itself, so every PyModel .augment() describes exactly what the instance was fit with (no reconciliation logic needed, unlike ps.augment's Tweedie dispatch fix in 16.3-05)
+- [Phase 16.3]: [Phase 16.3]: 16.3-06: Did not flip UPST-09 to Complete in REQUIREMENTS.md -- still shared with 16.3-07 through 16.3-11
 
 ### Pending Todos
 
@@ -239,7 +242,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-10-15T17:51:33.346Z
-Stopped at: Completed 16.3-05-PLAN.md
+Last session: 2026-10-15T18:20:32.522Z
+Stopped at: Completed 16.3-06-PLAN.md
 Resume file: None
 </content>
