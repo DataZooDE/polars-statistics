@@ -292,7 +292,13 @@ real API, bundled into the wheel, and shipped as 0.8.0 on PyPI.
   2. sdist and platform wheels are built and published to production PyPI via the GitHub Actions OIDC pipeline (no hardcoded tokens)
   3. A post-release smoke check confirms the published 0.8.0 installs, imports cleanly, and has the skill files present in the installed package
 
-**Plans**: TBD
+**Plans**: 5 plans
+
+- [ ] 17-01-PLAN.md — Align every version source on 0.8.0 (incl. uv.lock), add an automated alignment check, correct stale skill version notes, finalize CHANGELOG [0.8.0], pass a full local CI-mirror gate + 3.9/3.12 release-wheel/sdist smoke
+- [ ] 17-02-PLAN.md — Pre-push readiness, push approval, push release/v0.8.0 + open PR + drive the full 18-job CI matrix green (PR #47 probed, untouched)
+- [ ] 17-03-PLAN.md — Pre-merge re-check, user merge decision, merge with head-SHA guard, verify the merged commit + plugin live on main, sync local main without rewriting history
+- [ ] 17-04-PLAN.md — TestPyPI dry-run decision, then dispatch + verify the production PyPI job skipped + TestPyPI install smoke (or record decline)
+- [ ] 17-05-PLAN.md — Pre-publish readiness, user publish approval, tag + GitHub release v0.8.0 on the merge commit, watch the PyPI publish, verify the 6 PyPI files, post-release smoke on 3.12 and 3.9
 
 ## Progress
 
