@@ -27,8 +27,10 @@ from polars_statistics import (
     OLS,
     WLS,
     Cloglog,
+    Gamma,
     Logistic,
     LogisticRegression,
+    NegativeBinomial,
     Poisson,
     Probit,
     Tweedie,
@@ -767,3 +769,128 @@ class TestGlmPyModelAugment:
             model = cls()
             with pytest.raises(RuntimeError, match=name):
                 model.augment(x, MT_VS)
+
+    # -- NegativeBinomial / Tweedie / Gamma (Task 3) ------------------------
+
+    def test_negbin_pymodel_matches_r(self):
+        x = np.column_stack([WB_WOOLB, WB_TM, WB_TH])
+        model = NegativeBinomial(max_iter=100, tol=1e-12).fit(x, WB_BREAKS)
+        d = model.augment(x, WB_BREAKS)
+
+        assert d["resid_type"] == "deviance"
+        assert rel_close(d["fitted"], ref.NB_FITTED, 1e-6)
+        assert rel_close(d["residual"], ref.NB_RESID_DEV, 1e-6)
+        assert rel_close(d["std_residual"], ref.NB_RSTD_DEV, 1e-6)
+        assert rel_close(d["stud_residual"], ref.NB_RSTUD, 1e-6)
+        assert rel_close(d["leverage"], ref.NB_HAT, 1e-6)
+        assert rel_close(d["cooks_d"], ref.NB_COOK, 1e-6)
+        assert rel_close(d["dffits"], ref.NB_DFFITS, 1e-6)
+
+    def test_negbin_pymodel_expression_parity(self):
+        x = np.column_stack([WB_WOOLB, WB_TM, WB_TH])
+        model = NegativeBinomial(max_iter=100, tol=1e-12).fit(x, WB_BREAKS)
+        d = model.augment(x, WB_BREAKS)
+
+        df = _wb_df()
+        expr_out = df.select(
+            ps.augment(
+                "breaks",
+                "woolB",
+                "tensionM",
+                "tensionH",
+                model="negative_binomial",
+                tol=1e-12,
+            ).alias("a")
+        ).unnest("a")
+        for key in (
+            "fitted",
+            "residual",
+            "std_residual",
+            "stud_residual",
+            "leverage",
+            "cooks_d",
+            "dffits",
+        ):
+            assert rel_close(d[key], expr_out[key].to_numpy(), 1e-10)
+
+    def test_gamma_pymodel_matches_r(self):
+        x = np.column_stack([MT_WT, MT_HP])
+        model = Gamma(max_iter=100, tol=1e-12).fit(x, MT_MPG)
+        d = model.augment(x, MT_MPG)
+
+        assert d["resid_type"] == "deviance"
+        assert rel_close(d["fitted"], ref.GAMMA_FITTED, 1e-6)
+        assert rel_close(d["residual"], ref.GAMMA_RESID_DEV, 1e-6)
+        assert rel_close(d["std_residual"], ref.GAMMA_RSTD_DEV, 1e-6)
+        assert rel_close(d["stud_residual"], ref.GAMMA_RSTUD, 1e-6)
+        assert rel_close(d["leverage"], ref.GAMMA_HAT, 1e-6)
+        assert rel_close(d["cooks_d"], ref.GAMMA_COOK, 1e-6)
+        assert rel_close(d["dffits"], ref.GAMMA_DFFITS, 1e-6)
+
+    def test_gamma_pymodel_expression_parity(self):
+        x = np.column_stack([MT_WT, MT_HP])
+        model = Gamma(max_iter=100, tol=1e-12).fit(x, MT_MPG)
+        d = model.augment(x, MT_MPG)
+
+        df = _mt_df()
+        expr_out = df.select(
+            ps.augment("mpg", "wt", "hp", model="gamma", tol=1e-12, max_iter=100).alias("a")
+        ).unnest("a")
+        for key in (
+            "fitted",
+            "residual",
+            "std_residual",
+            "stud_residual",
+            "leverage",
+            "cooks_d",
+            "dffits",
+        ):
+            assert rel_close(d[key], expr_out[key].to_numpy(), 1e-10)
+
+    def test_tweedie_pymodel_cooks_d_matches_gamma(self):
+        x = np.column_stack([MT_WT, MT_HP])
+        model = Tweedie(var_power=2.0, link_power=0.0, max_iter=100, tol=1e-12).fit(x, MT_MPG)
+        d = model.augment(x, MT_MPG)
+        assert rel_close(d["cooks_d"], ref.GAMMA_COOK, 1e-6)
+
+        d_resp = model.augment(x, MT_MPG, residual_type="response")
+        assert rel_close(d_resp["residual"], MT_MPG - np.array(ref.GAMMA_FITTED), 1e-6)
+
+    def test_tweedie_pymodel_expression_parity(self):
+        x = np.column_stack([MT_WT, MT_HP])
+        model = Tweedie(var_power=2.0, link_power=0.0, max_iter=100, tol=1e-12).fit(x, MT_MPG)
+        d = model.augment(x, MT_MPG)
+
+        df = _mt_df()
+        expr_out = df.select(
+            ps.augment(
+                "mpg",
+                "wt",
+                "hp",
+                model="tweedie",
+                var_power=2.0,
+                link_power=0.0,
+                tol=1e-12,
+                max_iter=100,
+            ).alias("a")
+        ).unnest("a")
+        for key in (
+            "fitted",
+            "residual",
+            "std_residual",
+            "stud_residual",
+            "leverage",
+            "cooks_d",
+            "dffits",
+        ):
+            assert rel_close(d[key], expr_out[key].to_numpy(), 1e-10)
+
+    def test_negbin_gamma_tweedie_pymodel_errors_name_class(self):
+        with pytest.raises(RuntimeError, match="NegativeBinomial"):
+            NegativeBinomial().augment(
+                np.column_stack([WB_WOOLB, WB_TM, WB_TH]), WB_BREAKS
+            )
+        with pytest.raises(RuntimeError, match="Gamma"):
+            Gamma().augment(np.column_stack([MT_WT, MT_HP]), MT_MPG)
+        with pytest.raises(RuntimeError, match="Tweedie"):
+            Tweedie().augment(np.column_stack([MT_WT, MT_HP]), MT_MPG)
