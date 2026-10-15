@@ -30,6 +30,12 @@ jobs:
       - name: Ruff lint
         run: ruff check . --output-format=github
 
+      # PKG-01 / Phase 16: fail fast if a skill edit under plugins/ was not
+      # re-synced into python/polars_statistics/_plugin/ — stdlib-only, no
+      # wheel build required, so this stays cheap in the lint job.
+      - name: Verify wheel-bundled plugin is not stale (drift-only)
+        run: python scripts/verify_wheel_bundling.py --drift-only
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
