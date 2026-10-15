@@ -42,7 +42,7 @@ Requirements for this milestone. Each maps to exactly one roadmap phase.
 
 ### Release
 
-- [ ] **REL-07**: `polars-statistics` is bumped 0.7.0 → 0.8.0 across all version sources (`Cargo.toml`, `pyproject.toml`, `python/polars_statistics/__init__.py` `__version__`) plus the `plugin.json` and every `SKILL.md` version field, all aligned
+- [x] **REL-07**: `polars-statistics` is bumped 0.7.0 → 0.8.0 across all version sources (`Cargo.toml`, `pyproject.toml`, `python/polars_statistics/__init__.py` `__version__`) plus the `plugin.json` and every `SKILL.md` version field, all aligned
 - [ ] **REL-08**: 0.8.0 is published to production PyPI via the GitHub Actions OIDC pipeline and passes a post-release smoke check confirming import + skills present in the installed package
 
 ### Upstream Crate Refresh
@@ -114,7 +114,7 @@ Deferred to future releases.
 | UPST-09 | Phase 16.3 | Complete |
 | UPST-10 | Phase 16.3 | Complete |
 | QUAL-01 | Phase 16.4 | Complete |
-| REL-07 | Phase 17 | Pending |
+| REL-07 | Phase 17 | Complete |
 | REL-08 | Phase 17 | Pending |
 
 **Coverage:**

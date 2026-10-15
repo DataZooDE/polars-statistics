@@ -4,19 +4,19 @@ milestone: v0.8.0
 milestone_name: Claude Code Skills Plugin
 current_phase: 17
 current_phase_name: Release 0.8.0
-current_plan: 1
+current_plan: 2
 status: executing
-stopped_at: Phase 16 complete, ready to plan Phase 16.1
-last_updated: "2026-10-15T22:17:43.937Z"
+stopped_at: Completed 17-01-PLAN.md
+last_updated: "2026-10-15T22:45:12.595Z"
 last_activity: 2026-10-16
 last_activity_desc: Phase 17 execution started
-state_head: a19902d75a23af29b7fd1755cda064a2aeac6884
+state_head: bc87d7f305119951e24c15f39ca8d347cab7a09a
 progress:
   total_phases: 9
-  completed_phases: 5
+  completed_phases: 0
   total_plans: 44
-  completed_plans: 39
-  percent: 56
+  completed_plans: 40
+  percent: 0
 ---
 
 # Project State
@@ -31,9 +31,9 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 ## Current Position
 
 Phase: 17 (Release 0.8.0) — EXECUTING
-Current Plan: 1
+Current Plan: 2
 Total Plans in Phase: 5
-Status: Executing Phase 17
+Status: Ready to execute
 Last activity: 2026-10-16 — Phase 17 execution started
 
 ## Milestone Roadmap (v0.8.0)
@@ -137,6 +137,7 @@ Execution order: 13 → 14 → 15 → 16 → 17
 | Phase 16.4 P02 | 6min | 3 tasks | 42 files |
 | Phase 16.4 P03 | 9min | 3 tasks | 4 files |
 | Phase 16-wheel-bundling P01 | 15min | 3 tasks | 10 files |
+| Phase 17 P01 | 50min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -237,6 +238,8 @@ Recent decisions affecting current work:
 - [Phase 16.4]: [Phase 16.4]: 16.4-03: Did not add ruff format --check to CI (139/249 files would be reformatted) — reformatting is a large diff unrelated to lint, per CONTEXT rule
 - [Phase 16]: [Phase 16]: 16-01: Bundled plugin tree under python/polars_statistics/_plugin/ via maturin python-source auto-include (not [tool.maturin] include globs) so files land inside the package namespace and are discoverable via polars_statistics.__file__
 - [Phase 16]: [Phase 16]: 16-01: [Rule 2] Wired scripts/verify_wheel_bundling.py --drift-only into the CI lint job so stale bundled skills fail CI before release
+- [Phase 17]: 17-01: check_version_alignment.py line-scans TOML/JSON/frontmatter directly (no tomllib) so the check itself runs under CI's Python 3.9 pytest jobs
+- [Phase 17]: 17-01: CHANGELOG self-contradiction removed — deleted the 'planned for a later release' deferral sentence since the Added section + next bullet already document those additions as shipped
 
 ### Pending Todos
 
@@ -272,7 +275,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-10-15T21:46:34.452Z
-Stopped at: Phase 16 complete, ready to plan Phase 16.1
+Last session: 2026-10-15T22:45:12.531Z
+Stopped at: Completed 17-01-PLAN.md
 Resume file: None
 </content>
