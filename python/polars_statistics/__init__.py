@@ -69,11 +69,6 @@ from polars_statistics._polars_statistics import (
     YuenTest,
 )
 from polars_statistics.exprs import (
-    # AID and Dynamic Linear Model expressions
-    aid,
-    aid_anomalies,
-    # Augment (per-observation diagnostics)
-    augment,
     # Survival (AFT) expressions
     aft,
     aft_formula,
@@ -87,12 +82,17 @@ from polars_statistics.exprs import (
     aft_predict_quantile,
     aft_predict_survival,
     aft_summary,
+    # AID and Dynamic Linear Model expressions
+    aid,
+    aid_anomalies,
     alm,
     alm_formula,
     alm_formula_predict,
     alm_formula_summary,
     alm_predict,
     alm_summary,
+    # Augment (per-observation diagnostics)
+    augment,
     # Categorical tests
     binom_test,
     bls,
@@ -125,6 +125,9 @@ from polars_statistics.exprs import (
     # Forecast tests
     diebold_mariano,
     distance_cor,
+    dunn_test,
+    # Empirical-Bayes shrinkage expression
+    eb_shrink,
     elastic_net,
     elastic_net_formula,
     elastic_net_formula_predict,
@@ -191,22 +194,6 @@ from polars_statistics.exprs import (
     nnls,
     nnls_formula,
     nnls_predict,
-    # Post-hoc / p-value adjustment expressions
-    p_adjust,
-    ptukey,
-    qtukey,
-    tukey_hsd,
-    pairwise_t_test,
-    dunn_test,
-    # Empirical-Bayes shrinkage expression
-    eb_shrink,
-    # Penalized GLM expressions
-    penalized_glm,
-    penalized_glm_formula,
-    penalized_glm_formula_predict,
-    penalized_glm_formula_summary,
-    penalized_glm_predict,
-    penalized_glm_summary,
     # Regression expressions
     ols,
     # Formula-based regression expressions
@@ -220,11 +207,21 @@ from polars_statistics.exprs import (
     # Summary expressions
     ols_summary,
     one_way_anova,
+    # Post-hoc / p-value adjustment expressions
+    p_adjust,
+    pairwise_t_test,
     partial_cor,
     # Correlation tests
     pearson,
     pearson_chi_squared_logistic,
     pearson_chi_squared_poisson,
+    # Penalized GLM expressions
+    penalized_glm,
+    penalized_glm_formula,
+    penalized_glm_formula_predict,
+    penalized_glm_formula_summary,
+    penalized_glm_predict,
+    penalized_glm_summary,
     permutation_t_test,
     phi_coefficient,
     pls,
@@ -243,6 +240,8 @@ from polars_statistics.exprs import (
     probit_summary,
     prop_test_one,
     prop_test_two,
+    ptukey,
+    qtukey,
     quantile,
     quantile_predict,
     # Summary / predict completeness (issue #18)
@@ -282,6 +281,7 @@ from polars_statistics.exprs import (
     # Parametric tests
     ttest_ind,
     ttest_paired,
+    tukey_hsd,
     tweedie,
     tweedie_formula,
     tweedie_predict,
