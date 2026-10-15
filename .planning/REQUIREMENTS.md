@@ -38,7 +38,7 @@ Requirements for this milestone. Each maps to exactly one roadmap phase.
 
 ### Packaging
 
-- [ ] **PKG-01**: Skill files are bundled into the built wheel via maturin package data and are present after `pip install polars-statistics`
+- [x] **PKG-01**: Skill files are bundled into the built wheel via maturin package data and are present after `pip install polars-statistics`
 
 ### Release
 
@@ -102,7 +102,7 @@ Deferred to future releases.
 | SKILL-06 | Phase 14 | Complete |
 | VERIFY-01 | Phase 15 | Complete |
 | VERIFY-02 | Phase 15 | Complete |
-| PKG-01 | Phase 16 | Pending |
+| PKG-01 | Phase 16 | Complete |
 | UPST-01 | Phase 16.1 | Complete |
 | UPST-02 | Phase 16.1 | Complete |
 | UPST-03 | Phase 16.1 | Complete |

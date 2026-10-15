@@ -141,9 +141,9 @@ real API, bundled into the wheel, and shipped as 0.8.0 on PyPI.
   2. After `pip install polars-statistics` (from the built wheel), the marketplace, `plugin.json`, and every `SKILL.md` are present in the installed package
   3. The bundled-skills packaging does not break the existing wheel build or CI gates
 
-**Plans**: 1 plan
+**Plans**: 1/1 plans executed
 
-- [ ] 16-01-PLAN.md — Copy the plugin tree under `python/polars_statistics/_plugin/` (maturin python-source auto-include), add a drift + clean-venv install verifier, prove PKG-01 end-to-end
+- [x] 16-01-PLAN.md — Copy the plugin tree under `python/polars_statistics/_plugin/` (maturin python-source auto-include), add a drift + clean-venv install verifier, prove PKG-01 end-to-end
 
 ### Phase 16.1: Upstream Crate Refresh (INSERTED)
 
@@ -316,7 +316,7 @@ Phases execute in order: 13 → 14 → 15 → 16.1 → 16.2 → 16.3 → 16.4 �
 | 13. Plugin & Marketplace Scaffolding | v0.8.0 | 1/1 | Complete    | 2026-09-21 |
 | 14. Skill Cheat-Sheet Authoring | v0.8.0 | 5/5 | Complete    | 2026-09-21 |
 | 15. Accuracy Verification Pass | v0.8.0 | 1/1 | Complete    | 2026-09-21 |
-| 16. Wheel Bundling | v0.8.0 | 0/TBD | Not started | - |
+| 16. Wheel Bundling | v0.8.0 | 1/1 | In Progress|  |
 | 17. Release 0.8.0 | v0.8.0 | 0/TBD | Not started | - |
 </content>
 </invoke>

@@ -5,18 +5,18 @@ milestone_name: Claude Code Skills Plugin
 current_phase: 16
 current_phase_name: Wheel Bundling
 current_plan: 1
-status: executing
-stopped_at: Phase 16.4 complete, ready to plan Phase 16
-last_updated: "2026-10-15T21:36:19.194Z"
+status: verifying
+stopped_at: Completed 16-01-PLAN.md
+last_updated: "2026-10-15T21:46:34.544Z"
 last_activity: 2026-10-15
 last_activity_desc: Phase 16 execution started
-state_head: 528e5f24968a9450e09125ec66fc97825967f9aa
+state_head: 73f79221d93b922ccdc1e339d1f074f134678592
 progress:
   total_phases: 9
-  completed_phases: 4
+  completed_phases: 3
   total_plans: 39
-  completed_plans: 38
-  percent: 44
+  completed_plans: 39
+  percent: 33
 ---
 
 # Project State
@@ -33,7 +33,7 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 Phase: 16 (Wheel Bundling) — EXECUTING
 Current Plan: 1
 Total Plans in Phase: 1
-Status: Executing Phase 16
+Status: Phase complete — ready for verification
 Last activity: 2026-10-15 — Phase 16 execution started
 
 ## Milestone Roadmap (v0.8.0)
@@ -135,6 +135,7 @@ Execution order: 13 → 14 → 15 → 16 → 17
 | Phase 16.4 P01 | 6min | 3 tasks | 15 files |
 | Phase 16.4 P02 | 6min | 3 tasks | 42 files |
 | Phase 16.4 P03 | 9min | 3 tasks | 4 files |
+| Phase 16-wheel-bundling P01 | 15min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -233,6 +234,8 @@ Recent decisions affecting current work:
 - [Phase 16.4]: [Phase 16.4]: 16.4-03: Fixed scripts/gen_stubs.py (bare class names, no file-wide noqa) instead of excluding the generated .pyi from ruff, per CONTEXT's generator-fix-first rule
 - [Phase 16.4]: [Phase 16.4]: 16.4-03: Scoped ruff with pyproject.toml [tool.ruff] extend-exclude = [".planning"] (documented reason) rather than a per-file-ignore for the 2 remaining non-package findings
 - [Phase 16.4]: [Phase 16.4]: 16.4-03: Did not add ruff format --check to CI (139/249 files would be reformatted) — reformatting is a large diff unrelated to lint, per CONTEXT rule
+- [Phase 16]: [Phase 16]: 16-01: Bundled plugin tree under python/polars_statistics/_plugin/ via maturin python-source auto-include (not [tool.maturin] include globs) so files land inside the package namespace and are discoverable via polars_statistics.__file__
+- [Phase 16]: [Phase 16]: 16-01: [Rule 2] Wired scripts/verify_wheel_bundling.py --drift-only into the CI lint job so stale bundled skills fail CI before release
 
 ### Pending Todos
 
@@ -268,7 +271,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-10-15T21:32:14.237Z
-Stopped at: Phase 16.4 complete, ready to plan Phase 16
+Last session: 2026-10-15T21:46:34.452Z
+Stopped at: Completed 16-01-PLAN.md
 Resume file: None
 </content>
