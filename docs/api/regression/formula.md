@@ -24,14 +24,17 @@ All regression models have a `*_formula` variant:
 ### Linear Models
 
 ```python
-ps.ols_formula(formula: str, with_intercept: bool = True) -> pl.Expr
+ps.ols_formula(formula: str, with_intercept: bool = True, alias_tolerance: float = 1e-7) -> pl.Expr
 ps.ridge_formula(formula: str, lambda_: float = 1.0, with_intercept: bool = True) -> pl.Expr
 ps.elastic_net_formula(formula: str, lambda_: float = 1.0, alpha: float = 0.5, with_intercept: bool = True) -> pl.Expr
-ps.wls_formula(formula: str, weights: Union[pl.Expr, str], with_intercept: bool = True) -> pl.Expr
+ps.wls_formula(formula: str, weights: Union[pl.Expr, str], with_intercept: bool = True, alias_tolerance: float = 1e-7) -> pl.Expr
 ps.rls_formula(formula: str, forgetting_factor: float = 0.99, with_intercept: bool = True) -> pl.Expr
 ps.bls_formula(formula: str, lower_bound: float | None = None, upper_bound: float | None = None, with_intercept: bool = True) -> pl.Expr
 ps.nnls_formula(formula: str, with_intercept: bool = True) -> pl.Expr
 ```
+
+**`ols_formula`/`wls_formula` also accept `alias_tolerance`** (default `1e-7`) — forwarded
+to the underlying `ols`/`wls` rank-deficiency tolerance; see [Linear Models](linear.md#ols).
 
 ### GLM Models
 
@@ -110,7 +113,7 @@ df.group_by("group").agg(
 
 Summary functions:
 ```python
-ps.ols_formula_summary(formula, with_intercept=True)
+ps.ols_formula_summary(formula, with_intercept=True, alias_tolerance=1e-7)
 ps.ridge_formula_summary(formula, lambda_=1.0, with_intercept=True)
 ps.penalized_glm_formula_summary(formula, family="poisson", vcov_type="laplace", conf_level=0.95, ...)
 ps.aft_formula_summary(formula, event, distribution="weibull", vcov_type="laplace", conf_level=0.95, ...)
@@ -119,11 +122,16 @@ ps.aft_formula_summary(formula, event, distribution="weibull", vcov_type="laplac
 
 Prediction functions:
 ```python
-ps.ols_formula_predict(formula, interval=None, level=0.95, with_intercept=True)
+ps.ols_formula_predict(formula, interval=None, level=0.95, with_intercept=True, alias_tolerance=1e-7)
 ps.ridge_formula_predict(formula, lambda_=1.0, interval=None, level=0.95, with_intercept=True)
 ps.penalized_glm_formula_predict(formula, family="poisson", predict_type="response", null_policy="drop", ...)
 # ... etc.
 ```
+
+**Note:** only `ols_formula`/`wls_formula` have `alias_tolerance`; there is no
+`wls_formula_summary`/`wls_formula_predict` — use `ps.wls_summary`/`ps.wls_predict`'s
+column-based interface (both accept `alias_tolerance`) for a WLS summary/prediction after a
+formula fit.
 
 ---
 

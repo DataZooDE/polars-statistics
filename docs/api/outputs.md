@@ -481,6 +481,57 @@ arguments. All three return `NaN` (never an exception) for invalid input rather 
 
 ---
 
+## Augment Output
+
+Returned by `ps.augment` and every `.augment(x, y, ...)` PyModel method (`OLS`, `WLS`,
+`Poisson`, `Logistic`, `Probit`, `Cloglog`, `LogisticRegression`, `NegativeBinomial`,
+`Tweedie`, `Gamma`). See [Diagnostics](regression/diagnostics.md#augment-per-observation-diagnostics).
+
+```
+Struct {
+    fitted: Float64,          # fitted value (response scale)
+    residual: Float64,        # residual of residual_type
+    std_residual: Float64,    # standardized residual (R's rstandard)
+    stud_residual: Float64,   # externally studentized residual (R's rstudent)
+    leverage: Float64,        # hat-matrix diagonal (R's hatvalues)
+    cooks_d: Float64,         # Cook's distance (R's cooks.distance)
+    dffits: Float64,          # scaled change in fitted value when the row is dropped
+}
+```
+
+One row per input row (`returns_scalar=False`, like the `*_predict` expressions). Rows with a
+non-finite `y`/`x` (or, for `wls`/`model="wls"`, a non-finite/negative weight) come back all
+`NaN`; the surviving rows equal a fit without that row. The PyModel `.augment()` dict uses the
+same keys plus a trailing `resid_type` (the resolved `residual_type` string).
+
+---
+
+## EB Shrinkage Output
+
+Returned by `ps.eb_shrink`. See [Empirical-Bayes Shrinkage](regression/shrinkage.md).
+
+```
+Struct {
+    shrunken: Float64,       # empirical-Bayes shrunken estimate (BLUP)
+    shrunken_se: Float64,    # SE of the shrunken estimate
+    weight: Float64,         # inverse-variance weight used for this row
+    mu: Float64,             # pooled mean (repeated on every row)
+    mu_se: Float64,          # SE of the pooled mean (repeated on every row)
+    tau_squared: Float64,    # between-group variance estimate (repeated on every row)
+    i_squared: Float64,      # Higgins-Thompson I^2 (repeated on every row)
+    q: Float64,              # Cochran's Q heterogeneity statistic (repeated on every row)
+    n_groups: UInt32,        # number of usable rows (repeated on every row)
+}
+```
+
+One row per input row (`returns_scalar=False`) — every shrunken value belongs to an input row,
+so `.over(family)` shrinks per family directly. Rows with a null/non-finite `estimate` or a
+non-positive/non-finite `std_error` stay `NaN`-aligned and are excluded from `mu`/`tau_squared`/
+`n_groups`; fewer than 2 usable rows give all-`NaN` rows with `n_groups == 0`, never an
+exception.
+
+---
+
 ## Mann-Whitney / Wilcoxon Output
 
 Returned by `mann_whitney_u` and `wilcoxon_signed_rank`. See

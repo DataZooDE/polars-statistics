@@ -9,10 +9,10 @@ Return coefficient statistics in tidy format (like R's `broom::tidy`).
 ### Available Functions
 
 ```python
-ps.ols_summary(y, *x, with_intercept=True) -> pl.Expr
+ps.ols_summary(y, *x, with_intercept=True, alias_tolerance=1e-7) -> pl.Expr
 ps.ridge_summary(y, *x, lambda_=1.0, with_intercept=True) -> pl.Expr
 ps.elastic_net_summary(y, *x, lambda_=1.0, alpha=0.5, with_intercept=True) -> pl.Expr
-ps.wls_summary(y, weights, *x, with_intercept=True) -> pl.Expr
+ps.wls_summary(y, weights, *x, with_intercept=True, alias_tolerance=1e-7) -> pl.Expr
 ps.rls_summary(y, *x, forgetting_factor=0.99, with_intercept=True, initial_p_diagonal=1e6) -> pl.Expr
 ps.bls_summary(y, *x, lower_bound=None, upper_bound=None, with_intercept=True) -> pl.Expr
 ps.logistic_summary(y, *x, with_intercept=True) -> pl.Expr
@@ -54,6 +54,13 @@ semantics); default `False` keeps dispersion fixed at `1.0`. See
 **Note on `rls_summary`'s `initial_p_diagonal`:** sets the initial covariance
 prior `P0 = initial_p_diagonal * I`; default `1e6` is identical to omitting it.
 See [RLS](../classes/linear.md#rls).
+
+**`alias_tolerance` (0.8.0, `ols_summary`/`wls_summary`):** R `lm`'s configurable
+rank-deficiency tolerance, default `1e-7`. A later column that is a linear combination of the
+intercept and earlier kept columns within this tolerance is aliased (`NaN` `estimate`/
+`std_error`/`statistic`/`p_value` for that term). See
+[Linear Models](linear.md#ols) and
+[Rank-deficient designs](../classes/linear.md#rank-deficient-designs-ols-wls).
 
 **GLM intercept inference since 0.8.0 (anofox-regression 0.5.20 #66):** every GLM
 `*_summary` (`logistic_summary`, `poisson_summary`, `negative_binomial_summary`,
@@ -98,8 +105,13 @@ ps.ols_predict(
     interval: str | None = None,  # None, "confidence", "prediction"
     level: float = 0.95,
     null_policy: str = "drop",    # "drop", "drop_y_zero_x"
+    alias_tolerance: float = 1e-7,
 ) -> pl.Expr
 ```
+
+**`ols_predict`/`wls_predict` also accept `alias_tolerance`** (default `1e-7`) — same
+rank-deficiency tolerance as `ols`/`wls` (see the note above); a column aliased at fit time
+contributes `NaN` to the prediction wherever that column is involved.
 
 ### Available Functions
 

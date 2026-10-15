@@ -15,6 +15,17 @@ Standard linear regression models including OLS, Ridge, Elastic Net, and special
     - **A constant column without `with_intercept`** is no longer aliased to
       `NaN` — it now behaves exactly like an explicit intercept term.
 
+!!! info "`alias_tolerance` (0.8.0)"
+    `ols`/`wls` (and their `_summary`/`_predict`/formula variants) accept an
+    `alias_tolerance: float = 1e-7` kwarg — R `lm`'s configurable rank-deficiency
+    tolerance (`anofox_regression::utils::LM_ALIAS_TOLERANCE`). A later column that is a
+    linear combination of the intercept and earlier kept columns within this tolerance is
+    aliased (`NaN` coefficient, excluded from `rank`/`n_parameters`); a **tighter** tolerance
+    (smaller value) aliases more columns, a **looser** tolerance (larger value) keeps more.
+    The default reproduces the pre-0.8.0 behaviour exactly. See
+    [Rank-deficient designs](../classes/linear.md#rank-deficient-designs-ols-wls) for the full
+    column-ordering/aliasing semantics this tolerance controls.
+
 ## `ols`
 
 Ordinary Least Squares regression.
@@ -24,8 +35,11 @@ ps.ols(
     y: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
     with_intercept: bool = True,
+    alias_tolerance: float = 1e-7,
 ) -> pl.Expr
 ```
+
+**`alias_tolerance`** (default `1e-7`, R `lm`'s own tolerance): see the note above.
 
 **Returns:** See [Linear Model Output](../outputs.md#linear-model-output)
 
@@ -81,8 +95,11 @@ ps.wls(
     weights: Union[pl.Expr, str],
     *x: Union[pl.Expr, str],
     with_intercept: bool = True,
+    alias_tolerance: float = 1e-7,
 ) -> pl.Expr
 ```
+
+**`alias_tolerance`** (default `1e-7`, R `lm`'s own tolerance): see the [`ols` note](#ols) above.
 
 **Returns:** See [Linear Model Output](../outputs.md#linear-model-output)
 

@@ -85,6 +85,7 @@ nav:
       - Formula Syntax: api/regression/formula.md
       - Summary & Prediction: api/regression/summary-predict.md
       - Diagnostics: api/regression/diagnostics.md
+      - Empirical-Bayes Shrinkage: api/regression/shrinkage.md
       - Dynamic Models: api/regression/dynamic.md
       - Demand Classification (AID): api/regression/aid.md
   - Model Classes:
