@@ -4,19 +4,19 @@ milestone: v0.8.0
 milestone_name: Claude Code Skills Plugin
 current_phase: "16.4"
 current_phase_name: Ruff Cleanup
-current_plan: 1
+current_plan: 2
 status: executing
-stopped_at: Phase 16.3 complete, ready to plan Phase 16
-last_updated: "2026-10-15T21:05:09.313Z"
+stopped_at: Completed 16.4-01-PLAN.md
+last_updated: "2026-10-15T21:13:17.196Z"
 last_activity: 2026-10-15
 last_activity_desc: Phase 16.4 execution started
-state_head: 22766edbe22d64c121aaa30e4b14fbbb24310322
+state_head: 886f07f4afe5be01e28b1b5553abdceb4fd9f47a
 progress:
   total_phases: 9
-  completed_phases: 3
+  completed_phases: 0
   total_plans: 39
-  completed_plans: 35
-  percent: 33
+  completed_plans: 36
+  percent: 0
 ---
 
 # Project State
@@ -31,9 +31,9 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 ## Current Position
 
 Phase: 16.4 (Ruff Cleanup) — EXECUTING
-Current Plan: 1
+Current Plan: 2
 Total Plans in Phase: 3
-Status: Executing Phase 16.4
+Status: Ready to execute
 Last activity: 2026-10-15 — Phase 16.4 execution started
 
 ## Milestone Roadmap (v0.8.0)
@@ -131,6 +131,7 @@ Execution order: 13 → 14 → 15 → 16 → 17
 | Phase 16.3 P09 | 35min | 3 tasks | 13 files |
 | Phase 16.3 P10 | 25min | 2 tasks | 4 files |
 | Phase 16.3 P11 | 35min | 3 tasks | 6 files |
+| Phase 16.4 P01 | 6min | 3 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -221,6 +222,9 @@ Recent decisions affecting current work:
 - [Phase 16.3]: [Phase 16.3]: 16.3-10: moved the ps.augment() README mention out of the pre-existing bare Diagnostics code fence into its own self-contained runnable snippet, since the verify script execs every fence containing the literal 'augment(' substring
 - [Phase 16.3]: [Phase 16.3]: 16.3-11: All post-hoc / multiple-testing functions documented in the anova skill, not hypothesis-tests, even though dunn_test follows kruskal_wallis (owned by hypothesis-tests) -- matches the plan's routing decision; hypothesis-tests cross-references by name instead of duplicating content.
 - [Phase 16.3]: [Phase 16.3]: 16.3-11: GLM Group 5's shared 0.8.0 surface (model_info, .augment(), intercept/CI getters) documented once as a shared-surface note instead of repeated per-class; GLMM Group 6 rewritten into a shared-structural-kwargs block plus per-family one-liners to avoid repeating the same kwarg list six times.
+- [Phase 16.4]: [Phase 16.4]: 16.4-01: formula/terms.py's Term = Union[...] runtime alias kept as Union (not | ), since ClassA | ClassB raises TypeError on Python 3.9
+- [Phase 16.4]: [Phase 16.4]: 16.4-01: ruff check python/ exits 0 (390 of 460 baseline findings fixed via --fix --unsafe-fixes) proven behaviour-neutral by a custom AST-equality + public-API fingerprint guard on Python 3.9 and 3.12
+- [Phase 16.4]: [Phase 16.4]: 16.4-01: Did not flip QUAL-01 to Complete in REQUIREMENTS.md — requirement is whole-repo (ruff check . + CI gate), shared with 16.4-02/03 which have not executed yet
 
 ### Pending Todos
 
@@ -256,7 +260,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-10-15T19:53:10.671Z
-Stopped at: Phase 16.3 complete, ready to plan Phase 16
+Last session: 2026-10-15T21:13:03.863Z
+Stopped at: Completed 16.4-01-PLAN.md
 Resume file: None
 </content>
