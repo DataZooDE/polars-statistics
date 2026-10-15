@@ -41,10 +41,37 @@ def rel_close(a, b, tol: float) -> bool:
 MT_MPG = np.array(ref.MT_MPG)
 MT_WT = np.array(ref.MT_WT)
 MT_HP = np.array(ref.MT_HP)
+MT_VS = np.array(ref.MT_VS)
+MT_CARB = np.array(ref.MT_CARB)
+MT_W = np.array(ref.MT_W)
+WB_BREAKS = np.array(ref.WB_BREAKS)
+WB_WOOLB = np.array(ref.WB_WOOLB)
+WB_TM = np.array(ref.WB_TM)
+WB_TH = np.array(ref.WB_TH)
 
 
 def _mt_df() -> pl.DataFrame:
-    return pl.DataFrame({"mpg": MT_MPG, "wt": MT_WT, "hp": MT_HP})
+    return pl.DataFrame(
+        {
+            "mpg": MT_MPG,
+            "wt": MT_WT,
+            "hp": MT_HP,
+            "vs": MT_VS,
+            "carb": MT_CARB,
+            "w": MT_W,
+        }
+    )
+
+
+def _wb_df() -> pl.DataFrame:
+    return pl.DataFrame(
+        {
+            "breaks": WB_BREAKS,
+            "woolB": WB_WOOLB,
+            "tensionM": WB_TM,
+            "tensionH": WB_TH,
+        }
+    )
 
 
 class TestOlsExpressionMatchesR:
@@ -176,3 +203,269 @@ class TestAugmentBuildErrors:
     def test_theta_without_negative_binomial_raises(self):
         with pytest.raises(ValueError):
             ps.augment("mpg", "wt", "hp", theta=1.0, model="ols")
+
+
+class TestWlsMatchesR:
+    def test_wls_expression_matches_r(self):
+        df = _mt_df()
+        out = df.select(
+            ps.augment("mpg", "wt", "hp", model="wls", weights="w").alias("a")
+        ).unnest("a")
+        assert rel_close(out["fitted"].to_numpy(), ref.WLS_FITTED, 1e-8)
+        assert rel_close(out["residual"].to_numpy(), ref.WLS_RESID, 1e-8)
+        assert rel_close(out["std_residual"].to_numpy(), ref.WLS_RSTD, 1e-8)
+        assert rel_close(out["stud_residual"].to_numpy(), ref.WLS_RSTUD, 1e-8)
+        assert rel_close(out["leverage"].to_numpy(), ref.WLS_HAT, 1e-8)
+        assert rel_close(out["cooks_d"].to_numpy(), ref.WLS_COOK, 1e-8)
+        assert rel_close(out["dffits"].to_numpy(), ref.WLS_DFFITS, 1e-8)
+
+
+class TestLogisticMatchesR:
+    def test_logistic_deviance_matches_r(self):
+        df = _mt_df()
+        out = df.select(ps.augment("vs", "mpg", model="logistic", tol=1e-12).alias("a")).unnest(
+            "a"
+        )
+        assert rel_close(out["fitted"].to_numpy(), ref.BIN_FITTED, 1e-6)
+        assert rel_close(out["residual"].to_numpy(), ref.BIN_RESID_DEV, 1e-6)
+        assert rel_close(out["std_residual"].to_numpy(), ref.BIN_RSTD_DEV, 1e-6)
+        assert rel_close(out["stud_residual"].to_numpy(), ref.BIN_RSTUD, 1e-6)
+        assert rel_close(out["leverage"].to_numpy(), ref.BIN_HAT, 1e-6)
+        assert rel_close(out["cooks_d"].to_numpy(), ref.BIN_COOK, 1e-6)
+        assert rel_close(out["dffits"].to_numpy(), ref.BIN_DFFITS, 1e-6)
+
+    def test_logistic_pearson_matches_r(self):
+        df = _mt_df()
+        out = df.select(
+            ps.augment(
+                "vs", "mpg", model="logistic", residual_type="pearson", tol=1e-12
+            ).alias("a")
+        ).unnest("a")
+        assert rel_close(out["residual"].to_numpy(), ref.BIN_RESID_PEAR, 1e-6)
+        assert rel_close(out["std_residual"].to_numpy(), ref.BIN_RSTD_PEAR, 1e-6)
+
+
+class TestPoissonMatchesR:
+    def test_poisson_deviance_matches_r(self):
+        df = _mt_df()
+        out = df.select(
+            ps.augment("carb", "wt", "hp", model="poisson", tol=1e-12).alias("a")
+        ).unnest("a")
+        assert rel_close(out["fitted"].to_numpy(), ref.POIS_FITTED, 1e-6)
+        assert rel_close(out["residual"].to_numpy(), ref.POIS_RESID_DEV, 1e-6)
+        assert rel_close(out["std_residual"].to_numpy(), ref.POIS_RSTD_DEV, 1e-6)
+        assert rel_close(out["stud_residual"].to_numpy(), ref.POIS_RSTUD, 1e-6)
+        assert rel_close(out["leverage"].to_numpy(), ref.POIS_HAT, 1e-6)
+        assert rel_close(out["cooks_d"].to_numpy(), ref.POIS_COOK, 1e-6)
+        assert rel_close(out["dffits"].to_numpy(), ref.POIS_DFFITS, 1e-6)
+
+    def test_poisson_pearson_matches_r(self):
+        df = _mt_df()
+        out = df.select(
+            ps.augment(
+                "carb", "wt", "hp", model="poisson", residual_type="pearson", tol=1e-12
+            ).alias("a")
+        ).unnest("a")
+        assert rel_close(out["residual"].to_numpy(), ref.POIS_RESID_PEAR, 1e-6)
+        assert rel_close(out["std_residual"].to_numpy(), ref.POIS_RSTD_PEAR, 1e-6)
+
+
+class TestGammaTweedieMatchesR:
+    def test_gamma_deviance_matches_r(self):
+        df = _mt_df()
+        out = df.select(
+            ps.augment("mpg", "wt", "hp", model="gamma", tol=1e-12, max_iter=100).alias("a")
+        ).unnest("a")
+        assert rel_close(out["fitted"].to_numpy(), ref.GAMMA_FITTED, 1e-6)
+        assert rel_close(out["residual"].to_numpy(), ref.GAMMA_RESID_DEV, 1e-6)
+        assert rel_close(out["std_residual"].to_numpy(), ref.GAMMA_RSTD_DEV, 1e-6)
+        assert rel_close(out["stud_residual"].to_numpy(), ref.GAMMA_RSTUD, 1e-6)
+        assert rel_close(out["leverage"].to_numpy(), ref.GAMMA_HAT, 1e-6)
+        assert rel_close(out["cooks_d"].to_numpy(), ref.GAMMA_COOK, 1e-6)
+        assert rel_close(out["dffits"].to_numpy(), ref.GAMMA_DFFITS, 1e-6)
+
+    def test_tweedie_var_power_2_matches_gamma(self):
+        df = _mt_df()
+        out = df.select(
+            ps.augment(
+                "mpg", "wt", "hp", model="tweedie", var_power=2.0, tol=1e-12, max_iter=100
+            ).alias("a")
+        ).unnest("a")
+        assert rel_close(out["cooks_d"].to_numpy(), ref.GAMMA_COOK, 1e-6)
+
+        out_resp = df.select(
+            ps.augment(
+                "mpg",
+                "wt",
+                "hp",
+                model="tweedie",
+                var_power=2.0,
+                tol=1e-12,
+                max_iter=100,
+                residual_type="response",
+            ).alias("a")
+        ).unnest("a")
+        assert rel_close(
+            out_resp["residual"].to_numpy(), MT_MPG - np.array(ref.GAMMA_FITTED), 1e-6
+        )
+
+
+class TestNegativeBinomialMatchesR:
+    def test_negative_binomial_deviance_matches_r(self):
+        df = _wb_df()
+        out = df.select(
+            ps.augment(
+                "breaks",
+                "woolB",
+                "tensionM",
+                "tensionH",
+                model="negative_binomial",
+                tol=1e-12,
+            ).alias("a")
+        ).unnest("a")
+        assert rel_close(out["fitted"].to_numpy(), ref.NB_FITTED, 1e-6)
+        assert rel_close(out["residual"].to_numpy(), ref.NB_RESID_DEV, 1e-6)
+        assert rel_close(out["std_residual"].to_numpy(), ref.NB_RSTD_DEV, 1e-6)
+        assert rel_close(out["stud_residual"].to_numpy(), ref.NB_RSTUD, 1e-6)
+        assert rel_close(out["leverage"].to_numpy(), ref.NB_HAT, 1e-6)
+        assert rel_close(out["cooks_d"].to_numpy(), ref.NB_COOK, 1e-6)
+        assert rel_close(out["dffits"].to_numpy(), ref.NB_DFFITS, 1e-6)
+
+    def test_negative_binomial_fixed_theta_matches_estimated(self):
+        df = _wb_df()
+        est = df.select(
+            ps.augment(
+                "breaks",
+                "woolB",
+                "tensionM",
+                "tensionH",
+                model="negative_binomial",
+                tol=1e-12,
+            ).alias("a")
+        ).unnest("a")
+        fixed = df.select(
+            ps.augment(
+                "breaks",
+                "woolB",
+                "tensionM",
+                "tensionH",
+                model="negative_binomial",
+                theta=float(ref.NB_THETA),
+                tol=1e-12,
+            ).alias("a")
+        ).unnest("a")
+        assert rel_close(fixed["fitted"].to_numpy(), est["fitted"].to_numpy(), 1e-4)
+
+
+class TestProbitCloglogFinite:
+    def test_probit_cloglog_leverage_and_response_residual(self):
+        df = _mt_df()
+        for model in ("probit", "cloglog"):
+            out = df.select(
+                ps.augment(
+                    "vs", "mpg", model=model, tol=1e-12, residual_type="response"
+                ).alias("a")
+            ).unnest("a")
+            for col in out.columns:
+                assert np.all(
+                    np.isfinite(out[col].to_numpy())
+                ), f"{model}.{col} has non-finite values"
+            assert out["leverage"].to_numpy().sum() == pytest.approx(2.0, abs=1e-8)
+            assert rel_close(
+                out["residual"].to_numpy(), MT_VS - out["fitted"].to_numpy(), 1e-12
+            )
+
+
+class TestNaAlignment:
+    @pytest.mark.parametrize("model", ["ols", "wls", "poisson"])
+    def test_null_row_becomes_nan_rest_unchanged(self, model):
+        df = _mt_df()
+        kwargs = {"weights": "w"} if model == "wls" else {}
+        y_col = "carb" if model == "poisson" else "mpg"
+
+        # The "run without it" reference: the same fit with row 0 dropped
+        # entirely (not merely nulled) — dropping a row changes the fit for
+        # every remaining row, so this (not the full-dataset fit) is the
+        # correct comparison.
+        without_row0 = (
+            df.slice(1)
+            .select(ps.augment(y_col, "wt", "hp", model=model, **kwargs).alias("a"))
+            .unnest("a")
+        )
+
+        # A null y row is excluded from the fit; the rest equal the
+        # row-dropped run.
+        null_df = df.with_columns(
+            pl.when(pl.int_range(pl.len()) == 0)
+            .then(None)
+            .otherwise(pl.col(y_col))
+            .alias(y_col)
+        )
+        null_out = null_df.select(
+            ps.augment(y_col, "wt", "hp", model=model, **kwargs).alias("a")
+        ).unnest("a")
+        assert np.all(np.isnan(null_out.to_numpy()[0, :].astype(float)))
+        for col in without_row0.columns:
+            assert rel_close(null_out[col][1:].to_numpy(), without_row0[col].to_numpy(), 1e-12)
+
+        # A NaN x row is excluded from the fit too; same comparison.
+        nan_df = df.with_columns(
+            pl.when(pl.int_range(pl.len()) == 0)
+            .then(float("nan"))
+            .otherwise(pl.col("wt"))
+            .alias("wt")
+        )
+        nan_out = nan_df.select(
+            ps.augment(y_col, "wt", "hp", model=model, **kwargs).alias("a")
+        ).unnest("a")
+        assert np.all(np.isnan(nan_out.to_numpy()[0, :].astype(float)))
+        for col in without_row0.columns:
+            assert rel_close(nan_out[col][1:].to_numpy(), without_row0[col].to_numpy(), 1e-12)
+
+
+class TestOverGroupBy:
+    def test_over_matches_per_subset_runs(self):
+        df = _mt_df()
+        g_a = df.with_columns(pl.lit("a").alias("g"))
+        g_b = df.with_columns((pl.col("mpg") + 1.0).alias("mpg"), pl.lit("b").alias("g"))
+        stacked = pl.concat([g_a, g_b])
+
+        over_out = stacked.with_columns(
+            ps.augment("mpg", "wt", "hp").over("g").alias("a")
+        ).unnest("a")
+
+        subset_a = df.select(ps.augment("mpg", "wt", "hp").alias("a")).unnest("a")
+        subset_b = (
+            df.with_columns((pl.col("mpg") + 1.0).alias("mpg"))
+            .select(ps.augment("mpg", "wt", "hp").alias("a"))
+            .unnest("a")
+        )
+
+        a_rows = over_out.filter(pl.col("g") == "a")
+        b_rows = over_out.filter(pl.col("g") == "b")
+        fields = [
+            "fitted",
+            "residual",
+            "std_residual",
+            "stud_residual",
+            "leverage",
+            "cooks_d",
+            "dffits",
+        ]
+        for col in fields:
+            assert rel_close(a_rows[col].to_numpy(), subset_a[col].to_numpy(), 1e-8)
+            assert rel_close(b_rows[col].to_numpy(), subset_b[col].to_numpy(), 1e-8)
+
+    def test_group_by_agg_returns_list_of_structs(self):
+        df = _mt_df()
+        g_a = df.with_columns(pl.lit("a").alias("g"))
+        g_b = df.with_columns((pl.col("mpg") + 1.0).alias("mpg"), pl.lit("b").alias("g"))
+        stacked = pl.concat([g_a, g_b])
+
+        grouped = stacked.group_by("g", maintain_order=True).agg(
+            ps.augment("mpg", "wt", "hp").alias("a")
+        )
+        grouped_a = grouped.filter(pl.col("g") == "a")["a"][0]
+        grouped_b = grouped.filter(pl.col("g") == "b")["a"][0]
+        assert len(grouped_a) == df.height
+        assert len(grouped_b) == df.height

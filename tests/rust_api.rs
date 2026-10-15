@@ -3191,3 +3191,72 @@ fn eb_shrink_fits() {
     let mu = mu_s.f64().unwrap().get(0).expect("mu must not be null");
     assert!(mu.is_finite(), "mu must be finite, got {mu}");
 }
+
+#[test]
+fn augment_fits() {
+    // augment_fit: y, weights (nullable), x...
+    let y = [1.0, 2.0, 3.0, 4.0, 5.0];
+    let x0 = [1.0, 2.0, 1.5, 3.0, 2.5];
+    let x1 = [2.0, 1.0, 3.0, 1.5, 2.0];
+
+    {
+        let inputs = vec![
+            series_f64("y", &y),
+            scalar_f64_null("weights"),
+            series_f64("x0", &x0),
+            series_f64("x1", &x1),
+        ];
+        let kwargs = AugmentKwargs {
+            model: "ols".to_string(),
+            ..Default::default()
+        };
+        let out = augment_fit(&inputs, &kwargs).expect("augment_fit (ols) failed");
+        assert_eq!(
+            out.len(),
+            y.len(),
+            "augment_fit (ols) output length must equal input length"
+        );
+        let ca = out.struct_().expect("expected struct series");
+        let lev_s = ca
+            .field_by_name("leverage")
+            .expect("augment_fit output missing leverage field");
+        let lev = lev_s
+            .f64()
+            .unwrap()
+            .get(0)
+            .expect("leverage must not be null");
+        assert!(lev.is_finite(), "leverage must be finite, got {lev}");
+    }
+
+    {
+        let carb = [1.0, 2.0, 4.0, 1.0, 2.0, 1.0, 4.0, 2.0];
+        let wt = [2.62, 2.875, 2.32, 3.215, 3.44, 3.46, 3.57, 3.19];
+        let hp = [110.0, 110.0, 93.0, 110.0, 175.0, 105.0, 245.0, 62.0];
+        let inputs = vec![
+            series_f64("carb", &carb),
+            scalar_f64_null("weights"),
+            series_f64("wt", &wt),
+            series_f64("hp", &hp),
+        ];
+        let kwargs = AugmentKwargs {
+            model: "poisson".to_string(),
+            ..Default::default()
+        };
+        let out = augment_fit(&inputs, &kwargs).expect("augment_fit (poisson) failed");
+        assert_eq!(
+            out.len(),
+            carb.len(),
+            "augment_fit (poisson) output length must equal input length"
+        );
+        let ca = out.struct_().expect("expected struct series");
+        let lev_s = ca
+            .field_by_name("leverage")
+            .expect("augment_fit output missing leverage field");
+        let lev = lev_s
+            .f64()
+            .unwrap()
+            .get(0)
+            .expect("leverage must not be null");
+        assert!(lev.is_finite(), "leverage must be finite, got {lev}");
+    }
+}

@@ -3023,6 +3023,83 @@ pub fn augment_fit(inputs: &[Series], kwargs: &AugmentKwargs) -> PolarsResult<Se
                 .build();
             run_augment!(m.fit(&x, &y))
         }
+        "wls" => {
+            let w = weights.clone().ok_or_else(
+                || polars_err!(ComputeError: "augment: model 'wls' requires weights"),
+            )?;
+            let m = WlsRegressor::builder()
+                .with_intercept(with_intercept)
+                .weights(w)
+                .build();
+            run_augment!(m.fit(&x, &y))
+        }
+        "logistic" => {
+            let m = BinomialRegressor::logistic()
+                .with_intercept(with_intercept)
+                .max_iterations(kwargs.max_iter)
+                .tolerance(kwargs.tol)
+                .build();
+            run_augment!(m.fit(&x, &y))
+        }
+        "probit" => {
+            let m = BinomialRegressor::probit()
+                .with_intercept(with_intercept)
+                .max_iterations(kwargs.max_iter)
+                .tolerance(kwargs.tol)
+                .build();
+            run_augment!(m.fit(&x, &y))
+        }
+        "cloglog" => {
+            let m = BinomialRegressor::cloglog()
+                .with_intercept(with_intercept)
+                .max_iterations(kwargs.max_iter)
+                .tolerance(kwargs.tol)
+                .build();
+            run_augment!(m.fit(&x, &y))
+        }
+        "poisson" => {
+            let m = PoissonRegressor::log()
+                .with_intercept(with_intercept)
+                .max_iterations(kwargs.max_iter)
+                .tolerance(kwargs.tol)
+                .build();
+            run_augment!(m.fit(&x, &y))
+        }
+        "negative_binomial" => {
+            let mut b = NegativeBinomialRegressor::builder()
+                .with_intercept(with_intercept)
+                .max_iterations(kwargs.max_iter)
+                .tolerance(kwargs.tol);
+            b = match kwargs.theta {
+                Some(t) => b.theta(t),
+                None => b.estimate_theta(true),
+            };
+            let m = b.build();
+            run_augment!(m.fit(&x, &y))
+        }
+        "tweedie" => {
+            // Log link (`link_power(0.0)`), matching R's `statmod::tweedie()`
+            // default and `GammaRegressor`'s convention — not this crate's own
+            // `TweedieRegressorBuilder` default canonical link
+            // (`1 - var_power`) used by the pre-existing `ps.tweedie()`
+            // expression, which augment does not touch.
+            let m = TweedieRegressor::builder()
+                .var_power(kwargs.var_power)
+                .link_power(0.0)
+                .with_intercept(with_intercept)
+                .max_iterations(kwargs.max_iter)
+                .tolerance(kwargs.tol)
+                .build();
+            run_augment!(m.fit(&x, &y))
+        }
+        "gamma" => {
+            let m = GammaRegressor::builder()
+                .with_intercept(with_intercept)
+                .max_iterations(kwargs.max_iter)
+                .tolerance(kwargs.tol)
+                .build();
+            run_augment!(m.fit(&x, &y))
+        }
         other => {
             Err(polars_err!(ComputeError: "augment: unknown or unsupported model '{}'", other))
         }
