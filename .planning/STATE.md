@@ -4,19 +4,19 @@ milestone: v0.8.0
 milestone_name: Claude Code Skills Plugin
 current_phase: 16
 current_phase_name: Wheel Bundling
-current_plan: Not started
-status: planning
+current_plan: 1
+status: executing
 stopped_at: Phase 16.4 complete, ready to plan Phase 16
-last_updated: "2026-10-15T21:36:04.715Z"
+last_updated: "2026-10-15T21:36:19.194Z"
 last_activity: 2026-10-15
-last_activity_desc: Phase 16.4 complete, transitioned to Phase 16
-state_head: c06b3a6ace811b9587c9812717950c0b0443710c
+last_activity_desc: Phase 16 execution started
+state_head: 528e5f24968a9450e09125ec66fc97825967f9aa
 progress:
   total_phases: 9
-  completed_phases: 1
+  completed_phases: 4
   total_plans: 39
   completed_plans: 38
-  percent: 11
+  percent: 44
 ---
 
 # Project State
@@ -26,15 +26,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-09-20)
 
 **Core value:** Every public statistical capability in the backing `anofox-*` crates is exposed through the Polars/Python API — correctly, documented, tested, and shipped to PyPI.
-**Current focus:** Phase 16.4 — Ruff Cleanup
+**Current focus:** Phase 16 — Wheel Bundling
 
 ## Current Position
 
-Phase: 16 — Wheel Bundling
-Current Plan: Not started
-Total Plans in Phase: 3
-Status: Ready to plan
-Last activity: 2026-10-15 — Phase 16.4 complete, transitioned to Phase 16
+Phase: 16 (Wheel Bundling) — EXECUTING
+Current Plan: 1
+Total Plans in Phase: 1
+Status: Executing Phase 16
+Last activity: 2026-10-15 — Phase 16 execution started
 
 ## Milestone Roadmap (v0.8.0)
 
