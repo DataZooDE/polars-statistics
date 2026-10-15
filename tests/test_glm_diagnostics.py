@@ -264,7 +264,7 @@ class TestRidgeHcInference:
     def test_not_fitted_raises(self):
         Ridge = pytest.importorskip("polars_statistics").Ridge
         X, _ = self._xy()
-        with pytest.raises(Exception):
+        with pytest.raises(RuntimeError, match="not fitted"):
             Ridge().hc_inference(X)
 
 
@@ -296,5 +296,5 @@ class TestWlsHcInference:
     def test_not_fitted_raises(self):
         WLS = pytest.importorskip("polars_statistics").WLS
         X, _, _ = self._xyw()
-        with pytest.raises(Exception):
+        with pytest.raises(RuntimeError, match="not fitted"):
             WLS().hc_inference(X)

@@ -88,7 +88,7 @@ class TestOLSFitFromAccumulator:
     def test_not_fitted_raises(self):
         model = OLS()
         assert not model.is_fitted()
-        with pytest.raises(Exception):
+        with pytest.raises(RuntimeError, match="not fitted"):
             _ = model.coefficients
 
 

@@ -26,7 +26,7 @@ class TestTheilSen:
 
     def test_not_fitted_raises(self):
         model = TheilSen()
-        with pytest.raises(Exception):
+        with pytest.raises(RuntimeError, match="not fitted"):
             _ = model.coefficients
 
     def test_intercept_finite(self):

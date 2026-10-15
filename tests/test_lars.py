@@ -43,12 +43,12 @@ class TestLARS:
     def test_not_fitted_raises(self):
         model = LARS()
         assert not model.is_fitted()
-        with pytest.raises(Exception):
+        with pytest.raises(RuntimeError, match="not fitted"):
             _ = model.coefficients
 
     def test_not_fitted_alphas_raises(self):
         model = LARS()
-        with pytest.raises(Exception):
+        with pytest.raises(RuntimeError, match="not fitted"):
             _ = model.alphas
 
     def test_intercept_present(self):
@@ -149,7 +149,7 @@ class TestLarsFitStatistics:
         to_dict() after fit contains them."""
         model = LARS()
         for attr in ("adj_r_squared", "mse", "rmse"):
-            with pytest.raises(Exception) as exc_info:
+            with pytest.raises(RuntimeError, match="not fitted") as exc_info:
                 getattr(model, attr)
             assert "LARS" in str(exc_info.value)
 

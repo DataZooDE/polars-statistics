@@ -26,7 +26,7 @@ class TestRANSAC:
 
     def test_not_fitted_raises(self):
         model = RANSAC()
-        with pytest.raises(Exception):
+        with pytest.raises(RuntimeError, match="not fitted"):
             _ = model.coefficients
 
     def test_inlier_mask_length(self):
@@ -198,7 +198,7 @@ class TestRANSACInference:
 
     def test_inlier_fit_unfitted_raises(self):
         m = RANSAC()
-        with pytest.raises(Exception):
+        with pytest.raises(RuntimeError, match="not fitted"):
             m.inlier_fit()
 
     def test_constant_response_fits_cleanly(self):

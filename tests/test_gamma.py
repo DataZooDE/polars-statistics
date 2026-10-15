@@ -46,7 +46,7 @@ class TestGamma:
     def test_not_fitted_raises(self):
         """Accessing .coefficients before fit raises an exception."""
         model = Gamma()
-        with pytest.raises(Exception):
+        with pytest.raises(RuntimeError, match="not fitted"):
             _ = model.coefficients
 
     def test_converged(self):
@@ -105,7 +105,7 @@ class TestGamma:
         """predict() before fit raises an exception."""
         model = Gamma()
         X = np.ones((10, 2))
-        with pytest.raises(Exception):
+        with pytest.raises(RuntimeError, match="not fitted"):
             model.predict(X)
 
     def test_coefficients_vs_statsmodels(self, require_statsmodels):

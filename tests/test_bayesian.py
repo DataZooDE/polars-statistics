@@ -26,7 +26,7 @@ class TestBayesianRidge:
 
     def test_not_fitted_raises(self):
         model = BayesianRidge()
-        with pytest.raises(Exception):
+        with pytest.raises(RuntimeError, match="not fitted"):
             _ = model.coefficients
 
     def test_alpha_finite(self):
@@ -148,7 +148,7 @@ class TestARD:
 
     def test_not_fitted_raises(self):
         model = ARD()
-        with pytest.raises(Exception):
+        with pytest.raises(RuntimeError, match="not fitted"):
             _ = model.coefficients
 
     def test_lambdas_length(self):

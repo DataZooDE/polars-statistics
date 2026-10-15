@@ -130,7 +130,7 @@ class TestGLMM:
     def test_not_fitted_raises(self):
         """Reading fixed_effects before fit raises RuntimeError."""
         model = GLMM.gaussian()
-        with pytest.raises(Exception):
+        with pytest.raises(RuntimeError, match="not fitted"):
             _ = model.fixed_effects
 
     def test_predict_fixed(self):
@@ -312,17 +312,17 @@ class TestGLMMWaldInference:
 
     def test_unfitted_z_values_raises(self):
         model = GLMM.gaussian()
-        with pytest.raises(Exception):
+        with pytest.raises(RuntimeError, match="not fitted"):
             _ = model.z_values
 
     def test_unfitted_p_values_raises(self):
         model = GLMM.gaussian()
-        with pytest.raises(Exception):
+        with pytest.raises(RuntimeError, match="not fitted"):
             _ = model.p_values
 
     def test_unfitted_conf_int_raises(self):
         model = GLMM.gaussian()
-        with pytest.raises(Exception):
+        with pytest.raises(RuntimeError, match="not fitted"):
             _ = model.conf_int()
 
 
@@ -408,7 +408,7 @@ class TestGLMMFamilies:
 
     def test_unfitted_nb_theta_raises(self):
         model = GLMM.negative_binomial()
-        with pytest.raises(Exception):
+        with pytest.raises(RuntimeError, match="not fitted"):
             _ = model.nb_theta
 
     def test_negative_binomial_fixed_theta_matches_glmer(self):

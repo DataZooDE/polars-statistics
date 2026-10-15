@@ -157,7 +157,7 @@ class TestHuberInference:
             "intercept_p_value",
             "intercept_conf_interval",
         ):
-            with pytest.raises(Exception):
+            with pytest.raises(RuntimeError, match="not fitted"):
                 getattr(m, attr)
 
 
