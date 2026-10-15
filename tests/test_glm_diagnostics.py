@@ -152,6 +152,13 @@ class TestGammaPearsonChiSquared:
             f"Pearson dispersion phi={phi_pearson:.4f} outside plausible range [0.05, 20]"
         )
 
+        # chi2 / n_obs is in a reasonable range for a Gamma fit (0.01 to 100), as promised above.
+        chi2_per_obs = chi2 / n_obs
+        assert 0.01 <= chi2_per_obs <= 100.0, (
+            f"chi2 / n_obs={chi2_per_obs:.4f} outside plausible range [0.01, 100]"
+        )
+        assert n_obs == DF.height
+
 
 # ---------------------------------------------------------------------------
 # Task 1 — Gamma standardized Pearson residuals

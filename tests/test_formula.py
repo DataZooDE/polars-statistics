@@ -26,7 +26,7 @@ def has_valid_numbers(result: pl.DataFrame, col: str = "result") -> bool:
         if row is None:
             return False
         if isinstance(row, dict):
-            for key, val in row.items():
+            for val in row.values():
                 if val is None:
                     return False
                 if isinstance(val, float) and math.isnan(val):

@@ -115,7 +115,6 @@ class TestGamma:
         recovered by polars-statistics is within 0.15 of statsmodels' MLE estimate.
         Guarded by require_statsmodels so the test skips when statsmodels is absent.
         """
-        sm = require_statsmodels
         X, y, _ = _gamma_design(seed=7, n=200)
         ps_model = Gamma(with_intercept=True).fit(X, y)
         ps_slope = ps_model.coefficients[0]
