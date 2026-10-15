@@ -86,6 +86,63 @@ survival engines `anofox-regression` added in 0.5.16.
   `_median`/`_survival`/`_cdf`, `ps.aft_formula`, `ps.aft_formula_summary`,
   `ps.aft_formula_predict_quantile`/`_median`/`_survival`/`_cdf`; validated
   against R `survival::survreg`.
+- **Post-hoc tests & multiple comparisons** — `ps.tukey_hsd(values, groups,
+  conf_level=0.95)`, `ps.pairwise_t_test(values, groups, pooled_sd=True,
+  p_adjust_method="holm", alternative="two-sided")`, `ps.dunn_test(values,
+  groups, p_adjust_method="holm")` — long-format `(values, groups)` expressions
+  returning a `List[Struct{group1, group2, n1, n2, estimate, statistic, df,
+  p_value, p_adj, ci_lower, ci_upper}]` of pairwise rows, matching R's
+  `TukeyHSD`, `pairwise.t.test`, and `dunn.test`. `ps.p_adjust(p,
+  method="holm"|"hochberg"|"hommel"|"bonferroni"|"BH"/"fdr"|"BY"|"none")`
+  reproduces R `p.adjust` for all seven methods. `ps.ptukey(q, nmeans, df,
+  nranges=1, lower_tail=True)` / `ps.qtukey(p, nmeans, df, nranges=1,
+  lower_tail=True)` expose the studentized-range distribution CDF/quantile.
+- **`ps.augment(y, *x, model=..., weights=None, residual_type=None, ...)`** —
+  one combined, row-aligned per-observation diagnostics expression (`fitted`,
+  `residual`, `std_residual`, `stud_residual`, `leverage`, `cooks_d`, `dffits`
+  per input row) covering `ols`/`wls`/`logistic`/`probit`/`cloglog`/`poisson`/
+  `negative_binomial`/`tweedie`/`gamma`, with `residual_type="response"|
+  "pearson"|"deviance"` and an explicit Tweedie `link_power` kwarg; matches R
+  `broom::augment` conventions. `.augment(x, y, residual_type=None)` is also
+  available as a method on `OLS`, `WLS`, and all eight GLM PyModel classes
+  (`Logistic`, `Probit`, `Cloglog`, `LogisticRegression`, `Poisson`,
+  `NegativeBinomial`, `Tweedie`, `Gamma`).
+- **`ps.eb_shrink(estimate, std_error, method="dl", tau_squared=None)`** —
+  row-aligned empirical-Bayes (DerSimonian-Laird) shrinkage, returning
+  `{shrunken, shrunken_se, weight, mu, mu_se, tau_squared, i_squared, q,
+  n_groups}` per input row; matches R `metafor::rma(method = "DL")`/`blup()`.
+- **GLMM families, offsets, per-factor random slopes** — `GLMM.negative_binomial
+  (nb_theta=None)`, `GLMM.gamma()`, `GLMM.tweedie(power=1.5)` factories (log
+  link); `offset=None` on `fit`/`fit_crossed`/`predict_fixed` (every family);
+  `random_slopes_per_factor` on all six factories (crossed per-factor random
+  slopes); `factor_random_cov(f)`/`factor_random_sd(f)`/
+  `factor_random_effects_matrix(f)` per-factor accessors; `random_cov`/
+  `random_effects_matrix`/`random_corr`/`n_random_effects`/`n_factors`/
+  `is_reml`/`nb_theta` getters; validated against `lme4` 2.0.1.
+- **`model_info`** — a `{model_type, family, link}` getter on all 30 fitted
+  PyModel classes whose upstream type implements `HasModelInfo` (every linear,
+  robust, sparse, smoother, GLM, GLMM, penalized-GLM, and AFT class).
+- **GLM/OLS/WLS intercept inference and CI getters** — `intercept_std_error`,
+  `intercept_t_statistic`/z, `intercept_p_value`, `intercept_conf_interval`,
+  `t_statistics`, `conf_interval_lower`/`upper` (plus `std_errors`/`p_values`
+  where missing) on `Logistic`, `Probit`, `Cloglog`, `LogisticRegression`,
+  `Poisson`, `NegativeBinomial`, `Tweedie`, `Gamma`, `OLS`, and `WLS`; plus
+  additive `compute_inference=True, confidence_level=0.95` constructor kwargs
+  on `Probit`, `Cloglog`, `NegativeBinomial`, `Tweedie` (incl. its `gaussian`/
+  `gamma`/`inverse_gaussian` factories), and `Gamma`; validated against R
+  `summary.glm`/`summary.lm`/`confint.default`.
+- **`OLS(alias_tolerance=1e-7)` / `WLS(alias_tolerance=1e-7)`** — configurable
+  R `lm`-style rank-deficiency (aliasing) tolerance, also available on
+  `ps.ols`/`ps.wls`/`ps.ols_summary`/`ps.wls_summary`/`ps.ols_predict`/
+  `ps.wls_predict` and their formula wrappers; default unchanged.
+- **`LARS.adj_r_squared` / `.mse` / `.rmse`** getters (R `summary(lm())`
+  convention, `df = active coefficients + intercept`).
+- **Not exposed (by design):** `TestResult` (every test class already has
+  `to_dict()`/`summary()` via `ergonomics.rs`; reversible later via a
+  `.to_test_result()` per-class wrapper over the upstream `From` impls) and
+  the AID heuristic `compute_aid`/`compute_aid_anomalies` (redundant with the
+  richer IC-based `Aid`/`AidClassifier` PyModel, which upstream says this
+  complements rather than replaces).
 
 ### Changed
 
@@ -207,6 +264,18 @@ index changed):
   `inference_summary_output_dtype` / `rank_location_output_dtype`.
 - `mann_whitney_u_fit` / `wilcoxon_signed_rank_fit` keep their existing input
   contract unchanged and now return the widened (5-field) struct.
+- New `*_fit` functions: `p_adjust_fit`, `ptukey_fit`, `qtukey_fit`,
+  `tukey_hsd_fit`, `pairwise_t_test_fit`, `dunn_test_fit` (post-hoc tests;
+  `src/expressions/posthoc.rs`).
+- `eb_shrink_fit` (empirical-Bayes shrinkage; `src/expressions/shrinkage.rs`).
+- `augment_fit` + `AugmentKwargs` (one combined row-aligned diagnostics
+  function for all nine `Augmentable` models; `src/expressions/regression.rs`).
+- `ols_fit_with` / `wls_fit_with` / `ols_summary_fit_with` /
+  `wls_summary_fit_with` / `ols_predict_fit_with` / `wls_predict_fit_with`
+  (`LinearAliasKwargs` / `LinearAliasPredictKwargs`) — additive
+  `alias_tolerance` kwargs shim; the positional `ols_fit`/`wls_fit`/
+  `ols_summary_fit`/`wls_summary_fit`/`ols_predict_fit`/`wls_predict_fit`
+  signatures are unchanged and delegate with the default tolerance.
 
 ### Dependencies
 
@@ -215,6 +284,14 @@ index changed):
   survival solvers are now exposed (see Added). The other 0.4.7 / 0.5.17–0.5.22
   additions (post-hoc tests, `p_adjust`, `augment`, `ModelInfo`, GLMM families,
   empirical-Bayes shrinkage) are planned for a later release.
+- `anofox-statistics` and `anofox-regression` are pinned exactly (`=0.4.7` /
+  `=0.5.22`, commit `d0accad`) for this release. The 0.4.7 / 0.5.17–0.5.22
+  additions named above (post-hoc tests, `p_adjust`, `ptukey`/`qtukey`,
+  `augment`, `model_info`, GLMM NegBin/Gamma/Tweedie families, offsets,
+  per-factor random slopes, empirical-Bayes shrinkage, GLM/OLS/WLS intercept
+  inference getters, `alias_tolerance`, LARS fit statistics) are now fully
+  exposed by this phase. Newer upstream releases (`anofox-statistics` 0.4.8+ /
+  `anofox-regression` 0.5.23+) are deferred to v0.9.0.
 
 ## [0.7.0] - 2026-09-20
 
