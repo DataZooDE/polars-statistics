@@ -548,3 +548,153 @@ class TestGLMMOffset:
         model = GLMM.poisson().fit(X, y, group)
         with pytest.raises(ValueError):
             model.predict_fixed(X, offset=np.zeros(3))
+
+
+class TestGLMMRandomSlopes:
+    """Per-factor random slopes and the covariance / SD / BLUP accessors
+    (16.3-03 Task 3, UPST-09) vs lme4 cases N, O, P."""
+
+    def test_lmm_crossed_with_random_slope_per_factor_matches_lmer(self):
+        XC = np.array(fam.XC)[:, None]
+        A = list(fam.A)
+        B = list(fam.B)
+        y = np.array(fam.Y_N)
+        model = GLMM.gaussian(random_slopes_per_factor=[[0], []]).fit_crossed(XC, y, [A, B])
+        assert model.converged
+        tol = 2e-3
+        assert_close_vec(model.fixed_effects, fam.LMM_N_FIXEF, tol, "LMM_N fixef")
+        assert_close_vec(model.std_errors, fam.LMM_N_SE, tol, "LMM_N se")
+        assert close(model.log_likelihood, fam.LMM_N_LOGLIK, tol)
+        assert close(model.sigma, fam.LMM_N_SIGMA, tol)
+        assert model.n_factors == 2
+        sd = model.factor_random_sd(0)
+        assert_close_vec(sd, [fam.LMM_N_SD_A0, fam.LMM_N_SD_A1], tol, "LMM_N sd_a")
+        cov = model.factor_random_cov(0)
+        assert close(cov[0, 1] / (sd[0] * sd[1]), fam.LMM_N_CORR_A, tol)
+        factors = model.factors()
+        assert close(factors[1]["sd"], fam.LMM_N_SD_B, tol)
+        re_a = model.factor_random_effects_matrix(0)
+        assert_close_vec(re_a[:, 0], in_solver_order(A, fam.LMM_N_BLUP_A0), tol, "LMM_N blup_a0")
+        assert_close_vec(re_a[:, 1], in_solver_order(A, fam.LMM_N_BLUP_A1), tol, "LMM_N blup_a1")
+        assert_close_vec(
+            factors[1]["blups"], in_solver_order(B, fam.LMM_N_BLUP_B), tol, "LMM_N blup_b"
+        )
+        assert model.n_random_effects == 2
+        assert model.factor_random_cov(1).shape == (1, 1)
+        assert model.factor_random_cov(5) is None
+
+    def test_poisson_crossed_with_random_slope_per_factor_matches_glmer(self):
+        XC = np.array(fam.XC)[:, None]
+        A = list(fam.A)
+        B = list(fam.B)
+        y = np.array(fam.Y_O)
+        model = GLMM.poisson(random_slopes_per_factor=[[0], []]).fit_crossed(XC, y, [A, B])
+        assert model.converged
+        tol = 2e-3
+        assert_close_vec(model.fixed_effects, fam.PO_O_FIXEF, tol, "PO_O fixef")
+        assert_close_vec(model.std_errors, fam.PO_O_SE, tol, "PO_O se")
+        assert close(model.log_likelihood, fam.PO_O_LOGLIK, tol)
+        assert close(model.sigma, fam.PO_O_SIGMA, tol)
+        assert model.n_factors == 2
+        sd = model.factor_random_sd(0)
+        assert_close_vec(sd, [fam.PO_O_SD_A0, fam.PO_O_SD_A1], tol, "PO_O sd_a")
+        cov = model.factor_random_cov(0)
+        assert close(cov[0, 1] / (sd[0] * sd[1]), fam.PO_O_CORR_A, tol)
+        factors = model.factors()
+        assert close(factors[1]["sd"], fam.PO_O_SD_B, tol)
+        re_a = model.factor_random_effects_matrix(0)
+        assert_close_vec(re_a[:, 0], in_solver_order(A, fam.PO_O_BLUP_A0), tol, "PO_O blup_a0")
+        assert_close_vec(re_a[:, 1], in_solver_order(A, fam.PO_O_BLUP_A1), tol, "PO_O blup_a1")
+        assert_close_vec(
+            factors[1]["blups"], in_solver_order(B, fam.PO_O_BLUP_B), tol, "PO_O blup_b"
+        )
+        assert model.n_random_effects == 2
+        assert model.factor_random_cov(1).shape == (1, 1)
+        assert model.factor_random_cov(5) is None
+
+    def test_gamma_crossed_matches_glmer(self):
+        XC = np.array(fam.XC)[:, None]
+        A = list(fam.A)
+        B = list(fam.B)
+        y = np.array(fam.Y_P)
+        model = GLMM.gamma().fit_crossed(XC, y, [A, B])
+        assert model.converged
+        tol = 2e-4
+        assert_close_vec(model.fixed_effects, fam.GA_P_FIXEF, tol, "GA_P fixef")
+        assert_close_vec(model.std_errors, fam.GA_P_SE, tol, "GA_P se")
+        assert close(model.log_likelihood, fam.GA_P_LOGLIK, tol)
+        assert close(model.sigma, fam.GA_P_SIGMA, tol)
+        factors = model.factors()
+        assert close(factors[0]["sd"], fam.GA_P_SD_A0, tol)
+        assert close(factors[1]["sd"], fam.GA_P_SD_B, tol)
+        assert_close_vec(
+            factors[0]["blups"], in_solver_order(A, fam.GA_P_BLUP_A0), tol, "GA_P blup_a"
+        )
+        assert_close_vec(
+            factors[1]["blups"], in_solver_order(B, fam.GA_P_BLUP_B), tol, "GA_P blup_b"
+        )
+
+    def test_random_slopes_per_factor_with_one_factor_equals_random_slopes(self):
+        """`fit(random_slopes=[0])` and `fit_crossed(random_slopes_per_factor=[[0]])`
+        on a single factor give identical results; exercises the single-factor
+        covariance / correlation / BLUP-matrix accessors."""
+        XC = np.array(fam.XC)[:, None]
+        A = list(fam.A)
+        y = np.array(fam.Y_N)
+        model_a = GLMM.gaussian(random_slopes=[0]).fit(XC, y, A)
+        model_b = GLMM.gaussian(random_slopes_per_factor=[[0]]).fit_crossed(XC, y, [A])
+        np.testing.assert_array_equal(model_a.fixed_effects, model_b.fixed_effects)
+        np.testing.assert_array_equal(model_a.random_sd, model_b.random_sd)
+
+        cov = model_a.random_cov
+        sd = model_a.random_sd
+        assert cov.shape == (2, 2)
+        np.testing.assert_allclose(np.diag(cov), sd**2, rtol=1e-12)
+        np.testing.assert_allclose(cov, cov.T, rtol=1e-12)
+
+        corr = model_a.random_corr
+        np.testing.assert_allclose(np.diag(corr), np.ones(2), atol=1e-12)
+
+        rem = model_a.random_effects_matrix
+        assert rem.shape == (model_a.n_groups, 2)
+        np.testing.assert_allclose(rem[:, 0], model_a.random_effects, rtol=1e-12)
+
+        assert model_a.factor_random_cov(0) is None
+
+    def test_is_reml_and_theta_max_accessors(self):
+        X = np.array(fam.X)[:, None]
+        group = list(fam.G)
+        gaussian_model = GLMM.gaussian().fit(X, np.array(fam.Y_M), group)
+        assert gaussian_model.is_reml is True
+        poisson_model = GLMM.poisson().fit(X, np.array(fam.Y_PO_OFF), group)
+        assert poisson_model.is_reml is False
+        theta_max_model = GLMM.gaussian(theta_max=50.0).fit(X, np.array(fam.Y_M), group)
+        assert theta_max_model.is_fitted()
+
+    def test_random_slopes_per_factor_length_mismatch_structure_validation(self):
+        XC = np.array(fam.XC)[:, None]
+        A = list(fam.A)
+        B = list(fam.B)
+        y = np.array(fam.Y_N)
+        with pytest.raises(ValueError):
+            GLMM.gaussian(random_slopes_per_factor=[[0]]).fit_crossed(XC, y, [A, B])
+
+    def test_random_slopes_with_multiple_factors_structure_validation(self):
+        XC = np.array(fam.XC)[:, None]
+        A = list(fam.A)
+        B = list(fam.B)
+        y = np.array(fam.Y_N)
+        with pytest.raises(ValueError):
+            GLMM.gaussian(random_slopes=[0]).fit_crossed(XC, y, [A, B])
+
+    def test_random_slopes_and_per_factor_mutually_exclusive_structure_validation(self):
+        with pytest.raises(ValueError):
+            GLMM.gaussian(random_slopes=[0], random_slopes_per_factor=[[0]])
+
+    def test_random_intercept_false_without_slope_structure_validation(self):
+        with pytest.raises(ValueError):
+            GLMM.gaussian(random_intercept=False)
+
+    def test_theta_max_zero_structure_validation(self):
+        with pytest.raises(ValueError):
+            GLMM.gaussian(theta_max=0.0)

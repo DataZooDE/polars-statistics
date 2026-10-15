@@ -1,6 +1,6 @@
 //! PyO3 wrapper for Generalized Linear Mixed Model (GLMM) regression.
 
-use numpy::{PyArray1, PyReadonlyArray1, PyReadonlyArray2, PyUntypedArrayMethods};
+use numpy::{PyArray1, PyArray2, PyReadonlyArray1, PyReadonlyArray2, PyUntypedArrayMethods};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
@@ -54,6 +54,11 @@ pub struct PyGLMM {
     with_intercept: bool,
     random_intercept: bool,
     random_slopes: Vec<usize>,
+    /// Random-slope columns per grouping factor for `fit_crossed`; exclusive
+    /// with `random_slopes`.
+    random_slopes_per_factor: Option<Vec<Vec<usize>>>,
+    /// Upper bound of the profiled ratio theta = sigma_b/sigma (default 1000).
+    theta_max: f64,
     reml: bool,
     max_iter: usize,
     tol: f64,
@@ -64,7 +69,8 @@ pub struct PyGLMM {
 impl PyGLMM {
     /// Construct a Gaussian GLMM (REML by default).
     #[staticmethod]
-    #[pyo3(signature = (add_intercept=None, with_intercept=None, reml=true, max_iter=100, tol=1e-8))]
+    #[allow(clippy::too_many_arguments)]
+    #[pyo3(signature = (add_intercept=None, with_intercept=None, reml=true, max_iter=100, tol=1e-8, random_intercept=true, random_slopes=None, random_slopes_per_factor=None, theta_max=1000.0))]
     fn gaussian(
         py: Python<'_>,
         add_intercept: Option<bool>,
@@ -72,26 +78,32 @@ impl PyGLMM {
         reml: bool,
         max_iter: usize,
         tol: f64,
+        random_intercept: bool,
+        random_slopes: Option<Vec<usize>>,
+        random_slopes_per_factor: Option<Vec<Vec<usize>>>,
+        theta_max: f64,
     ) -> PyResult<Self> {
         let with_intercept =
             crate::pymodels::errors::resolve_intercept(py, add_intercept, with_intercept, true)?;
-        Ok(Self {
-            family: "gaussian".into(),
-            power: 1.5,
-            nb_theta: None,
+        Self::construct(
+            "gaussian",
+            1.5,
+            None,
             with_intercept,
-            random_intercept: true,
-            random_slopes: vec![],
+            random_intercept,
+            random_slopes,
+            random_slopes_per_factor,
+            theta_max,
             reml,
             max_iter,
             tol,
-            fitted: None,
-        })
+        )
     }
 
     /// Construct a Poisson GLMM.
     #[staticmethod]
-    #[pyo3(signature = (add_intercept=None, with_intercept=None, reml=false, max_iter=100, tol=1e-8))]
+    #[allow(clippy::too_many_arguments)]
+    #[pyo3(signature = (add_intercept=None, with_intercept=None, reml=false, max_iter=100, tol=1e-8, random_intercept=true, random_slopes=None, random_slopes_per_factor=None, theta_max=1000.0))]
     fn poisson(
         py: Python<'_>,
         add_intercept: Option<bool>,
@@ -99,26 +111,32 @@ impl PyGLMM {
         reml: bool,
         max_iter: usize,
         tol: f64,
+        random_intercept: bool,
+        random_slopes: Option<Vec<usize>>,
+        random_slopes_per_factor: Option<Vec<Vec<usize>>>,
+        theta_max: f64,
     ) -> PyResult<Self> {
         let with_intercept =
             crate::pymodels::errors::resolve_intercept(py, add_intercept, with_intercept, true)?;
-        Ok(Self {
-            family: "poisson".into(),
-            power: 1.5,
-            nb_theta: None,
+        Self::construct(
+            "poisson",
+            1.5,
+            None,
             with_intercept,
-            random_intercept: true,
-            random_slopes: vec![],
+            random_intercept,
+            random_slopes,
+            random_slopes_per_factor,
+            theta_max,
             reml,
             max_iter,
             tol,
-            fitted: None,
-        })
+        )
     }
 
     /// Construct a Binomial (logistic) GLMM.
     #[staticmethod]
-    #[pyo3(signature = (add_intercept=None, with_intercept=None, reml=false, max_iter=100, tol=1e-8))]
+    #[allow(clippy::too_many_arguments)]
+    #[pyo3(signature = (add_intercept=None, with_intercept=None, reml=false, max_iter=100, tol=1e-8, random_intercept=true, random_slopes=None, random_slopes_per_factor=None, theta_max=1000.0))]
     fn binomial(
         py: Python<'_>,
         add_intercept: Option<bool>,
@@ -126,21 +144,26 @@ impl PyGLMM {
         reml: bool,
         max_iter: usize,
         tol: f64,
+        random_intercept: bool,
+        random_slopes: Option<Vec<usize>>,
+        random_slopes_per_factor: Option<Vec<Vec<usize>>>,
+        theta_max: f64,
     ) -> PyResult<Self> {
         let with_intercept =
             crate::pymodels::errors::resolve_intercept(py, add_intercept, with_intercept, true)?;
-        Ok(Self {
-            family: "binomial".into(),
-            power: 1.5,
-            nb_theta: None,
+        Self::construct(
+            "binomial",
+            1.5,
+            None,
             with_intercept,
-            random_intercept: true,
-            random_slopes: vec![],
+            random_intercept,
+            random_slopes,
+            random_slopes_per_factor,
+            theta_max,
             reml,
             max_iter,
             tol,
-            fitted: None,
-        })
+        )
     }
 
     /// Construct a negative-binomial (NB2) GLMM with the log link,
@@ -156,7 +179,8 @@ impl PyGLMM {
     ///     Fixed negative-binomial size theta. Must be finite and > 0.
     ///     When omitted (default), theta is estimated from the data.
     #[staticmethod]
-    #[pyo3(signature = (nb_theta=None, add_intercept=None, with_intercept=None, reml=false, max_iter=100, tol=1e-8))]
+    #[allow(clippy::too_many_arguments)]
+    #[pyo3(signature = (nb_theta=None, add_intercept=None, with_intercept=None, reml=false, max_iter=100, tol=1e-8, random_intercept=true, random_slopes=None, random_slopes_per_factor=None, theta_max=1000.0))]
     fn negative_binomial(
         py: Python<'_>,
         nb_theta: Option<f64>,
@@ -165,6 +189,10 @@ impl PyGLMM {
         reml: bool,
         max_iter: usize,
         tol: f64,
+        random_intercept: bool,
+        random_slopes: Option<Vec<usize>>,
+        random_slopes_per_factor: Option<Vec<Vec<usize>>>,
+        theta_max: f64,
     ) -> PyResult<Self> {
         if let Some(t) = nb_theta {
             if !t.is_finite() || t <= 0.0 {
@@ -175,24 +203,26 @@ impl PyGLMM {
         }
         let with_intercept =
             crate::pymodels::errors::resolve_intercept(py, add_intercept, with_intercept, true)?;
-        Ok(Self {
-            family: "negative_binomial".into(),
-            power: 1.5,
+        Self::construct(
+            "negative_binomial",
+            1.5,
             nb_theta,
             with_intercept,
-            random_intercept: true,
-            random_slopes: vec![],
+            random_intercept,
+            random_slopes,
+            random_slopes_per_factor,
+            theta_max,
             reml,
             max_iter,
             tol,
-            fitted: None,
-        })
+        )
     }
 
     /// Construct a Gamma GLMM with the log link (`y > 0`), matching
     /// `lme4::glmer(family = Gamma(link = "log"), nAGQ = 0)`.
     #[staticmethod]
-    #[pyo3(signature = (add_intercept=None, with_intercept=None, reml=false, max_iter=100, tol=1e-8))]
+    #[allow(clippy::too_many_arguments)]
+    #[pyo3(signature = (add_intercept=None, with_intercept=None, reml=false, max_iter=100, tol=1e-8, random_intercept=true, random_slopes=None, random_slopes_per_factor=None, theta_max=1000.0))]
     fn gamma(
         py: Python<'_>,
         add_intercept: Option<bool>,
@@ -200,21 +230,26 @@ impl PyGLMM {
         reml: bool,
         max_iter: usize,
         tol: f64,
+        random_intercept: bool,
+        random_slopes: Option<Vec<usize>>,
+        random_slopes_per_factor: Option<Vec<Vec<usize>>>,
+        theta_max: f64,
     ) -> PyResult<Self> {
         let with_intercept =
             crate::pymodels::errors::resolve_intercept(py, add_intercept, with_intercept, true)?;
-        Ok(Self {
-            family: "gamma".into(),
-            power: 1.5,
-            nb_theta: None,
+        Self::construct(
+            "gamma",
+            1.5,
+            None,
             with_intercept,
-            random_intercept: true,
-            random_slopes: vec![],
+            random_intercept,
+            random_slopes,
+            random_slopes_per_factor,
+            theta_max,
             reml,
             max_iter,
             tol,
-            fitted: None,
-        })
+        )
     }
 
     /// Construct a Tweedie (compound Poisson-gamma) GLMM with variance power
@@ -226,7 +261,8 @@ impl PyGLMM {
     /// power : float, default 1.5
     ///     Tweedie variance power. Must satisfy `1 < power < 2`.
     #[staticmethod]
-    #[pyo3(signature = (power=1.5, add_intercept=None, with_intercept=None, reml=false, max_iter=100, tol=1e-8))]
+    #[allow(clippy::too_many_arguments)]
+    #[pyo3(signature = (power=1.5, add_intercept=None, with_intercept=None, reml=false, max_iter=100, tol=1e-8, random_intercept=true, random_slopes=None, random_slopes_per_factor=None, theta_max=1000.0))]
     fn tweedie(
         py: Python<'_>,
         power: f64,
@@ -235,6 +271,10 @@ impl PyGLMM {
         reml: bool,
         max_iter: usize,
         tol: f64,
+        random_intercept: bool,
+        random_slopes: Option<Vec<usize>>,
+        random_slopes_per_factor: Option<Vec<Vec<usize>>>,
+        theta_max: f64,
     ) -> PyResult<Self> {
         if !(power.is_finite() && power > 1.0 && power < 2.0) {
             return Err(PyValueError::new_err(format!(
@@ -243,18 +283,19 @@ impl PyGLMM {
         }
         let with_intercept =
             crate::pymodels::errors::resolve_intercept(py, add_intercept, with_intercept, true)?;
-        Ok(Self {
-            family: "tweedie".into(),
+        Self::construct(
+            "tweedie",
             power,
-            nb_theta: None,
+            None,
             with_intercept,
-            random_intercept: true,
-            random_slopes: vec![],
+            random_intercept,
+            random_slopes,
+            random_slopes_per_factor,
+            theta_max,
             reml,
             max_iter,
             tol,
-            fitted: None,
-        })
+        )
     }
 
     /// Fit the GLMM with a single grouping factor.
@@ -651,6 +692,130 @@ impl PyGLMM {
             .ok_or_else(|| crate::pymodels::errors::not_fitted_err("GLMM"))?;
         Ok(fitted.iterations())
     }
+
+    /// Random-effects covariance matrix Sigma (q x q): the intercept first,
+    /// then the random slopes in the given order. `None` only when unfitted.
+    #[getter]
+    fn random_cov<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyArray2<f64>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("GLMM"))?;
+        PyArray2::from_vec2(py, fitted.random_cov())
+            .map_err(|e| PyValueError::new_err(e.to_string()))
+    }
+
+    /// Full BLUP matrix (n_groups x q): column 0 is the random intercept,
+    /// then the random slopes in the given order.
+    #[getter]
+    fn random_effects_matrix<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyArray2<f64>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("GLMM"))?;
+        PyArray2::from_vec2(py, fitted.random_effects_matrix())
+            .map_err(|e| PyValueError::new_err(e.to_string()))
+    }
+
+    /// Random-effects correlation matrix (unit diagonal), derived from `random_cov`.
+    #[getter]
+    fn random_corr<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyArray2<f64>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("GLMM"))?;
+        PyArray2::from_vec2(py, &fitted.random_corr())
+            .map_err(|e| PyValueError::new_err(e.to_string()))
+    }
+
+    /// Number of random-effects columns q (1 + the number of random slopes
+    /// for a single-factor fit).
+    #[getter]
+    fn n_random_effects(&self) -> PyResult<usize> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("GLMM"))?;
+        Ok(fitted.n_random_effects())
+    }
+
+    /// Number of grouping factors (1 for `fit`, >= 2 for a crossed `fit_crossed`).
+    #[getter]
+    fn n_factors(&self) -> PyResult<usize> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("GLMM"))?;
+        Ok(fitted.n_factors())
+    }
+
+    /// Whether the Gaussian fit used REML (always False for non-Gaussian families).
+    #[getter]
+    fn is_reml(&self) -> PyResult<bool> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("GLMM"))?;
+        Ok(fitted.is_reml())
+    }
+
+    /// Random-effects covariance matrix for grouping factor `f` (q_f x q_f).
+    /// `None` for a single-factor fit or an out-of-range `f`; component 0 is
+    /// the random intercept, then the factor's slopes in the given order.
+    fn factor_random_cov<'py>(
+        &self,
+        py: Python<'py>,
+        f: usize,
+    ) -> PyResult<Option<Bound<'py, PyArray2<f64>>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("GLMM"))?;
+        match fitted.factor_random_cov(f) {
+            Some(cov) => Ok(Some(
+                PyArray2::from_vec2(py, cov).map_err(|e| PyValueError::new_err(e.to_string()))?,
+            )),
+            None => Ok(None),
+        }
+    }
+
+    /// Random-effects standard deviations for grouping factor `f`. `None`
+    /// for a single-factor fit or an out-of-range `f`; component 0 is the
+    /// random intercept, then the factor's slopes in the given order.
+    fn factor_random_sd<'py>(
+        &self,
+        py: Python<'py>,
+        f: usize,
+    ) -> PyResult<Option<Bound<'py, PyArray1<f64>>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("GLMM"))?;
+        Ok(fitted
+            .factor_random_sd(f)
+            .map(|sd| PyArray1::from_vec(py, sd)))
+    }
+
+    /// BLUP matrix for grouping factor `f` (n_levels_f x q_f). `None` for a
+    /// single-factor fit or an out-of-range `f`; column 0 is the random
+    /// intercept, then the factor's slopes in the given order.
+    fn factor_random_effects_matrix<'py>(
+        &self,
+        py: Python<'py>,
+        f: usize,
+    ) -> PyResult<Option<Bound<'py, PyArray2<f64>>>> {
+        let fitted = self
+            .fitted
+            .as_ref()
+            .ok_or_else(|| crate::pymodels::errors::not_fitted_err("GLMM"))?;
+        match fitted.factor_random_effects_matrix(f) {
+            Some(mat) => Ok(Some(
+                PyArray2::from_vec2(py, mat).map_err(|e| PyValueError::new_err(e.to_string()))?,
+            )),
+            None => Ok(None),
+        }
+    }
+
     /// Informative repr: class name plus key state; never panics if unfitted.
     fn __repr__(slf: &Bound<'_, Self>) -> PyResult<String> {
         crate::pymodels::ergonomics::repr(slf.as_any())
@@ -668,6 +833,61 @@ impl PyGLMM {
 }
 
 impl PyGLMM {
+    /// Shared factory-construction path for all six family staticmethods:
+    /// validates the random-effects structure options once (`random_slopes`
+    /// and `random_slopes_per_factor` are mutually exclusive, a disabled
+    /// random intercept needs at least one non-empty slope list, `theta_max`
+    /// must be finite and positive) before building `Self`.
+    #[allow(clippy::too_many_arguments)]
+    fn construct(
+        family: &str,
+        power: f64,
+        nb_theta: Option<f64>,
+        with_intercept: bool,
+        random_intercept: bool,
+        random_slopes: Option<Vec<usize>>,
+        random_slopes_per_factor: Option<Vec<Vec<usize>>>,
+        theta_max: f64,
+        reml: bool,
+        max_iter: usize,
+        tol: f64,
+    ) -> PyResult<Self> {
+        if random_slopes.is_some() && random_slopes_per_factor.is_some() {
+            return Err(PyValueError::new_err(
+                "random_slopes and random_slopes_per_factor are mutually exclusive",
+            ));
+        }
+        let has_slopes = random_slopes.as_ref().is_some_and(|s| !s.is_empty())
+            || random_slopes_per_factor
+                .as_ref()
+                .is_some_and(|per| per.iter().any(|s| !s.is_empty()));
+        if !random_intercept && !has_slopes {
+            return Err(PyValueError::new_err(
+                "random_intercept=False requires at least one random slope \
+                 (via random_slopes or random_slopes_per_factor)",
+            ));
+        }
+        if !(theta_max.is_finite() && theta_max > 0.0) {
+            return Err(PyValueError::new_err(format!(
+                "theta_max must be finite and > 0, got {theta_max}"
+            )));
+        }
+        Ok(Self {
+            family: family.into(),
+            power,
+            nb_theta,
+            with_intercept,
+            random_intercept,
+            random_slopes: random_slopes.unwrap_or_default(),
+            random_slopes_per_factor,
+            theta_max,
+            reml,
+            max_iter,
+            tol,
+            fitted: None,
+        })
+    }
+
     /// Build the upstream `GlmmRegressorBuilder` from the current family and
     /// options, optionally with a per-observation offset. Shared by `fit` and
     /// `fit_crossed` so every option is threaded identically on both paths.
@@ -685,8 +905,12 @@ impl PyGLMM {
         .random_slopes(self.random_slopes.clone())
         .reml(self.reml)
         .max_iterations(self.max_iter)
-        .tolerance(self.tol);
+        .tolerance(self.tol)
+        .theta_max(self.theta_max);
 
+        if let Some(per) = &self.random_slopes_per_factor {
+            builder = builder.random_slopes_per_factor(per.clone());
+        }
         if let Some(t) = self.nb_theta {
             builder = builder.nb_theta(t);
         }
