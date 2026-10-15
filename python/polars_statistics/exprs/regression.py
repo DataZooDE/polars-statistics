@@ -7,8 +7,9 @@ from __future__ import annotations
 
 import math
 import warnings
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Literal, Sequence, Union
+from typing import Literal
 
 import polars as pl
 from polars.plugins import register_plugin_function
@@ -60,8 +61,8 @@ def _check_alias_tolerance(tol: float) -> float:
 
 
 def ols(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
     solve_method: str | None = None,
@@ -140,8 +141,8 @@ def ols(
 
 
 def ridge(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     lambda_: float = 1.0,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
@@ -192,8 +193,8 @@ def ridge(
 
 
 def elastic_net(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     lambda_: float = 1.0,
     alpha: float = 0.5,
     add_intercept: bool | None = None,
@@ -244,9 +245,9 @@ def elastic_net(
 
 
 def wls(
-    y: Union[pl.Expr, str],
-    weights: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    weights: pl.Expr | str,
+    *x: pl.Expr | str,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
     solve_method: str | None = None,
@@ -302,8 +303,8 @@ def wls(
 
 
 def rls(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     forgetting_factor: float = 0.99,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
@@ -358,8 +359,8 @@ def rls(
 
 
 def expanding_ols(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
 ) -> pl.Expr:
@@ -387,8 +388,8 @@ def expanding_ols(
 
 
 def bls(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     lower_bound: float | None = None,
     upper_bound: float | None = None,
     add_intercept: bool | None = None,
@@ -446,8 +447,8 @@ def bls(
 
 
 def nnls(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
 ) -> pl.Expr:
@@ -474,8 +475,8 @@ def nnls(
 
 
 def lasso(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     lambda_: float = 1.0,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
@@ -510,8 +511,8 @@ def lasso(
 
 
 def huber(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     epsilon: float = 1.35,
     alpha: float = 0.0001,
     add_intercept: bool | None = None,
@@ -568,8 +569,8 @@ def huber(
 
 
 def quantile(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     tau: float = 0.5,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
@@ -634,8 +635,8 @@ def quantile(
 
 
 def pls(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     n_components: int = 2,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
@@ -692,8 +693,8 @@ def pls(
 
 
 def isotonic(
-    y: Union[pl.Expr, str],
-    x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    x: pl.Expr | str,
     increasing: bool = True,
 ) -> pl.Expr:
     """Isotonic (monotonic) regression as a Polars expression.
@@ -751,7 +752,7 @@ def isotonic(
 
 
 def condition_number(
-    *x: Union[pl.Expr, str],
+    *x: pl.Expr | str,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
 ) -> pl.Expr:
@@ -825,8 +826,8 @@ def condition_number(
 
 
 def check_binary_separation(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
 ) -> pl.Expr:
     """Check for quasi-separation in binary response data.
 
@@ -903,8 +904,8 @@ def check_binary_separation(
 
 
 def check_count_sparsity(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
 ) -> pl.Expr:
     """Check for sparsity-induced separation in count data.
 
@@ -979,7 +980,7 @@ def check_count_sparsity(
     )
 
 
-def vif(*x: Union[pl.Expr, str]) -> pl.Expr:
+def vif(*x: pl.Expr | str) -> pl.Expr:
     """Variance Inflation Factor (VIF) for multicollinearity detection.
 
     VIF measures how much the variance of a coefficient estimate is inflated
@@ -1031,7 +1032,7 @@ def vif(*x: Union[pl.Expr, str]) -> pl.Expr:
 
 
 def leverage(
-    *x: Union[pl.Expr, str],
+    *x: pl.Expr | str,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
 ) -> pl.Expr:
@@ -1084,8 +1085,8 @@ def leverage(
 
 
 def cooks_distance(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
 ) -> pl.Expr:
@@ -1157,8 +1158,8 @@ def _residual_diag_args(y, x, add_intercept):
 
 
 def dffits(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
 ) -> pl.Expr:
@@ -1191,8 +1192,8 @@ def _influence_args(y, x, threshold, add_intercept):
 
 
 def influential_cooks(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     threshold: float | None = None,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
@@ -1213,8 +1214,8 @@ def influential_cooks(
 
 
 def influential_dffits(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     threshold: float | None = None,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
@@ -1234,7 +1235,7 @@ def influential_dffits(
 
 
 def high_leverage_points(
-    *x: Union[pl.Expr, str],
+    *x: pl.Expr | str,
     threshold: float | None = None,
     add_intercept: bool = True,
 ) -> pl.Expr:
@@ -1264,7 +1265,7 @@ def high_leverage_points(
 
 
 def high_vif_predictors(
-    *x: Union[pl.Expr, str],
+    *x: pl.Expr | str,
     threshold: float = 10.0,
 ) -> pl.Expr:
     """Boolean mask of features whose VIF exceeds ``threshold``.
@@ -1302,7 +1303,7 @@ def high_vif_predictors(
 
 
 def generalized_vif(
-    *x: Union[pl.Expr, str],
+    *x: pl.Expr | str,
     group_sizes: list[int],
 ) -> pl.Expr:
     """Generalized VIF (GVIF) for grouped predictors (e.g., categorical dummies).
@@ -1348,8 +1349,8 @@ def generalized_vif(
 
 
 def pearson_chi_squared_logistic(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     lambda_: float = 0.0,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
@@ -1373,8 +1374,8 @@ def pearson_chi_squared_logistic(
 
 
 def pearson_chi_squared_poisson(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     lambda_: float = 0.0,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
@@ -1398,8 +1399,8 @@ def pearson_chi_squared_poisson(
 
 
 def standardized_residuals(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
 ) -> pl.Expr:
@@ -1417,8 +1418,8 @@ def standardized_residuals(
 
 
 def studentized_residuals(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
 ) -> pl.Expr:
@@ -1437,8 +1438,8 @@ def studentized_residuals(
 
 
 def externally_studentized_residuals(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
 ) -> pl.Expr:
@@ -1459,8 +1460,8 @@ def externally_studentized_residuals(
 
 
 def residual_outliers(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     threshold: float = 2.0,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
@@ -1509,8 +1510,8 @@ def _glm_residual_args(y, x, lambda_, add_intercept):
 
 
 def logistic_pearson_residuals(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     lambda_: float = 0.0,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
@@ -1529,8 +1530,8 @@ def logistic_pearson_residuals(
 
 
 def logistic_deviance_residuals(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     lambda_: float = 0.0,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
@@ -1546,8 +1547,8 @@ def logistic_deviance_residuals(
 
 
 def logistic_working_residuals(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     lambda_: float = 0.0,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
@@ -1563,8 +1564,8 @@ def logistic_working_residuals(
 
 
 def poisson_pearson_residuals(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     lambda_: float = 0.0,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
@@ -1580,8 +1581,8 @@ def poisson_pearson_residuals(
 
 
 def poisson_deviance_residuals(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     lambda_: float = 0.0,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
@@ -1597,8 +1598,8 @@ def poisson_deviance_residuals(
 
 
 def poisson_working_residuals(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     lambda_: float = 0.0,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
@@ -1614,8 +1615,8 @@ def poisson_working_residuals(
 
 
 def gamma_dispersion_deviance(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     lambda_: float = 0.0,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
@@ -1634,8 +1635,8 @@ def gamma_dispersion_deviance(
 
 
 def gamma_dispersion_pearson(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     lambda_: float = 0.0,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
@@ -1654,8 +1655,8 @@ def gamma_dispersion_pearson(
 
 
 def gamma_pearson_chi_squared(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     lambda_: float = 0.0,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
@@ -1675,8 +1676,8 @@ def gamma_pearson_chi_squared(
 
 
 def gamma_standardized_pearson_residuals(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     lambda_: float = 0.0,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
@@ -1696,8 +1697,8 @@ def gamma_standardized_pearson_residuals(
 
 
 def gamma_standardized_deviance_residuals(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     lambda_: float = 0.0,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
@@ -1722,8 +1723,8 @@ def gamma_standardized_deviance_residuals(
 
 
 def logistic(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     lambda_: float = 0.0,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
@@ -1771,8 +1772,8 @@ def logistic(
 
 
 def logistic_regression(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     penalty: str = "l2",
     C: float = 1.0,
     threshold: float = 0.5,
@@ -1836,8 +1837,8 @@ def logistic_regression(
 
 
 def poisson(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     lambda_: float = 0.0,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
@@ -1884,8 +1885,8 @@ def poisson(
 
 
 def negative_binomial(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     theta: float | None = None,
     lambda_: float = 0.0,
     add_intercept: bool | None = None,
@@ -1948,8 +1949,8 @@ def negative_binomial(
 
 
 def tweedie(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     var_power: float = 1.5,
     lambda_: float = 0.0,
     add_intercept: bool | None = None,
@@ -2008,8 +2009,8 @@ def tweedie(
 
 
 def probit(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     lambda_: float = 0.0,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
@@ -2056,8 +2057,8 @@ def probit(
 
 
 def cloglog(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     lambda_: float = 0.0,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
@@ -2122,10 +2123,10 @@ _AUGMENT_RESIDUAL_TYPES = ("response", "pearson", "deviance")
 
 
 def augment(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     model: str = "ols",
-    weights: Union[pl.Expr, str, None] = None,
+    weights: pl.Expr | str | None = None,
     residual_type: str | None = None,
     add_intercept: bool = True,
     theta: float | None = None,
@@ -2266,7 +2267,7 @@ _PRIOR_KINDS = ("flat", "normal", "laplace")
 
 
 def _normalize_priors(
-    priors: Sequence[Union[None, str, tuple, dict]] | None,
+    priors: Sequence[None | str | tuple | dict] | None,
 ) -> list[dict]:
     """Normalize a priors spec into a list of ``{"kind", "loc", "scale"}`` dicts.
 
@@ -2321,7 +2322,7 @@ def _normalize_priors(
     return out
 
 
-def _normalize_offset(offset: Union[pl.Expr, str, None]) -> pl.Expr:
+def _normalize_offset(offset: pl.Expr | str | None) -> pl.Expr:
     """Normalize a penalized-GLM ``offset=`` argument to a `Float64` expression.
 
     ``None`` becomes a literal ``0.0`` (no offset); a string is treated as a
@@ -2401,7 +2402,7 @@ def _penalized_glm_kwargs(
     threshold: float,
     lambda_: float,
     estimate_dispersion: bool,
-    priors: Sequence[Union[None, str, tuple, dict]] | None,
+    priors: Sequence[None | str | tuple | dict] | None,
     vcov_type: str,
     add_intercept: bool,
     max_iter: int,
@@ -2448,8 +2449,8 @@ def _penalized_glm_kwargs(
 
 
 def penalized_glm(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     family: Literal["poisson", "binomial", "logistic", "negative_binomial", "gamma", "tweedie"] = (
         "poisson"
     ),
@@ -2459,8 +2460,8 @@ def penalized_glm(
     threshold: float = 0.5,
     lambda_: float = 0.0,
     estimate_dispersion: bool = False,
-    priors: Sequence[Union[None, str, tuple, dict]] | None = None,
-    offset: Union[pl.Expr, str, None] = None,
+    priors: Sequence[None | str | tuple | dict] | None = None,
+    offset: pl.Expr | str | None = None,
     add_intercept: bool = True,
     max_iter: int = 100,
     tol: float = 1e-8,
@@ -2619,7 +2620,7 @@ def _validate_aft_distribution(distribution: str) -> None:
 
 def _aft_kwargs(
     distribution: str,
-    priors: Sequence[Union[None, str, tuple, dict]] | None,
+    priors: Sequence[None | str | tuple | dict] | None,
     vcov_type: str,
     add_intercept: bool,
     max_iter: int,
@@ -2661,11 +2662,11 @@ def _aft_kwargs(
 
 
 def aft(
-    time: Union[pl.Expr, str],
-    event: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    time: pl.Expr | str,
+    event: pl.Expr | str,
+    *x: pl.Expr | str,
     distribution: Literal["weibull", "exponential", "lognormal", "loglogistic"] = "weibull",
-    priors: Sequence[Union[None, str, tuple, dict]] | None = None,
+    priors: Sequence[None | str | tuple | dict] | None = None,
     add_intercept: bool = True,
     max_iter: int = 100,
     tol: float = 1e-9,
@@ -2759,11 +2760,11 @@ def aft(
 
 
 def aft_summary(
-    time: Union[pl.Expr, str],
-    event: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    time: pl.Expr | str,
+    event: pl.Expr | str,
+    *x: pl.Expr | str,
     distribution: Literal["weibull", "exponential", "lognormal", "loglogistic"] = "weibull",
-    priors: Sequence[Union[None, str, tuple, dict]] | None = None,
+    priors: Sequence[None | str | tuple | dict] | None = None,
     vcov_type: Literal["laplace", "sandwich", "naive"] = "laplace",
     conf_level: float = 0.95,
     add_intercept: bool = True,
@@ -2836,11 +2837,11 @@ def aft_summary(
 
 def _aft_predict(
     function_name: str,
-    time: Union[pl.Expr, str],
-    event: Union[pl.Expr, str],
+    time: pl.Expr | str,
+    event: pl.Expr | str,
     x: tuple,
     distribution: str,
-    priors: Sequence[Union[None, str, tuple, dict]] | None,
+    priors: Sequence[None | str | tuple | dict] | None,
     add_intercept: bool,
     max_iter: int,
     tol: float,
@@ -2889,12 +2890,12 @@ def _aft_predict(
 
 
 def aft_predict_quantile(
-    time: Union[pl.Expr, str],
-    event: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    time: pl.Expr | str,
+    event: pl.Expr | str,
+    *x: pl.Expr | str,
     p: float = 0.5,
     distribution: Literal["weibull", "exponential", "lognormal", "loglogistic"] = "weibull",
-    priors: Sequence[Union[None, str, tuple, dict]] | None = None,
+    priors: Sequence[None | str | tuple | dict] | None = None,
     add_intercept: bool = True,
     max_iter: int = 100,
     tol: float = 1e-9,
@@ -2954,11 +2955,11 @@ def aft_predict_quantile(
 
 
 def aft_predict_median(
-    time: Union[pl.Expr, str],
-    event: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    time: pl.Expr | str,
+    event: pl.Expr | str,
+    *x: pl.Expr | str,
     distribution: Literal["weibull", "exponential", "lognormal", "loglogistic"] = "weibull",
-    priors: Sequence[Union[None, str, tuple, dict]] | None = None,
+    priors: Sequence[None | str | tuple | dict] | None = None,
     add_intercept: bool = True,
     max_iter: int = 100,
     tol: float = 1e-9,
@@ -2986,12 +2987,12 @@ def aft_predict_median(
 
 
 def aft_predict_survival(
-    time: Union[pl.Expr, str],
-    event: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    time: pl.Expr | str,
+    event: pl.Expr | str,
+    *x: pl.Expr | str,
     t: float,
     distribution: Literal["weibull", "exponential", "lognormal", "loglogistic"] = "weibull",
-    priors: Sequence[Union[None, str, tuple, dict]] | None = None,
+    priors: Sequence[None | str | tuple | dict] | None = None,
     add_intercept: bool = True,
     max_iter: int = 100,
     tol: float = 1e-9,
@@ -3027,12 +3028,12 @@ def aft_predict_survival(
 
 
 def aft_predict_cdf(
-    time: Union[pl.Expr, str],
-    event: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    time: pl.Expr | str,
+    event: pl.Expr | str,
+    *x: pl.Expr | str,
     t: float,
     distribution: Literal["weibull", "exponential", "lognormal", "loglogistic"] = "weibull",
-    priors: Sequence[Union[None, str, tuple, dict]] | None = None,
+    priors: Sequence[None | str | tuple | dict] | None = None,
     add_intercept: bool = True,
     max_iter: int = 100,
     tol: float = 1e-9,
@@ -3073,8 +3074,8 @@ def aft_predict_cdf(
 
 
 def alm(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     distribution: str = "normal",
     link: str | None = None,
     loss: str = "likelihood",
@@ -3170,8 +3171,8 @@ def alm(
 
 
 def ols_summary(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
     solve_method: str | None = None,
@@ -3241,8 +3242,8 @@ def ols_summary(
 
 
 def ridge_summary(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     lambda_: float = 1.0,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
@@ -3283,8 +3284,8 @@ def ridge_summary(
 
 
 def elastic_net_summary(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     lambda_: float = 1.0,
     alpha: float = 0.5,
     add_intercept: bool | None = None,
@@ -3316,8 +3317,8 @@ def elastic_net_summary(
 
 
 def lasso_summary(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     lambda_: float = 1.0,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
@@ -3333,9 +3334,9 @@ def lasso_summary(
 
 
 def wls_summary(
-    y: Union[pl.Expr, str],
-    weights: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    weights: pl.Expr | str,
+    *x: pl.Expr | str,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
     solve_method: str | None = None,
@@ -3376,8 +3377,8 @@ def wls_summary(
 
 
 def rls_summary(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     forgetting_factor: float = 0.99,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
@@ -3415,8 +3416,8 @@ def rls_summary(
 
 
 def bls_summary(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     lower_bound: float | None = None,
     upper_bound: float | None = None,
     add_intercept: bool | None = None,
@@ -3456,8 +3457,8 @@ def bls_summary(
 
 
 def logistic_summary(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     lambda_: float = 0.0,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
@@ -3487,8 +3488,8 @@ def logistic_summary(
 
 
 def poisson_summary(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     lambda_: float = 0.0,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
@@ -3518,8 +3519,8 @@ def poisson_summary(
 
 
 def negative_binomial_summary(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     theta: float | None = None,
     lambda_: float = 0.0,
     add_intercept: bool | None = None,
@@ -3565,8 +3566,8 @@ def negative_binomial_summary(
 
 
 def tweedie_summary(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     var_power: float = 1.5,
     lambda_: float = 0.0,
     add_intercept: bool | None = None,
@@ -3606,8 +3607,8 @@ def tweedie_summary(
 
 
 def probit_summary(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     lambda_: float = 0.0,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
@@ -3637,8 +3638,8 @@ def probit_summary(
 
 
 def cloglog_summary(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     lambda_: float = 0.0,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
@@ -3668,8 +3669,8 @@ def cloglog_summary(
 
 
 def penalized_glm_summary(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     family: Literal["poisson", "binomial", "logistic", "negative_binomial", "gamma", "tweedie"] = (
         "poisson"
     ),
@@ -3679,10 +3680,10 @@ def penalized_glm_summary(
     threshold: float = 0.5,
     lambda_: float = 0.0,
     estimate_dispersion: bool = False,
-    priors: Sequence[Union[None, str, tuple, dict]] | None = None,
+    priors: Sequence[None | str | tuple | dict] | None = None,
     vcov_type: Literal["laplace", "sandwich", "naive"] = "laplace",
     conf_level: float = 0.95,
-    offset: Union[pl.Expr, str, None] = None,
+    offset: pl.Expr | str | None = None,
     add_intercept: bool = True,
     max_iter: int = 100,
     tol: float = 1e-8,
@@ -3760,8 +3761,8 @@ def penalized_glm_summary(
 
 
 def alm_summary(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     distribution: str = "normal",
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
@@ -3796,8 +3797,8 @@ def alm_summary(
 
 
 def ols_predict(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     add_intercept: bool = True,
     solve_method: str | None = None,
     interval: str | None = None,
@@ -3904,8 +3905,8 @@ def ols_predict(
 
 
 def ridge_predict(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     lambda_: float = 1.0,
     add_intercept: bool = True,
     solve_method: str | None = None,
@@ -3973,8 +3974,8 @@ def ridge_predict(
 
 
 def elastic_net_predict(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     lambda_: float = 1.0,
     alpha: float = 0.5,
     add_intercept: bool = True,
@@ -4042,8 +4043,8 @@ def elastic_net_predict(
 
 
 def lasso_predict(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     lambda_: float = 1.0,
     add_intercept: bool = True,
     interval: str | None = None,
@@ -4092,9 +4093,9 @@ def lasso_predict(
 
 
 def wls_predict(
-    y: Union[pl.Expr, str],
-    weights: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    weights: pl.Expr | str,
+    *x: pl.Expr | str,
     add_intercept: bool = True,
     solve_method: str | None = None,
     interval: str | None = None,
@@ -4166,8 +4167,8 @@ def wls_predict(
 
 
 def rls_predict(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     forgetting_factor: float = 0.99,
     add_intercept: bool = True,
     interval: str | None = None,
@@ -4234,8 +4235,8 @@ def rls_predict(
 
 
 def bls_predict(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     lower_bound: float | None = None,
     upper_bound: float | None = None,
     add_intercept: bool = True,
@@ -4305,8 +4306,8 @@ def bls_predict(
 
 
 def nnls_predict(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     add_intercept: bool = True,
     interval: str | None = None,
     level: float = 0.95,
@@ -4334,8 +4335,8 @@ def nnls_predict(
 
 
 def logistic_predict(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     lambda_: float = 0.0,
     add_intercept: bool = True,
     interval: str | None = None,
@@ -4400,8 +4401,8 @@ def logistic_predict(
 
 
 def poisson_predict(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     lambda_: float = 0.0,
     add_intercept: bool = True,
     interval: str | None = None,
@@ -4466,8 +4467,8 @@ def poisson_predict(
 
 
 def negative_binomial_predict(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     lambda_: float = 0.0,
     add_intercept: bool = True,
     interval: str | None = None,
@@ -4537,8 +4538,8 @@ def negative_binomial_predict(
 
 
 def tweedie_predict(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     var_power: float = 1.5,
     lambda_: float = 0.0,
     add_intercept: bool = True,
@@ -4606,8 +4607,8 @@ def tweedie_predict(
 
 
 def probit_predict(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     lambda_: float = 0.0,
     add_intercept: bool = True,
     interval: str | None = None,
@@ -4672,8 +4673,8 @@ def probit_predict(
 
 
 def cloglog_predict(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     lambda_: float = 0.0,
     add_intercept: bool = True,
     interval: str | None = None,
@@ -4738,8 +4739,8 @@ def cloglog_predict(
 
 
 def penalized_glm_predict(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     family: Literal["poisson", "binomial", "logistic", "negative_binomial", "gamma", "tweedie"] = (
         "poisson"
     ),
@@ -4749,8 +4750,8 @@ def penalized_glm_predict(
     threshold: float = 0.5,
     lambda_: float = 0.0,
     estimate_dispersion: bool = False,
-    priors: Sequence[Union[None, str, tuple, dict]] | None = None,
-    offset: Union[pl.Expr, str, None] = None,
+    priors: Sequence[None | str | tuple | dict] | None = None,
+    offset: pl.Expr | str | None = None,
     add_intercept: bool = True,
     max_iter: int = 100,
     tol: float = 1e-8,
@@ -4842,8 +4843,8 @@ def penalized_glm_predict(
 
 
 def alm_predict(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     distribution: str = "normal",
     add_intercept: bool = True,
     interval: str | None = None,
@@ -5086,7 +5087,7 @@ def lasso_formula(
 
 def wls_formula(
     formula: str,
-    weights: Union[pl.Expr, str],
+    weights: pl.Expr | str,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
     solve_method: str | None = None,
@@ -5396,8 +5397,8 @@ def penalized_glm_formula(
     threshold: float = 0.5,
     lambda_: float = 0.0,
     estimate_dispersion: bool = False,
-    priors: Sequence[Union[None, str, tuple, dict]] | None = None,
-    offset: Union[pl.Expr, str, None] = None,
+    priors: Sequence[None | str | tuple | dict] | None = None,
+    offset: pl.Expr | str | None = None,
     add_intercept: bool = True,
     max_iter: int = 100,
     tol: float = 1e-8,
@@ -5442,9 +5443,9 @@ def penalized_glm_formula(
 
 def aft_formula(
     formula: str,
-    event: Union[pl.Expr, str],
+    event: pl.Expr | str,
     distribution: Literal["weibull", "exponential", "lognormal", "loglogistic"] = "weibull",
-    priors: Sequence[Union[None, str, tuple, dict]] | None = None,
+    priors: Sequence[None | str | tuple | dict] | None = None,
     add_intercept: bool = True,
     max_iter: int = 100,
     tol: float = 1e-9,
@@ -5630,10 +5631,10 @@ def penalized_glm_formula_summary(
     threshold: float = 0.5,
     lambda_: float = 0.0,
     estimate_dispersion: bool = False,
-    priors: Sequence[Union[None, str, tuple, dict]] | None = None,
+    priors: Sequence[None | str | tuple | dict] | None = None,
     vcov_type: Literal["laplace", "sandwich", "naive"] = "laplace",
     conf_level: float = 0.95,
-    offset: Union[pl.Expr, str, None] = None,
+    offset: pl.Expr | str | None = None,
     add_intercept: bool = True,
     max_iter: int = 100,
     tol: float = 1e-8,
@@ -5665,9 +5666,9 @@ def penalized_glm_formula_summary(
 
 def aft_formula_summary(
     formula: str,
-    event: Union[pl.Expr, str],
+    event: pl.Expr | str,
     distribution: Literal["weibull", "exponential", "lognormal", "loglogistic"] = "weibull",
-    priors: Sequence[Union[None, str, tuple, dict]] | None = None,
+    priors: Sequence[None | str | tuple | dict] | None = None,
     vcov_type: Literal["laplace", "sandwich", "naive"] = "laplace",
     conf_level: float = 0.95,
     add_intercept: bool = True,
@@ -5897,8 +5898,8 @@ def penalized_glm_formula_predict(
     threshold: float = 0.5,
     lambda_: float = 0.0,
     estimate_dispersion: bool = False,
-    priors: Sequence[Union[None, str, tuple, dict]] | None = None,
-    offset: Union[pl.Expr, str, None] = None,
+    priors: Sequence[None | str | tuple | dict] | None = None,
+    offset: pl.Expr | str | None = None,
     add_intercept: bool = True,
     max_iter: int = 100,
     tol: float = 1e-8,
@@ -5957,10 +5958,10 @@ def alm_formula_predict(
 
 def aft_formula_predict_quantile(
     formula: str,
-    event: Union[pl.Expr, str],
+    event: pl.Expr | str,
     p: float = 0.5,
     distribution: Literal["weibull", "exponential", "lognormal", "loglogistic"] = "weibull",
-    priors: Sequence[Union[None, str, tuple, dict]] | None = None,
+    priors: Sequence[None | str | tuple | dict] | None = None,
     add_intercept: bool = True,
     max_iter: int = 100,
     tol: float = 1e-9,
@@ -5991,9 +5992,9 @@ def aft_formula_predict_quantile(
 
 def aft_formula_predict_median(
     formula: str,
-    event: Union[pl.Expr, str],
+    event: pl.Expr | str,
     distribution: Literal["weibull", "exponential", "lognormal", "loglogistic"] = "weibull",
-    priors: Sequence[Union[None, str, tuple, dict]] | None = None,
+    priors: Sequence[None | str | tuple | dict] | None = None,
     add_intercept: bool = True,
     max_iter: int = 100,
     tol: float = 1e-9,
@@ -6024,11 +6025,11 @@ def aft_formula_predict_median(
 
 def aft_formula_predict_survival(
     formula: str,
-    event: Union[pl.Expr, str],
+    event: pl.Expr | str,
     *,
     t: float,
     distribution: Literal["weibull", "exponential", "lognormal", "loglogistic"] = "weibull",
-    priors: Sequence[Union[None, str, tuple, dict]] | None = None,
+    priors: Sequence[None | str | tuple | dict] | None = None,
     add_intercept: bool = True,
     max_iter: int = 100,
     tol: float = 1e-9,
@@ -6060,11 +6061,11 @@ def aft_formula_predict_survival(
 
 def aft_formula_predict_cdf(
     formula: str,
-    event: Union[pl.Expr, str],
+    event: pl.Expr | str,
     *,
     t: float,
     distribution: Literal["weibull", "exponential", "lognormal", "loglogistic"] = "weibull",
-    priors: Sequence[Union[None, str, tuple, dict]] | None = None,
+    priors: Sequence[None | str | tuple | dict] | None = None,
     add_intercept: bool = True,
     max_iter: int = 100,
     tol: float = 1e-9,
@@ -6100,7 +6101,7 @@ def aft_formula_predict_cdf(
 
 
 def aid(
-    y: Union[pl.Expr, str],
+    y: pl.Expr | str,
     intermittent_threshold: float = 0.3,
     detect_anomalies: bool = True,
 ) -> pl.Expr:
@@ -6163,7 +6164,7 @@ def aid(
 
 
 def aid_anomalies(
-    y: Union[pl.Expr, str],
+    y: pl.Expr | str,
     intermittent_threshold: float = 0.3,
 ) -> pl.Expr:
     """AID anomaly detection - returns per-observation anomaly flags.
@@ -6224,8 +6225,8 @@ def aid_anomalies(
 
 
 def lm_dynamic(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     ic: str = "aicc",
     distribution: str = "normal",
     lowess_span: float = 0.3,
@@ -6312,8 +6313,8 @@ def lm_dynamic(
 
 
 def quantile_summary(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     tau: float = 0.5,
     add_intercept: bool | None = None,
     with_intercept: bool | None = None,
@@ -6341,8 +6342,8 @@ def quantile_summary(
 
 
 def quantile_predict(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     tau: float = 0.5,
     add_intercept: bool = True,
     null_policy: str = "drop",
@@ -6373,8 +6374,8 @@ def quantile_predict(
 
 
 def isotonic_predict(
-    y: Union[pl.Expr, str],
-    x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    x: pl.Expr | str,
     increasing: bool = True,
     null_policy: str = "drop",
     name: str | None = None,
@@ -6404,8 +6405,8 @@ def isotonic_predict(
 
 
 def lm_dynamic_predict(
-    y: Union[pl.Expr, str],
-    *x: Union[pl.Expr, str],
+    y: pl.Expr | str,
+    *x: pl.Expr | str,
     ic: str = "aicc",
     distribution: str = "normal",
     lowess_span: float = 0.3,
