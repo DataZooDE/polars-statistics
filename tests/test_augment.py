@@ -23,7 +23,7 @@ import numpy as np
 import polars as pl
 import polars_statistics as ps
 import pytest
-from polars_statistics import OLS, WLS
+from polars_statistics import OLS, WLS, Tweedie
 
 _FIXTURE_PATH = Path(__file__).parent / "fixtures" / "m1a_reference.py"
 _spec = importlib.util.spec_from_file_location("m1a_reference", _FIXTURE_PATH)
@@ -204,6 +204,10 @@ class TestAugmentBuildErrors:
         with pytest.raises(ValueError):
             ps.augment("mpg", "wt", "hp", theta=1.0, model="ols")
 
+    def test_link_power_without_tweedie_raises(self):
+        with pytest.raises(ValueError):
+            ps.augment("mpg", "wt", "hp", link_power=0.0, model="ols")
+
 
 class TestWlsMatchesR:
     def test_wls_expression_matches_r(self):
@@ -285,10 +289,22 @@ class TestGammaTweedieMatchesR:
         assert rel_close(out["dffits"].to_numpy(), ref.GAMMA_DFFITS, 1e-6)
 
     def test_tweedie_var_power_2_matches_gamma(self):
+        # Only the log link (`link_power=0.0`) reproduces GammaRegressor's Cook's
+        # distance at var_power=2.0 — the canonical-link default (var_power=2.0
+        # implies link_power=1-2=-1, the inverse link) does not. This cross-check
+        # exercises that explicitly; it is not the default behaviour of
+        # `ps.augment(model="tweedie")` (see test_tweedie_default_link_matches_ps_tweedie).
         df = _mt_df()
         out = df.select(
             ps.augment(
-                "mpg", "wt", "hp", model="tweedie", var_power=2.0, tol=1e-12, max_iter=100
+                "mpg",
+                "wt",
+                "hp",
+                model="tweedie",
+                var_power=2.0,
+                link_power=0.0,
+                tol=1e-12,
+                max_iter=100,
             ).alias("a")
         ).unnest("a")
         assert rel_close(out["cooks_d"].to_numpy(), ref.GAMMA_COOK, 1e-6)
@@ -300,6 +316,7 @@ class TestGammaTweedieMatchesR:
                 "hp",
                 model="tweedie",
                 var_power=2.0,
+                link_power=0.0,
                 tol=1e-12,
                 max_iter=100,
                 residual_type="response",
@@ -308,6 +325,26 @@ class TestGammaTweedieMatchesR:
         assert rel_close(
             out_resp["residual"].to_numpy(), MT_MPG - np.array(ref.GAMMA_FITTED), 1e-6
         )
+
+    def test_tweedie_default_link_matches_ps_tweedie(self):
+        # ps.augment(model="tweedie") with link_power=None (the default) must
+        # describe the same model `ps.tweedie(...)`/`Tweedie(link_power=None)`
+        # fits with the same arguments — not a hard-coded log link.
+        df = _mt_df()
+        var_power = 1.5
+        out = df.select(
+            ps.augment(
+                "mpg", "wt", "hp", model="tweedie", var_power=var_power, tol=1e-12, max_iter=100
+            ).alias("a")
+        ).unnest("a")
+
+        x = np.column_stack([MT_WT, MT_HP]).astype(np.float64)
+        y = MT_MPG.astype(np.float64)
+        model = Tweedie(var_power=var_power, link_power=None, max_iter=100, tol=1e-12)
+        model.fit(x, y)
+        expected_fitted = model.predict(x)
+
+        assert rel_close(out["fitted"].to_numpy(), expected_fitted, 1e-8)
 
 
 class TestNegativeBinomialMatchesR:

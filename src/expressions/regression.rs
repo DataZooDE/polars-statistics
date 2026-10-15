@@ -2803,6 +2803,10 @@ pub struct AugmentKwargs {
     pub theta: Option<f64>,
     /// Tweedie variance power (0=Gaussian, 1=Poisson, 2=Gamma, 3=Inverse Gaussian).
     pub var_power: f64,
+    /// Tweedie link power (`model="tweedie"` only); `None` uses
+    /// `TweedieRegressorBuilder`'s own canonical-link default (`1 -
+    /// var_power`), matching `ps.tweedie()` and `Tweedie(link_power=None)`.
+    pub link_power: Option<f64>,
     /// Maximum IRLS iterations for the GLM models.
     pub max_iter: usize,
     /// Convergence tolerance for the GLM models.
@@ -2817,6 +2821,7 @@ impl Default for AugmentKwargs {
             with_intercept: true,
             theta: None,
             var_power: 1.5,
+            link_power: None,
             max_iter: 100,
             tol: 1e-8,
         }
@@ -3078,18 +3083,23 @@ pub fn augment_fit(inputs: &[Series], kwargs: &AugmentKwargs) -> PolarsResult<Se
             run_augment!(m.fit(&x, &y))
         }
         "tweedie" => {
-            // Log link (`link_power(0.0)`), matching R's `statmod::tweedie()`
-            // default and `GammaRegressor`'s convention — not this crate's own
-            // `TweedieRegressorBuilder` default canonical link
-            // (`1 - var_power`) used by the pre-existing `ps.tweedie()`
-            // expression, which augment does not touch.
-            let m = TweedieRegressor::builder()
+            // `link_power=None` (the default) leaves
+            // `TweedieRegressorBuilder`'s own canonical-link default (`1 -
+            // var_power`) untouched, exactly like `ps.tweedie()` and
+            // `Tweedie(link_power=None)` — so augment describes the same
+            // model the user fits with the same arguments. Passing an
+            // explicit `link_power` (e.g. `0.0` for the log link, matching R's
+            // `statmod::tweedie()` default and `GammaRegressor`'s convention)
+            // overrides it, same as `py_tweedie.rs`.
+            let mut builder = TweedieRegressor::builder()
                 .var_power(kwargs.var_power)
-                .link_power(0.0)
                 .with_intercept(with_intercept)
                 .max_iterations(kwargs.max_iter)
-                .tolerance(kwargs.tol)
-                .build();
+                .tolerance(kwargs.tol);
+            if let Some(lp) = kwargs.link_power {
+                builder = builder.link_power(lp);
+            }
+            let m = builder.build();
             run_augment!(m.fit(&x, &y))
         }
         "gamma" => {
@@ -3109,7 +3119,7 @@ pub fn augment_fit(inputs: &[Series], kwargs: &AugmentKwargs) -> PolarsResult<Se
 /// Per-observation regression diagnostics (R `broom::augment`), one combined
 /// row-aligned expression for every `Augmentable` model.
 /// inputs[0] = y, inputs[1] = weights (nullable), inputs[2..] = x columns.
-/// kwargs: model / residual_type / with_intercept / theta / var_power / max_iter / tol
+/// kwargs: model / residual_type / with_intercept / theta / var_power / link_power / max_iter / tol
 /// — see [`AugmentKwargs`].
 #[polars_expr(output_type_func=augment_output_dtype)]
 fn pl_augment(inputs: &[Series], kwargs: AugmentKwargs) -> PolarsResult<Series> {

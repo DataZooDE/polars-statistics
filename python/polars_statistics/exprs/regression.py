@@ -2110,6 +2110,7 @@ def augment(
     add_intercept: bool = True,
     theta: float | None = None,
     var_power: float = 1.5,
+    link_power: float | None = None,
     max_iter: int = 100,
     tol: float = 1e-8,
 ) -> pl.Expr:
@@ -2145,6 +2146,12 @@ def augment(
     var_power : float, default 1.5
         Tweedie variance power (``model="tweedie"`` only): 0 Gaussian, 1
         Poisson, 2 Gamma, 3 inverse Gaussian.
+    link_power : float, optional
+        Tweedie link power (``model="tweedie"`` only). ``None`` (default)
+        uses the canonical link (``1 - var_power``), matching ``ps.tweedie()``
+        and ``Tweedie(link_power=None)`` — the same model the user fits with
+        the same arguments. Pass an explicit value (e.g. ``0.0`` for the log
+        link) to override it.
     max_iter : int, default 100
         Maximum IRLS iterations (GLMs only).
     tol : float, default 1e-8
@@ -2187,6 +2194,10 @@ def augment(
         raise ValueError("ps.augment: theta must be a finite positive number")
     if model_l == "tweedie" and var_power <= 0:
         raise ValueError("ps.augment: var_power must be > 0")
+    if link_power is not None and model_l != "tweedie":
+        raise ValueError("ps.augment: link_power is only valid with model='tweedie'")
+    if link_power is not None and not math.isfinite(link_power):
+        raise ValueError("ps.augment: link_power must be finite")
     if max_iter < 1:
         raise ValueError("ps.augment: max_iter must be >= 1")
     if tol <= 0:
@@ -2217,6 +2228,7 @@ def augment(
             "with_intercept": add_intercept,
             "theta": theta,
             "var_power": var_power,
+            "link_power": link_power,
             "max_iter": max_iter,
             "tol": tol,
         },
