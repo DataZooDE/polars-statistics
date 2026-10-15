@@ -81,7 +81,7 @@
     {
       "number": "16",
       "name": "Wheel Bundling",
-      "status": "pending"
+      "status": "complete"
     },
     {
       "number": "17",
@@ -91,8 +91,8 @@
   ],
   "next": {
     "command": "/gsd:progress --next",
-    "label": "Advance to the next step (verify)",
-    "reason": "Phase 16 of 9 · 33% · ready to verify"
+    "label": "Advance to the next step (plan phase 16.1)",
+    "reason": "Phase 16.1 of 9 — needs a plan"
   },
-  "updated_at": "2026-10-15T21:46:33.139Z"
+  "updated_at": "2026-10-15T21:49:31.806Z"
 }

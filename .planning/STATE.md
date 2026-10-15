@@ -2,21 +2,21 @@
 gsd_state_version: "1.0"
 milestone: v0.8.0
 milestone_name: Claude Code Skills Plugin
-current_phase: 16
-current_phase_name: Wheel Bundling
-current_plan: 1
-status: verifying
-stopped_at: Completed 16-01-PLAN.md
-last_updated: "2026-10-15T21:46:34.544Z"
+current_phase: "16.1"
+current_phase_name: Upstream Crate Refresh
+current_plan: Not started
+status: planning
+stopped_at: Phase 16 complete, ready to plan Phase 16.1
+last_updated: "2026-10-15T21:49:31.789Z"
 last_activity: 2026-10-15
-last_activity_desc: Phase 16 execution started
-state_head: 73f79221d93b922ccdc1e339d1f074f134678592
+last_activity_desc: Phase 16 complete, transitioned to Phase 16.1
+state_head: b5c181e42430585f78373ee0a40dfa07dc13d448
 progress:
   total_phases: 9
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 39
   completed_plans: 39
-  percent: 33
+  percent: 44
 ---
 
 # Project State
@@ -30,11 +30,11 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 
 ## Current Position
 
-Phase: 16 (Wheel Bundling) — EXECUTING
-Current Plan: 1
+Phase: 16.1 — Upstream Crate Refresh
+Current Plan: Not started
 Total Plans in Phase: 1
-Status: Phase complete — ready for verification
-Last activity: 2026-10-15 — Phase 16 execution started
+Status: Ready to plan
+Last activity: 2026-10-15 — Phase 16 complete, transitioned to Phase 16.1
 
 ## Milestone Roadmap (v0.8.0)
 
@@ -52,7 +52,7 @@ Execution order: 13 → 14 → 15 → 16 → 17
 
 **Velocity:**
 
-- Total plans completed: 60
+- Total plans completed: 61
 - Average duration: — min
 - Total execution time: 0.0 hours
 
@@ -73,6 +73,7 @@ Execution order: 13 → 14 → 15 → 16 → 17
 | 16.2 | 8 | - | - |
 | 16.3 | 11 | - | - |
 | 16.4 | 3 | - | - |
+| 16 | 1 | - | - |
 
 **Recent Trend:**
 
@@ -272,6 +273,6 @@ Items acknowledged and carried forward from previous milestone close:
 ## Session Continuity
 
 Last session: 2026-10-15T21:46:34.452Z
-Stopped at: Completed 16-01-PLAN.md
+Stopped at: Phase 16 complete, ready to plan Phase 16.1
 Resume file: None
 </content>

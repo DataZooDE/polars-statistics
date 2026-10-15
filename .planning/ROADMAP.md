@@ -70,7 +70,7 @@ real API, bundled into the wheel, and shipped as 0.8.0 on PyPI.
 - [x] **Phase 13: Plugin & Marketplace Scaffolding** - Stand up the `.claude-plugin/marketplace.json` + `plugins/polars-statistics/.claude-plugin/plugin.json` shell that installs cleanly in Claude Code (completed 2026-09-21)
 - [x] **Phase 14: Skill Cheat-Sheet Authoring** - Author the five capability-family `SKILL.md` cheat-sheets with correct frontmatter and consistent structure, examples checked live while writing (completed 2026-09-21)
 - [x] **Phase 15: Accuracy Verification Pass** - Run every skill example against the real API and audit each skill's description so Claude auto-surfaces the right one (completed 2026-09-21)
-- [ ] **Phase 16: Wheel Bundling** - Bundle the skill files into the built wheel via maturin package data so they ship on `pip install`
+- [x] **Phase 16: Wheel Bundling** - Bundle the skill files into the built wheel via maturin package data so they ship on `pip install` (completed 2026-10-15)
 - [x] **Phase 16.1: Upstream Crate Refresh** (INSERTED) - Bump to anofox-statistics 0.4.6 / anofox-regression 0.5.16, adapt to R-matching fixes, expose new API, update stubs/docs/skills (completed 2026-10-09)
 - [x] **Phase 16.2: Penalized GLM and AFT Survival Regression** (INSERTED) - Bump to anofox-statistics 0.4.7 / anofox-regression 0.5.22; expose anofox-regression 0.5.16's penalized GLM engine and AFT survival regression; add estimate/CI to the Mann-Whitney/Wilcoxon expressions (completed 2026-10-09)
 - [x] **Phase 16.3: Upstream API Wave 2** (INSERTED) - Expose anofox-statistics 0.4.7 / anofox-regression 0.5.17–0.5.21 additions: post-hoc tests, p_adjust, augment diagnostics, GLMM families, EB shrinkage (completed 2026-10-15)
@@ -316,7 +316,7 @@ Phases execute in order: 13 → 14 → 15 → 16.1 → 16.2 → 16.3 → 16.4 �
 | 13. Plugin & Marketplace Scaffolding | v0.8.0 | 1/1 | Complete    | 2026-09-21 |
 | 14. Skill Cheat-Sheet Authoring | v0.8.0 | 5/5 | Complete    | 2026-09-21 |
 | 15. Accuracy Verification Pass | v0.8.0 | 1/1 | Complete    | 2026-09-21 |
-| 16. Wheel Bundling | v0.8.0 | 1/1 | In Progress|  |
+| 16. Wheel Bundling | v0.8.0 | 1/1 | Complete    | 2026-10-15 |
 | 17. Release 0.8.0 | v0.8.0 | 0/TBD | Not started | - |
 </content>
 </invoke>
