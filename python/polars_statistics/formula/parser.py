@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-from typing import List, Union
 
 from polars_statistics.formula.terms import (
     InteractionTerm,
@@ -68,9 +67,9 @@ class FormulaParser:
         terms = self._parse_terms(rhs)
         return ParsedFormula(response=response, terms=terms)
 
-    def _parse_terms(self, rhs: str) -> List[Term]:
+    def _parse_terms(self, rhs: str) -> list[Term]:
         """Parse the right-hand side into a list of terms."""
-        terms: List[Term] = []
+        terms: list[Term] = []
 
         # Split by + while respecting parentheses
         term_strings = self._split_by_plus(rhs)
@@ -88,7 +87,7 @@ class FormulaParser:
 
         return terms
 
-    def _split_by_plus(self, s: str) -> List[str]:
+    def _split_by_plus(self, s: str) -> list[str]:
         """Split string by '+' while respecting parentheses."""
         parts = []
         current = []
@@ -112,7 +111,7 @@ class FormulaParser:
 
         return parts
 
-    def _parse_single_term(self, term_str: str) -> Union[Term, List[Term]]:
+    def _parse_single_term(self, term_str: str) -> Term | list[Term]:
         """Parse a single term string into a Term or list of Terms."""
         term_str = term_str.strip()
 
@@ -140,14 +139,14 @@ class FormulaParser:
         # Simple term
         return SimpleTerm(name=term_str)
 
-    def _expand_star(self, term_str: str) -> List[Term]:
+    def _expand_star(self, term_str: str) -> list[Term]:
         """Expand 'x1 * x2' to [x1, x2, x1:x2].
 
         For 'x1 * x2 * x3', expands to:
         [x1, x2, x3, x1:x2, x1:x3, x2:x3, x1:x2:x3]
         """
         variables = [v.strip() for v in term_str.split("*")]
-        terms: List[Term] = []
+        terms: list[Term] = []
 
         # Add main effects
         for var in variables:

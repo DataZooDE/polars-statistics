@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Literal, Optional, Union
+from typing import Literal
 
 import polars as pl
 from polars.plugins import register_plugin_function
@@ -173,7 +173,7 @@ def prop_test_two(
 
 
 def chisq_test(
-    data: Union[pl.Expr, str],
+    data: pl.Expr | str,
     n_rows: int = 2,
     n_cols: int = 2,
     correction: bool = False,
@@ -223,8 +223,8 @@ def chisq_test(
 
 
 def chisq_goodness_of_fit(
-    observed: Union[pl.Expr, str],
-    expected: Optional[Union[pl.Expr, str]] = None,
+    observed: pl.Expr | str,
+    expected: pl.Expr | str | None = None,
 ) -> pl.Expr:
     """
     Chi-square goodness-of-fit test.
@@ -281,7 +281,7 @@ def chisq_goodness_of_fit(
 
 
 def g_test(
-    data: Union[pl.Expr, str],
+    data: pl.Expr | str,
     n_rows: int = 2,
     n_cols: int = 2,
 ) -> pl.Expr:
@@ -521,7 +521,7 @@ def mcnemar_exact(
 
 
 def cohen_kappa(
-    data: Union[pl.Expr, str],
+    data: pl.Expr | str,
     n_categories: int = 2,
     weighted: bool = False,
 ) -> pl.Expr:
@@ -569,7 +569,7 @@ def cohen_kappa(
 
 
 def cramers_v(
-    data: Union[pl.Expr, str],
+    data: pl.Expr | str,
     n_rows: int = 2,
     n_cols: int = 2,
 ) -> pl.Expr:
@@ -644,7 +644,7 @@ def phi_coefficient(
 
 
 def contingency_coef(
-    data: Union[pl.Expr, str],
+    data: pl.Expr | str,
     n_rows: int = 2,
     n_cols: int = 2,
 ) -> pl.Expr:

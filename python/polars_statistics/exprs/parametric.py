@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Literal, Union
+from typing import Literal
 
 import polars as pl
 from polars.plugins import register_plugin_function
@@ -12,7 +12,7 @@ LIB = Path(__file__).parent.parent
 
 
 def one_way_anova(
-    *groups: Union[pl.Expr, str],
+    *groups: pl.Expr | str,
     kind: Literal["fisher", "welch"] = "fisher",
 ) -> pl.Expr:
     """
@@ -67,9 +67,9 @@ def one_way_anova(
 
 
 def two_way_anova(
-    value: Union[pl.Expr, str],
-    factor_a: Union[pl.Expr, str],
-    factor_b: Union[pl.Expr, str],
+    value: pl.Expr | str,
+    factor_a: pl.Expr | str,
+    factor_b: pl.Expr | str,
 ) -> pl.Expr:
     """
     Perform two-way ANOVA with two categorical factors.
@@ -145,9 +145,9 @@ def two_way_anova(
 
 
 def repeated_measures_anova(
-    value: Union[pl.Expr, str],
-    subject: Union[pl.Expr, str],
-    condition: Union[pl.Expr, str],
+    value: pl.Expr | str,
+    subject: pl.Expr | str,
+    condition: pl.Expr | str,
     compute_sphericity: bool = True,
 ) -> pl.Expr:
     """
@@ -238,8 +238,8 @@ def repeated_measures_anova(
 
 
 def ttest_ind(
-    x: Union[pl.Expr, str],
-    y: Union[pl.Expr, str],
+    x: pl.Expr | str,
+    y: pl.Expr | str,
     alternative: Literal["two-sided", "less", "greater"] = "two-sided",
     equal_var: bool = False,
     mu: float = 0.0,
@@ -314,8 +314,8 @@ def ttest_ind(
 
 
 def ttest_paired(
-    x: Union[pl.Expr, str],
-    y: Union[pl.Expr, str],
+    x: pl.Expr | str,
+    y: pl.Expr | str,
     alternative: Literal["two-sided", "less", "greater"] = "two-sided",
     mu: float = 0.0,
     conf_level: float = 0.95,
@@ -377,8 +377,8 @@ def ttest_paired(
 
 
 def brown_forsythe(
-    x: Union[pl.Expr, str],
-    y: Union[pl.Expr, str],
+    x: pl.Expr | str,
+    y: pl.Expr | str,
 ) -> pl.Expr:
     """
     Perform Brown-Forsythe test for equality of variances.
@@ -415,8 +415,8 @@ def brown_forsythe(
 
 
 def yuen_test(
-    x: Union[pl.Expr, str],
-    y: Union[pl.Expr, str],
+    x: pl.Expr | str,
+    y: pl.Expr | str,
     trim: float = 0.2,
     alternative: Literal["two-sided", "less", "greater"] = "two-sided",
     conf_level: float = 0.95,
@@ -481,8 +481,8 @@ def yuen_test(
 
 
 def cohens_d(
-    x: Union[pl.Expr, str],
-    y: Union[pl.Expr, str],
+    x: pl.Expr | str,
+    y: pl.Expr | str,
     kind: Literal["student", "welch", "paired"] = "student",
     mu: float = 0.0,
 ) -> pl.Expr:
@@ -562,7 +562,7 @@ def cohens_d(
 
 
 def cohens_d_one_sample(
-    x: Union[pl.Expr, str],
+    x: pl.Expr | str,
     mu: float = 0.0,
 ) -> pl.Expr:
     """

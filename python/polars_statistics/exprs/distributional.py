@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Union
 
 import polars as pl
 from polars.plugins import register_plugin_function
@@ -12,7 +11,7 @@ LIB = Path(__file__).parent.parent
 
 
 def shapiro_wilk(
-    x: Union[pl.Expr, str],
+    x: pl.Expr | str,
 ) -> pl.Expr:
     """
     Perform Shapiro-Wilk test for normality.
@@ -59,7 +58,7 @@ def shapiro_wilk(
 
 
 def dagostino(
-    x: Union[pl.Expr, str],
+    x: pl.Expr | str,
 ) -> pl.Expr:
     """
     Perform D'Agostino K-squared test for normality.
@@ -106,7 +105,7 @@ def dagostino(
 
 
 def jarque_bera(
-    x: Union[pl.Expr, str],
+    x: pl.Expr | str,
 ) -> pl.Expr:
     """
     Perform the Jarque-Bera test for normality.

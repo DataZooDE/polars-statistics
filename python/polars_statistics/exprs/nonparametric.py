@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Literal, Optional, Union
+from typing import Literal
 
 import polars as pl
 from polars.plugins import register_plugin_function
@@ -12,13 +12,13 @@ LIB = Path(__file__).parent.parent
 
 
 def mann_whitney_u(
-    x: Union[pl.Expr, str],
-    y: Union[pl.Expr, str],
+    x: pl.Expr | str,
+    y: pl.Expr | str,
     alternative: Literal["two-sided", "less", "greater"] = "two-sided",
     continuity_correction: bool = True,
     exact: bool = False,
-    conf_level: Optional[float] = None,
-    mu: Optional[float] = None,
+    conf_level: float | None = None,
+    mu: float | None = None,
 ) -> pl.Expr:
     """
     Perform Mann-Whitney U test (Wilcoxon rank-sum test).
@@ -95,13 +95,13 @@ def mann_whitney_u(
 
 
 def wilcoxon_signed_rank(
-    x: Union[pl.Expr, str],
-    y: Union[pl.Expr, str],
+    x: pl.Expr | str,
+    y: pl.Expr | str,
     alternative: Literal["two-sided", "less", "greater"] = "two-sided",
     continuity_correction: bool = True,
     exact: bool = False,
-    conf_level: Optional[float] = None,
-    mu: Optional[float] = None,
+    conf_level: float | None = None,
+    mu: float | None = None,
 ) -> pl.Expr:
     """
     Perform Wilcoxon signed-rank test.
@@ -177,7 +177,7 @@ def wilcoxon_signed_rank(
 
 
 def kruskal_wallis(
-    *groups: Union[pl.Expr, str],
+    *groups: pl.Expr | str,
 ) -> pl.Expr:
     """
     Perform Kruskal-Wallis H test.
@@ -223,10 +223,10 @@ def kruskal_wallis(
 
 
 def brunner_munzel(
-    x: Union[pl.Expr, str],
-    y: Union[pl.Expr, str],
+    x: pl.Expr | str,
+    y: pl.Expr | str,
     alternative: Literal["two-sided", "less", "greater"] = "two-sided",
-    alpha: Optional[float] = None,
+    alpha: float | None = None,
 ) -> pl.Expr:
     """
     Perform Brunner-Munzel test for stochastic equality.
@@ -287,9 +287,9 @@ def brunner_munzel(
 
 
 def rank_biserial(
-    x: Union[pl.Expr, str],
-    y: Union[pl.Expr, str],
-    mu: Optional[float] = None,
+    x: pl.Expr | str,
+    y: pl.Expr | str,
+    mu: float | None = None,
 ) -> pl.Expr:
     """
     Compute the rank-biserial correlation effect size for the Mann-Whitney U test.
@@ -351,9 +351,9 @@ def rank_biserial(
 
 
 def matched_pairs_rank_biserial(
-    x: Union[pl.Expr, str],
-    y: Union[pl.Expr, str],
-    mu: Optional[float] = None,
+    x: pl.Expr | str,
+    y: pl.Expr | str,
+    mu: float | None = None,
 ) -> pl.Expr:
     """
     Compute the matched-pairs rank-biserial correlation effect size for the

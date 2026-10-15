@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Union
+from typing import Union
 
 
 @dataclass
@@ -17,7 +17,7 @@ class SimpleTerm:
 class InteractionTerm:
     """An interaction term like 'x1:x2' (product of variables)."""
 
-    variables: List[str]
+    variables: list[str]
 
 
 @dataclass
@@ -46,4 +46,4 @@ class ParsedFormula:
     """Result of parsing a formula string."""
 
     response: str  # The response variable (left of ~)
-    terms: List[Term]  # The predictor terms (right of ~)
+    terms: list[Term]  # The predictor terms (right of ~)
