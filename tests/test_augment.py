@@ -23,7 +23,7 @@ import numpy as np
 import polars as pl
 import polars_statistics as ps
 import pytest
-from polars_statistics import OLS, WLS, Tweedie
+from polars_statistics import OLS, WLS, Poisson, Tweedie
 
 _FIXTURE_PATH = Path(__file__).parent / "fixtures" / "m1a_reference.py"
 _spec = importlib.util.spec_from_file_location("m1a_reference", _FIXTURE_PATH)
@@ -572,3 +572,66 @@ class TestWlsPymodelErrors:
         x = np.column_stack([MT_WT, MT_HP])
         with pytest.raises(ValueError):
             model.augment(x, MT_MPG[:10])
+
+
+class TestGlmPyModelAugment:
+    """``.augment()`` on the eight GLM PyModel classes (16.3-06): R references
+    (where the m1a fixture supplies them) and row-for-row parity with
+    ``ps.augment(..., model=<same model>)`` at the same settings."""
+
+    # -- Poisson (Task 1) --------------------------------------------------
+
+    def test_poisson_pymodel_matches_r(self):
+        x = np.column_stack([MT_WT, MT_HP])
+        model = Poisson(max_iter=100, tol=1e-12).fit(x, MT_CARB)
+        d = model.augment(x, MT_CARB)
+
+        assert d["resid_type"] == "deviance"
+        assert rel_close(d["fitted"], ref.POIS_FITTED, 1e-6)
+        assert rel_close(d["residual"], ref.POIS_RESID_DEV, 1e-6)
+        assert rel_close(d["std_residual"], ref.POIS_RSTD_DEV, 1e-6)
+        assert rel_close(d["stud_residual"], ref.POIS_RSTUD, 1e-6)
+        assert rel_close(d["leverage"], ref.POIS_HAT, 1e-6)
+        assert rel_close(d["cooks_d"], ref.POIS_COOK, 1e-6)
+        assert rel_close(d["dffits"], ref.POIS_DFFITS, 1e-6)
+
+    def test_poisson_pymodel_pearson(self):
+        x = np.column_stack([MT_WT, MT_HP])
+        model = Poisson(max_iter=100, tol=1e-12).fit(x, MT_CARB)
+        d = model.augment(x, MT_CARB, residual_type="pearson")
+
+        assert d["resid_type"] == "pearson"
+        assert rel_close(d["residual"], ref.POIS_RESID_PEAR, 1e-6)
+        assert rel_close(d["std_residual"], ref.POIS_RSTD_PEAR, 1e-6)
+
+    def test_poisson_pymodel_expression_parity(self):
+        x = np.column_stack([MT_WT, MT_HP])
+        model = Poisson(max_iter=100, tol=1e-12).fit(x, MT_CARB)
+        d = model.augment(x, MT_CARB)
+
+        df = _mt_df()
+        expr_out = df.select(
+            ps.augment("carb", "wt", "hp", model="poisson", tol=1e-12).alias("a")
+        ).unnest("a")
+        for key in (
+            "fitted",
+            "residual",
+            "std_residual",
+            "stud_residual",
+            "leverage",
+            "cooks_d",
+            "dffits",
+        ):
+            assert rel_close(d[key], expr_out[key].to_numpy(), 1e-10)
+
+    def test_poisson_pymodel_errors(self):
+        x = np.column_stack([MT_WT, MT_HP])
+        model = Poisson()
+        with pytest.raises(RuntimeError, match="Poisson"):
+            model.augment(x, MT_CARB)
+
+        fitted_model = Poisson(max_iter=100, tol=1e-12).fit(x, MT_CARB)
+        with pytest.raises(ValueError):
+            fitted_model.augment(x, MT_CARB[:5])
+        with pytest.raises(ValueError):
+            fitted_model.augment(x, MT_CARB, residual_type="working")
