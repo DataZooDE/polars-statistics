@@ -2084,6 +2084,147 @@ def cloglog(
 
 
 # ============================================================================
+# Augment (per-observation diagnostics) — issue #66, UPST-09
+# ============================================================================
+
+_AUGMENT_MODELS = (
+    "ols",
+    "wls",
+    "logistic",
+    "probit",
+    "cloglog",
+    "poisson",
+    "negative_binomial",
+    "tweedie",
+    "gamma",
+)
+_AUGMENT_RESIDUAL_TYPES = ("response", "pearson", "deviance")
+
+
+def augment(
+    y: Union[pl.Expr, str],
+    *x: Union[pl.Expr, str],
+    model: str = "ols",
+    weights: Union[pl.Expr, str, None] = None,
+    residual_type: str | None = None,
+    add_intercept: bool = True,
+    theta: float | None = None,
+    var_power: float = 1.5,
+    max_iter: int = 100,
+    tol: float = 1e-8,
+) -> pl.Expr:
+    """Per-observation regression diagnostics, R ``broom::augment`` style.
+
+    One combined, row-aligned expression returning, for every input row, the
+    fitted mean, a residual, standardised and studentised residuals
+    (``rstandard``/``rstudent``), the leverage (``hatvalues``), Cook's
+    distance and DFFITS — for any of the nine supported models.
+
+    Parameters
+    ----------
+    y : pl.Expr or str
+        Response variable.
+    *x : pl.Expr or str
+        Feature variables (at least one).
+    model : str, default "ols"
+        One of ``"ols"``, ``"wls"``, ``"logistic"``, ``"probit"``,
+        ``"cloglog"``, ``"poisson"``, ``"negative_binomial"``, ``"tweedie"``,
+        or ``"gamma"``.
+    weights : pl.Expr or str, optional
+        Prior weights. Required (and only valid) with ``model="wls"``; when
+        omitted for WLS the fit's own weights are used.
+    residual_type : str, optional
+        ``"response"``, ``"pearson"``, or ``"deviance"``. Defaults to
+        ``"response"`` for ``ols``/``wls`` and ``"deviance"`` for every GLM
+        (matching R's ``broom::augment``).
+    add_intercept : bool, default True
+        Whether to include an intercept term.
+    theta : float, optional
+        Fixed negative-binomial dispersion (``model="negative_binomial"``
+        only); ``None`` estimates it from the data.
+    var_power : float, default 1.5
+        Tweedie variance power (``model="tweedie"`` only): 0 Gaussian, 1
+        Poisson, 2 Gamma, 3 inverse Gaussian.
+    max_iter : int, default 100
+        Maximum IRLS iterations (GLMs only).
+    tol : float, default 1e-8
+        IRLS convergence tolerance (GLMs only).
+
+    Returns
+    -------
+    pl.Expr
+        Struct with ``fitted``, ``residual``, ``std_residual``,
+        ``stud_residual``, ``leverage``, ``cooks_d``, ``dffits`` — one row per
+        input row. Rows with a null or non-finite ``y``/``x``/``weights``
+        entry are ``NaN`` in every field; the remaining rows equal a fit
+        without them. Works with ``.over(group)`` (per-row) or
+        ``group_by(...).agg(...)`` (list of structs per group).
+
+    Examples
+    --------
+    >>> import polars as pl
+    >>> import polars_statistics as ps
+    >>> df = pl.DataFrame({"y": [...], "x1": [...], "x2": [...]})
+    >>> df.select(ps.augment("y", "x1", "x2").alias("a")).unnest("a")
+    """
+    model_l = model.lower()
+    if model_l not in _AUGMENT_MODELS:
+        raise ValueError(f"ps.augment: unknown model '{model}' (expected one of {_AUGMENT_MODELS})")
+    if residual_type is not None and residual_type.lower() not in _AUGMENT_RESIDUAL_TYPES:
+        raise ValueError(
+            f"ps.augment: unknown residual_type '{residual_type}' "
+            f"(expected one of {_AUGMENT_RESIDUAL_TYPES})"
+        )
+    if weights is not None and model_l != "wls":
+        raise ValueError("ps.augment: weights is only valid with model='wls'")
+    if model_l == "wls" and weights is None:
+        raise ValueError("ps.augment: model='wls' requires weights")
+    if not x:
+        raise ValueError("ps.augment: at least one feature column (*x) is required")
+    if theta is not None and model_l != "negative_binomial":
+        raise ValueError("ps.augment: theta is only valid with model='negative_binomial'")
+    if theta is not None and not (math.isfinite(theta) and theta > 0):
+        raise ValueError("ps.augment: theta must be a finite positive number")
+    if model_l == "tweedie" and var_power <= 0:
+        raise ValueError("ps.augment: var_power must be > 0")
+    if max_iter < 1:
+        raise ValueError("ps.augment: max_iter must be >= 1")
+    if tol <= 0:
+        raise ValueError("ps.augment: tol must be > 0")
+
+    resolved_residual_type = (
+        residual_type.lower()
+        if residual_type is not None
+        else ("response" if model_l in ("ols", "wls") else "deviance")
+    )
+
+    if isinstance(y, str):
+        y = pl.col(y)
+    x_exprs = [(pl.col(xi) if isinstance(xi, str) else xi).cast(pl.Float64) for xi in x]
+
+    if weights is not None:
+        weights_expr = (pl.col(weights) if isinstance(weights, str) else weights).cast(pl.Float64)
+    else:
+        weights_expr = pl.lit(None, dtype=pl.Float64)
+
+    return register_plugin_function(
+        plugin_path=LIB,
+        function_name="pl_augment",
+        args=[y.cast(pl.Float64), weights_expr, *x_exprs],
+        kwargs={
+            "model": model_l,
+            "residual_type": resolved_residual_type,
+            "with_intercept": add_intercept,
+            "theta": theta,
+            "var_power": var_power,
+            "max_iter": max_iter,
+            "tol": tol,
+        },
+        returns_scalar=False,
+    )
+
+
+# ============================================================================
 # Penalized GLM Expressions
 # ============================================================================
 

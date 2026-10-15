@@ -6,6 +6,9 @@ pub(crate) mod ergonomics;
 // Shared contextual error constructors (not-fitted / shape validation).
 pub(crate) mod errors;
 
+// Shared `broom::augment`-style per-observation diagnostics helper.
+pub(crate) mod augment;
+
 // Regression models
 mod py_aid;
 mod py_alm;

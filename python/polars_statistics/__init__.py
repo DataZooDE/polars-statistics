@@ -72,6 +72,8 @@ from polars_statistics.exprs import (
     # AID and Dynamic Linear Model expressions
     aid,
     aid_anomalies,
+    # Augment (per-observation diagnostics)
+    augment,
     # Survival (AFT) expressions
     aft,
     aft_formula,
@@ -583,6 +585,8 @@ __all__ = [
     "aid",
     "aid_anomalies",
     "lm_dynamic",
+    # Augment (per-observation diagnostics)
+    "augment",
     # Summary / predict completeness (issue #18)
     "quantile_summary",
     "quantile_predict",

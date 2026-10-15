@@ -8,12 +8,13 @@ use pyo3_polars::derive::polars_expr;
 use serde::Deserialize;
 
 use anofox_regression::diagnostics::{
-    check_binary_separation, check_count_sparsity, compute_leverage, condition_diagnostic,
-    cooks_distance, dffits, estimate_dispersion_deviance, estimate_dispersion_pearson,
-    externally_studentized_residuals, generalized_vif, high_leverage_points, high_vif_predictors,
-    influential_cooks, influential_dffits, pearson_chi_squared, residual_outliers,
-    standardized_deviance_residuals, standardized_pearson_residuals, standardized_residuals,
-    studentized_residuals, variance_inflation_factor, ConditionSeverity, SeparationCheck,
+    augment, augment_with, check_binary_separation, check_count_sparsity, compute_leverage,
+    condition_diagnostic, cooks_distance, dffits, estimate_dispersion_deviance,
+    estimate_dispersion_pearson, externally_studentized_residuals, generalized_vif,
+    high_leverage_points, high_vif_predictors, influential_cooks, influential_dffits,
+    pearson_chi_squared, residual_outliers, standardized_deviance_residuals,
+    standardized_pearson_residuals, standardized_residuals, studentized_residuals,
+    variance_inflation_factor, Augment, ConditionSeverity, ResidualType, SeparationCheck,
     SeparationType,
 };
 use anofox_regression::solvers::{
@@ -2772,6 +2773,270 @@ pub fn cloglog_fit(inputs: &[Series]) -> PolarsResult<Series> {
 #[polars_expr(output_type_func=glm_output_dtype)]
 fn pl_cloglog(inputs: &[Series]) -> PolarsResult<Series> {
     cloglog_fit(inputs)
+}
+
+// ============================================================================
+// Augment (per-observation diagnostics) — issue #66, UPST-09
+//
+// `anofox_regression::diagnostics::augment`/`augment_with` as one combined,
+// row-aligned expression (`returns_scalar=False`, one struct per input row)
+// for every `Augmentable` model: ols, wls, logistic, probit, cloglog, poisson,
+// negative_binomial, tweedie, gamma. Mirrors `shrinkage.rs`'s `eb_shrink_fit`
+// row-scatter pattern: rows with a null/non-finite y, x, or (for wls) weight
+// are excluded from the fit and come back as NaN in every field; the
+// remaining rows equal a fit without them.
+// ============================================================================
+
+/// Named kwargs for the `pl_augment` expression shim.
+#[derive(Deserialize, Clone, Debug)]
+#[serde(default)]
+pub struct AugmentKwargs {
+    /// Which model to fit: "ols", "wls", "logistic", "probit", "cloglog",
+    /// "poisson", "negative_binomial", "tweedie", or "gamma".
+    pub model: String,
+    /// Residual type: "response", "pearson", or "deviance". `None` uses the
+    /// upstream default (response for linear models, deviance for GLMs).
+    pub residual_type: Option<String>,
+    /// Whether to include an intercept term.
+    pub with_intercept: bool,
+    /// Fixed negative-binomial theta (dispersion); `None` estimates it.
+    pub theta: Option<f64>,
+    /// Tweedie variance power (0=Gaussian, 1=Poisson, 2=Gamma, 3=Inverse Gaussian).
+    pub var_power: f64,
+    /// Maximum IRLS iterations for the GLM models.
+    pub max_iter: usize,
+    /// Convergence tolerance for the GLM models.
+    pub tol: f64,
+}
+
+impl Default for AugmentKwargs {
+    fn default() -> Self {
+        Self {
+            model: "ols".to_string(),
+            residual_type: None,
+            with_intercept: true,
+            theta: None,
+            var_power: 1.5,
+            max_iter: 100,
+            tol: 1e-8,
+        }
+    }
+}
+
+/// Parse an `augment` residual-type name (case-insensitive): "response",
+/// "pearson", or "deviance".
+pub fn parse_residual_type(s: &str) -> Result<ResidualType, String> {
+    match s.to_lowercase().as_str() {
+        "response" => Ok(ResidualType::Response),
+        "pearson" => Ok(ResidualType::Pearson),
+        "deviance" => Ok(ResidualType::Deviance),
+        other => Err(format!(
+            "unknown residual_type '{other}' (expected 'response', 'pearson', or 'deviance')"
+        )),
+    }
+}
+
+/// Output dtype for `pl_augment`: one combined struct of the seven
+/// `broom::augment` fields, in order.
+fn augment_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
+    let fields = vec![
+        Field::new("fitted".into(), DataType::Float64),
+        Field::new("residual".into(), DataType::Float64),
+        Field::new("std_residual".into(), DataType::Float64),
+        Field::new("stud_residual".into(), DataType::Float64),
+        Field::new("leverage".into(), DataType::Float64),
+        Field::new("cooks_d".into(), DataType::Float64),
+        Field::new("dffits".into(), DataType::Float64),
+    ];
+    Ok(Field::new("augment".into(), DataType::Struct(fields)))
+}
+
+/// Scatter the `n_valid`-length `Augment` fields back into `n_rows`-length
+/// per-field vectors (NaN for rows excluded from the fit) and build the
+/// output struct.
+fn augment_output(n_rows: usize, valid_indices: &[usize], a: &Augment) -> PolarsResult<Series> {
+    let mut fitted = vec![f64::NAN; n_rows];
+    let mut residual = vec![f64::NAN; n_rows];
+    let mut std_residual = vec![f64::NAN; n_rows];
+    let mut stud_residual = vec![f64::NAN; n_rows];
+    let mut leverage = vec![f64::NAN; n_rows];
+    let mut cooks_d = vec![f64::NAN; n_rows];
+    let mut dffits_v = vec![f64::NAN; n_rows];
+    for (k, &i) in valid_indices.iter().enumerate() {
+        fitted[i] = a.fitted[k];
+        residual[i] = a.residual[k];
+        std_residual[i] = a.std_residual[k];
+        stud_residual[i] = a.stud_residual[k];
+        leverage[i] = a.leverage[k];
+        cooks_d[i] = a.cooks_d[k];
+        dffits_v[i] = a.dffits[k];
+    }
+
+    let fitted_s = Series::new("fitted".into(), fitted);
+    let residual_s = Series::new("residual".into(), residual);
+    let std_residual_s = Series::new("std_residual".into(), std_residual);
+    let stud_residual_s = Series::new("stud_residual".into(), stud_residual);
+    let leverage_s = Series::new("leverage".into(), leverage);
+    let cooks_d_s = Series::new("cooks_d".into(), cooks_d);
+    let dffits_s = Series::new("dffits".into(), dffits_v);
+
+    StructChunked::from_series(
+        "augment".into(),
+        n_rows,
+        [
+            &fitted_s,
+            &residual_s,
+            &std_residual_s,
+            &stud_residual_s,
+            &leverage_s,
+            &cooks_d_s,
+            &dffits_s,
+        ]
+        .into_iter(),
+    )
+    .map(|ca| ca.into_series())
+}
+
+/// `n_rows` of NaN in every field — degenerate input (no valid rows, or no
+/// feature columns) stays aligned with the input, never an exception.
+fn augment_nan_output(n_rows: usize) -> PolarsResult<Series> {
+    augment_output(
+        n_rows,
+        &[],
+        &Augment {
+            fitted: Col::zeros(0),
+            residual: Col::zeros(0),
+            resid_type: ResidualType::Response,
+            std_residual: Col::zeros(0),
+            stud_residual: Col::zeros(0),
+            leverage: Col::zeros(0),
+            cooks_d: Col::zeros(0),
+            dffits: Col::zeros(0),
+        },
+    )
+}
+
+/// Public Rust-callable variant. Same input contract as the `pl_augment`
+/// expression shim.
+///
+/// Input contract: `inputs[0]` = y, `inputs[1]` = weights (nullable; a
+/// length-1 null unless `model == "wls"`, where it is full-length prior
+/// weights), `inputs[2..]` = x columns (at least one).
+pub fn augment_fit(inputs: &[Series], kwargs: &AugmentKwargs) -> PolarsResult<Series> {
+    if inputs.len() < 3 {
+        return Err(
+            polars_err!(ComputeError: "augment: expected y, weights, and at least one x column"),
+        );
+    }
+    let n_rows = inputs[0].len();
+    let n_features = inputs.len() - 2;
+
+    let residual_type = match &kwargs.residual_type {
+        Some(s) => {
+            Some(parse_residual_type(s).map_err(|e| polars_err!(ComputeError: "augment: {}", e))?)
+        }
+        None => None,
+    };
+
+    let model = kwargs.model.to_lowercase();
+    let needs_weights = model == "wls";
+
+    let y_ca = inputs[0].f64()?;
+
+    let mut valid = vec![true; n_rows];
+    for (i, ok) in valid.iter_mut().enumerate() {
+        match y_ca.get(i) {
+            Some(v) if v.is_finite() => {}
+            _ => *ok = false,
+        }
+    }
+    for col in inputs.iter().skip(2) {
+        let ca = col.f64()?;
+        for (i, ok) in valid.iter_mut().enumerate() {
+            match ca.get(i) {
+                Some(v) if v.is_finite() => {}
+                _ => *ok = false,
+            }
+        }
+    }
+    if needs_weights {
+        let w_ca = inputs[1].f64()?;
+        if w_ca.len() != n_rows {
+            return Err(
+                polars_err!(ComputeError: "augment: model 'wls' requires a weights column"),
+            );
+        }
+        for (i, ok) in valid.iter_mut().enumerate() {
+            match w_ca.get(i) {
+                Some(v) if v.is_finite() && v >= 0.0 => {}
+                _ => *ok = false,
+            }
+        }
+    }
+
+    let valid_indices: Vec<usize> = (0..n_rows).filter(|&i| valid[i]).collect();
+    let n_valid = valid_indices.len();
+    if n_valid == 0 || n_features == 0 {
+        return augment_nan_output(n_rows);
+    }
+
+    let x = Mat::from_fn(n_valid, n_features, |row, col| {
+        inputs[2 + col]
+            .f64()
+            .unwrap()
+            .get(valid_indices[row])
+            .unwrap()
+    });
+    let y = Col::from_fn(n_valid, |i| y_ca.get(valid_indices[i]).unwrap());
+    let weights: Option<Col<f64>> = if needs_weights {
+        let w_ca = inputs[1].f64()?;
+        Some(Col::from_fn(n_valid, |i| {
+            w_ca.get(valid_indices[i]).unwrap()
+        }))
+    } else {
+        None
+    };
+
+    let with_intercept = kwargs.with_intercept;
+
+    macro_rules! run_augment {
+        ($fit_result:expr) => {{
+            let fitted = match $fit_result {
+                Ok(f) => f,
+                Err(_) => return augment_nan_output(n_rows),
+            };
+            let aug = match residual_type {
+                Some(rt) => augment_with(&fitted, &x, &y, weights.as_ref(), rt),
+                None => augment(&fitted, &x, &y, weights.as_ref()),
+            };
+            match aug {
+                Ok(a) => augment_output(n_rows, &valid_indices, &a),
+                Err(_) => augment_nan_output(n_rows),
+            }
+        }};
+    }
+
+    match model.as_str() {
+        "ols" => {
+            let m = OlsRegressor::builder()
+                .with_intercept(with_intercept)
+                .build();
+            run_augment!(m.fit(&x, &y))
+        }
+        other => {
+            Err(polars_err!(ComputeError: "augment: unknown or unsupported model '{}'", other))
+        }
+    }
+}
+
+/// Per-observation regression diagnostics (R `broom::augment`), one combined
+/// row-aligned expression for every `Augmentable` model.
+/// inputs[0] = y, inputs[1] = weights (nullable), inputs[2..] = x columns.
+/// kwargs: model / residual_type / with_intercept / theta / var_power / max_iter / tol
+/// — see [`AugmentKwargs`].
+#[polars_expr(output_type_func=augment_output_dtype)]
+fn pl_augment(inputs: &[Series], kwargs: AugmentKwargs) -> PolarsResult<Series> {
+    augment_fit(inputs, &kwargs)
 }
 
 // ============================================================================

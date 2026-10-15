@@ -142,6 +142,8 @@ from polars_statistics.exprs.regression import (
     tweedie,
     probit,
     cloglog,
+    # Augment (per-observation diagnostics)
+    augment,
     # Penalized GLM
     penalized_glm,
     # Survival (AFT)
@@ -370,6 +372,8 @@ __all__ = [
     "probit",
     "cloglog",
     "alm",
+    # Augment (per-observation diagnostics)
+    "augment",
     # Penalized GLM expressions
     "penalized_glm",
     # Survival (AFT) expressions
