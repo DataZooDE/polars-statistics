@@ -60,7 +60,7 @@ import polars as pl
 **Version check:**
 
 ```python
-print(ps.__version__)  # "0.8.0" once released (current build may still report "0.7.0"; see Gotchas)
+print(ps.__version__)  # "0.8.0"
 ```
 
 ---
@@ -384,8 +384,9 @@ Calling `.coefficients`, `.r_squared`, etc. on an unfitted model raises
 `try/except PyRuntimeError`.
 
 **Version string vs. frontmatter version**
-The installed wheel reports `ps.__version__ == "0.7.0"`. This skill's frontmatter pins
-`version: "0.8.0"` — the target milestone release. The API surface is identical.
+`ps.__version__` and this skill's frontmatter `version` both read `"0.8.0"`. If an
+older version is installed, 0.8.0 additions such as `ps.augment`, `ps.tukey_hsd`,
+`PenalizedGLM`, and `AFT` are missing — upgrade with `pip install -U polars-statistics`.
 
 ---
 
