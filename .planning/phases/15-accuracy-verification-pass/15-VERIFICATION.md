@@ -3,19 +3,8 @@ phase: 15-accuracy-verification-pass
 verified: 2026-09-21T10:00:00Z
 status: passed
 score: 4/4 must-haves verified
-covered_files:
-  - .planning/phases/15-accuracy-verification-pass/15-01-PLAN.md
-  - .planning/phases/15-accuracy-verification-pass/15-01-SUMMARY.md
-  - .planning/phases/15-accuracy-verification-pass/15-CONTEXT.md
-  - .planning/phases/15-accuracy-verification-pass/15-REVIEW.md
-  - plugins/polars-statistics/skills/ROUTING.md
-  - plugins/polars-statistics/skills/polars-statistics-anova/SKILL.md
-  - plugins/polars-statistics/skills/polars-statistics-getting-started/SKILL.md
-  - plugins/polars-statistics/skills/polars-statistics-hypothesis-tests/SKILL.md
-  - plugins/polars-statistics/skills/polars-statistics-regression/SKILL.md
-  - plugins/polars-statistics/skills/polars-statistics-results/SKILL.md
-  - scripts/verify_skill_examples.py
-covered_digest: "v1:sha256:149091554d78f5a24ef79974c84d31866bf349a031385124e03f978648ad9524"
+covered_files: [".planning/phases/15-accuracy-verification-pass/15-01-PLAN.md",".planning/phases/15-accuracy-verification-pass/15-01-SUMMARY.md",".planning/phases/15-accuracy-verification-pass/15-CONTEXT.md",".planning/phases/15-accuracy-verification-pass/15-REVIEW.md","plugins/polars-statistics/skills/ROUTING.md","plugins/polars-statistics/skills/polars-statistics-anova/SKILL.md","plugins/polars-statistics/skills/polars-statistics-getting-started/SKILL.md","plugins/polars-statistics/skills/polars-statistics-hypothesis-tests/SKILL.md","plugins/polars-statistics/skills/polars-statistics-regression/SKILL.md","plugins/polars-statistics/skills/polars-statistics-results/SKILL.md","scripts/verify_skill_examples.py"]
+covered_digest: "v1:sha256:d94d7e6a33cabfc744a68f9da5144bfc20927c07d5cbfad8c7a1874e6c512e47"
 behavior_unverified: 0
 overrides_applied: 0
 ---

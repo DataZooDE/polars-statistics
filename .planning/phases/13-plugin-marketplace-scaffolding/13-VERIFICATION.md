@@ -5,20 +5,8 @@ status: passed
 # human_needed→passed: user accepted the automated 3/3 pass (2026-09-21); the live
 # Claude Code install test is manual-only and non-blocking per 13-VALIDATION.md.
 score: 3/3 must-haves verified
-covered_files:
-  - .claude-plugin/marketplace.json
-  - .planning/phases/13-plugin-marketplace-scaffolding/13-01-PLAN.md
-  - .planning/phases/13-plugin-marketplace-scaffolding/13-01-SUMMARY.md
-  - .planning/phases/13-plugin-marketplace-scaffolding/13-REVIEW.md
-  - .planning/phases/13-plugin-marketplace-scaffolding/13-VALIDATION.md
-  - plugins/polars-statistics/.claude-plugin/plugin.json
-  - plugins/polars-statistics/skills/.gitkeep
-  - plugins/polars-statistics/skills/polars-statistics-anova/SKILL.md
-  - plugins/polars-statistics/skills/polars-statistics-getting-started/SKILL.md
-  - plugins/polars-statistics/skills/polars-statistics-hypothesis-tests/SKILL.md
-  - plugins/polars-statistics/skills/polars-statistics-regression/SKILL.md
-  - plugins/polars-statistics/skills/polars-statistics-results/SKILL.md
-covered_digest: "v1:sha256:658e700b462d334abce6d16c70976a6a313400911d7e4eb3faf3f5d4776edf7d"
+covered_files: [".claude-plugin/marketplace.json",".planning/phases/13-plugin-marketplace-scaffolding/13-01-PLAN.md",".planning/phases/13-plugin-marketplace-scaffolding/13-01-SUMMARY.md",".planning/phases/13-plugin-marketplace-scaffolding/13-REVIEW.md",".planning/phases/13-plugin-marketplace-scaffolding/13-VALIDATION.md","plugins/polars-statistics/.claude-plugin/plugin.json","plugins/polars-statistics/skills/.gitkeep","plugins/polars-statistics/skills/polars-statistics-anova/SKILL.md","plugins/polars-statistics/skills/polars-statistics-getting-started/SKILL.md","plugins/polars-statistics/skills/polars-statistics-hypothesis-tests/SKILL.md","plugins/polars-statistics/skills/polars-statistics-regression/SKILL.md","plugins/polars-statistics/skills/polars-statistics-results/SKILL.md"]
+covered_digest: "v1:sha256:60d76cba40e19689022c7f7a979dfcd427c821aee01a469ed0f4276b16b0f59c"
 # digest reconciled post-completion (2026-09-21): phase.complete updated
 # .planning/REQUIREMENTS.md (a covered tracking file) to mark PLUG-01/02/03 done,
 # changing the fingerprint. Verified deliverables (manifests, skills tree) unchanged.

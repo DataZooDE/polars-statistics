@@ -3,23 +3,8 @@ phase: 16-wheel-bundling
 verified: 2026-10-15T22:10:00Z
 status: passed
 score: 5/5 must-haves verified
-covered_files:
-  - ".github/workflows/ci.yml"
-  - ".planning/phases/16-wheel-bundling/16-01-PLAN.md"
-  - ".planning/phases/16-wheel-bundling/16-01-SUMMARY.md"
-  - ".planning/phases/16-wheel-bundling/16-CONTEXT.md"
-  - ".planning/phases/16-wheel-bundling/16-RESEARCH.md"
-  - ".planning/phases/16-wheel-bundling/16-VALIDATION.md"
-  - "python/polars_statistics/_plugin/.claude-plugin/plugin.json"
-  - "python/polars_statistics/_plugin/marketplace.json"
-  - "python/polars_statistics/_plugin/skills/ROUTING.md"
-  - "python/polars_statistics/_plugin/skills/polars-statistics-anova/SKILL.md"
-  - "python/polars_statistics/_plugin/skills/polars-statistics-getting-started/SKILL.md"
-  - "python/polars_statistics/_plugin/skills/polars-statistics-hypothesis-tests/SKILL.md"
-  - "python/polars_statistics/_plugin/skills/polars-statistics-regression/SKILL.md"
-  - "python/polars_statistics/_plugin/skills/polars-statistics-results/SKILL.md"
-  - "scripts/verify_wheel_bundling.py"
-covered_digest: "v1:sha256:e6aa4b55e99452616dca5fd13e13cdda772d050d6b9a871f23354176a2d9ed35"
+covered_files: [".github/workflows/ci.yml",".planning/phases/16-wheel-bundling/16-01-PLAN.md",".planning/phases/16-wheel-bundling/16-01-SUMMARY.md",".planning/phases/16-wheel-bundling/16-CONTEXT.md",".planning/phases/16-wheel-bundling/16-RESEARCH.md",".planning/phases/16-wheel-bundling/16-VALIDATION.md","python/polars_statistics/_plugin/.claude-plugin/plugin.json","python/polars_statistics/_plugin/marketplace.json","python/polars_statistics/_plugin/skills/ROUTING.md","python/polars_statistics/_plugin/skills/polars-statistics-anova/SKILL.md","python/polars_statistics/_plugin/skills/polars-statistics-getting-started/SKILL.md","python/polars_statistics/_plugin/skills/polars-statistics-hypothesis-tests/SKILL.md","python/polars_statistics/_plugin/skills/polars-statistics-regression/SKILL.md","python/polars_statistics/_plugin/skills/polars-statistics-results/SKILL.md","scripts/verify_wheel_bundling.py"]
+covered_digest: "v1:sha256:aec124014d3c4be4e118f9983e8df63ac0e9efc7e2fd5297919f765f11d790a8"
 behavior_unverified: 0
 overrides_applied: 0
 ---

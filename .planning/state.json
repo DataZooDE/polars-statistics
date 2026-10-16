@@ -86,13 +86,13 @@
     {
       "number": "17",
       "name": "Release 0.8.0",
-      "status": "in_progress"
+      "status": "complete"
     }
   ],
   "next": {
-    "command": "/gsd:progress --next",
-    "label": "Advance to the next step",
-    "reason": "Phase 17 of 9 · 0% · executing"
+    "command": "/gsd:new-milestone",
+    "label": "Start a new milestone",
+    "reason": "All phases complete — start a new milestone"
   },
-  "updated_at": "2026-10-15T23:07:38.318Z"
+  "updated_at": "2026-10-16T00:25:08.426Z"
 }

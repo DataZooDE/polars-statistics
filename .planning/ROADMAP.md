@@ -75,7 +75,7 @@ real API, bundled into the wheel, and shipped as 0.8.0 on PyPI.
 - [x] **Phase 16.2: Penalized GLM and AFT Survival Regression** (INSERTED) - Bump to anofox-statistics 0.4.7 / anofox-regression 0.5.22; expose anofox-regression 0.5.16's penalized GLM engine and AFT survival regression; add estimate/CI to the Mann-Whitney/Wilcoxon expressions (completed 2026-10-09)
 - [x] **Phase 16.3: Upstream API Wave 2** (INSERTED) - Expose anofox-statistics 0.4.7 / anofox-regression 0.5.17–0.5.21 additions: post-hoc tests, p_adjust, augment diagnostics, GLMM families, EB shrinkage (completed 2026-10-15)
 - [x] **Phase 16.4: Ruff Cleanup** (INSERTED) - Make `ruff check .` green repo-wide and enforce it in CI (completed 2026-10-15)
-- [ ] **Phase 17: Release 0.8.0** - Bump 0.7.0→0.8.0 across every version source and publish to production PyPI via the OIDC pipeline
+- [x] **Phase 17: Release 0.8.0** - Bump 0.7.0→0.8.0 across every version source and publish to production PyPI via the OIDC pipeline (completed 2026-10-16)
 
 ## Phase Details
 
@@ -323,6 +323,6 @@ Phases execute in order: 13 → 14 → 15 → 16.1 → 16.2 → 16.3 → 16.4 �
 | 14. Skill Cheat-Sheet Authoring | v0.8.0 | 5/5 | Complete    | 2026-09-21 |
 | 15. Accuracy Verification Pass | v0.8.0 | 1/1 | Complete    | 2026-09-21 |
 | 16. Wheel Bundling | v0.8.0 | 1/1 | Complete    | 2026-10-15 |
-| 17. Release 0.8.0 | v0.8.0 | 5/5 | In Progress|  |
+| 17. Release 0.8.0 | v0.8.0 | 5/5 | Complete    | 2026-10-16 |
 </content>
 </invoke>
