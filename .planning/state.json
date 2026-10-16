@@ -86,13 +86,13 @@
     {
       "number": "17",
       "name": "Release 0.8.0",
-      "status": "pending"
+      "status": "complete"
     }
   ],
   "next": {
-    "command": "/gsd:progress --next",
-    "label": "Advance to the next step",
-    "reason": "Phase 17 of 9 · 0% · executing"
+    "command": "/gsd:progress",
+    "label": "Show progress",
+    "reason": "Unsure of state — showing progress"
   },
-  "updated_at": "2026-10-15T22:45:05.563Z"
+  "updated_at": "2026-10-16T06:16:58.765Z"
 }

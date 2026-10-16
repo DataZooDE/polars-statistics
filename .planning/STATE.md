@@ -2,39 +2,36 @@
 gsd_state_version: "1.0"
 milestone: v0.8.0
 milestone_name: Claude Code Skills Plugin
-current_phase: 17
-current_phase_name: Release 0.8.0
-current_plan: 2
-status: executing
-stopped_at: Completed 17-01-PLAN.md
-last_updated: "2026-10-15T22:45:12.595Z"
+status: Awaiting next milestone
+stopped_at: Phase 17 complete — all phases complete
+last_updated: "2026-10-16T06:16:58.748Z"
 last_activity: 2026-10-16
-last_activity_desc: Phase 17 execution started
-state_head: bc87d7f305119951e24c15f39ca8d347cab7a09a
+last_activity_desc: Milestone v0.8.0 completed and archived
+state_head: 796d159959ad0c64cd17680adc2c3b1400169314
 progress:
   total_phases: 9
-  completed_phases: 0
+  completed_phases: 9
   total_plans: 44
-  completed_plans: 40
-  percent: 0
+  completed_plans: 44
+  percent: 100
+current_phase: 17
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-09-20)
+See: .planning/PROJECT.md (updated 2026-10-16)
 
 **Core value:** Every public statistical capability in the backing `anofox-*` crates is exposed through the Polars/Python API — correctly, documented, tested, and shipped to PyPI.
-**Current focus:** Phase 17 — Release 0.8.0
+**Current focus:** Planning next milestone (v0.9.0 candidate: UPST-11)
 
 ## Current Position
 
-Phase: 17 (Release 0.8.0) — EXECUTING
-Current Plan: 2
-Total Plans in Phase: 5
-Status: Ready to execute
-Last activity: 2026-10-16 — Phase 17 execution started
+Phase: Milestone v0.8.0 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-10-16 — Milestone v0.8.0 completed and archived
 
 ## Milestone Roadmap (v0.8.0)
 
@@ -52,7 +49,7 @@ Execution order: 13 → 14 → 15 → 16 → 17
 
 **Velocity:**
 
-- Total plans completed: 61
+- Total plans completed: 66
 - Average duration: — min
 - Total execution time: 0.0 hours
 
@@ -74,6 +71,7 @@ Execution order: 13 → 14 → 15 → 16 → 17
 | 16.3 | 11 | - | - |
 | 16.4 | 3 | - | - |
 | 16 | 1 | - | - |
+| 17 | 5 | - | - |
 
 **Recent Trend:**
 
@@ -138,6 +136,10 @@ Execution order: 13 → 14 → 15 → 16 → 17
 | Phase 16.4 P03 | 9min | 3 tasks | 4 files |
 | Phase 16-wheel-bundling P01 | 15min | 3 tasks | 10 files |
 | Phase 17 P01 | 50min | 3 tasks | 10 files |
+| Phase 17 P02 | 35min | 3 tasks | 0 files |
+| Phase 17 P03 | 20min | 3 tasks | 0 files |
+| Phase 17 P04 | 5min | 2 tasks | 0 files |
+| Phase 17 P05 | 55min | 3 tasks | 0 files |
 
 ## Accumulated Context
 
@@ -240,6 +242,12 @@ Recent decisions affecting current work:
 - [Phase 16]: [Phase 16]: 16-01: [Rule 2] Wired scripts/verify_wheel_bundling.py --drift-only into the CI lint job so stale bundled skills fail CI before release
 - [Phase 17]: 17-01: check_version_alignment.py line-scans TOML/JSON/frontmatter directly (no tomllib) so the check itself runs under CI's Python 3.9 pytest jobs
 - [Phase 17]: 17-01: CHANGELOG self-contradiction removed — deleted the 'planned for a later release' deferral sentence since the Added section + next bullet already document those additions as shipped
+- [Phase 17]: [Phase 17]: 17-02: PR #47's predicted ci.yml conflict did not materialize — git merge-tree probe showed a clean auto-merge (exit 0); documented as a finding, not a conflict to resolve
+- [Phase 17]: [Phase 17]: 17-02: Did not flip REL-08 to complete in REQUIREMENTS.md — it requires the production PyPI publish + post-release smoke, which belong to 17-04/17-05
+- [Phase 17]: [Phase 17]: 17-03: PR #48 merged into GitHub main as merge commit fd52d07 (user-approved merge-commit method, --match-head-commit guard); local main synced via git merge --no-edit origin/main (not ff-only — local main carried 17-02's bookkeeping commit), no history rewrite
+- [Phase 17]: [Phase 17]: 17-03: .planning/milestone.lock (transient session-lock file) ended up committed to GitHub main via 17-01/17-02's plan-metadata commits; left in place per the no-history-rewrite rule, flagged for user awareness (no secrets, just session id/pid/timestamp)
+- [Phase 17]: 17-04: User declined the TestPyPI dry run (stale stored-token auth risk; production publish exercises the same 5-platform build matrix anyway). Nothing dispatched.
+- [Phase 17]: 17-05: polars-statistics 0.8.0 published to production PyPI via OIDC trusted publishing (publish run 38824647551); tag + GitHub release v0.8.0 at merge commit fd52d07; post-release smoke passed on Python 3.12 and 3.9. REL-08 complete.
 
 ### Pending Todos
 
@@ -275,7 +283,10 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-10-15T22:45:12.531Z
-Stopped at: Completed 17-01-PLAN.md
+Last session: 2026-10-16T00:21:26.476Z
+Stopped at: Phase 17 complete — all phases complete
 Resume file: None
-</content>
+
+## Operator Next Steps
+
+- Start the next milestone with /gsd-new-milestone

@@ -3,26 +3,8 @@ phase: 14-skill-cheat-sheet-authoring
 verified: 2026-09-21T20:00:00Z
 status: passed
 score: 5/5 must-haves verified
-covered_files:
-  - .planning/phases/14-skill-cheat-sheet-authoring/14-01-PLAN.md
-  - .planning/phases/14-skill-cheat-sheet-authoring/14-01-SUMMARY.md
-  - .planning/phases/14-skill-cheat-sheet-authoring/14-02-PLAN.md
-  - .planning/phases/14-skill-cheat-sheet-authoring/14-02-SUMMARY.md
-  - .planning/phases/14-skill-cheat-sheet-authoring/14-03-PLAN.md
-  - .planning/phases/14-skill-cheat-sheet-authoring/14-03-SUMMARY.md
-  - .planning/phases/14-skill-cheat-sheet-authoring/14-04-PLAN.md
-  - .planning/phases/14-skill-cheat-sheet-authoring/14-04-SUMMARY.md
-  - .planning/phases/14-skill-cheat-sheet-authoring/14-05-PLAN.md
-  - .planning/phases/14-skill-cheat-sheet-authoring/14-05-SUMMARY.md
-  - .planning/phases/14-skill-cheat-sheet-authoring/14-REVIEW-FIX.md
-  - .planning/phases/14-skill-cheat-sheet-authoring/14-REVIEW.md
-  - .planning/phases/14-skill-cheat-sheet-authoring/14-VALIDATION.md
-  - plugins/polars-statistics/skills/polars-statistics-anova/SKILL.md
-  - plugins/polars-statistics/skills/polars-statistics-getting-started/SKILL.md
-  - plugins/polars-statistics/skills/polars-statistics-hypothesis-tests/SKILL.md
-  - plugins/polars-statistics/skills/polars-statistics-regression/SKILL.md
-  - plugins/polars-statistics/skills/polars-statistics-results/SKILL.md
-covered_digest: "v1:sha256:8c665c938b470936794c4c844aacb4b3094cfb438c49ea0719b39dacde190ef7"
+covered_files: [".planning/phases/14-skill-cheat-sheet-authoring/14-01-PLAN.md",".planning/phases/14-skill-cheat-sheet-authoring/14-01-SUMMARY.md",".planning/phases/14-skill-cheat-sheet-authoring/14-02-PLAN.md",".planning/phases/14-skill-cheat-sheet-authoring/14-02-SUMMARY.md",".planning/phases/14-skill-cheat-sheet-authoring/14-03-PLAN.md",".planning/phases/14-skill-cheat-sheet-authoring/14-03-SUMMARY.md",".planning/phases/14-skill-cheat-sheet-authoring/14-04-PLAN.md",".planning/phases/14-skill-cheat-sheet-authoring/14-04-SUMMARY.md",".planning/phases/14-skill-cheat-sheet-authoring/14-05-PLAN.md",".planning/phases/14-skill-cheat-sheet-authoring/14-05-SUMMARY.md",".planning/phases/14-skill-cheat-sheet-authoring/14-REVIEW-FIX.md",".planning/phases/14-skill-cheat-sheet-authoring/14-REVIEW.md",".planning/phases/14-skill-cheat-sheet-authoring/14-VALIDATION.md","plugins/polars-statistics/skills/polars-statistics-anova/SKILL.md","plugins/polars-statistics/skills/polars-statistics-getting-started/SKILL.md","plugins/polars-statistics/skills/polars-statistics-hypothesis-tests/SKILL.md","plugins/polars-statistics/skills/polars-statistics-regression/SKILL.md","plugins/polars-statistics/skills/polars-statistics-results/SKILL.md"]
+covered_digest: "v1:sha256:bc5a8fad065d4d5272fce005f44cfdff050827d59d6dfa18b23f5425a03bfcb0"
 behavior_unverified: 0
 overrides_applied: 0
 advisory:
