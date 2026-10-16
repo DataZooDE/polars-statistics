@@ -5,17 +5,17 @@ milestone_name: Claude Code Skills Plugin
 current_phase: 17
 current_phase_name: Release 0.8.0
 current_plan: 5
-status: executing
-stopped_at: Completed 17-04-PLAN.md (TestPyPI dry run declined)
-last_updated: "2026-10-15T23:15:13.041Z"
+status: verifying
+stopped_at: Completed 17-05-PLAN.md (polars-statistics 0.8.0 published to PyPI, REL-08 complete)
+last_updated: "2026-10-16T00:21:26.540Z"
 last_activity: 2026-10-16
 last_activity_desc: Phase 17 execution started
-state_head: 1f73355805b290b84a3980028daf10cc80906649
+state_head: ad757a94baac5dfaf209d24f678d0288cefc4859
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 44
-  completed_plans: 43
+  completed_plans: 44
   percent: 0
 ---
 
@@ -33,7 +33,7 @@ See: .planning/PROJECT.md (updated 2026-09-20)
 Phase: 17 (Release 0.8.0) — EXECUTING
 Current Plan: 5
 Total Plans in Phase: 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-10-16 — Phase 17 execution started
 
 ## Milestone Roadmap (v0.8.0)
@@ -141,6 +141,7 @@ Execution order: 13 → 14 → 15 → 16 → 17
 | Phase 17 P02 | 35min | 3 tasks | 0 files |
 | Phase 17 P03 | 20min | 3 tasks | 0 files |
 | Phase 17 P04 | 5min | 2 tasks | 0 files |
+| Phase 17 P05 | 55min | 3 tasks | 0 files |
 
 ## Accumulated Context
 
@@ -248,6 +249,7 @@ Recent decisions affecting current work:
 - [Phase 17]: [Phase 17]: 17-03: PR #48 merged into GitHub main as merge commit fd52d07 (user-approved merge-commit method, --match-head-commit guard); local main synced via git merge --no-edit origin/main (not ff-only — local main carried 17-02's bookkeeping commit), no history rewrite
 - [Phase 17]: [Phase 17]: 17-03: .planning/milestone.lock (transient session-lock file) ended up committed to GitHub main via 17-01/17-02's plan-metadata commits; left in place per the no-history-rewrite rule, flagged for user awareness (no secrets, just session id/pid/timestamp)
 - [Phase 17]: 17-04: User declined the TestPyPI dry run (stale stored-token auth risk; production publish exercises the same 5-platform build matrix anyway). Nothing dispatched.
+- [Phase 17]: 17-05: polars-statistics 0.8.0 published to production PyPI via OIDC trusted publishing (publish run 38824647551); tag + GitHub release v0.8.0 at merge commit fd52d07; post-release smoke passed on Python 3.12 and 3.9. REL-08 complete.
 
 ### Pending Todos
 
@@ -283,7 +285,7 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-10-15T23:15:09.365Z
-Stopped at: Completed 17-04-PLAN.md (TestPyPI dry run declined)
+Last session: 2026-10-16T00:21:26.476Z
+Stopped at: Completed 17-05-PLAN.md (polars-statistics 0.8.0 published to PyPI, REL-08 complete)
 Resume file: None
 </content>
