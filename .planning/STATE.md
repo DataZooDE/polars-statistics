@@ -2,38 +2,36 @@
 gsd_state_version: "1.0"
 milestone: v0.8.0
 milestone_name: Claude Code Skills Plugin
-current_phase: 17
-current_plan: Not started
-status: completed
+status: Awaiting next milestone
 stopped_at: Phase 17 complete — all phases complete
-last_updated: "2026-10-16T00:25:08.412Z"
+last_updated: "2026-10-16T06:16:58.748Z"
 last_activity: 2026-10-16
-last_activity_desc: Phase 17 complete
-state_head: de31cbd41700cc23e681d2fc92215c81d2ac3e83
+last_activity_desc: Milestone v0.8.0 completed and archived
+state_head: 796d159959ad0c64cd17680adc2c3b1400169314
 progress:
   total_phases: 9
-  completed_phases: 1
+  completed_phases: 9
   total_plans: 44
   completed_plans: 44
-  percent: 11
+  percent: 100
+current_phase: 17
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-09-20)
+See: .planning/PROJECT.md (updated 2026-10-16)
 
 **Core value:** Every public statistical capability in the backing `anofox-*` crates is exposed through the Polars/Python API — correctly, documented, tested, and shipped to PyPI.
-**Current focus:** Phase 17 — Release 0.8.0
+**Current focus:** Planning next milestone (v0.9.0 candidate: UPST-11)
 
 ## Current Position
 
-Phase: 17
-Current Plan: Not started
-Total Plans in Phase: 5
-Status: All phases complete
-Last activity: 2026-10-16 — Phase 17 complete
+Phase: Milestone v0.8.0 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-10-16 — Milestone v0.8.0 completed and archived
 
 ## Milestone Roadmap (v0.8.0)
 
@@ -288,4 +286,7 @@ Items acknowledged and carried forward from previous milestone close:
 Last session: 2026-10-16T00:21:26.476Z
 Stopped at: Phase 17 complete — all phases complete
 Resume file: None
-</content>
+
+## Operator Next Steps
+
+- Start the next milestone with /gsd-new-milestone

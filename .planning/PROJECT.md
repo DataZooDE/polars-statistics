@@ -10,10 +10,13 @@ numpy↔faer data transfer. It is distributed as a PyPI wheel for Python 3.9+.
 
 As of v0.7.0 the library exposes full parity with the backing `anofox-*` crates —
 every public statistical capability is reachable, type-safe, ergonomic, documented,
-tested, and shipped on PyPI. This milestone (v0.8.0) shifts from the human reader to
-the **AI agent**: packaging the entire API surface as installable Claude Code skills
-(a plugin + marketplace mirroring `anofox-forecast`) so Claude can discover and apply
-polars-statistics correctly from accurate, version-pinned cheat-sheets.
+tested, and shipped on PyPI. v0.8.0 added the **AI agent** as an audience. The whole
+API surface ships as installable Claude Code skills: a plugin and marketplace that
+mirror `anofox-forecast` and are bundled inside the wheel, so Claude can discover and
+apply polars-statistics from accurate, version-pinned cheat-sheets. v0.8.0 also brought
+the backing crates to anofox-statistics 0.4.7 / anofox-regression 0.5.22. That added
+penalized GLM, AFT survival regression, post-hoc tests, augment diagnostics, GLMM
+families and EB shrinkage.
 
 ## Core Value
 
@@ -21,23 +24,24 @@ Every public statistical capability in the backing `anofox-*` crates is exposed
 through the Polars/Python API — correctly (post-bugfix), documented, and tested —
 and shipped to users via PyPI.
 
-## Current Milestone: v0.8.0 Claude Code Skills Plugin
+## Current State
 
-**Goal:** Package the full polars-statistics API as installable Claude Code skills —
-a plugin + marketplace mirroring `anofox-forecast` — bundled into the wheel and
-shipped as 0.8.0 on PyPI.
+**Shipped:** v0.8.0 Claude Code Skills Plugin (2026-10-16). polars-statistics 0.8.0 is
+on PyPI, and the tag `v0.8.0` is on merge commit `fd52d07`.
 
-**Target features:**
-- Claude Code plugin scaffolding: root `.claude-plugin/marketplace.json` + `plugins/polars-statistics/.claude-plugin/plugin.json`
-- 5 skills (`skills/<name>/SKILL.md` cheat-sheets), version-pinned, `user-invocable: false`, each with accurate signatures + runnable examples:
-  - `polars-statistics-hypothesis-tests` — parametric, nonparametric, distributional, correlation, categorical, modern (MMD/energy), TOST
-  - `polars-statistics-anova` — one/two-way + repeated-measures ANOVA, ICC
-  - `polars-statistics-regression` — 40+ PyModels + regression expressions + R-style formula parser
-  - `polars-statistics-results` — `to_dict()`/`summary()`/`repr`, unnest/struct helpers, contextual errors, type stubs
-  - `polars-statistics-getting-started` — install, model-selection matrix, sklearn migration
-- Content verified against the real API surface (signatures/examples must run, not be invented)
-- Bundle the skill files into the wheel (maturin package data)
-- Bump 0.7.0 → 0.8.0 and publish to production PyPI via the existing OIDC pipeline
+- The Claude Code plugin is published two ways. In the repo it is `.claude-plugin/marketplace.json` plus `plugins/polars-statistics/`. In the wheel it is `python/polars_statistics/_plugin/`, kept in sync by a CI drift guard.
+- There are 5 version-pinned skills: hypothesis-tests, anova, regression, results and getting-started. `ROUTING.md` lists 23 routing prompts, and `scripts/verify_skill_examples.py` runs every runnable example.
+- Upstream versions are frozen at anofox-statistics 0.4.7 / anofox-regression 0.5.22.
+- `ruff check .` is green repo-wide and enforced in the CI lint job.
+- 18 version sources are aligned and checked by `scripts/check_version_alignment.py`.
+
+## Next Milestone Goals
+
+Not yet defined. Start it with `/gsd-new-milestone`. The leading candidate is **v0.9.0
+Upstream Wave 3** (UPST-11): anofox-statistics 0.4.8+ (classification, timeseries
+including Durbin-Watson, survival) and anofox-regression 0.5.23+ (regularisation paths
+with k-fold CV, quantile-regression inference, predict_se, partial residuals,
+Breusch-Pagan/White, AFT survival curves, penalized-GLM augment, GLMM AIC/BIC).
 
 ## Requirements
 
@@ -67,16 +71,20 @@ shipped as 0.8.0 on PyPI.
 - ✓ API consistency — `with_intercept`→`add_intercept` deprecation (back-compat `FutureWarning`) and uniform sklearn-style `fit`/`predict`/`score` — Phase 10 / v0.7.0 (671 pytest green)
 - ✓ Documentation & adoption — cookbook + runnable examples for the robust/sparse, GLM/smoother/streaming, and ANOVA families; model-selection matrix; migration guide; sklearn-migration guide; adoption-focused README — Phase 11 / v0.7.0 (`mkdocs build --strict` green)
 - ✓ Shipped `polars-statistics` 0.7.0 to production PyPI via the OIDC pipeline — Phase 12 / v0.7.0 (all version sources aligned; publish run green; clean-venv smoke check confirms 0.7.0 + typed API + ergonomics + errors live)
+- ✓ Claude Code plugin + marketplace scaffolding (`.claude-plugin/marketplace.json`, `plugins/polars-statistics/.claude-plugin/plugin.json`) — v0.8.0 (PLUG-01..03)
+- ✓ 5 version-pinned `SKILL.md` cheat-sheets covering the full API, `user-invocable: false` — v0.8.0 (SKILL-01..06)
+- ✓ Skill content verified against the live API (example harness 0 FAIL; ROUTING.md 23/23 prompts route correctly) — v0.8.0 (VERIFY-01/02)
+- ✓ Skills bundled into the PyPI wheel at `polars_statistics/_plugin/`, guarded against drift in CI — v0.8.0 (PKG-01)
+- ✓ Upstream refresh to anofox-statistics 0.4.7 / anofox-regression 0.5.22: effect sizes, Jarque-Bera, bootstrap CIs, conditional Fisher, Huber/RANSAC/GLMM inference, PenalizedGLM, AFT survival, Hodges-Lehmann CIs, post-hoc tests + p_adjust/ptukey/qtukey, augment, model_info, GLMM NegBin/Gamma/Tweedie + offsets + random slopes, alias_tolerance, eb_shrink. All R-validated — v0.8.0 (UPST-01..10)
+- ✓ `ruff check .` green repo-wide and enforced in CI — v0.8.0 (QUAL-01)
+- ✓ Bumped 0.7.0 → 0.8.0 across 18 version sources and published to production PyPI via OIDC; post-release smoke run on 3.9/3.12 — v0.8.0 (REL-07/08)
 
 ### Active
 
-<!-- Milestone v0.8.0. Hypotheses until shipped & validated. -->
+<!-- Next milestone not yet defined; candidates carried from v0.8.0 deferrals. -->
 
-- [ ] Claude Code plugin + marketplace scaffolding (`.claude-plugin/marketplace.json`, `plugins/polars-statistics/.claude-plugin/plugin.json`)
-- [ ] 5 version-pinned `SKILL.md` cheat-sheets covering the full API (hypothesis-tests, anova, regression, results, getting-started)
-- [ ] Skill content verified accurate against the real API (runnable examples, correct signatures)
-- [ ] Skills bundled into the PyPI wheel (maturin package data)
-- [ ] Bumped 0.7.0 → 0.8.0 and published to production PyPI
+- [ ] UPST-11: expose anofox-statistics 0.4.8+ / anofox-regression 0.5.23+ surface (targeted v0.9.0)
+- [ ] FCST-01: evaluate exposing `anofox-forecast` capabilities
 
 ### Out of Scope
 
@@ -84,7 +92,8 @@ shipped as 0.8.0 on PyPI.
 - `anofox-forecast` integration — separate crate, not requested
 - Changes to the FFI architecture or the numpy↔faer transfer strategy — the existing bridge stays
 - Reworking already-exposed API surface beyond what the version bump requires
-- New API/behavior in v0.8.0 — this milestone packages the *existing* v0.7.0 surface as Claude Code skills; it adds documentation/tooling, not statistical capability
+- Slash-command / `user-invocable: true` skills — skills are auto-surfaced reference cheat-sheets, like anofox-forecast's
+- Standalone skills repo — skills live in this repo under `plugins/polars-statistics/` and are mirrored into the wheel
 
 ## Context
 
@@ -92,7 +101,9 @@ shipped as 0.8.0 on PyPI.
 - **Correctness driver:** anofox-regression 0.5.13 fixes a column-pivot unpermute bug that silently scrambled OLS/WLS/NNLS coefficients on differently-scaled designs. The wrapper currently pins 0.5.4, so it is exposed to this bug today — the bump is a correctness fix, not just a feature add.
 - **Codebase map:** Full map exists at `.planning/codebase/` (STACK, ARCHITECTURE, STRUCTURE, CONVENTIONS, TESTING, INTEGRATIONS, CONCERNS).
 - **Two exposure surfaces per capability:** most statistics functions are wrapped as Polars expressions (`src/expressions/*.rs` → `python/polars_statistics/exprs/*.py`); regression models are additionally wrapped as PyModel classes (`src/pymodels/*.rs`). New API may need both.
-- **Release mechanics:** version lives in both `Cargo.toml` and `pyproject.toml` (both 0.5.0); publish is tag-triggered via `.github/workflows/publish.yml` using OIDC trusted publishing (no tokens).
+- **Release mechanics:** the version lives in 18 sources: `Cargo.toml`, `pyproject.toml`, `__version__`, `uv.lock`, both plugin/marketplace manifest copies, and every SKILL.md copy. They are all at 0.8.0 and checked by `scripts/check_version_alignment.py` and `tests/test_version_alignment.py`. Publishing is tag/release-triggered via `.github/workflows/publish.yml` using OIDC trusted publishing (no tokens).
+- **Skills plugin:** the source of truth is `plugins/polars-statistics/`. `python/polars_statistics/_plugin/` is a byte-identical copy that ships in the wheel, and `scripts/verify_wheel_bundling.py --drift-only` runs in CI. Any API change must also update the skills, plus the harness `scripts/verify_skill_examples.py`, which today runs locally and at release, not in CI.
+- **Known tech debt (accepted at v0.8.0 close):** on Python 3.9, `typing.get_type_hints()` resolves for only 11 of 204 public builders after the PEP 604 modernisation (T-16.4-03). `WLS.hc_inference` still raises `NotImplementedError`. `conda/meta.yaml` is still at 0.4.0.
 
 ## Constraints
 
@@ -113,10 +124,15 @@ shipped as 0.8.0 on PyPI.
 | v0.7.0 milestone = ergonomics + adoption + docs (not new algorithms) | v0.6.0 delivered full capability parity; the remaining friction is typing, result ergonomics, errors, and docs coverage | ✓ Done — shipped 0.7.0 |
 | Target release version 0.7.0 (additive, no breaking changes) | Stubs/helpers/docs are additive; `with_intercept` deprecation stays back-compatible (warning, not removal) → minor bump | ✓ Done — 0.7.0 live on PyPI, no breaking changes |
 | Align GSD milestone label to package version (v0.7.0) | STATE previously carried placeholder `v1.0`, diverging from the real 0.x package version | ✓ Done |
-| v0.8.0 milestone = package the API as Claude Code skills | User wants an installable plugin mirroring `anofox-forecast` so Claude can apply the library from accurate cheat-sheets | — Pending |
-| 5 skills grouped by capability family | Mirrors anofox-forecast's granularity; coherent cheat-sheets over many tiny files or few giant ones | — Pending |
-| Plugin + marketplace layout mirrors `anofox-forecast` | Root `.claude-plugin/marketplace.json` + `plugins/polars-statistics/` with `plugin.json` and `skills/`; `user-invocable: false` auto-surfaced skills | — Pending |
-| Bundle skills into the wheel + publish 0.8.0 to PyPI | User chose wheel bundling (maturin package data) over repo-only; additive → minor bump under semver | — Pending |
+| v0.8.0 milestone = package the API as Claude Code skills | User wants an installable plugin mirroring `anofox-forecast` so Claude can apply the library from accurate cheat-sheets | ✓ Good — shipped 0.8.0 |
+| 5 skills grouped by capability family | Mirrors anofox-forecast's granularity; coherent cheat-sheets over many tiny files or few giant ones | ✓ Good — 23/23 routing prompts route correctly |
+| Plugin + marketplace layout mirrors `anofox-forecast` | Root `.claude-plugin/marketplace.json` + `plugins/polars-statistics/` with `plugin.json` and `skills/`; `user-invocable: false` auto-surfaced skills | ✓ Good (live `/plugin marketplace add` test still manual-only) |
+| Bundle skills into the wheel + publish 0.8.0 to PyPI | User chose wheel bundling (maturin package data) over repo-only; additive → minor bump under semver | ✓ Done — maturin python-source copy at `_plugin/` with CI drift guard; 0.8.0 live on PyPI |
+| Insert upstream refresh phases 16.1–16.3 into v0.8.0 | New anofox releases carried R-matching fixes and new API; skills had to document the final surface before bundling | ✓ Good — frozen at 0.4.7 / 0.5.22 |
+| Defer anofox-statistics 0.4.8+ / anofox-regression 0.5.23+ (UPST-11) to v0.9.0 | Keep v0.8.0 shippable; wave 3 is large (classification, timeseries, survival, CV paths) | — Pending (v0.9.0) |
+| Repo-wide ruff cleanup as its own phase (16.4), enforced in CI | Phase 16.1 found that ruff had never run in CI (393 findings) | ✓ Good — `ruff check .` green and gated |
+| Accept the Python 3.9 `get_type_hints` narrowing (T-16.4-03) | PEP 604 annotations under the future import; runtime is unaffected | ⚠️ Revisit when 3.9 support is dropped |
+| Skip the TestPyPI dry run for 0.8.0 | Stale token auth risk, and redundant with the production build matrix | ✓ Good — production publish succeeded on the first run |
 
 ## Evolution
 
@@ -136,4 +152,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-20 — milestone v0.8.0 started (Claude Code Skills Plugin)*
+*Last updated: 2026-10-16 after v0.8.0 milestone*
