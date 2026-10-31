@@ -56,7 +56,7 @@ jobs:
             target: x86_64
             manylinux: auto
           # macOS Apple Silicon
-          - os: macos-14
+          - os: macos-15
             target: aarch64
             manylinux: auto
           # Windows x86_64
