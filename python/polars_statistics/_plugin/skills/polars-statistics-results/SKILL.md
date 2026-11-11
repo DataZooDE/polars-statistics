@@ -1,7 +1,7 @@
 ---
 name: polars-statistics-results
 description: Consume polars-statistics expression results — extract struct fields, unnest result columns, call to_dict() and summary() on PyModel classes, handle PyRuntimeError for unfitted models, or work with the typed .pyi API.
-version: "0.8.0"
+version: "0.9.0"
 user-invocable: false
 ---
 

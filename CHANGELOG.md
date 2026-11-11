@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-11-11
+
+Bug-fix release: numeric inputs of any integer/float width now work in every
+expression, and the Rust rlib no longer pulls in pyo3.
+
 ### Fixed
 
 - Rust rlib builds no longer pull in pyo3. `pyo3-polars` is now optional and
@@ -705,7 +710,8 @@ because the new kwargs default to `None` / `"likelihood"`.
   - SIMD-optimized linear algebra via faer
   - Automatic parallelization for group operations
 
-[Unreleased]: https://github.com/DataZooDE/polars-statistics/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/DataZooDE/polars-statistics/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/DataZooDE/polars-statistics/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/DataZooDE/polars-statistics/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/DataZooDE/polars-statistics/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/DataZooDE/polars-statistics/compare/v0.5.0...v0.6.0

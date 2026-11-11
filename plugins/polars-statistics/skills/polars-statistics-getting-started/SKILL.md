@@ -1,7 +1,7 @@
 ---
 name: polars-statistics-getting-started
 description: Get started with polars-statistics — install the package, understand the two API styles (expressions vs. PyModel classes), choose the right model with the decision matrix, and migrate from sklearn.
-version: "0.8.0"
+version: "0.9.0"
 user-invocable: false
 ---
 
@@ -60,7 +60,7 @@ import polars as pl
 **Version check:**
 
 ```python
-print(ps.__version__)  # "0.8.0"
+print(ps.__version__)  # "0.9.0"
 ```
 
 ---
@@ -384,7 +384,7 @@ Calling `.coefficients`, `.r_squared`, etc. on an unfitted model raises
 `try/except PyRuntimeError`.
 
 **Version string vs. frontmatter version**
-`ps.__version__` and this skill's frontmatter `version` both read `"0.8.0"`. If an
+`ps.__version__` and this skill's frontmatter `version` both read `"0.9.0"`. If an
 older version is installed, 0.8.0 additions such as `ps.augment`, `ps.tukey_hsd`,
 `PenalizedGLM`, and `AFT` are missing — upgrade with `pip install -U polars-statistics`.
 

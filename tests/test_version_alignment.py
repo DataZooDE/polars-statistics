@@ -10,6 +10,7 @@ bumps — it checks *agreement*, not a specific value.
 from __future__ import annotations
 
 import importlib.util
+import re
 import shutil
 from pathlib import Path
 
@@ -63,7 +64,7 @@ def test_check_fails_on_mutated_skill_version(tmp_path: Path):
     assert mutated is not None, "expected at least one SKILL.md among source_paths"
 
     text = mutated.read_text(encoding="utf-8")
-    new_text = text.replace('version: "0.8.0"', 'version: "0.0.0"', 1)
+    new_text = re.sub(r'^version: "[^"]+"', 'version: "0.0.0"', text, count=1, flags=re.M)
     assert new_text != text, "expected to find a version frontmatter field to mutate"
     mutated.write_text(new_text, encoding="utf-8")
 

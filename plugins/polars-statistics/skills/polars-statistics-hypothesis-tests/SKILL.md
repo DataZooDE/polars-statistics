@@ -1,7 +1,7 @@
 ---
 name: polars-statistics-hypothesis-tests
 description: Use polars-statistics hypothesis tests — run t-tests, Mann-Whitney, Kruskal-Wallis, normality tests, correlation tests, chi-square, Fisher's exact, TOST equivalence tests, MMD, energy distance, effect sizes (Cohen's d, rank-biserial), Jarque-Bera normality, or bootstrap confidence intervals as Polars expressions.
-version: "0.8.0"
+version: "0.9.0"
 user-invocable: false
 ---
 

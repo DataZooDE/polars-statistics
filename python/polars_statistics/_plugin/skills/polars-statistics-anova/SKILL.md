@@ -1,7 +1,7 @@
 ---
 name: polars-statistics-anova
 description: Use polars-statistics ANOVA — run one-way ANOVA (Fisher or Welch), two-way ANOVA, repeated-measures ANOVA, or intraclass correlation coefficient (ICC); follow up with post-hoc pairwise comparisons (Tukey HSD, pairwise t-tests, Dunn's test) and p-value adjustment (p_adjust) as Polars expressions.
-version: "0.8.0"
+version: "0.9.0"
 user-invocable: false
 ---
 
