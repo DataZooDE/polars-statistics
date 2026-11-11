@@ -1,11 +1,14 @@
 //! Modern statistical test expressions (Energy Distance, MMD).
 
 use polars::prelude::*;
+#[cfg(feature = "python")]
 use pyo3_polars::derive::polars_expr;
 
 use anofox_statistics::{energy_distance_test, energy_distance_test_1d, mmd_test_1d};
 
-use crate::expressions::output_types::{generic_stats_output, stats_output_dtype};
+use crate::expressions::output_types::generic_stats_output;
+#[cfg(feature = "python")]
+use crate::expressions::output_types::stats_output_dtype;
 
 /// Public Rust-callable variant. Same input contract as the `pl_energy_distance` expression shim.
 pub fn energy_distance_fit(inputs: &[Series]) -> PolarsResult<Series> {
@@ -24,6 +27,7 @@ pub fn energy_distance_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Energy Distance test for comparing distributions.
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=stats_output_dtype)]
 fn pl_energy_distance(inputs: &[Series]) -> PolarsResult<Series> {
     energy_distance_fit(inputs)
@@ -47,6 +51,7 @@ pub fn mmd_test_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Maximum Mean Discrepancy (MMD) test for comparing distributions.
 /// Uses Gaussian kernel with median heuristic bandwidth.
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=stats_output_dtype)]
 fn pl_mmd_test(inputs: &[Series]) -> PolarsResult<Series> {
     mmd_test_fit(inputs)
@@ -103,6 +108,7 @@ pub fn energy_distance_nd_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Multi-dimensional Energy Distance test expression shim.
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=stats_output_dtype)]
 fn pl_energy_distance_nd(inputs: &[Series]) -> PolarsResult<Series> {
     energy_distance_nd_fit(inputs)

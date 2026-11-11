@@ -1,6 +1,7 @@
 //! TOST (Two One-Sided Tests) equivalence testing expressions.
 
 use polars::prelude::*;
+#[cfg(feature = "python")]
 use pyo3_polars::derive::polars_expr;
 
 use anofox_statistics::{
@@ -9,6 +10,7 @@ use anofox_statistics::{
     tost_yuen, CorrelationTostMethod, EquivalenceBounds,
 };
 
+#[cfg(feature = "python")]
 use crate::expressions::output_types::tost_output_dtype;
 
 /// Helper to create TostResult output
@@ -102,6 +104,7 @@ pub fn tost_t_test_one_sample_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// One-sample TOST equivalence test
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=tost_output_dtype)]
 fn pl_tost_t_test_one_sample(inputs: &[Series]) -> PolarsResult<Series> {
     tost_t_test_one_sample_fit(inputs)
@@ -129,6 +132,7 @@ pub fn tost_t_test_two_sample_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Two-sample TOST equivalence test
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=tost_output_dtype)]
 fn pl_tost_t_test_two_sample(inputs: &[Series]) -> PolarsResult<Series> {
     tost_t_test_two_sample_fit(inputs)
@@ -155,6 +159,7 @@ pub fn tost_t_test_paired_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Paired-samples TOST equivalence test
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=tost_output_dtype)]
 fn pl_tost_t_test_paired(inputs: &[Series]) -> PolarsResult<Series> {
     tost_t_test_paired_fit(inputs)
@@ -189,6 +194,7 @@ pub fn tost_correlation_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Correlation TOST equivalence test
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=tost_output_dtype)]
 fn pl_tost_correlation(inputs: &[Series]) -> PolarsResult<Series> {
     tost_correlation_fit(inputs)
@@ -214,6 +220,7 @@ pub fn tost_prop_one_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// One-proportion TOST equivalence test
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=tost_output_dtype)]
 fn pl_tost_prop_one(inputs: &[Series]) -> PolarsResult<Series> {
     tost_prop_one_fit(inputs)
@@ -240,6 +247,7 @@ pub fn tost_prop_two_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Two-proportion TOST equivalence test
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=tost_output_dtype)]
 fn pl_tost_prop_two(inputs: &[Series]) -> PolarsResult<Series> {
     tost_prop_two_fit(inputs)
@@ -266,6 +274,7 @@ pub fn tost_wilcoxon_paired_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Wilcoxon paired-samples TOST equivalence test
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=tost_output_dtype)]
 fn pl_tost_wilcoxon_paired(inputs: &[Series]) -> PolarsResult<Series> {
     tost_wilcoxon_paired_fit(inputs)
@@ -292,6 +301,7 @@ pub fn tost_wilcoxon_two_sample_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Wilcoxon two-sample TOST equivalence test
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=tost_output_dtype)]
 fn pl_tost_wilcoxon_two_sample(inputs: &[Series]) -> PolarsResult<Series> {
     tost_wilcoxon_two_sample_fit(inputs)
@@ -320,6 +330,7 @@ pub fn tost_bootstrap_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Bootstrap TOST equivalence test
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=tost_output_dtype)]
 fn pl_tost_bootstrap(inputs: &[Series]) -> PolarsResult<Series> {
     tost_bootstrap_fit(inputs)
@@ -347,6 +358,7 @@ pub fn tost_yuen_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Yuen TOST equivalence test (trimmed means)
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=tost_output_dtype)]
 fn pl_tost_yuen(inputs: &[Series]) -> PolarsResult<Series> {
     tost_yuen_fit(inputs)

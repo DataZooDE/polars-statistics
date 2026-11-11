@@ -10,6 +10,7 @@
 //!   `TukeyHSD(aov(...))`, `pairwise.t.test` and `dunn.test`.
 
 use polars::prelude::*;
+#[cfg(feature = "python")]
 use pyo3_polars::derive::polars_expr;
 
 use anofox_statistics::{
@@ -55,6 +56,7 @@ pub fn p_adjust_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// R `p.adjust`: multiple-comparison p-value adjustment.
+#[cfg(feature = "python")]
 #[polars_expr(output_type=Float64)]
 fn pl_p_adjust(inputs: &[Series]) -> PolarsResult<Series> {
     p_adjust_fit(inputs)
@@ -117,6 +119,7 @@ pub fn ptukey_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// R `ptukey`: studentized-range distribution CDF.
+#[cfg(feature = "python")]
 #[polars_expr(output_type=Float64)]
 fn pl_ptukey(inputs: &[Series]) -> PolarsResult<Series> {
     ptukey_fit(inputs)
@@ -136,6 +139,7 @@ pub fn qtukey_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// R `qtukey`: studentized-range distribution quantile function.
+#[cfg(feature = "python")]
 #[polars_expr(output_type=Float64)]
 fn pl_qtukey(inputs: &[Series]) -> PolarsResult<Series> {
     qtukey_fit(inputs)
@@ -156,6 +160,7 @@ fn parse_alternative(s: &str) -> Alternative {
 
 /// Output dtype for the three pairwise post-hoc tests: a List[Struct] of
 /// pairwise comparison rows.
+#[cfg(feature = "python")]
 fn pairwise_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
     let fields = vec![
         Field::new("group1".into(), DataType::String),
@@ -351,6 +356,7 @@ pub fn tukey_hsd_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Tukey's honest significant difference: all pairwise mean differences,
 /// matching R's `TukeyHSD(aov(values ~ groups))`.
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=pairwise_output_dtype)]
 fn pl_tukey_hsd(inputs: &[Series]) -> PolarsResult<Series> {
     tukey_hsd_fit(inputs)
@@ -383,6 +389,7 @@ pub fn pairwise_t_test_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Pairwise t-tests with p-value adjustment, matching R's
 /// `pairwise.t.test(values, groups, p.adjust.method, pool.sd, alternative)`.
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=pairwise_output_dtype)]
 fn pl_pairwise_t_test(inputs: &[Series]) -> PolarsResult<Series> {
     pairwise_t_test_fit(inputs)
@@ -410,6 +417,7 @@ pub fn dunn_test_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Dunn's (1964) pairwise rank-mean comparison after Kruskal-Wallis,
 /// matching `dunn.test::dunn.test(values, groups, method, altp = TRUE)`.
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=pairwise_output_dtype)]
 fn pl_dunn_test(inputs: &[Series]) -> PolarsResult<Series> {
     dunn_test_fit(inputs)

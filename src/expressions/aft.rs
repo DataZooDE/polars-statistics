@@ -18,20 +18,24 @@
 
 use faer::{Col, Mat};
 use polars::prelude::*;
+#[cfg(feature = "python")]
 use pyo3_polars::derive::polars_expr;
 use serde::Deserialize;
 use statrs::distribution::{ContinuousCDF, Normal};
 
 use anofox_regression::solvers::aft::{AftDistribution, AftRegressor};
 
+#[cfg(feature = "python")]
+use crate::expressions::penalized_glm::inference_summary_output_dtype;
 use crate::expressions::penalized_glm::{
-    inference_summary_nan_output, inference_summary_output, inference_summary_output_dtype,
-    parse_vcov_type, prior_spec_from_parts, PriorKwarg,
+    inference_summary_nan_output, inference_summary_output, parse_vcov_type, prior_spec_from_parts,
+    PriorKwarg,
 };
 use crate::expressions::regression::{
-    build_xy_with_null_policy, predict_output_dtype_with_prefix, prediction_nan_output_with_prefix,
-    prediction_output_with_prefix, PredictKwargs,
+    build_xy_with_null_policy, prediction_nan_output_with_prefix, prediction_output_with_prefix,
 };
+#[cfg(feature = "python")]
+use crate::expressions::regression::{predict_output_dtype_with_prefix, PredictKwargs};
 
 /// Named kwargs for every AFT expression (fit / summary / the four predict
 /// variants, added across Plan 05's tasks). Unknown-at-fit-time fields are
@@ -350,6 +354,7 @@ pub fn aft_fit(inputs: &[Series], kwargs: &AftKwargs) -> PolarsResult<Series> {
 
 /// AFT fit expression (`ps.aft`). `inputs[0]` = time, `inputs[1]` = event,
 /// `inputs[2..]` = x columns. kwargs: see [`AftKwargs`].
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=aft_output_dtype)]
 fn pl_aft(inputs: &[Series], kwargs: AftKwargs) -> PolarsResult<Series> {
     aft_fit(inputs, &kwargs)
@@ -493,6 +498,7 @@ pub fn aft_summary_fit(inputs: &[Series], kwargs: &AftKwargs) -> PolarsResult<Se
 /// AFT coefficient summary expression (`ps.aft_summary`). Same input
 /// contract as `pl_aft`. kwargs: see [`AftKwargs`] (`conf_level` /
 /// `vcov_type` are read here).
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=inference_summary_output_dtype)]
 fn pl_aft_summary(inputs: &[Series], kwargs: AftKwargs) -> PolarsResult<Series> {
     aft_summary_fit(inputs, &kwargs)
@@ -513,6 +519,7 @@ enum AftPredictKind {
 /// Output dtype for the four `pl_aft_predict_*` expressions — delegates to
 /// the shared prefix-based prediction schema (`{prefix}_prediction`/
 /// `_lower`/`_upper`).
+#[cfg(feature = "python")]
 fn aft_predict_output_dtype(input_fields: &[Field], kwargs: AftKwargs) -> PolarsResult<Field> {
     predict_output_dtype_with_prefix(
         input_fields,
@@ -674,6 +681,7 @@ pub fn aft_predict_cdf_fit(inputs: &[Series], kwargs: &AftKwargs) -> PolarsResul
 /// AFT `p`-quantile prediction expression (`ps.aft_predict_quantile`). Same
 /// input contract as `pl_aft`. kwargs: see [`AftKwargs`] (`p` / `prefix` /
 /// `null_policy` are read here).
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func_with_kwargs=aft_predict_output_dtype)]
 fn pl_aft_predict_quantile(inputs: &[Series], kwargs: AftKwargs) -> PolarsResult<Series> {
     aft_predict_quantile_fit(inputs, &kwargs)
@@ -681,6 +689,7 @@ fn pl_aft_predict_quantile(inputs: &[Series], kwargs: AftKwargs) -> PolarsResult
 
 /// AFT median prediction expression (`ps.aft_predict_median`). Same input
 /// contract as `pl_aft`. kwargs: see [`AftKwargs`].
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func_with_kwargs=aft_predict_output_dtype)]
 fn pl_aft_predict_median(inputs: &[Series], kwargs: AftKwargs) -> PolarsResult<Series> {
     aft_predict_median_fit(inputs, &kwargs)
@@ -689,6 +698,7 @@ fn pl_aft_predict_median(inputs: &[Series], kwargs: AftKwargs) -> PolarsResult<S
 /// AFT survival-probability prediction expression
 /// (`ps.aft_predict_survival`). Same input contract as `pl_aft`. kwargs: see
 /// [`AftKwargs`] (`t` / `prefix` / `null_policy` are read here).
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func_with_kwargs=aft_predict_output_dtype)]
 fn pl_aft_predict_survival(inputs: &[Series], kwargs: AftKwargs) -> PolarsResult<Series> {
     aft_predict_survival_fit(inputs, &kwargs)
@@ -697,6 +707,7 @@ fn pl_aft_predict_survival(inputs: &[Series], kwargs: AftKwargs) -> PolarsResult
 /// AFT CDF prediction expression (`ps.aft_predict_cdf`). Same input contract
 /// as `pl_aft`. kwargs: see [`AftKwargs`] (`t` / `prefix` / `null_policy` are
 /// read here).
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func_with_kwargs=aft_predict_output_dtype)]
 fn pl_aft_predict_cdf(inputs: &[Series], kwargs: AftKwargs) -> PolarsResult<Series> {
     aft_predict_cdf_fit(inputs, &kwargs)

@@ -11,6 +11,7 @@
 //! `tests/r_validation_eb_shrink.rs` in the upstream crate).
 
 use polars::prelude::*;
+#[cfg(feature = "python")]
 use pyo3_polars::derive::polars_expr;
 
 use anofox_regression::solvers::eb_shrink::{eb_shrink, EbShrinkError, EbShrinkOptions, TauMethod};
@@ -181,6 +182,7 @@ pub fn eb_shrink_fit(inputs: &[Series]) -> PolarsResult<Series> {
 /// Empirical-Bayes (DerSimonian-Laird) shrinkage of per-group estimates
 /// toward their precision-weighted mean, matching
 /// `metafor::rma(yi, sei = se, method = "DL")` / `blup()`.
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=eb_shrink_output_dtype)]
 fn pl_eb_shrink(inputs: &[Series]) -> PolarsResult<Series> {
     eb_shrink_fit(inputs)

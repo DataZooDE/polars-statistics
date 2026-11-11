@@ -16,13 +16,13 @@ crate-type = ["cdylib", "rlib"]
 
 [features]
 default = ["python"]
-python = ["dep:pyo3", "dep:numpy"]
+python = ["dep:pyo3", "dep:numpy", "dep:pyo3-polars"]
 
 [dependencies]
 # Python bindings (gated behind `python` feature)
 pyo3 = { version = "0.26", features = ["abi3-py39", "extension-module"], optional = true }
 numpy = { version = "0.26", optional = true }
-pyo3-polars = { version = "0.25", features = ["derive", "lazy"] }
+pyo3-polars = { version = "0.25", features = ["derive", "lazy"], optional = true }
 
 # Polars
 polars = { version = "0.52", default-features = false, features = [

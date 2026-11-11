@@ -1,13 +1,14 @@
 //! Distributional test expressions (normality tests, etc.).
 
 use polars::prelude::*;
+#[cfg(feature = "python")]
 use pyo3_polars::derive::polars_expr;
 
 use anofox_statistics::{dagostino_k_squared, jarque_bera, shapiro_wilk};
 
-use crate::expressions::output_types::{
-    generic_stats_output, jarque_bera_output, jarque_bera_output_dtype, stats_output_dtype,
-};
+use crate::expressions::output_types::{generic_stats_output, jarque_bera_output};
+#[cfg(feature = "python")]
+use crate::expressions::output_types::{jarque_bera_output_dtype, stats_output_dtype};
 
 /// Public Rust-callable variant. Same input contract as the `pl_shapiro_wilk` expression shim.
 pub fn shapiro_wilk_fit(inputs: &[Series]) -> PolarsResult<Series> {
@@ -22,6 +23,7 @@ pub fn shapiro_wilk_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Shapiro-Wilk test for normality
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=stats_output_dtype)]
 fn pl_shapiro_wilk(inputs: &[Series]) -> PolarsResult<Series> {
     shapiro_wilk_fit(inputs)
@@ -40,6 +42,7 @@ pub fn dagostino_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// D'Agostino K-squared test for normality
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=stats_output_dtype)]
 fn pl_dagostino(inputs: &[Series]) -> PolarsResult<Series> {
     dagostino_fit(inputs)
@@ -70,6 +73,7 @@ pub fn jarque_bera_fit(inputs: &[Series]) -> PolarsResult<Series> {
 /// Jarque-Bera test for normality: asymptotic chi-squared(2) test on sample
 /// skewness and excess kurtosis (population moments), matching R
 /// `tseries::jarque.bera.test`. Requires at least 3 finite, non-constant values.
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=jarque_bera_output_dtype)]
 fn pl_jarque_bera(inputs: &[Series]) -> PolarsResult<Series> {
     jarque_bera_fit(inputs)

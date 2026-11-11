@@ -19,6 +19,7 @@
 
 use faer::{Col, Mat};
 use polars::prelude::*;
+#[cfg(feature = "python")]
 use pyo3_polars::derive::polars_expr;
 use serde::Deserialize;
 
@@ -28,9 +29,11 @@ use anofox_regression::solvers::penalized_glm::{
 };
 
 use crate::expressions::regression::{
-    build_term_names, build_xy_with_null_policy, predict_output_dtype_with_prefix,
-    prediction_nan_output_with_prefix, prediction_output_with_prefix, PredictKwargs,
+    build_term_names, build_xy_with_null_policy, prediction_nan_output_with_prefix,
+    prediction_output_with_prefix,
 };
+#[cfg(feature = "python")]
+use crate::expressions::regression::{predict_output_dtype_with_prefix, PredictKwargs};
 
 /// Default prior scale (`+inf`, i.e. flat) used when a [`PriorKwarg`] omits
 /// `scale`.
@@ -584,6 +587,7 @@ pub fn penalized_glm_fit(inputs: &[Series], kwargs: &PenalizedGlmKwargs) -> Pola
 /// Penalized GLM fit expression (`ps.penalized_glm`).
 /// inputs[0] = y, inputs[1] = offset (length 1 broadcasts, or length n),
 /// inputs[2..] = x columns. kwargs: see [`PenalizedGlmKwargs`].
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=penalized_glm_output_dtype)]
 fn pl_penalized_glm(inputs: &[Series], kwargs: PenalizedGlmKwargs) -> PolarsResult<Series> {
     penalized_glm_fit(inputs, &kwargs)
@@ -754,6 +758,7 @@ pub fn penalized_glm_summary_fit(
 /// Penalized GLM coefficient summary expression (`ps.penalized_glm_summary`).
 /// Same input contract as `pl_penalized_glm`. kwargs: see [`PenalizedGlmKwargs`]
 /// (`conf_level` / `vcov_type` / `estimate_dispersion` are read here).
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=inference_summary_output_dtype)]
 fn pl_penalized_glm_summary(inputs: &[Series], kwargs: PenalizedGlmKwargs) -> PolarsResult<Series> {
     penalized_glm_summary_fit(inputs, &kwargs)
@@ -765,6 +770,7 @@ fn pl_penalized_glm_summary(inputs: &[Series], kwargs: PenalizedGlmKwargs) -> Po
 
 /// Output dtype for `pl_penalized_glm_predict` — delegates to the shared
 /// prefix-based prediction schema (`{prefix}_prediction`/`_lower`/`_upper`).
+#[cfg(feature = "python")]
 fn penalized_glm_predict_output_dtype(
     input_fields: &[Field],
     kwargs: PenalizedGlmKwargs,
@@ -883,6 +889,7 @@ pub fn penalized_glm_predict_fit(
 /// (`prefix` / `predict_type` / `null_policy` are read here). `lower`/`upper`
 /// are always NaN — `FittedPenalizedGlm` has no interval-prediction method
 /// (COVERAGE OPT-OUT).
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func_with_kwargs=penalized_glm_predict_output_dtype)]
 fn pl_penalized_glm_predict(inputs: &[Series], kwargs: PenalizedGlmKwargs) -> PolarsResult<Series> {
     penalized_glm_predict_fit(inputs, &kwargs)

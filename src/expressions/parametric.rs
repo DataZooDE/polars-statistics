@@ -1,6 +1,7 @@
 //! Parametric statistical test expressions.
 
 use polars::prelude::*;
+#[cfg(feature = "python")]
 use pyo3_polars::derive::polars_expr;
 
 use anofox_statistics::{
@@ -8,9 +9,11 @@ use anofox_statistics::{
     yuen_test, Alternative, AnovaKind, TTestKind,
 };
 
+use crate::expressions::output_types::{effect_size_output, generic_stats_output};
+#[cfg(feature = "python")]
 use crate::expressions::output_types::{
-    effect_size_output, effect_size_output_dtype, generic_stats_output, one_way_anova_output_dtype,
-    repeated_measures_anova_output_dtype, stats_output_dtype, two_way_anova_output_dtype,
+    effect_size_output_dtype, one_way_anova_output_dtype, repeated_measures_anova_output_dtype,
+    stats_output_dtype, two_way_anova_output_dtype,
 };
 
 /// Helper to parse alternative hypothesis from string
@@ -48,6 +51,7 @@ pub fn ttest_ind_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Independent samples t-test from raw data
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=stats_output_dtype)]
 fn pl_ttest_ind(inputs: &[Series]) -> PolarsResult<Series> {
     ttest_ind_fit(inputs)
@@ -80,6 +84,7 @@ pub fn ttest_paired_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Paired samples t-test
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=stats_output_dtype)]
 fn pl_ttest_paired(inputs: &[Series]) -> PolarsResult<Series> {
     ttest_paired_fit(inputs)
@@ -103,6 +108,7 @@ pub fn brown_forsythe_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Brown-Forsythe test for equal variances
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=stats_output_dtype)]
 fn pl_brown_forsythe(inputs: &[Series]) -> PolarsResult<Series> {
     brown_forsythe_fit(inputs)
@@ -128,6 +134,7 @@ pub fn yuen_test_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Yuen's test for trimmed means (robust alternative to t-test)
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=stats_output_dtype)]
 fn pl_yuen_test(inputs: &[Series]) -> PolarsResult<Series> {
     yuen_test_fit(inputs)
@@ -172,6 +179,7 @@ pub fn cohens_d_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Cohen's d (standardised mean difference) for two-sample, Welch, or paired t-tests.
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=effect_size_output_dtype)]
 fn pl_cohens_d(inputs: &[Series]) -> PolarsResult<Series> {
     cohens_d_fit(inputs)
@@ -195,6 +203,7 @@ pub fn cohens_d_one_sample_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Cohen's d (standardised mean difference) for a one-sample t-test.
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=effect_size_output_dtype)]
 fn pl_cohens_d_one_sample(inputs: &[Series]) -> PolarsResult<Series> {
     cohens_d_one_sample_fit(inputs)
@@ -336,6 +345,7 @@ pub fn one_way_anova_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// One-way ANOVA expression shim (FFI entry point).
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=one_way_anova_output_dtype)]
 fn pl_one_way_anova(inputs: &[Series]) -> PolarsResult<Series> {
     one_way_anova_fit(inputs)
@@ -483,6 +493,7 @@ pub fn two_way_anova_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Two-way ANOVA expression shim (FFI entry point).
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=two_way_anova_output_dtype)]
 fn pl_two_way_anova(inputs: &[Series]) -> PolarsResult<Series> {
     two_way_anova_fit(inputs)
@@ -659,6 +670,7 @@ pub fn repeated_measures_anova_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Repeated-measures ANOVA expression shim (FFI entry point).
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=repeated_measures_anova_output_dtype)]
 fn pl_repeated_measures_anova(inputs: &[Series]) -> PolarsResult<Series> {
     repeated_measures_anova_fit(inputs)
