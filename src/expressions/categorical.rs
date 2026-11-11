@@ -25,7 +25,7 @@ use crate::expressions::output_types::{
 /// caller did not supply the trailing input.
 fn trailing_conf_level(inputs: &[Series], idx: usize) -> PolarsResult<f64> {
     match inputs.get(idx) {
-        Some(s) => Ok(s.f64()?.get(0).unwrap_or(0.95)),
+        Some(s) => Ok(super::inputs::as_f64(s)?.get(0).unwrap_or(0.95)),
         None => Ok(0.95),
     }
 }
@@ -116,9 +116,9 @@ fn association_output(
 /// - `inputs[4]` — `f64` literal, optional (trailing): `conf_level`, default 0.95 when
 ///   absent (keeps the previous-arity contract working for existing rlib callers).
 pub fn binom_test_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let successes = inputs[0].u32()?.get(0).unwrap_or(0) as usize;
-    let n = inputs[1].u32()?.get(0).unwrap_or(1) as usize;
-    let p0 = inputs[2].f64()?.get(0).unwrap_or(0.5);
+    let successes = super::inputs::as_u32(&inputs[0])?.get(0).unwrap_or(0) as usize;
+    let n = super::inputs::as_u32(&inputs[1])?.get(0).unwrap_or(1) as usize;
+    let p0 = super::inputs::as_f64(&inputs[2])?.get(0).unwrap_or(0.5);
     let alt_str = inputs[3].str()?.get(0).unwrap_or("two-sided");
     let conf_level = trailing_conf_level(inputs, 4)?;
 
@@ -162,9 +162,9 @@ fn pl_binom_test(inputs: &[Series]) -> PolarsResult<Series> {
 /// - `inputs[3]` — `String` literal: `alternative`.
 /// - `inputs[4]` — `f64` literal, optional (trailing): `conf_level`, default 0.95.
 pub fn prop_test_one_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let successes = inputs[0].u32()?.get(0).unwrap_or(0) as usize;
-    let n = inputs[1].u32()?.get(0).unwrap_or(1) as usize;
-    let p0 = inputs[2].f64()?.get(0).unwrap_or(0.5);
+    let successes = super::inputs::as_u32(&inputs[0])?.get(0).unwrap_or(0) as usize;
+    let n = super::inputs::as_u32(&inputs[1])?.get(0).unwrap_or(1) as usize;
+    let p0 = super::inputs::as_f64(&inputs[2])?.get(0).unwrap_or(0.5);
     let alt_str = inputs[3].str()?.get(0).unwrap_or("two-sided");
     let conf_level = trailing_conf_level(inputs, 4)?;
 
@@ -210,10 +210,10 @@ fn pl_prop_test_one(inputs: &[Series]) -> PolarsResult<Series> {
 /// - `inputs[5]` — `bool` literal: `correction`.
 /// - `inputs[6]` — `f64` literal, optional (trailing): `conf_level`, default 0.95.
 pub fn prop_test_two_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let successes1 = inputs[0].u32()?.get(0).unwrap_or(0) as usize;
-    let n1 = inputs[1].u32()?.get(0).unwrap_or(1) as usize;
-    let successes2 = inputs[2].u32()?.get(0).unwrap_or(0) as usize;
-    let n2 = inputs[3].u32()?.get(0).unwrap_or(1) as usize;
+    let successes1 = super::inputs::as_u32(&inputs[0])?.get(0).unwrap_or(0) as usize;
+    let n1 = super::inputs::as_u32(&inputs[1])?.get(0).unwrap_or(1) as usize;
+    let successes2 = super::inputs::as_u32(&inputs[2])?.get(0).unwrap_or(0) as usize;
+    let n2 = super::inputs::as_u32(&inputs[3])?.get(0).unwrap_or(1) as usize;
     let alt_str = inputs[4].str()?.get(0).unwrap_or("two-sided");
     let correction = inputs[5].bool()?.get(0).unwrap_or(false);
     let conf_level = trailing_conf_level(inputs, 6)?;
@@ -262,9 +262,9 @@ fn pl_prop_test_two(inputs: &[Series]) -> PolarsResult<Series> {
 /// Public Rust-callable variant. Same input contract as the `pl_chisq_test` expression shim.
 pub fn chisq_test_fit(inputs: &[Series]) -> PolarsResult<Series> {
     // Expects a flattened contingency table with dimensions
-    let data = inputs[0].u32()?;
-    let n_rows = inputs[1].u32()?.get(0).unwrap_or(2) as usize;
-    let n_cols = inputs[2].u32()?.get(0).unwrap_or(2) as usize;
+    let data = super::inputs::as_u32(&inputs[0])?;
+    let n_rows = super::inputs::as_u32(&inputs[1])?.get(0).unwrap_or(2) as usize;
+    let n_cols = super::inputs::as_u32(&inputs[2])?.get(0).unwrap_or(2) as usize;
     let correction = inputs[3].bool()?.get(0).unwrap_or(false);
 
     let data_vec: Vec<usize> = data.into_no_null_iter().map(|v| v as usize).collect();
@@ -308,13 +308,17 @@ fn pl_chisq_test(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_chisq_goodness_of_fit` expression shim.
 pub fn chisq_goodness_of_fit_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let observed = inputs[0].u32()?;
+    let observed = super::inputs::as_u32(&inputs[0])?;
     let has_expected = inputs[1].bool()?.get(0).unwrap_or(false);
 
     let observed_vec: Vec<usize> = observed.into_no_null_iter().map(|v| v as usize).collect();
 
     let expected_opt: Option<Vec<f64>> = if has_expected && inputs.len() > 2 {
-        Some(inputs[2].f64()?.into_no_null_iter().collect())
+        Some(
+            super::inputs::as_f64(&inputs[2])?
+                .into_no_null_iter()
+                .collect(),
+        )
     } else {
         None
     };
@@ -345,9 +349,9 @@ fn pl_chisq_goodness_of_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_g_test` expression shim.
 pub fn g_test_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let data = inputs[0].u32()?;
-    let n_rows = inputs[1].u32()?.get(0).unwrap_or(2) as usize;
-    let n_cols = inputs[2].u32()?.get(0).unwrap_or(2) as usize;
+    let data = super::inputs::as_u32(&inputs[0])?;
+    let n_rows = super::inputs::as_u32(&inputs[1])?.get(0).unwrap_or(2) as usize;
+    let n_cols = super::inputs::as_u32(&inputs[2])?.get(0).unwrap_or(2) as usize;
 
     let data_vec: Vec<usize> = data.into_no_null_iter().map(|v| v as usize).collect();
 
@@ -397,10 +401,10 @@ fn pl_g_test(inputs: &[Series]) -> PolarsResult<Series> {
 /// Returns `statistic` (sample odds ratio `ad/bc`), `p_value`, and the Woolf
 /// (logit) confidence interval `ci_lower`/`ci_upper` at `conf_level`.
 pub fn fisher_exact_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let a = inputs[0].u32()?.get(0).unwrap_or(0) as usize;
-    let b = inputs[1].u32()?.get(0).unwrap_or(0) as usize;
-    let c = inputs[2].u32()?.get(0).unwrap_or(0) as usize;
-    let d = inputs[3].u32()?.get(0).unwrap_or(0) as usize;
+    let a = super::inputs::as_u32(&inputs[0])?.get(0).unwrap_or(0) as usize;
+    let b = super::inputs::as_u32(&inputs[1])?.get(0).unwrap_or(0) as usize;
+    let c = super::inputs::as_u32(&inputs[2])?.get(0).unwrap_or(0) as usize;
+    let d = super::inputs::as_u32(&inputs[3])?.get(0).unwrap_or(0) as usize;
     let alt_str = inputs[4].str()?.get(0).unwrap_or("two-sided");
     let conf_level = trailing_conf_level(inputs, 5)?;
 
@@ -439,10 +443,10 @@ fn pl_fisher_exact(inputs: &[Series]) -> PolarsResult<Series> {
 /// `ci_lower`/`ci_upper` (one-sided for one-sided `alternative`, matching R's
 /// `fisher.test`).
 pub fn fisher_exact_conditional_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let a = inputs[0].u32()?.get(0).unwrap_or(0) as usize;
-    let b = inputs[1].u32()?.get(0).unwrap_or(0) as usize;
-    let c = inputs[2].u32()?.get(0).unwrap_or(0) as usize;
-    let d = inputs[3].u32()?.get(0).unwrap_or(0) as usize;
+    let a = super::inputs::as_u32(&inputs[0])?.get(0).unwrap_or(0) as usize;
+    let b = super::inputs::as_u32(&inputs[1])?.get(0).unwrap_or(0) as usize;
+    let c = super::inputs::as_u32(&inputs[2])?.get(0).unwrap_or(0) as usize;
+    let d = super::inputs::as_u32(&inputs[3])?.get(0).unwrap_or(0) as usize;
     let alt_str = inputs[4].str()?.get(0).unwrap_or("two-sided");
     let conf_level = trailing_conf_level(inputs, 5)?;
 
@@ -477,10 +481,10 @@ fn pl_fisher_exact_conditional(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_mcnemar_test` expression shim.
 pub fn mcnemar_test_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let a = inputs[0].u32()?.get(0).unwrap_or(0) as usize;
-    let b = inputs[1].u32()?.get(0).unwrap_or(0) as usize;
-    let c = inputs[2].u32()?.get(0).unwrap_or(0) as usize;
-    let d = inputs[3].u32()?.get(0).unwrap_or(0) as usize;
+    let a = super::inputs::as_u32(&inputs[0])?.get(0).unwrap_or(0) as usize;
+    let b = super::inputs::as_u32(&inputs[1])?.get(0).unwrap_or(0) as usize;
+    let c = super::inputs::as_u32(&inputs[2])?.get(0).unwrap_or(0) as usize;
+    let d = super::inputs::as_u32(&inputs[3])?.get(0).unwrap_or(0) as usize;
     let correction = inputs[4].bool()?.get(0).unwrap_or(false);
 
     let table = [[a, b], [c, d]];
@@ -503,10 +507,10 @@ fn pl_mcnemar_test(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_mcnemar_exact` expression shim.
 pub fn mcnemar_exact_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let a = inputs[0].u32()?.get(0).unwrap_or(0) as usize;
-    let b = inputs[1].u32()?.get(0).unwrap_or(0) as usize;
-    let c = inputs[2].u32()?.get(0).unwrap_or(0) as usize;
-    let d = inputs[3].u32()?.get(0).unwrap_or(0) as usize;
+    let a = super::inputs::as_u32(&inputs[0])?.get(0).unwrap_or(0) as usize;
+    let b = super::inputs::as_u32(&inputs[1])?.get(0).unwrap_or(0) as usize;
+    let c = super::inputs::as_u32(&inputs[2])?.get(0).unwrap_or(0) as usize;
+    let d = super::inputs::as_u32(&inputs[3])?.get(0).unwrap_or(0) as usize;
 
     let table = [[a, b], [c, d]];
 
@@ -546,8 +550,8 @@ fn pl_mcnemar_exact(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_cohen_kappa` expression shim.
 pub fn cohen_kappa_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let data = inputs[0].u32()?;
-    let n_categories = inputs[1].u32()?.get(0).unwrap_or(2) as usize;
+    let data = super::inputs::as_u32(&inputs[0])?;
+    let n_categories = super::inputs::as_u32(&inputs[1])?.get(0).unwrap_or(2) as usize;
     let weighted = inputs[2].bool()?.get(0).unwrap_or(false);
 
     let data_vec: Vec<usize> = data.into_no_null_iter().map(|v| v as usize).collect();
@@ -577,9 +581,9 @@ fn pl_cohen_kappa(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_cramers_v` expression shim.
 pub fn cramers_v_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let data = inputs[0].u32()?;
-    let n_rows = inputs[1].u32()?.get(0).unwrap_or(2) as usize;
-    let n_cols = inputs[2].u32()?.get(0).unwrap_or(2) as usize;
+    let data = super::inputs::as_u32(&inputs[0])?;
+    let n_rows = super::inputs::as_u32(&inputs[1])?.get(0).unwrap_or(2) as usize;
+    let n_cols = super::inputs::as_u32(&inputs[2])?.get(0).unwrap_or(2) as usize;
 
     let data_vec: Vec<usize> = data.into_no_null_iter().map(|v| v as usize).collect();
 
@@ -617,10 +621,10 @@ fn pl_cramers_v(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_phi_coefficient` expression shim.
 pub fn phi_coefficient_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let a = inputs[0].u32()?.get(0).unwrap_or(0) as usize;
-    let b = inputs[1].u32()?.get(0).unwrap_or(0) as usize;
-    let c = inputs[2].u32()?.get(0).unwrap_or(0) as usize;
-    let d = inputs[3].u32()?.get(0).unwrap_or(0) as usize;
+    let a = super::inputs::as_u32(&inputs[0])?.get(0).unwrap_or(0) as usize;
+    let b = super::inputs::as_u32(&inputs[1])?.get(0).unwrap_or(0) as usize;
+    let c = super::inputs::as_u32(&inputs[2])?.get(0).unwrap_or(0) as usize;
+    let d = super::inputs::as_u32(&inputs[3])?.get(0).unwrap_or(0) as usize;
 
     let table = [[a, b], [c, d]];
 
@@ -644,9 +648,9 @@ fn pl_phi_coefficient(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_contingency_coef` expression shim.
 pub fn contingency_coef_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let data = inputs[0].u32()?;
-    let n_rows = inputs[1].u32()?.get(0).unwrap_or(2) as usize;
-    let n_cols = inputs[2].u32()?.get(0).unwrap_or(2) as usize;
+    let data = super::inputs::as_u32(&inputs[0])?;
+    let n_rows = super::inputs::as_u32(&inputs[1])?.get(0).unwrap_or(2) as usize;
+    let n_cols = super::inputs::as_u32(&inputs[2])?.get(0).unwrap_or(2) as usize;
 
     let data_vec: Vec<usize> = data.into_no_null_iter().map(|v| v as usize).collect();
 

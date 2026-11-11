@@ -18,6 +18,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   pyo3 is absent from the no-default dependency tree. (#51)
 - The Rust dependency instructions (README, docs, crate docs) now use a git
   dependency pinned to a release tag, since the crate is not on crates.io. (#51)
+- Every expression and Rust `*_fit` function now upcasts Int8–Int64, UInt8–UInt64,
+  Float32, Boolean and all-null inputs to Float64 wherever it reads floating-point
+  data. `ps.spearman` on a `u32` column no longer fails with "expected `Float64`,
+  got `u32`" (#52).
+- Integer dtypes are strict-cast to UInt32 wherever counts or codes are read, so
+  negative or out-of-range values raise instead of being nulled (#52).
+- Integer covariates passed to `ps.partial_cor` / `ps.semi_partial_cor` were
+  silently dropped and are now used (#52).
+- Rust `*_fit` callers passing non-Float64 numeric X columns to OLS and the
+  regression diagnostics no longer get NaN- or zero-filled design matrices, and
+  null-dropping predict no longer panics on them (#52).
+- Non-numeric columns still raise a dtype error. This now also applies to
+  regression X columns and correlation covariates, which previously degraded
+  silently (#52).
 
 ## [0.8.0] - 2026-10-16
 

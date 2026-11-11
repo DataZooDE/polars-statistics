@@ -12,7 +12,7 @@ use crate::expressions::output_types::{jarque_bera_output_dtype, stats_output_dt
 
 /// Public Rust-callable variant. Same input contract as the `pl_shapiro_wilk` expression shim.
 pub fn shapiro_wilk_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let x = inputs[0].f64()?;
+    let x = super::inputs::as_f64(&inputs[0])?;
 
     let x_vec: Vec<f64> = x.into_no_null_iter().collect();
 
@@ -31,7 +31,7 @@ fn pl_shapiro_wilk(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_dagostino` expression shim.
 pub fn dagostino_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let x = inputs[0].f64()?;
+    let x = super::inputs::as_f64(&inputs[0])?;
 
     let x_vec: Vec<f64> = x.into_no_null_iter().collect();
 
@@ -53,7 +53,7 @@ fn pl_dagostino(inputs: &[Series]) -> PolarsResult<Series> {
 /// # Input contract
 /// `inputs[0]`: x (f64 Series).
 pub fn jarque_bera_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let x = inputs[0].f64()?;
+    let x = super::inputs::as_f64(&inputs[0])?;
 
     let x_vec: Vec<f64> = x.into_no_null_iter().collect();
 

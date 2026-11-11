@@ -40,10 +40,10 @@ fn parse_var_estimator(s: &str) -> VarEstimator {
 
 /// Public Rust-callable variant. Same input contract as the `pl_diebold_mariano` expression shim.
 pub fn diebold_mariano_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let e1 = inputs[0].f64()?;
-    let e2 = inputs[1].f64()?;
+    let e1 = super::inputs::as_f64(&inputs[0])?;
+    let e2 = super::inputs::as_f64(&inputs[1])?;
     let loss_str = inputs[2].str()?.get(0).unwrap_or("squared");
-    let h = inputs[3].u32()?.get(0).unwrap_or(1) as usize;
+    let h = super::inputs::as_u32(&inputs[3])?.get(0).unwrap_or(1) as usize;
     let alt_str = inputs[4].str()?.get(0).unwrap_or("two-sided");
     let var_est_str = inputs[5].str()?.get(0).unwrap_or("acf");
 
@@ -69,10 +69,10 @@ fn pl_diebold_mariano(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_permutation_t_test` expression shim.
 pub fn permutation_t_test_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let x = inputs[0].f64()?;
-    let y = inputs[1].f64()?;
+    let x = super::inputs::as_f64(&inputs[0])?;
+    let y = super::inputs::as_f64(&inputs[1])?;
     let alt_str = inputs[2].str()?.get(0).unwrap_or("two-sided");
-    let n_perm = inputs[3].u32()?.get(0).unwrap_or(999) as usize;
+    let n_perm = super::inputs::as_u32(&inputs[3])?.get(0).unwrap_or(999) as usize;
     let seed = inputs[4].u64()?.get(0);
 
     let x_vec: Vec<f64> = x.into_no_null_iter().collect();
@@ -95,9 +95,9 @@ fn pl_permutation_t_test(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_clark_west` expression shim.
 pub fn clark_west_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let e1 = inputs[0].f64()?;
-    let e2 = inputs[1].f64()?;
-    let h = inputs[2].u32()?.get(0).unwrap_or(1) as usize;
+    let e1 = super::inputs::as_f64(&inputs[0])?;
+    let e2 = super::inputs::as_f64(&inputs[1])?;
+    let h = super::inputs::as_u32(&inputs[2])?.get(0).unwrap_or(1) as usize;
 
     let e1_vec: Vec<f64> = e1.into_no_null_iter().collect();
     let e2_vec: Vec<f64> = e2.into_no_null_iter().collect();
@@ -129,9 +129,9 @@ fn spa_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_spa_test` expression shim.
 pub fn spa_test_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let benchmark = inputs[0].f64()?;
-    let n_bootstrap = inputs[1].u32()?.get(0).unwrap_or(999) as usize;
-    let block_length = inputs[2].f64()?.get(0).unwrap_or(5.0);
+    let benchmark = super::inputs::as_f64(&inputs[0])?;
+    let n_bootstrap = super::inputs::as_u32(&inputs[1])?.get(0).unwrap_or(999) as usize;
+    let block_length = super::inputs::as_f64(&inputs[2])?.get(0).unwrap_or(5.0);
     let seed = inputs[3].u64()?.get(0);
 
     let benchmark_vec: Vec<f64> = benchmark.into_no_null_iter().collect();
@@ -139,7 +139,7 @@ pub fn spa_test_fit(inputs: &[Series]) -> PolarsResult<Series> {
     // Remaining inputs are model losses
     let model_losses: Vec<Vec<f64>> = inputs[4..]
         .iter()
-        .map(|s| s.f64().map(|ca| ca.into_no_null_iter().collect()))
+        .map(|s| super::inputs::as_f64(s).map(|ca| ca.into_no_null_iter().collect()))
         .collect::<PolarsResult<Vec<_>>>()?;
 
     match spa_test(
@@ -204,10 +204,10 @@ fn mcs_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_model_confidence_set` expression shim.
 pub fn model_confidence_set_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let alpha = inputs[0].f64()?.get(0).unwrap_or(0.1);
+    let alpha = super::inputs::as_f64(&inputs[0])?.get(0).unwrap_or(0.1);
     let stat_str = inputs[1].str()?.get(0).unwrap_or("range");
-    let n_bootstrap = inputs[2].u32()?.get(0).unwrap_or(999) as usize;
-    let block_length = inputs[3].f64()?.get(0).unwrap_or(5.0);
+    let n_bootstrap = super::inputs::as_u32(&inputs[2])?.get(0).unwrap_or(999) as usize;
+    let block_length = super::inputs::as_f64(&inputs[3])?.get(0).unwrap_or(5.0);
     let seed = inputs[4].u64()?.get(0);
 
     let statistic = match stat_str.to_lowercase().as_str() {
@@ -218,7 +218,7 @@ pub fn model_confidence_set_fit(inputs: &[Series]) -> PolarsResult<Series> {
     // Remaining inputs are model losses
     let model_losses: Vec<Vec<f64>> = inputs[5..]
         .iter()
-        .map(|s| s.f64().map(|ca| ca.into_no_null_iter().collect()))
+        .map(|s| super::inputs::as_f64(s).map(|ca| ca.into_no_null_iter().collect()))
         .collect::<PolarsResult<Vec<_>>>()?;
 
     match model_confidence_set(
@@ -267,9 +267,9 @@ fn pl_model_confidence_set(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_mspe_adjusted` expression shim.
 pub fn mspe_adjusted_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let benchmark = inputs[0].f64()?;
-    let n_bootstrap = inputs[1].u32()?.get(0).unwrap_or(999) as usize;
-    let block_length = inputs[2].f64()?.get(0).unwrap_or(5.0);
+    let benchmark = super::inputs::as_f64(&inputs[0])?;
+    let n_bootstrap = super::inputs::as_u32(&inputs[1])?.get(0).unwrap_or(999) as usize;
+    let block_length = super::inputs::as_f64(&inputs[2])?.get(0).unwrap_or(5.0);
     let seed = inputs[3].u64()?.get(0);
 
     let benchmark_vec: Vec<f64> = benchmark.into_no_null_iter().collect();
@@ -277,7 +277,7 @@ pub fn mspe_adjusted_fit(inputs: &[Series]) -> PolarsResult<Series> {
     // Remaining inputs are model errors
     let model_errors: Vec<Vec<f64>> = inputs[4..]
         .iter()
-        .map(|s| s.f64().map(|ca| ca.into_no_null_iter().collect()))
+        .map(|s| super::inputs::as_f64(s).map(|ca| ca.into_no_null_iter().collect()))
         .collect::<PolarsResult<Vec<_>>>()?;
 
     match mspe_adjusted_spa(

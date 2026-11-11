@@ -12,9 +12,9 @@ use crate::expressions::output_types::stats_output_dtype;
 
 /// Public Rust-callable variant. Same input contract as the `pl_energy_distance` expression shim.
 pub fn energy_distance_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let x = inputs[0].f64()?;
-    let y = inputs[1].f64()?;
-    let n_perm = inputs[2].u32()?.get(0).unwrap_or(999) as usize;
+    let x = super::inputs::as_f64(&inputs[0])?;
+    let y = super::inputs::as_f64(&inputs[1])?;
+    let n_perm = super::inputs::as_u32(&inputs[2])?.get(0).unwrap_or(999) as usize;
     let seed = inputs[3].u64()?.get(0);
 
     let x_vec: Vec<f64> = x.into_no_null_iter().collect();
@@ -35,9 +35,9 @@ fn pl_energy_distance(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_mmd_test` expression shim.
 pub fn mmd_test_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let x = inputs[0].f64()?;
-    let y = inputs[1].f64()?;
-    let n_perm = inputs[2].u32()?.get(0).unwrap_or(999) as usize;
+    let x = super::inputs::as_f64(&inputs[0])?;
+    let y = super::inputs::as_f64(&inputs[1])?;
+    let n_perm = super::inputs::as_u32(&inputs[2])?.get(0).unwrap_or(999) as usize;
     let seed = inputs[3].u64()?.get(0);
 
     let x_vec: Vec<f64> = x.into_no_null_iter().collect();
@@ -68,15 +68,17 @@ fn pl_mmd_test(inputs: &[Series]) -> PolarsResult<Series> {
 ///
 /// Each observation in X and Y is represented as a row across the d dimension columns.
 pub fn energy_distance_nd_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let d = inputs[0].u32()?.get(0).unwrap_or(1) as usize;
-    let n_perm = inputs[1].u32()?.get(0).unwrap_or(999) as usize;
+    let d = super::inputs::as_u32(&inputs[0])?.get(0).unwrap_or(1) as usize;
+    let n_perm = super::inputs::as_u32(&inputs[1])?.get(0).unwrap_or(999) as usize;
     let seed = inputs[2].u64()?.get(0);
 
     // Collect X feature columns: inputs[3..3+d], each column is dimension j
     let mut x_cols: Vec<Vec<f64>> = Vec::with_capacity(d);
     for j in 0..d {
         if let Some(col_series) = inputs.get(3 + j) {
-            let col: Vec<f64> = col_series.f64()?.into_no_null_iter().collect();
+            let col: Vec<f64> = super::inputs::as_f64(col_series)?
+                .into_no_null_iter()
+                .collect();
             x_cols.push(col);
         }
     }
@@ -85,7 +87,9 @@ pub fn energy_distance_nd_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let mut y_cols: Vec<Vec<f64>> = Vec::with_capacity(d);
     for j in 0..d {
         if let Some(col_series) = inputs.get(3 + d + j) {
-            let col: Vec<f64> = col_series.f64()?.into_no_null_iter().collect();
+            let col: Vec<f64> = super::inputs::as_f64(col_series)?
+                .into_no_null_iter()
+                .collect();
             y_cols.push(col);
         }
     }

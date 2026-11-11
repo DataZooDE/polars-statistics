@@ -62,9 +62,9 @@ fn correlation_error_output(name: &str) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_pearson` expression shim.
 pub fn pearson_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let x = inputs[0].f64()?;
-    let y = inputs[1].f64()?;
-    let conf_level = inputs[2].f64()?.get(0);
+    let x = super::inputs::as_f64(&inputs[0])?;
+    let y = super::inputs::as_f64(&inputs[1])?;
+    let conf_level = super::inputs::as_f64(&inputs[2])?.get(0);
 
     let x_vec: Vec<f64> = x.into_no_null_iter().collect();
     let y_vec: Vec<f64> = y.into_no_null_iter().collect();
@@ -84,9 +84,9 @@ fn pl_pearson(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_spearman` expression shim.
 pub fn spearman_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let x = inputs[0].f64()?;
-    let y = inputs[1].f64()?;
-    let conf_level = inputs[2].f64()?.get(0);
+    let x = super::inputs::as_f64(&inputs[0])?;
+    let y = super::inputs::as_f64(&inputs[1])?;
+    let conf_level = super::inputs::as_f64(&inputs[2])?.get(0);
 
     let x_vec: Vec<f64> = x.into_no_null_iter().collect();
     let y_vec: Vec<f64> = y.into_no_null_iter().collect();
@@ -106,8 +106,8 @@ fn pl_spearman(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_kendall` expression shim.
 pub fn kendall_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let x = inputs[0].f64()?;
-    let y = inputs[1].f64()?;
+    let x = super::inputs::as_f64(&inputs[0])?;
+    let y = super::inputs::as_f64(&inputs[1])?;
     let variant_str = inputs[2].str()?.get(0).unwrap_or("b");
 
     let x_vec: Vec<f64> = x.into_no_null_iter().collect();
@@ -134,9 +134,9 @@ fn pl_kendall(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_distance_cor` expression shim.
 pub fn distance_cor_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let x = inputs[0].f64()?;
-    let y = inputs[1].f64()?;
-    let n_permutations = inputs[2].u32()?.get(0).unwrap_or(999) as usize;
+    let x = super::inputs::as_f64(&inputs[0])?;
+    let y = super::inputs::as_f64(&inputs[1])?;
+    let n_permutations = super::inputs::as_u32(&inputs[2])?.get(0).unwrap_or(999) as usize;
     let seed = inputs[3].u64()?.get(0);
 
     let x_vec: Vec<f64> = x.into_no_null_iter().collect();
@@ -171,10 +171,10 @@ fn pl_distance_cor(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_partial_cor` expression shim.
 pub fn partial_cor_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let x = inputs[0].f64()?;
-    let y = inputs[1].f64()?;
+    let x = super::inputs::as_f64(&inputs[0])?;
+    let y = super::inputs::as_f64(&inputs[1])?;
     // Covariates are passed as separate series after x and y
-    let n_covariates = inputs[2].u32()?.get(0).unwrap_or(1) as usize;
+    let n_covariates = super::inputs::as_u32(&inputs[2])?.get(0).unwrap_or(1) as usize;
 
     let x_vec: Vec<f64> = x.into_no_null_iter().collect();
     let y_vec: Vec<f64> = y.into_no_null_iter().collect();
@@ -183,9 +183,8 @@ pub fn partial_cor_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let mut covariates: Vec<Vec<f64>> = Vec::new();
     for i in 0..n_covariates {
         if let Some(cov_series) = inputs.get(3 + i) {
-            if let Ok(cov) = cov_series.f64() {
-                covariates.push(cov.into_no_null_iter().collect());
-            }
+            let cov = super::inputs::as_f64(cov_series)?;
+            covariates.push(cov.into_no_null_iter().collect());
         }
     }
 
@@ -225,9 +224,9 @@ fn pl_partial_cor(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_semi_partial_cor` expression shim.
 pub fn semi_partial_cor_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let x = inputs[0].f64()?;
-    let y = inputs[1].f64()?;
-    let n_covariates = inputs[2].u32()?.get(0).unwrap_or(1) as usize;
+    let x = super::inputs::as_f64(&inputs[0])?;
+    let y = super::inputs::as_f64(&inputs[1])?;
+    let n_covariates = super::inputs::as_u32(&inputs[2])?.get(0).unwrap_or(1) as usize;
 
     let x_vec: Vec<f64> = x.into_no_null_iter().collect();
     let y_vec: Vec<f64> = y.into_no_null_iter().collect();
@@ -235,9 +234,8 @@ pub fn semi_partial_cor_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let mut covariates: Vec<Vec<f64>> = Vec::new();
     for i in 0..n_covariates {
         if let Some(cov_series) = inputs.get(3 + i) {
-            if let Ok(cov) = cov_series.f64() {
-                covariates.push(cov.into_no_null_iter().collect());
-            }
+            let cov = super::inputs::as_f64(cov_series)?;
+            covariates.push(cov.into_no_null_iter().collect());
         }
     }
 
@@ -326,7 +324,7 @@ fn icc_error_output() -> PolarsResult<Series> {
 /// - `inputs[1]`: String literal — ICC type ("icc1", "icc2", "icc3", "icc1k", "icc2k", "icc3k")
 /// - `inputs[2..2+n_raters]`: one f64 Series per rater column (rows = subjects)
 pub fn icc_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let n_raters = inputs[0].u32()?.get(0).unwrap_or(0) as usize;
+    let n_raters = super::inputs::as_u32(&inputs[0])?.get(0).unwrap_or(0) as usize;
     let icc_type_str = inputs[1].str()?.get(0).unwrap_or("icc2");
     let icc_type = parse_icc_type(icc_type_str);
 
@@ -334,7 +332,9 @@ pub fn icc_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let mut matrix: Vec<Vec<f64>> = Vec::new();
     for i in 0..n_raters {
         if let Some(rater_series) = inputs.get(2 + i) {
-            let col: Vec<f64> = rater_series.f64()?.into_no_null_iter().collect();
+            let col: Vec<f64> = super::inputs::as_f64(rater_series)?
+                .into_no_null_iter()
+                .collect();
             matrix.push(col);
         }
     }

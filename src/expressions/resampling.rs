@@ -57,10 +57,10 @@ fn std_of(s: &[f64]) -> f64 {
 /// circular block bootstrap with that block length). `inputs[4]`: seed (u64,
 /// nullable).
 pub fn bootstrap_mean_ci_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let x = inputs[0].f64()?;
-    let n_bootstrap = inputs[1].u32()?.get(0).unwrap_or(1000) as usize;
-    let conf_level = inputs[2].f64()?.get(0).unwrap_or(0.95);
-    let block_length = inputs[3].u32()?.get(0).unwrap_or(0) as usize;
+    let x = super::inputs::as_f64(&inputs[0])?;
+    let n_bootstrap = super::inputs::as_u32(&inputs[1])?.get(0).unwrap_or(1000) as usize;
+    let conf_level = super::inputs::as_f64(&inputs[2])?.get(0).unwrap_or(0.95);
+    let block_length = super::inputs::as_u32(&inputs[3])?.get(0).unwrap_or(0) as usize;
     let seed = inputs[4].u64()?.get(0);
 
     let x_vec: Vec<f64> = x.into_no_null_iter().collect();
@@ -104,10 +104,10 @@ fn pl_bootstrap_mean_ci(inputs: &[Series]) -> PolarsResult<Series> {
 /// (u32, default 1000). `inputs[3]`: conf_level (f64, default 0.95).
 /// `inputs[4]`: seed (u64, nullable).
 pub fn bootstrap_ci_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let x = inputs[0].f64()?;
+    let x = super::inputs::as_f64(&inputs[0])?;
     let statistic_str = inputs[1].str()?.get(0).unwrap_or("mean");
-    let n_bootstrap = inputs[2].u32()?.get(0).unwrap_or(1000) as usize;
-    let conf_level = inputs[3].f64()?.get(0).unwrap_or(0.95);
+    let n_bootstrap = super::inputs::as_u32(&inputs[2])?.get(0).unwrap_or(1000) as usize;
+    let conf_level = super::inputs::as_f64(&inputs[3])?.get(0).unwrap_or(0.95);
     let seed = inputs[4].u64()?.get(0);
 
     let x_vec: Vec<f64> = x.into_no_null_iter().collect();

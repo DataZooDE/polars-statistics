@@ -148,9 +148,8 @@ pub(crate) fn aft_inputs(inputs: &[Series]) -> Result<(Mat<f64>, Col<f64>, Vec<b
     let event_series = &inputs[1];
     let n = time_series.len();
 
-    let time_ca = time_series
-        .f64()
-        .map_err(|e| format!("aft: time column must be Float64: {e}"))?;
+    let time_ca = super::inputs::as_f64(time_series)
+        .map_err(|e| format!("aft: time column must be numeric: {e}"))?;
 
     let mut row_valid = vec![true; n];
     let mut event_vals = vec![false; n];
@@ -208,9 +207,8 @@ pub(crate) fn aft_inputs(inputs: &[Series]) -> Result<(Mat<f64>, Col<f64>, Vec<b
     let p = inputs.len() - 2;
     let x_cols: Vec<Vec<f64>> = (2..inputs.len())
         .map(|i| {
-            let ca = inputs[i]
-                .f64()
-                .map_err(|e| format!("aft: feature column must be Float64: {e}"))?;
+            let ca = super::inputs::as_f64(&inputs[i])
+                .map_err(|e| format!("aft: feature column must be numeric: {e}"))?;
             Ok((0..n).map(|r| ca.get(r).unwrap_or(f64::NAN)).collect())
         })
         .collect::<Result<_, String>>()?;
@@ -595,7 +593,7 @@ fn aft_predict_impl(
         }
     };
 
-    let time_ca = inputs[0].f64()?;
+    let time_ca = super::inputs::as_f64(&inputs[0])?;
     let masked_time: Vec<Option<f64>> = (0..n_rows)
         .map(|i| {
             if event_null_mask[i] {

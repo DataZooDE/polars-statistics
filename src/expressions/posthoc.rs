@@ -38,7 +38,7 @@ fn parse_p_adjust_method(s: &str) -> PolarsResult<PAdjustMethod> {
 /// `NA` semantics: kept as NaN, excluded from the comparison count `n`) and
 /// are null again in the output; non-null NaN inputs stay NaN in the output.
 pub fn p_adjust_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let p_ca = inputs[0].f64()?;
+    let p_ca = super::inputs::as_f64(&inputs[0])?;
     let method_str = inputs[1].str()?.get(0).unwrap_or("holm");
     let method = parse_p_adjust_method(method_str)?;
 
@@ -73,10 +73,10 @@ fn pl_p_adjust(inputs: &[Series]) -> PolarsResult<Series> {
 fn elementwise4(inputs: &[Series], f: impl Fn(f64, f64, f64, f64) -> f64) -> PolarsResult<Series> {
     let name = inputs[0].name().clone();
     let cols = [
-        inputs[0].f64()?,
-        inputs[1].f64()?,
-        inputs[2].f64()?,
-        inputs[3].f64()?,
+        super::inputs::as_f64(&inputs[0])?,
+        super::inputs::as_f64(&inputs[1])?,
+        super::inputs::as_f64(&inputs[2])?,
+        super::inputs::as_f64(&inputs[3])?,
     ];
     let n = cols.iter().map(|c| c.len()).max().unwrap_or(0);
     for c in &cols {
@@ -95,10 +95,10 @@ fn elementwise4(inputs: &[Series], f: impl Fn(f64, f64, f64, f64) -> f64) -> Pol
     };
     let out: Vec<Option<f64>> = (0..n)
         .map(|i| {
-            let a = get(cols[0], i)?;
-            let b = get(cols[1], i)?;
-            let c = get(cols[2], i)?;
-            let d = get(cols[3], i)?;
+            let a = get(&cols[0], i)?;
+            let b = get(&cols[1], i)?;
+            let c = get(&cols[2], i)?;
+            let d = get(&cols[3], i)?;
             Some(f(a, b, c, d))
         })
         .collect();
@@ -320,7 +320,7 @@ fn from_pairwise_result(result: &PairwiseResult<String>) -> PolarsResult<Series>
 /// rejects the whole call and silently empties every pairwise comparison,
 /// not just the ones touching the offending row.
 fn long_format(values: &Series, groups: &Series) -> PolarsResult<(Vec<f64>, Vec<String>)> {
-    let v_ca = values.f64()?;
+    let v_ca = super::inputs::as_f64(values)?;
     let g_ca = groups.str()?;
     let mut out_values = Vec::new();
     let mut out_groups = Vec::new();
@@ -346,7 +346,7 @@ fn long_format(values: &Series, groups: &Series) -> PolarsResult<(Vec<f64>, Vec<
 /// dropped first (see [`long_format`]). Fewer than 2 usable groups, or an
 /// invalid `conf_level`, give an empty list — never an exception.
 pub fn tukey_hsd_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let conf_level = inputs[2].f64()?.get(0).unwrap_or(0.95);
+    let conf_level = super::inputs::as_f64(&inputs[2])?.get(0).unwrap_or(0.95);
     let (values, groups) = long_format(&inputs[0], &inputs[1])?;
     match tukey_hsd(&values, &groups, conf_level) {
         Ok(result) => from_pairwise_result(&result),

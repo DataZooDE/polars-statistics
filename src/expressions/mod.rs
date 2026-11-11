@@ -8,6 +8,7 @@ mod categorical;
 mod correlation;
 mod distributional;
 mod forecast;
+mod inputs;
 mod modern;
 mod nonparametric;
 mod output_types;
