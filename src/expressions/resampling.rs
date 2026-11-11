@@ -11,11 +11,14 @@
 //! same seed.
 
 use polars::prelude::*;
+#[cfg(feature = "python")]
 use pyo3_polars::derive::polars_expr;
 
 use anofox_statistics::{bootstrap_ci, bootstrap_mean_ci};
 
-use crate::expressions::output_types::{bootstrap_ci_output, bootstrap_ci_output_dtype};
+use crate::expressions::output_types::bootstrap_ci_output;
+#[cfg(feature = "python")]
+use crate::expressions::output_types::bootstrap_ci_output_dtype;
 
 /// Sample median via `f64::total_cmp` sort (NaN-safe ordering); middle value for
 /// odd length, mean of the two middle values for even length.
@@ -86,6 +89,7 @@ pub fn bootstrap_mean_ci_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Percentile bootstrap confidence interval for the mean, with IID / stationary /
 /// circular-block resampling selected via `block_length`.
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=bootstrap_ci_output_dtype)]
 fn pl_bootstrap_mean_ci(inputs: &[Series]) -> PolarsResult<Series> {
     bootstrap_mean_ci_fit(inputs)
@@ -159,6 +163,7 @@ pub fn bootstrap_ci_fit(inputs: &[Series]) -> PolarsResult<Series> {
 /// closure and cannot accept an arbitrary Python callable across the FFI
 /// boundary without a GIL-reentrancy hazard inside Polars' multithreaded
 /// group_by.
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=bootstrap_ci_output_dtype)]
 fn pl_bootstrap_ci(inputs: &[Series]) -> PolarsResult<Series> {
     bootstrap_ci_fit(inputs)

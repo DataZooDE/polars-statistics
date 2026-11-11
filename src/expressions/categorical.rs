@@ -1,6 +1,7 @@
 //! Categorical statistical test expressions.
 
 use polars::prelude::*;
+#[cfg(feature = "python")]
 use pyo3_polars::derive::polars_expr;
 
 use anofox_statistics::{
@@ -10,9 +11,11 @@ use anofox_statistics::{
     Alternative,
 };
 
+use crate::expressions::output_types::fisher_output;
+#[cfg(feature = "python")]
 use crate::expressions::output_types::{
-    association_output_dtype, chisq_output_dtype, fisher_output, fisher_output_dtype,
-    proportion_output_dtype, stats_output_dtype,
+    association_output_dtype, chisq_output_dtype, fisher_output_dtype, proportion_output_dtype,
+    stats_output_dtype,
 };
 
 /// Read a trailing `conf_level` scalar input at `idx`, defaulting to 0.95 when
@@ -144,6 +147,7 @@ pub fn binom_test_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Exact binomial test
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=proportion_output_dtype)]
 fn pl_binom_test(inputs: &[Series]) -> PolarsResult<Series> {
     binom_test_fit(inputs)
@@ -189,6 +193,7 @@ pub fn prop_test_one_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// One-sample proportion test
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=proportion_output_dtype)]
 fn pl_prop_test_one(inputs: &[Series]) -> PolarsResult<Series> {
     prop_test_one_fit(inputs)
@@ -248,6 +253,7 @@ pub fn prop_test_two_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Two-sample proportion test
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=proportion_output_dtype)]
 fn pl_prop_test_two(inputs: &[Series]) -> PolarsResult<Series> {
     prop_test_two_fit(inputs)
@@ -294,6 +300,7 @@ pub fn chisq_test_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Chi-square test for contingency table
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=chisq_output_dtype)]
 fn pl_chisq_test(inputs: &[Series]) -> PolarsResult<Series> {
     chisq_test_fit(inputs)
@@ -330,6 +337,7 @@ pub fn chisq_goodness_of_fit_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Chi-square goodness-of-fit test
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=chisq_output_dtype)]
 fn pl_chisq_goodness_of_fit(inputs: &[Series]) -> PolarsResult<Series> {
     chisq_goodness_of_fit_fit(inputs)
@@ -373,6 +381,7 @@ pub fn g_test_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// G-test (likelihood ratio test)
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=chisq_output_dtype)]
 fn pl_g_test(inputs: &[Series]) -> PolarsResult<Series> {
     g_test_fit(inputs)
@@ -411,6 +420,7 @@ pub fn fisher_exact_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Fisher's exact test for 2x2 tables
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=fisher_output_dtype)]
 fn pl_fisher_exact(inputs: &[Series]) -> PolarsResult<Series> {
     fisher_exact_fit(inputs)
@@ -459,6 +469,7 @@ pub fn fisher_exact_conditional_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Fisher's exact test for 2x2 tables with R `fisher.test` semantics (conditional
 /// maximum-likelihood odds ratio and exact conditional confidence interval).
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=fisher_output_dtype)]
 fn pl_fisher_exact_conditional(inputs: &[Series]) -> PolarsResult<Series> {
     fisher_exact_conditional_fit(inputs)
@@ -484,6 +495,7 @@ pub fn mcnemar_test_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// McNemar's test for paired proportions
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=chisq_output_dtype)]
 fn pl_mcnemar_test(inputs: &[Series]) -> PolarsResult<Series> {
     mcnemar_test_fit(inputs)
@@ -526,6 +538,7 @@ pub fn mcnemar_exact_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// McNemar's exact test
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=stats_output_dtype)]
 fn pl_mcnemar_exact(inputs: &[Series]) -> PolarsResult<Series> {
     mcnemar_exact_fit(inputs)
@@ -556,6 +569,7 @@ pub fn cohen_kappa_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Cohen's Kappa for inter-rater agreement
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=association_output_dtype)]
 fn pl_cohen_kappa(inputs: &[Series]) -> PolarsResult<Series> {
     cohen_kappa_fit(inputs)
@@ -595,6 +609,7 @@ pub fn cramers_v_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Cramér's V for association strength
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=association_output_dtype)]
 fn pl_cramers_v(inputs: &[Series]) -> PolarsResult<Series> {
     cramers_v_fit(inputs)
@@ -621,6 +636,7 @@ pub fn phi_coefficient_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Phi coefficient for 2x2 tables
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=association_output_dtype)]
 fn pl_phi_coefficient(inputs: &[Series]) -> PolarsResult<Series> {
     phi_coefficient_fit(inputs)
@@ -660,6 +676,7 @@ pub fn contingency_coef_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Contingency coefficient
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=association_output_dtype)]
 fn pl_contingency_coef(inputs: &[Series]) -> PolarsResult<Series> {
     contingency_coef_fit(inputs)

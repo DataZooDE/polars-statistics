@@ -50,6 +50,23 @@ jobs:
       - name: Clippy
         run: cargo clippy --all-targets -- -D warnings
 
+      # GH-51: the rlib path (`default-features = false`) must compile
+      # without pyo3; this is the no-default-features counterpart to the
+      # Clippy step above and would have caught the pyo3-polars regression.
+      - name: Clippy (rlib, no-default-features)
+        run: cargo clippy --no-default-features --lib -- -D warnings
+
+      # GH-51: Clippy alone cannot catch pyo3-polars being made non-optional
+      # again, since the gated shim code would just compile out; this is a
+      # direct guard on the dependency tree itself.
+      - name: Assert pyo3 absent from rlib dependency tree
+        run: |
+          count=$(cargo tree --no-default-features -e normal | grep -c 'pyo3' || true)
+          if [ "$count" -ne 0 ]; then
+            echo "::error::GH-51 regression: pyo3 reappeared in the no-default-features dependency tree ($count matches)"
+            exit 1
+          fi
+
       # WR-03: `tests/rust_api.rs` cannot link under the default `python`
       # feature set — pyo3's `extension-module` feature (pulled in by the
       # default `python` feature) deliberately omits linking against

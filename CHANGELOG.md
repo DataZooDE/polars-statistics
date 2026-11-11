@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Rust rlib builds no longer pull in pyo3. `pyo3-polars` is now optional and
+  enabled only by the `python` feature, and every `#[polars_expr]` plugin
+  shim and its shim-only output-dtype helpers compile only with that
+  feature, so `default-features = false` consumers get no
+  pyo3/pyo3-ffi/pyo3-polars. No public Rust API was removed. CI now runs
+  `cargo clippy --no-default-features --lib -- -D warnings` and asserts
+  pyo3 is absent from the no-default dependency tree. (#51)
+- The Rust dependency instructions (README, docs, crate docs) now use a git
+  dependency pinned to a release tag, since the crate is not on crates.io. (#51)
+
 ## [0.8.0] - 2026-10-16
 
 polars-statistics now ships a Claude Code plugin with five Agent Skills,

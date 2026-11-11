@@ -3,8 +3,17 @@
 //! This crate provides Polars expressions wrapping `anofox-regression` and
 //! `anofox-statistics`. It is consumable two ways:
 //!
-//! - As an **rlib** by other Rust crates: `polars-statistics = "0.4"` and
-//!   `use polars_statistics::expressions::*;` — no pyo3 linkage, no `python` feature.
+//! - As an **rlib** by other Rust crates: not published on crates.io, so add it
+//!   as a git dependency pinned to a release tag:
+//!
+//!   ```toml
+//!   [dependencies.polars-statistics]
+//!   git = "https://github.com/DataZooDE/polars-statistics"
+//!   tag = "v0.9.0"
+//!   default-features = false
+//!   ```
+//!
+//!   Then `use polars_statistics::expressions::*;` — no pyo3 linkage, no `python` feature.
 //! - As a **cdylib** Python extension: built by `maturin` with the default
 //!   `python` feature, producing the `_polars_statistics` module.
 

@@ -4,6 +4,7 @@
 
 use faer::{Col, Mat};
 use polars::prelude::*;
+#[cfg(feature = "python")]
 use pyo3_polars::derive::polars_expr;
 use serde::Deserialize;
 
@@ -59,6 +60,7 @@ fn parse_hc_type(s: Option<&str>) -> Option<HcType> {
 // ============================================================================
 
 /// Output type for linear regression models (OLS, Ridge, ElasticNet, WLS, RLS, BLS)
+#[cfg(feature = "python")]
 fn linear_regression_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
     let fields = vec![
         Field::new("intercept".into(), DataType::Float64),
@@ -80,6 +82,7 @@ fn linear_regression_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field
 }
 
 /// Output type for GLM models (Logistic, Poisson, NegBin, Tweedie, Probit, Cloglog)
+#[cfg(feature = "python")]
 fn glm_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
     let fields = vec![
         Field::new("intercept".into(), DataType::Float64),
@@ -95,6 +98,7 @@ fn glm_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
 }
 
 /// Output type for Quantile regression
+#[cfg(feature = "python")]
 fn quantile_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
     let fields = vec![
         Field::new("intercept".into(), DataType::Float64),
@@ -111,6 +115,7 @@ fn quantile_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
 }
 
 /// Output type for Isotonic regression
+#[cfg(feature = "python")]
 fn isotonic_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
     let fields = vec![
         Field::new("r_squared".into(), DataType::Float64),
@@ -125,6 +130,7 @@ fn isotonic_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
 }
 
 /// Output type for condition number diagnostics
+#[cfg(feature = "python")]
 fn condition_number_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
     let fields = vec![
         Field::new("condition_number".into(), DataType::Float64),
@@ -144,6 +150,7 @@ fn condition_number_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field>
 }
 
 /// Output type for separation check diagnostics
+#[cfg(feature = "python")]
 fn separation_check_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
     let fields = vec![
         Field::new("has_separation".into(), DataType::Boolean),
@@ -161,6 +168,7 @@ fn separation_check_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field>
 }
 
 /// Output type for variance inflation factor (VIF) diagnostics.
+#[cfg(feature = "python")]
 fn vif_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
     let fields = vec![
         Field::new("terms".into(), DataType::List(Box::new(DataType::String))),
@@ -171,6 +179,7 @@ fn vif_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
 }
 
 /// Output type for leverage (hat matrix diagonal) diagnostics.
+#[cfg(feature = "python")]
 fn leverage_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
     let fields = vec![
         Field::new(
@@ -183,6 +192,7 @@ fn leverage_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
 }
 
 /// Output type for Cook's distance diagnostics.
+#[cfg(feature = "python")]
 fn cooks_distance_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
     let fields = vec![
         Field::new(
@@ -199,6 +209,7 @@ fn cooks_distance_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
 
 /// Output type for per-row residual diagnostics (standardized / studentized /
 /// externally studentized).
+#[cfg(feature = "python")]
 fn residual_diag_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
     let fields = vec![
         Field::new(
@@ -214,6 +225,7 @@ fn residual_diag_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
 }
 
 /// Output type for the residual outlier mask: boolean per row + count.
+#[cfg(feature = "python")]
 fn outlier_mask_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
     let fields = vec![
         Field::new(
@@ -227,6 +239,7 @@ fn outlier_mask_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
 }
 
 /// Output type for DFFITS diagnostics (one value per row).
+#[cfg(feature = "python")]
 fn dffits_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
     let fields = vec![
         Field::new("dffits".into(), DataType::List(Box::new(DataType::Float64))),
@@ -236,6 +249,7 @@ fn dffits_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
 }
 
 /// Output type for influence mask diagnostics: is_influential per row + counts.
+#[cfg(feature = "python")]
 fn influence_mask_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
     let fields = vec![
         Field::new(
@@ -249,6 +263,7 @@ fn influence_mask_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
 }
 
 /// Output type for VIF mask diagnostics: per-feature boolean mask + counts.
+#[cfg(feature = "python")]
 fn vif_mask_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
     let fields = vec![
         Field::new(
@@ -262,6 +277,7 @@ fn vif_mask_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
 }
 
 /// Output type for generalized VIF (GVIF) diagnostics: one value per group.
+#[cfg(feature = "python")]
 fn gvif_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
     let fields = vec![
         Field::new("gvif".into(), DataType::List(Box::new(DataType::Float64))),
@@ -271,6 +287,7 @@ fn gvif_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
 }
 
 /// Output type for Pearson chi-squared goodness-of-fit statistic.
+#[cfg(feature = "python")]
 fn chi_squared_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
     let fields = vec![
         Field::new("chi_squared".into(), DataType::Float64),
@@ -280,6 +297,7 @@ fn chi_squared_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
     Ok(Field::new("chi_squared".into(), DataType::Struct(fields)))
 }
 
+#[cfg(feature = "python")]
 fn dispersion_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
     let fields = vec![Field::new("dispersion".into(), DataType::Float64)];
     Ok(Field::new("dispersion".into(), DataType::Struct(fields)))
@@ -481,6 +499,7 @@ fn col_to_vec(col: &Col<f64>) -> Vec<f64> {
 }
 
 /// Output type for coefficient summary (tidy format)
+#[cfg(feature = "python")]
 fn summary_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
     let fields = vec![
         Field::new("term".into(), DataType::String),
@@ -613,6 +632,7 @@ pub fn ols_fit_with(inputs: &[Series], kwargs: &LinearAliasKwargs) -> PolarsResu
 /// OLS regression expression.
 /// inputs[0] = y, inputs[1] = with_intercept (bool), inputs[2] = solve_method (string or null), inputs[3..] = x columns
 /// kwargs: `alias_tolerance` (named, additive — see [`LinearAliasKwargs`]).
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=linear_regression_output_dtype)]
 fn pl_ols(inputs: &[Series], kwargs: LinearAliasKwargs) -> PolarsResult<Series> {
     ols_fit_with(inputs, &kwargs)
@@ -662,6 +682,7 @@ pub fn ridge_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Ridge regression expression.
 /// inputs[0] = y, inputs[1] = lambda, inputs[2] = with_intercept, inputs[3] = solve_method (string or null), inputs[4..] = x columns
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=linear_regression_output_dtype)]
 fn pl_ridge(inputs: &[Series]) -> PolarsResult<Series> {
     ridge_fit(inputs)
@@ -707,6 +728,7 @@ pub fn elastic_net_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Elastic Net regression expression.
 /// inputs[0] = y, inputs[1] = lambda, inputs[2] = alpha (L1 ratio), inputs[3] = with_intercept, inputs[4..] = x columns
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=linear_regression_output_dtype)]
 fn pl_elastic_net(inputs: &[Series]) -> PolarsResult<Series> {
     elastic_net_fit(inputs)
@@ -767,6 +789,7 @@ pub fn wls_fit_with(inputs: &[Series], kwargs: &LinearAliasKwargs) -> PolarsResu
 /// WLS regression expression.
 /// inputs[0] = y, inputs[1] = weights, inputs[2] = with_intercept, inputs[3] = solve_method (string or null), inputs[4..] = x columns
 /// kwargs: `alias_tolerance` (named, additive — see [`LinearAliasKwargs`]).
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=linear_regression_output_dtype)]
 fn pl_wls(inputs: &[Series], kwargs: LinearAliasKwargs) -> PolarsResult<Series> {
     wls_fit_with(inputs, &kwargs)
@@ -853,6 +876,7 @@ pub fn rls_fit_with(inputs: &[Series], kwargs: &RlsKwargs) -> PolarsResult<Serie
 /// RLS regression expression.
 /// inputs[0] = y, inputs[1] = forgetting_factor, inputs[2] = with_intercept, inputs[3..] = x columns
 /// kwargs: `initial_p_diagonal` (named, additive — see [`RlsKwargs`]).
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=linear_regression_output_dtype)]
 fn pl_rls(inputs: &[Series], kwargs: RlsKwargs) -> PolarsResult<Series> {
     rls_fit_with(inputs, &kwargs)
@@ -903,6 +927,7 @@ pub fn bls_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// BLS (Bounded Least Squares) regression expression.
 /// inputs[0] = y, inputs[1] = lower_bound, inputs[2] = upper_bound, inputs[3] = with_intercept, inputs[4..] = x columns
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=linear_regression_output_dtype)]
 fn pl_bls(inputs: &[Series]) -> PolarsResult<Series> {
     bls_fit(inputs)
@@ -955,6 +980,7 @@ pub fn huber_fit(inputs: &[Series]) -> PolarsResult<Series> {
 /// Huber M-estimator robust regression expression.
 /// inputs[0] = y, inputs[1] = epsilon, inputs[2] = alpha, inputs[3] = with_intercept,
 /// inputs[4] = max_iter (u32), inputs[5] = tol, inputs[6..] = x columns
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=linear_regression_output_dtype)]
 fn pl_huber(inputs: &[Series]) -> PolarsResult<Series> {
     huber_fit(inputs)
@@ -1010,6 +1036,7 @@ pub fn logistic_regression_fit(inputs: &[Series]) -> PolarsResult<Series> {
 /// inputs[0] = y, inputs[1] = C, inputs[2] = penalty ("none"|"l2"),
 /// inputs[3] = threshold, inputs[4] = with_intercept, inputs[5] = max_iter (u32),
 /// inputs[6] = tol, inputs[7..] = x columns
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=glm_output_dtype)]
 fn pl_logistic_regression(inputs: &[Series]) -> PolarsResult<Series> {
     logistic_regression_fit(inputs)
@@ -1061,6 +1088,7 @@ pub fn pls_fit(inputs: &[Series]) -> PolarsResult<Series> {
 /// Partial Least Squares regression expression.
 /// inputs[0] = y, inputs[1] = n_components (u32), inputs[2] = with_intercept,
 /// inputs[3] = tol, inputs[4] = scale (bool), inputs[5..] = x columns
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=linear_regression_output_dtype)]
 fn pl_pls(inputs: &[Series]) -> PolarsResult<Series> {
     pls_fit(inputs)
@@ -1105,6 +1133,7 @@ pub fn quantile_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Quantile regression expression.
 /// inputs[0] = y, inputs[1] = tau, inputs[2] = with_intercept, inputs[3..] = x columns
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=quantile_output_dtype)]
 fn pl_quantile(inputs: &[Series]) -> PolarsResult<Series> {
     quantile_fit(inputs)
@@ -1146,6 +1175,7 @@ pub fn isotonic_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Isotonic regression expression.
 /// inputs[0] = y, inputs[1] = x (single feature), inputs[2] = increasing
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=isotonic_output_dtype)]
 fn pl_isotonic(inputs: &[Series]) -> PolarsResult<Series> {
     isotonic_fit(inputs)
@@ -1188,6 +1218,7 @@ pub fn quantile_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Quantile summary expression.
 /// inputs[0] = y, inputs[1] = tau, inputs[2] = with_intercept, inputs[3..] = x columns
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=summary_output_dtype)]
 fn pl_quantile_summary(inputs: &[Series]) -> PolarsResult<Series> {
     quantile_summary_fit(inputs)
@@ -1281,6 +1312,7 @@ pub fn condition_number_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Condition number diagnostics expression.
 /// inputs[0] = with_intercept, inputs[1..] = x columns
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=condition_number_output_dtype)]
 fn pl_condition_number(inputs: &[Series]) -> PolarsResult<Series> {
     condition_number_fit(inputs)
@@ -1378,6 +1410,7 @@ pub fn check_binary_separation_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Check binary response (logistic/probit) data for quasi-separation.
 /// inputs[0] = y (binary), inputs[1..] = x columns
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=separation_check_output_dtype)]
 fn pl_check_binary_separation(inputs: &[Series]) -> PolarsResult<Series> {
     check_binary_separation_fit(inputs)
@@ -1430,6 +1463,7 @@ pub fn check_count_sparsity_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Check count data (Poisson/NegBin) for sparsity-induced separation.
 /// inputs[0] = y (counts), inputs[1..] = x columns
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=separation_check_output_dtype)]
 fn pl_check_count_sparsity(inputs: &[Series]) -> PolarsResult<Series> {
     check_count_sparsity_fit(inputs)
@@ -1497,6 +1531,7 @@ pub fn vif_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Variance inflation factor (VIF) diagnostic expression.
 /// inputs[0..] = x columns (raw features only).
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=vif_output_dtype)]
 fn pl_vif(inputs: &[Series]) -> PolarsResult<Series> {
     vif_fit(inputs)
@@ -1558,6 +1593,7 @@ pub fn leverage_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Leverage (hat matrix diagonal) diagnostic expression.
 /// inputs[0] = with_intercept (bool), inputs[1..] = x columns.
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=leverage_output_dtype)]
 fn pl_leverage(inputs: &[Series]) -> PolarsResult<Series> {
     leverage_fit(inputs)
@@ -1623,6 +1659,7 @@ pub fn cooks_distance_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Cook's distance diagnostic expression.
 /// inputs[0] = y, inputs[1] = with_intercept (bool), inputs[2..] = x columns.
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=cooks_distance_output_dtype)]
 fn pl_cooks_distance(inputs: &[Series]) -> PolarsResult<Series> {
     cooks_distance_fit(inputs)
@@ -1682,6 +1719,7 @@ pub fn standardized_residuals_fit(inputs: &[Series]) -> PolarsResult<Series> {
     residual_diag_output(values, n_rows)
 }
 
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=residual_diag_output_dtype)]
 fn pl_standardized_residuals(inputs: &[Series]) -> PolarsResult<Series> {
     standardized_residuals_fit(inputs)
@@ -1700,6 +1738,7 @@ pub fn studentized_residuals_fit(inputs: &[Series]) -> PolarsResult<Series> {
     residual_diag_output(values, n_rows)
 }
 
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=residual_diag_output_dtype)]
 fn pl_studentized_residuals(inputs: &[Series]) -> PolarsResult<Series> {
     studentized_residuals_fit(inputs)
@@ -1719,6 +1758,7 @@ pub fn externally_studentized_residuals_fit(inputs: &[Series]) -> PolarsResult<S
     residual_diag_output(values, n_rows)
 }
 
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=residual_diag_output_dtype)]
 fn pl_externally_studentized_residuals(inputs: &[Series]) -> PolarsResult<Series> {
     externally_studentized_residuals_fit(inputs)
@@ -1776,6 +1816,7 @@ fn residual_outliers_nan_output() -> PolarsResult<Series> {
     residual_outliers_output(vec![], 0, 0)
 }
 
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=outlier_mask_output_dtype)]
 fn pl_residual_outliers(inputs: &[Series]) -> PolarsResult<Series> {
     residual_outliers_fit(inputs)
@@ -1830,6 +1871,7 @@ pub fn dffits_fit(inputs: &[Series]) -> PolarsResult<Series> {
     dffits_output(values, n_rows)
 }
 
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=dffits_output_dtype)]
 fn pl_dffits(inputs: &[Series]) -> PolarsResult<Series> {
     dffits_fit(inputs)
@@ -1865,6 +1907,7 @@ pub fn influential_cooks_fit(inputs: &[Series]) -> PolarsResult<Series> {
     influence_mask_output(mask, n_inf, n_rows)
 }
 
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=influence_mask_output_dtype)]
 fn pl_influential_cooks(inputs: &[Series]) -> PolarsResult<Series> {
     influential_cooks_fit(inputs)
@@ -1899,6 +1942,7 @@ pub fn influential_dffits_fit(inputs: &[Series]) -> PolarsResult<Series> {
     influence_mask_output(mask, n_inf, n_rows)
 }
 
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=influence_mask_output_dtype)]
 fn pl_influential_dffits(inputs: &[Series]) -> PolarsResult<Series> {
     influential_dffits_fit(inputs)
@@ -1941,6 +1985,7 @@ pub fn high_leverage_points_fit(inputs: &[Series]) -> PolarsResult<Series> {
     influence_mask_output(mask, n_inf, n_rows)
 }
 
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=influence_mask_output_dtype)]
 fn pl_high_leverage_points(inputs: &[Series]) -> PolarsResult<Series> {
     high_leverage_points_fit(inputs)
@@ -2047,6 +2092,7 @@ pub fn high_vif_predictors_fit(inputs: &[Series]) -> PolarsResult<Series> {
     vif_mask_output(mask, n_high, n_features)
 }
 
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=vif_mask_output_dtype)]
 fn pl_high_vif_predictors(inputs: &[Series]) -> PolarsResult<Series> {
     high_vif_predictors_fit(inputs)
@@ -2104,6 +2150,7 @@ pub fn generalized_vif_fit(inputs: &[Series]) -> PolarsResult<Series> {
     gvif_output(gvif, n_groups)
 }
 
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=gvif_output_dtype)]
 fn pl_generalized_vif(inputs: &[Series]) -> PolarsResult<Series> {
     generalized_vif_fit(inputs)
@@ -2140,6 +2187,7 @@ pub fn pearson_chi_squared_logistic_fit(inputs: &[Series]) -> PolarsResult<Serie
     }
 }
 
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=chi_squared_output_dtype)]
 fn pl_pearson_chi_squared_logistic(inputs: &[Series]) -> PolarsResult<Series> {
     pearson_chi_squared_logistic_fit(inputs)
@@ -2176,6 +2224,7 @@ pub fn pearson_chi_squared_poisson_fit(inputs: &[Series]) -> PolarsResult<Series
     }
 }
 
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=chi_squared_output_dtype)]
 fn pl_pearson_chi_squared_poisson(inputs: &[Series]) -> PolarsResult<Series> {
     pearson_chi_squared_poisson_fit(inputs)
@@ -2218,6 +2267,7 @@ pub fn logistic_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Logistic regression expression.
 /// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3..] = x columns
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=glm_output_dtype)]
 fn pl_logistic(inputs: &[Series]) -> PolarsResult<Series> {
     logistic_fit(inputs)
@@ -2256,6 +2306,7 @@ pub fn poisson_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Poisson regression expression.
 /// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3..] = x columns
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=glm_output_dtype)]
 fn pl_poisson(inputs: &[Series]) -> PolarsResult<Series> {
     poisson_fit(inputs)
@@ -2312,6 +2363,7 @@ pub fn logistic_pearson_residuals_fit(inputs: &[Series]) -> PolarsResult<Series>
     }
 }
 
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=residual_diag_output_dtype)]
 fn pl_logistic_pearson_residuals(inputs: &[Series]) -> PolarsResult<Series> {
     logistic_pearson_residuals_fit(inputs)
@@ -2333,6 +2385,7 @@ pub fn logistic_deviance_residuals_fit(inputs: &[Series]) -> PolarsResult<Series
     }
 }
 
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=residual_diag_output_dtype)]
 fn pl_logistic_deviance_residuals(inputs: &[Series]) -> PolarsResult<Series> {
     logistic_deviance_residuals_fit(inputs)
@@ -2354,6 +2407,7 @@ pub fn logistic_working_residuals_fit(inputs: &[Series]) -> PolarsResult<Series>
     }
 }
 
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=residual_diag_output_dtype)]
 fn pl_logistic_working_residuals(inputs: &[Series]) -> PolarsResult<Series> {
     logistic_working_residuals_fit(inputs)
@@ -2375,6 +2429,7 @@ pub fn poisson_pearson_residuals_fit(inputs: &[Series]) -> PolarsResult<Series> 
     }
 }
 
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=residual_diag_output_dtype)]
 fn pl_poisson_pearson_residuals(inputs: &[Series]) -> PolarsResult<Series> {
     poisson_pearson_residuals_fit(inputs)
@@ -2396,6 +2451,7 @@ pub fn poisson_deviance_residuals_fit(inputs: &[Series]) -> PolarsResult<Series>
     }
 }
 
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=residual_diag_output_dtype)]
 fn pl_poisson_deviance_residuals(inputs: &[Series]) -> PolarsResult<Series> {
     poisson_deviance_residuals_fit(inputs)
@@ -2417,6 +2473,7 @@ pub fn poisson_working_residuals_fit(inputs: &[Series]) -> PolarsResult<Series> 
     }
 }
 
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=residual_diag_output_dtype)]
 fn pl_poisson_working_residuals(inputs: &[Series]) -> PolarsResult<Series> {
     poisson_working_residuals_fit(inputs)
@@ -2463,6 +2520,7 @@ pub fn gamma_dispersion_deviance_fit(inputs: &[Series]) -> PolarsResult<Series> 
     }
 }
 
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=dispersion_output_dtype)]
 fn pl_gamma_dispersion_deviance(inputs: &[Series]) -> PolarsResult<Series> {
     gamma_dispersion_deviance_fit(inputs)
@@ -2498,6 +2556,7 @@ pub fn gamma_dispersion_pearson_fit(inputs: &[Series]) -> PolarsResult<Series> {
     }
 }
 
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=dispersion_output_dtype)]
 fn pl_gamma_dispersion_pearson(inputs: &[Series]) -> PolarsResult<Series> {
     gamma_dispersion_pearson_fit(inputs)
@@ -2535,6 +2594,7 @@ pub fn gamma_pearson_chi_squared_fit(inputs: &[Series]) -> PolarsResult<Series> 
     }
 }
 
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=chi_squared_output_dtype)]
 fn pl_gamma_pearson_chi_squared(inputs: &[Series]) -> PolarsResult<Series> {
     gamma_pearson_chi_squared_fit(inputs)
@@ -2574,6 +2634,7 @@ pub fn gamma_standardized_pearson_residuals_fit(inputs: &[Series]) -> PolarsResu
     }
 }
 
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=residual_diag_output_dtype)]
 fn pl_gamma_standardized_pearson_residuals(inputs: &[Series]) -> PolarsResult<Series> {
     gamma_standardized_pearson_residuals_fit(inputs)
@@ -2613,6 +2674,7 @@ pub fn gamma_standardized_deviance_residuals_fit(inputs: &[Series]) -> PolarsRes
     }
 }
 
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=residual_diag_output_dtype)]
 fn pl_gamma_standardized_deviance_residuals(inputs: &[Series]) -> PolarsResult<Series> {
     gamma_standardized_deviance_residuals_fit(inputs)
@@ -2696,6 +2758,7 @@ pub fn negative_binomial_fit_with(
 /// Negative Binomial regression expression.
 /// inputs[0] = y, inputs[1] = theta (optional), inputs[2] = lambda (L2 regularization), inputs[3] = with_intercept, inputs[4..] = x columns
 /// kwargs: `estimate_dispersion` (named, additive — see [`NegativeBinomialKwargs`]).
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=glm_output_dtype)]
 fn pl_negative_binomial(inputs: &[Series], kwargs: NegativeBinomialKwargs) -> PolarsResult<Series> {
     negative_binomial_fit_with(inputs, &kwargs)
@@ -2739,6 +2802,7 @@ pub fn tweedie_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Tweedie regression expression.
 /// inputs[0] = y, inputs[1] = var_power, inputs[2] = lambda (L2 regularization), inputs[3] = with_intercept, inputs[4..] = x columns
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=glm_output_dtype)]
 fn pl_tweedie(inputs: &[Series]) -> PolarsResult<Series> {
     tweedie_fit(inputs)
@@ -2777,6 +2841,7 @@ pub fn probit_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Probit regression expression.
 /// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3..] = x columns
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=glm_output_dtype)]
 fn pl_probit(inputs: &[Series]) -> PolarsResult<Series> {
     probit_fit(inputs)
@@ -2815,6 +2880,7 @@ pub fn cloglog_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Complementary log-log regression expression.
 /// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3..] = x columns
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=glm_output_dtype)]
 fn pl_cloglog(inputs: &[Series]) -> PolarsResult<Series> {
     cloglog_fit(inputs)
@@ -2888,6 +2954,7 @@ pub fn parse_residual_type(s: &str) -> Result<ResidualType, String> {
 
 /// Output dtype for `pl_augment`: one combined struct of the seven
 /// `broom::augment` fields, in order.
+#[cfg(feature = "python")]
 fn augment_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
     let fields = vec![
         Field::new("fitted".into(), DataType::Float64),
@@ -3175,6 +3242,7 @@ pub fn augment_fit(inputs: &[Series], kwargs: &AugmentKwargs) -> PolarsResult<Se
 /// inputs[0] = y, inputs[1] = weights (nullable), inputs[2..] = x columns.
 /// kwargs: model / residual_type / with_intercept / theta / var_power / link_power / max_iter / tol
 /// — see [`AugmentKwargs`].
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=augment_output_dtype)]
 fn pl_augment(inputs: &[Series], kwargs: AugmentKwargs) -> PolarsResult<Series> {
     augment_fit(inputs, &kwargs)
@@ -3317,6 +3385,7 @@ pub fn alm_fit(inputs: &[Series]) -> PolarsResult<Series> {
 /// inputs[0] = y, inputs[1] = distribution (str), inputs[2] = link (str|null),
 /// inputs[3] = loss (str), inputs[4] = role_trim (f64|null), inputs[5] = extra_parameter (f64|null),
 /// inputs[6] = with_intercept (bool), inputs[7..] = x columns
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=glm_output_dtype)]
 fn pl_alm(inputs: &[Series]) -> PolarsResult<Series> {
     alm_fit(inputs)
@@ -3444,6 +3513,7 @@ pub fn ols_summary_fit_with(inputs: &[Series], kwargs: &LinearAliasKwargs) -> Po
 /// inputs[0] = y, inputs[1] = with_intercept (bool), inputs[2] = solve_method (string or null),
 /// inputs[3] = hc_type (string or null), inputs[4..] = x columns
 /// kwargs: `alias_tolerance` (named, additive — see [`LinearAliasKwargs`]).
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=summary_output_dtype)]
 fn pl_ols_summary(inputs: &[Series], kwargs: LinearAliasKwargs) -> PolarsResult<Series> {
     ols_summary_fit_with(inputs, &kwargs)
@@ -3515,6 +3585,7 @@ pub fn ridge_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Ridge summary expression
 /// inputs[0] = y, inputs[1] = lambda, inputs[2] = with_intercept, inputs[3] = solve_method (string or null), inputs[4..] = x columns
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=summary_output_dtype)]
 fn pl_ridge_summary(inputs: &[Series]) -> PolarsResult<Series> {
     ridge_summary_fit(inputs)
@@ -3584,6 +3655,7 @@ pub fn elastic_net_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Elastic Net summary expression
 /// inputs[0] = y, inputs[1] = lambda, inputs[2] = alpha, inputs[3] = with_intercept, inputs[4..] = x columns
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=summary_output_dtype)]
 fn pl_elastic_net_summary(inputs: &[Series]) -> PolarsResult<Series> {
     elastic_net_summary_fit(inputs)
@@ -3666,6 +3738,7 @@ pub fn wls_summary_fit_with(inputs: &[Series], kwargs: &LinearAliasKwargs) -> Po
 /// WLS summary expression
 /// inputs[0] = y, inputs[1] = weights, inputs[2] = with_intercept, inputs[3] = solve_method (string or null), inputs[4..] = x columns
 /// kwargs: `alias_tolerance` (named, additive — see [`LinearAliasKwargs`]).
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=summary_output_dtype)]
 fn pl_wls_summary(inputs: &[Series], kwargs: LinearAliasKwargs) -> PolarsResult<Series> {
     wls_summary_fit_with(inputs, &kwargs)
@@ -3741,6 +3814,7 @@ pub fn rls_summary_fit_with(inputs: &[Series], kwargs: &RlsKwargs) -> PolarsResu
 /// RLS summary expression
 /// inputs[0] = y, inputs[1] = forgetting_factor, inputs[2] = with_intercept, inputs[3..] = x columns
 /// kwargs: `initial_p_diagonal` (named, additive — see [`RlsKwargs`]).
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=summary_output_dtype)]
 fn pl_rls_summary(inputs: &[Series], kwargs: RlsKwargs) -> PolarsResult<Series> {
     rls_summary_fit_with(inputs, &kwargs)
@@ -3815,6 +3889,7 @@ pub fn bls_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// BLS summary expression
 /// inputs[0] = y, inputs[1] = lower_bound, inputs[2] = upper_bound, inputs[3] = with_intercept, inputs[4..] = x columns
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=summary_output_dtype)]
 fn pl_bls_summary(inputs: &[Series]) -> PolarsResult<Series> {
     bls_summary_fit(inputs)
@@ -3887,6 +3962,7 @@ pub fn logistic_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Logistic summary expression
 /// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3..] = x columns
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=summary_output_dtype)]
 fn pl_logistic_summary(inputs: &[Series]) -> PolarsResult<Series> {
     logistic_summary_fit(inputs)
@@ -3955,6 +4031,7 @@ pub fn poisson_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Poisson summary expression
 /// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3..] = x columns
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=summary_output_dtype)]
 fn pl_poisson_summary(inputs: &[Series]) -> PolarsResult<Series> {
     poisson_summary_fit(inputs)
@@ -4044,6 +4121,7 @@ pub fn negative_binomial_summary_fit_with(
 /// Negative Binomial summary expression
 /// inputs[0] = y, inputs[1] = theta, inputs[2] = lambda (L2 regularization), inputs[3] = with_intercept, inputs[4..] = x columns
 /// kwargs: `estimate_dispersion` (named, additive — see [`NegativeBinomialKwargs`]).
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=summary_output_dtype)]
 fn pl_negative_binomial_summary(
     inputs: &[Series],
@@ -4120,6 +4198,7 @@ pub fn tweedie_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Tweedie summary expression
 /// inputs[0] = y, inputs[1] = var_power, inputs[2] = lambda (L2 regularization), inputs[3] = with_intercept, inputs[4..] = x columns
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=summary_output_dtype)]
 fn pl_tweedie_summary(inputs: &[Series]) -> PolarsResult<Series> {
     tweedie_summary_fit(inputs)
@@ -4188,6 +4267,7 @@ pub fn probit_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Probit summary expression
 /// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3..] = x columns
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=summary_output_dtype)]
 fn pl_probit_summary(inputs: &[Series]) -> PolarsResult<Series> {
     probit_summary_fit(inputs)
@@ -4256,6 +4336,7 @@ pub fn cloglog_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Cloglog summary expression
 /// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3..] = x columns
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=summary_output_dtype)]
 fn pl_cloglog_summary(inputs: &[Series]) -> PolarsResult<Series> {
     cloglog_summary_fit(inputs)
@@ -4273,6 +4354,7 @@ pub struct PredictKwargs {
 }
 
 /// Output type for prediction with intervals - uses prefix from kwargs
+#[cfg(feature = "python")]
 pub(crate) fn predict_output_dtype_with_prefix(
     _input_fields: &[Field],
     kwargs: PredictKwargs,
@@ -4454,6 +4536,7 @@ pub struct LinearAliasPredictKwargs {
 /// Output dtype for `pl_ols_predict`/`pl_wls_predict` — delegates to the
 /// shared prefix-based prediction schema (`alias_tolerance` does not affect
 /// shape).
+#[cfg(feature = "python")]
 pub(crate) fn linear_alias_predict_output_dtype(
     input_fields: &[Field],
     kwargs: LinearAliasPredictKwargs,
@@ -4565,6 +4648,7 @@ pub fn ols_predict_fit_with(
 /// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = solve_method (string or null),
 /// inputs[3] = interval (string or null), inputs[4] = level, inputs[5] = null_policy, inputs[6..] = x columns
 /// kwargs: `prefix`, `alias_tolerance` (named, additive — see [`LinearAliasPredictKwargs`]).
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func_with_kwargs=linear_alias_predict_output_dtype)]
 fn pl_ols_predict(inputs: &[Series], kwargs: LinearAliasPredictKwargs) -> PolarsResult<Series> {
     ols_predict_fit_with(inputs, kwargs)
@@ -4649,6 +4733,7 @@ pub fn ridge_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResu
 /// Ridge prediction expression
 /// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = solve_method (string or null),
 /// inputs[3] = interval, inputs[4] = level, inputs[5] = null_policy, inputs[6] = lambda, inputs[7..] = x columns
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
 fn pl_ridge_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
     ridge_predict_fit(inputs, kwargs)
@@ -4731,6 +4816,7 @@ pub fn elastic_net_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> Pola
 /// Elastic Net prediction expression
 /// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval, inputs[3] = level,
 /// inputs[4] = null_policy, inputs[5] = lambda, inputs[6] = alpha, inputs[7..] = x columns
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
 fn pl_elastic_net_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
     elastic_net_predict_fit(inputs, kwargs)
@@ -4843,6 +4929,7 @@ pub fn wls_predict_fit_with(
 /// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = solve_method (string or null),
 /// inputs[3] = interval, inputs[4] = level, inputs[5] = null_policy, inputs[6] = weights, inputs[7..] = x columns
 /// kwargs: `prefix`, `alias_tolerance` (named, additive — see [`LinearAliasPredictKwargs`]).
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func_with_kwargs=linear_alias_predict_output_dtype)]
 fn pl_wls_predict(inputs: &[Series], kwargs: LinearAliasPredictKwargs) -> PolarsResult<Series> {
     wls_predict_fit_with(inputs, kwargs)
@@ -4935,6 +5022,7 @@ pub fn rls_predict_fit_with(inputs: &[Series], kwargs: RlsPredictKwargs) -> Pola
 
 /// Output dtype for `pl_rls_predict` — delegates to the shared prefix-based
 /// prediction schema (`initial_p_diagonal` does not affect shape).
+#[cfg(feature = "python")]
 fn rls_predict_output_dtype(
     input_fields: &[Field],
     kwargs: RlsPredictKwargs,
@@ -4951,6 +5039,7 @@ fn rls_predict_output_dtype(
 /// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval, inputs[3] = level,
 /// inputs[4] = null_policy, inputs[5] = forgetting_factor, inputs[6..] = x columns
 /// kwargs: `prefix`, `initial_p_diagonal` (named, additive — see [`RlsPredictKwargs`]).
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func_with_kwargs=rls_predict_output_dtype)]
 fn pl_rls_predict(inputs: &[Series], kwargs: RlsPredictKwargs) -> PolarsResult<Series> {
     rls_predict_fit_with(inputs, kwargs)
@@ -5037,6 +5126,7 @@ pub fn bls_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult
 /// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval, inputs[3] = level,
 /// inputs[4] = null_policy, inputs[5] = lower_bound (or null), inputs[6] = upper_bound (or null),
 /// inputs[7..] = x columns
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
 fn pl_bls_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
     bls_predict_fit(inputs, kwargs)
@@ -5086,6 +5176,7 @@ pub fn quantile_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsR
 
 /// Quantile prediction expression.
 /// inputs[0] = y, inputs[1] = tau, inputs[2] = with_intercept, inputs[3] = null_policy, inputs[4..] = x columns
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
 fn pl_quantile_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
     quantile_predict_fit(inputs, kwargs)
@@ -5129,6 +5220,7 @@ pub fn isotonic_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsR
 
 /// Isotonic prediction expression.
 /// inputs[0] = y, inputs[1] = x (single feature), inputs[2] = increasing, inputs[3] = null_policy
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
 fn pl_isotonic_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
     isotonic_predict_fit(inputs, kwargs)
@@ -5210,6 +5302,7 @@ pub fn logistic_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsR
 /// Logistic prediction expression
 /// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3] = interval, inputs[4] = level,
 /// inputs[5] = null_policy, inputs[6..] = x columns
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
 fn pl_logistic_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
     logistic_predict_fit(inputs, kwargs)
@@ -5291,6 +5384,7 @@ pub fn poisson_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsRe
 /// Poisson prediction expression
 /// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3] = interval, inputs[4] = level,
 /// inputs[5] = null_policy, inputs[6..] = x columns
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
 fn pl_poisson_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
     poisson_predict_fit(inputs, kwargs)
@@ -5392,6 +5486,7 @@ pub fn negative_binomial_predict_fit_with(
 
 /// Output dtype for `pl_negative_binomial_predict` — delegates to the shared
 /// prefix-based prediction schema (`estimate_dispersion` does not affect shape).
+#[cfg(feature = "python")]
 fn negative_binomial_predict_output_dtype(
     input_fields: &[Field],
     kwargs: NegativeBinomialPredictKwargs,
@@ -5408,6 +5503,7 @@ fn negative_binomial_predict_output_dtype(
 /// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3] = interval, inputs[4] = level,
 /// inputs[5] = null_policy, inputs[6..] = x columns
 /// kwargs: `prefix`, `estimate_dispersion` (named, additive — see [`NegativeBinomialPredictKwargs`]).
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func_with_kwargs=negative_binomial_predict_output_dtype)]
 fn pl_negative_binomial_predict(
     inputs: &[Series],
@@ -5497,6 +5593,7 @@ pub fn tweedie_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsRe
 /// Tweedie prediction expression
 /// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3] = interval, inputs[4] = level,
 /// inputs[5] = null_policy, inputs[6] = var_power, inputs[7..] = x columns
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
 fn pl_tweedie_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
     tweedie_predict_fit(inputs, kwargs)
@@ -5578,6 +5675,7 @@ pub fn probit_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsRes
 /// Probit prediction expression
 /// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3] = interval, inputs[4] = level,
 /// inputs[5] = null_policy, inputs[6..] = x columns
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
 fn pl_probit_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
     probit_predict_fit(inputs, kwargs)
@@ -5659,6 +5757,7 @@ pub fn cloglog_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsRe
 /// Cloglog prediction expression
 /// inputs[0] = y, inputs[1] = lambda (L2 regularization), inputs[2] = with_intercept, inputs[3] = interval, inputs[4] = level,
 /// inputs[5] = null_policy, inputs[6..] = x columns
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
 fn pl_cloglog_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
     cloglog_predict_fit(inputs, kwargs)
@@ -5744,6 +5843,7 @@ pub fn alm_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult
 /// ALM prediction expression
 /// inputs[0] = y, inputs[1] = with_intercept, inputs[2] = interval, inputs[3] = level,
 /// inputs[4] = null_policy, inputs[5] = distribution, inputs[6..] = x columns
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
 fn pl_alm_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
     alm_predict_fit(inputs, kwargs)
@@ -5820,6 +5920,7 @@ pub fn alm_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// ALM summary expression
 /// inputs[0] = y, inputs[1] = distribution, inputs[2] = with_intercept, inputs[3..] = x columns
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=summary_output_dtype)]
 fn pl_alm_summary(inputs: &[Series]) -> PolarsResult<Series> {
     alm_summary_fit(inputs)
@@ -5830,6 +5931,7 @@ fn pl_alm_summary(inputs: &[Series]) -> PolarsResult<Series> {
 // ============================================================================
 
 /// Output type for AID classification
+#[cfg(feature = "python")]
 fn aid_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
     let fields = vec![
         Field::new("demand_type".into(), DataType::String),
@@ -6034,6 +6136,7 @@ pub fn aid_fit(inputs: &[Series]) -> PolarsResult<Series> {
 /// * inputs[0] - y: demand time series
 /// * inputs[1] - intermittent_threshold: threshold for classifying as intermittent (0.0 to 1.0)
 /// * inputs[2] - detect_anomalies: whether to detect anomalies (boolean)
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=aid_output_dtype)]
 fn pl_aid(inputs: &[Series]) -> PolarsResult<Series> {
     aid_fit(inputs)
@@ -6044,6 +6147,7 @@ fn pl_aid(inputs: &[Series]) -> PolarsResult<Series> {
 // ============================================================================
 
 /// Output type for AID anomalies (per-observation)
+#[cfg(feature = "python")]
 fn aid_anomalies_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
     let fields = vec![
         Field::new("stockout".into(), DataType::Boolean),
@@ -6152,6 +6256,7 @@ pub fn aid_anomalies_fit(inputs: &[Series]) -> PolarsResult<Series> {
 /// # Arguments
 /// * inputs[0] - y: demand time series
 /// * inputs[1] - intermittent_threshold: threshold for classifying as intermittent (0.0 to 1.0)
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=aid_anomalies_output_dtype)]
 fn pl_aid_anomalies(inputs: &[Series]) -> PolarsResult<Series> {
     aid_anomalies_fit(inputs)
@@ -6172,6 +6277,7 @@ fn parse_ic(s: &str) -> Option<InformationCriterion> {
 }
 
 /// Output type for dynamic linear model
+#[cfg(feature = "python")]
 fn lm_dynamic_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
     let fields = vec![
         Field::new("intercept".into(), DataType::Float64),
@@ -6287,6 +6393,7 @@ pub fn lm_dynamic_fit(inputs: &[Series]) -> PolarsResult<Series> {
 /// * inputs[4] - max_models: maximum number of candidate models
 /// * inputs[5] - with_intercept: whether to include intercept
 /// * inputs[6..] - x: feature variables
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=lm_dynamic_output_dtype)]
 fn pl_lm_dynamic(inputs: &[Series]) -> PolarsResult<Series> {
     lm_dynamic_fit(inputs)
@@ -6357,6 +6464,7 @@ pub fn lm_dynamic_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> Polar
 /// Dynamic Linear Model prediction expression.
 /// inputs[0] = y, inputs[1] = ic, inputs[2] = distribution, inputs[3] = lowess_span,
 /// inputs[4] = max_models (u32), inputs[5] = with_intercept, inputs[6] = null_policy, inputs[7..] = x
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func_with_kwargs=predict_output_dtype_with_prefix)]
 fn pl_lm_dynamic_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
     lm_dynamic_predict_fit(inputs, kwargs)

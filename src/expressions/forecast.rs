@@ -1,6 +1,7 @@
 //! Forecast comparison test expressions.
 
 use polars::prelude::*;
+#[cfg(feature = "python")]
 use pyo3_polars::derive::polars_expr;
 
 use anofox_statistics::{
@@ -8,7 +9,9 @@ use anofox_statistics::{
     spa_test, Alternative, LossFunction, MCSStatistic, VarEstimator,
 };
 
-use crate::expressions::output_types::{generic_stats_output, stats_output_dtype};
+use crate::expressions::output_types::generic_stats_output;
+#[cfg(feature = "python")]
+use crate::expressions::output_types::stats_output_dtype;
 
 /// Helper to parse loss function from string
 fn parse_loss_function(s: &str) -> LossFunction {
@@ -58,6 +61,7 @@ pub fn diebold_mariano_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Diebold-Mariano test for comparing forecast accuracy.
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=stats_output_dtype)]
 fn pl_diebold_mariano(inputs: &[Series]) -> PolarsResult<Series> {
     diebold_mariano_fit(inputs)
@@ -83,6 +87,7 @@ pub fn permutation_t_test_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Permutation t-test for comparing two samples.
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=stats_output_dtype)]
 fn pl_permutation_t_test(inputs: &[Series]) -> PolarsResult<Series> {
     permutation_t_test_fit(inputs)
@@ -104,12 +109,14 @@ pub fn clark_west_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Clark-West test for nested model comparison.
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=stats_output_dtype)]
 fn pl_clark_west(inputs: &[Series]) -> PolarsResult<Series> {
     clark_west_fit(inputs)
 }
 
 /// SPA output type with additional fields
+#[cfg(feature = "python")]
 fn spa_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
     let fields = vec![
         Field::new("statistic".into(), DataType::Float64),
@@ -176,12 +183,14 @@ pub fn spa_test_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Superior Predictive Ability (SPA) test.
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=spa_output_dtype)]
 fn pl_spa_test(inputs: &[Series]) -> PolarsResult<Series> {
     spa_test_fit(inputs)
 }
 
 /// MCS output type
+#[cfg(feature = "python")]
 fn mcs_output_dtype(_input_fields: &[Field]) -> PolarsResult<Field> {
     let fields = vec![
         Field::new(
@@ -250,6 +259,7 @@ pub fn model_confidence_set_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Model Confidence Set (MCS) test.
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=mcs_output_dtype)]
 fn pl_model_confidence_set(inputs: &[Series]) -> PolarsResult<Series> {
     model_confidence_set_fit(inputs)
@@ -311,6 +321,7 @@ pub fn mspe_adjusted_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// MSPE-Adjusted SPA test for nested models.
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=spa_output_dtype)]
 fn pl_mspe_adjusted(inputs: &[Series]) -> PolarsResult<Series> {
     mspe_adjusted_fit(inputs)

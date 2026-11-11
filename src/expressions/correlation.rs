@@ -1,6 +1,7 @@
 //! Correlation test expressions.
 
 use polars::prelude::*;
+#[cfg(feature = "python")]
 use pyo3_polars::derive::polars_expr;
 
 use anofox_statistics::{
@@ -8,6 +9,7 @@ use anofox_statistics::{
     CorrelationResult, ICCType, KendallVariant,
 };
 
+#[cfg(feature = "python")]
 use crate::expressions::output_types::{correlation_output_dtype, icc_output_dtype};
 
 /// Helper to create correlation output
@@ -74,6 +76,7 @@ pub fn pearson_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Pearson correlation coefficient
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=correlation_output_dtype)]
 fn pl_pearson(inputs: &[Series]) -> PolarsResult<Series> {
     pearson_fit(inputs)
@@ -95,6 +98,7 @@ pub fn spearman_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Spearman rank correlation coefficient
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=correlation_output_dtype)]
 fn pl_spearman(inputs: &[Series]) -> PolarsResult<Series> {
     spearman_fit(inputs)
@@ -122,6 +126,7 @@ pub fn kendall_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Kendall's tau correlation coefficient
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=correlation_output_dtype)]
 fn pl_kendall(inputs: &[Series]) -> PolarsResult<Series> {
     kendall_fit(inputs)
@@ -158,6 +163,7 @@ pub fn distance_cor_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Distance correlation test
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=correlation_output_dtype)]
 fn pl_distance_cor(inputs: &[Series]) -> PolarsResult<Series> {
     distance_cor_fit(inputs)
@@ -211,6 +217,7 @@ pub fn partial_cor_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Partial correlation
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=correlation_output_dtype)]
 fn pl_partial_cor(inputs: &[Series]) -> PolarsResult<Series> {
     partial_cor_fit(inputs)
@@ -261,6 +268,7 @@ pub fn semi_partial_cor_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Semi-partial correlation
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=correlation_output_dtype)]
 fn pl_semi_partial_cor(inputs: &[Series]) -> PolarsResult<Series> {
     semi_partial_cor_fit(inputs)
@@ -389,6 +397,7 @@ pub fn icc_fit(inputs: &[Series]) -> PolarsResult<Series> {
 /// Intraclass correlation coefficient (ICC).
 ///
 /// Computes the ICC for a subjects x raters matrix passed as multiple rater columns.
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=icc_output_dtype)]
 fn pl_icc(inputs: &[Series]) -> PolarsResult<Series> {
     icc_fit(inputs)

@@ -1,6 +1,7 @@
 //! Non-parametric statistical test expressions.
 
 use polars::prelude::*;
+#[cfg(feature = "python")]
 use pyo3_polars::derive::polars_expr;
 
 use anofox_statistics::{
@@ -9,8 +10,11 @@ use anofox_statistics::{
 };
 
 use crate::expressions::output_types::{
-    effect_size_output, effect_size_output_dtype, generic_stats_output, rank_location_output,
-    rank_location_output_dtype, stats_output_dtype,
+    effect_size_output, generic_stats_output, rank_location_output,
+};
+#[cfg(feature = "python")]
+use crate::expressions::output_types::{
+    effect_size_output_dtype, rank_location_output_dtype, stats_output_dtype,
 };
 
 /// Helper to parse alternative hypothesis from string
@@ -62,6 +66,7 @@ pub fn mann_whitney_u_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Mann-Whitney U test
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=rank_location_output_dtype)]
 fn pl_mann_whitney_u(inputs: &[Series]) -> PolarsResult<Series> {
     mann_whitney_u_fit(inputs)
@@ -107,6 +112,7 @@ pub fn wilcoxon_signed_rank_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Wilcoxon signed-rank test
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=rank_location_output_dtype)]
 fn pl_wilcoxon_signed_rank(inputs: &[Series]) -> PolarsResult<Series> {
     wilcoxon_signed_rank_fit(inputs)
@@ -129,6 +135,7 @@ pub fn kruskal_wallis_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Kruskal-Wallis H test
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=stats_output_dtype)]
 fn pl_kruskal_wallis(inputs: &[Series]) -> PolarsResult<Series> {
     kruskal_wallis_fit(inputs)
@@ -153,6 +160,7 @@ pub fn brunner_munzel_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Brunner-Munzel test (robust alternative to Mann-Whitney)
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=stats_output_dtype)]
 fn pl_brunner_munzel(inputs: &[Series]) -> PolarsResult<Series> {
     brunner_munzel_fit(inputs)
@@ -181,6 +189,7 @@ pub fn rank_biserial_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Rank-biserial correlation effect size for the Mann-Whitney U test.
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=effect_size_output_dtype)]
 fn pl_rank_biserial(inputs: &[Series]) -> PolarsResult<Series> {
     rank_biserial_fit(inputs)
@@ -208,6 +217,7 @@ pub fn matched_pairs_rank_biserial_fit(inputs: &[Series]) -> PolarsResult<Series
 }
 
 /// Matched-pairs rank-biserial correlation effect size for the Wilcoxon signed-rank test.
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=effect_size_output_dtype)]
 fn pl_matched_pairs_rank_biserial(inputs: &[Series]) -> PolarsResult<Series> {
     matched_pairs_rank_biserial_fit(inputs)
@@ -233,6 +243,7 @@ pub fn rank_biserial_from_u_fit(inputs: &[Series]) -> PolarsResult<Series> {
 }
 
 /// Rank-biserial correlation computed directly from a Mann-Whitney U statistic.
+#[cfg(feature = "python")]
 #[polars_expr(output_type_func=effect_size_output_dtype)]
 fn pl_rank_biserial_from_u(inputs: &[Series]) -> PolarsResult<Series> {
     rank_biserial_from_u_fit(inputs)
