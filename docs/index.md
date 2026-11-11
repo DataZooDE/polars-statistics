@@ -51,10 +51,14 @@ result.with_columns(
 ```toml
 [dependencies]
 polars = { version = "0.52", features = ["lazy", "partition_by"] }
-polars-statistics = { version = "0.5", default-features = false }
+polars-statistics = { git = "https://github.com/DataZooDE/polars-statistics", tag = "v0.9.0", default-features = false }
 ```
 
-`default-features = false` disables the `python` feature, so `pyo3` and `numpy` are not linked. Every Polars expression has a public Rust counterpart named `<name>_fit` (e.g. `ols_fit`, `vif_fit`, `logistic_predict_fit`) under `polars_statistics::expressions`. See the [Use from Rust](https://github.com/DataZooDE/polars-statistics#use-from-rust) section of the README for a full runnable example and the complete list of `_fit` entry points.
+`polars-statistics` is not published on crates.io; depend on it via git, pinned to a
+release tag. `default-features = false` disables the `python` feature, so pyo3, numpy
+and pyo3-polars are not compiled at all. Every Polars expression has a public Rust
+counterpart named `<name>_fit` (e.g. `ols_fit`, `vif_fit`, `logistic_predict_fit`)
+under `polars_statistics::expressions`. See the [Use from Rust](https://github.com/DataZooDE/polars-statistics#use-from-rust) section of the README for a full runnable example and the complete list of `_fit` entry points.
 
 ## Examples
 
