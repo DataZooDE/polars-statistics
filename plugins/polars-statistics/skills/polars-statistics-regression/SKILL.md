@@ -1,7 +1,7 @@
 ---
 name: polars-statistics-regression
 description: Use polars-statistics regression — fit OLS, Ridge, Lasso, Elastic Net, WLS, RLS, BLS, NNLS, Quantile, Huber, PLS, ALM, or any GLM (logistic, Poisson, Negative Binomial, Tweedie, Probit, Cloglog, penalized GLM with priors and offsets), AFT survival regression with censoring, or GLMM mixed models (including Negative Binomial/Gamma/Tweedie families with an offset), as Polars expressions or as PyModel classes; use R-style formulas with interactions and polynomial terms; get standard errors and p-values for Huber/RANSAC robust fits and GLMM fixed effects, or leverage/variance diagnostics for OLS/WLS/Ridge; get broom::augment-style per-observation diagnostics (augment) for any supported model, a model_info summary of what was fit, or empirical-Bayes shrinkage (eb_shrink) of noisy per-group estimates.
-version: "0.8.0"
+version: "0.9.0"
 user-invocable: false
 ---
 

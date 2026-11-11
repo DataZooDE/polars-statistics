@@ -1,7 +1,7 @@
 {
   "name": "polars-statistics",
   "description": "Statistical hypothesis tests, ANOVA, and regression for Polars DataFrames — Agent Skills for the polars-statistics library",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "author": {
     "name": "Simon Müller",
     "email": "sm@data-zoo.de"
