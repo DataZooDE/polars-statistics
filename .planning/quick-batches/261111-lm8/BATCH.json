@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "batch_id": "261111-lm8",
+  "created_at": "2026-11-11T14:33:52.139Z",
+  "options": {},
+  "base_revision": "e026384f4ffca85b79c485fe67e1bc6463be1893",
+  "items": [
+    {
+      "quick_id": "261111-lm9",
+      "client_id": null,
+      "description": "Fix GH #51: make pyo3-polars optional behind the `python` feature, cfg-gate all #[polars_expr] pl_* shims and shim-only helpers (output dtype fns, kwargs), add `cargo clippy --no-default-features --lib -- -D warnings` to CI, fix README/docs/lib.rs Rust dependency instructions (crate is not on crates.io; use git dependency on tag)",
+      "status": "complete",
+      "depends_on": [],
+      "planned_files": [],
+      "directory": null,
+      "worktree": null,
+      "dispatched_worktree": null,
+      "dispatched_branch": null,
+      "dispatched_base": null,
+      "wave": 0,
+      "commit": "d4a5e8a",
+      "failure_reason": null
+    },
+    {
+      "quick_id": "261111-lma",
+      "client_id": null,
+      "description": "Fix GH #52: add central as_f64/as_u32 input upcast helpers in src/expressions/inputs.rs (numeric/bool -> Float64; integers -> UInt32 via strict_cast), replace all input `.f64()?`/`.u32()?` accesses in src/expressions, add Rust test and dtype-parametrized Python tests (Int32/UInt32/Int64/Float32 match Float64 results)",
+      "status": "complete",
+      "depends_on": [],
+      "planned_files": [],
+      "directory": null,
+      "worktree": null,
+      "dispatched_worktree": null,
+      "dispatched_branch": null,
+      "dispatched_base": null,
+      "wave": 0,
+      "commit": "f6c5034",
+      "failure_reason": null
+    }
+  ]
+}

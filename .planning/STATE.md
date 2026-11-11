@@ -265,6 +265,8 @@ None yet.
 | 260818-rj2 | Add Examples section to README linking runnable examples/ scripts and docs/examples cookbook (fixes #36) | 2026-08-18 | b5e8e16 | [260818-rj2-add-examples-section-to-readme-linking-r](./quick/260818-rj2-add-examples-section-to-readme-linking-r/) |
 | 260819-jkj | Fix stuck v0.6.0 PyPI release — bumped python __version__ to 0.6.0, re-triggered publish | 2026-08-19 | (pending) | [260819-jkj-fix-v0.6.0-pypi-release](./quick/260819-jkj-fix-v0.6.0-pypi-release/) |
 | 3 | README: Claude Code plugin badge + install section | 2026-10-09 | 060148e | — |
+| 261111-lm9 | Fix GH #51: make pyo3-polars optional behind the python feature (PR #53) | 2026-11-11 | d4a5e8a | [261111-lm9-fix-gh-51-make-pyo3-polars-optional-behind-the-python-featur](./quick/261111-lm9-fix-gh-51-make-pyo3-polars-optional-behind-the-python-featur/) |
+| 261111-lma | Fix GH #52: upcast numeric inputs to Float64/UInt32 in all expressions (PR #54) | 2026-11-11 | f6c5034 | [261111-lma-fix-gh-52-add-central-as-f64-as-u32-input-upcast-helpers-in](./quick/261111-lma-fix-gh-52-add-central-as-f64-as-u32-input-upcast-helpers-in/) |
 
 ### Roadmap Evolution
 
