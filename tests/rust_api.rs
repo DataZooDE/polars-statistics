@@ -16,6 +16,9 @@
 //!   (`binom_test_fit`, `prop_test_one_fit`, `prop_test_two_fit`, `fisher_exact_fit`)
 //!   are each called at both the old and new arity, proving the tolerant trailing
 //!   read keeps previous rlib callers working.
+//! - `input_dtype_upcast` covers the GH #52 dtype-upcast fix: non-Float64/UInt32
+//!   numeric inputs must give the same results as their Float64/UInt32 equivalents,
+//!   and non-numeric inputs must keep erroring with the original dtype message.
 
 use polars::prelude::*;
 use polars_statistics::expressions::*;
@@ -3531,5 +3534,138 @@ fn alias_tolerance_fits() {
                 "wls_predict_fit_with: prediction {i} not finite: {v}"
             );
         }
+    }
+}
+
+// =============================================================================
+// Dtype upcast (GH #52): non-Float64/UInt32 numeric inputs must give the same
+// results as their Float64/UInt32 equivalents, and non-numeric inputs must
+// keep erroring with the original dtype message.
+// =============================================================================
+
+fn series_u32(name: &str, vals: &[u32]) -> Series {
+    Series::new(name.into(), vals)
+}
+
+fn series_i64(name: &str, vals: &[i64]) -> Series {
+    Series::new(name.into(), vals)
+}
+
+fn scalar_i32(name: &str, v: i32) -> Series {
+    Series::new(name.into(), &[v])
+}
+
+/// Read a struct series' named `f64` field at row 0.
+fn struct_f64_field(s: &Series, field: &str) -> f64 {
+    let ca = s.struct_().expect("expected struct series");
+    ca.field_by_name(field)
+        .unwrap_or_else(|_| panic!("missing field `{field}`"))
+        .f64()
+        .unwrap_or_else(|_| panic!("field `{field}` is not f64"))
+        .get(0)
+        .unwrap_or(f64::NAN)
+}
+
+#[test]
+fn input_dtype_upcast() {
+    // (a) spearman_fit with UInt32 x and Int64 y is Ok, and matches the Float64 path.
+    {
+        let x_u32: Vec<u32> = (0..25).map(|i| i as u32).collect();
+        let y_i64: Vec<i64> = (0..25).map(|i| (i as i64) * 2 + 1).collect();
+        let x_f64: Vec<f64> = x_u32.iter().map(|&v| v as f64).collect();
+        let y_f64: Vec<f64> = y_i64.iter().map(|&v| v as f64).collect();
+
+        let upcast_inputs = vec![
+            series_u32("x", &x_u32),
+            series_i64("y", &y_i64),
+            scalar_f64("conf_level", 0.95),
+        ];
+        let f64_inputs = vec![
+            series_f64("x", &x_f64),
+            series_f64("y", &y_f64),
+            scalar_f64("conf_level", 0.95),
+        ];
+
+        let out_upcast = spearman_fit(&upcast_inputs).expect("spearman_fit on UInt32/Int64");
+        let out_f64 = spearman_fit(&f64_inputs).expect("spearman_fit on Float64");
+
+        let est_upcast = struct_f64_field(&out_upcast, "estimate");
+        let est_f64 = struct_f64_field(&out_f64, "estimate");
+        assert!(
+            (est_upcast - est_f64).abs() < 1e-12,
+            "spearman estimate mismatch: upcast={est_upcast} float64={est_f64}"
+        );
+
+        let p_upcast = struct_f64_field(&out_upcast, "p_value");
+        let p_f64 = struct_f64_field(&out_f64, "p_value");
+        assert!(
+            (p_upcast - p_f64).abs() < 1e-12,
+            "spearman p_value mismatch: upcast={p_upcast} float64={p_f64}"
+        );
+
+        assert_n_obs_nonzero(&out_upcast, "n");
+    }
+
+    // (b) spearman_fit with a String x errors, naming Float64.
+    {
+        let inputs = vec![
+            series_str("x", &["a", "b", "c"]),
+            series_f64("y", &[1.0, 2.0, 3.0]),
+            scalar_f64("conf_level", 0.95),
+        ];
+        let err = spearman_fit(&inputs).expect_err("spearman_fit on String x must error");
+        assert!(
+            err.to_string().contains("Float64"),
+            "error should name Float64: {err}"
+        );
+    }
+
+    // (c) chisq_test_fit with an Int64 table and Int32 n_rows/n_cols matches the UInt32 version.
+    {
+        let table_i64 = series_i64("table", &[10, 20, 30, 40]);
+        let inputs_upcast = vec![
+            table_i64,
+            scalar_i32("n_rows", 2),
+            scalar_i32("n_cols", 2),
+            scalar_bool("correction", false),
+        ];
+        let table_u32 = Series::new("table".into(), &[10u32, 20, 30, 40]);
+        let inputs_u32 = vec![
+            table_u32,
+            scalar_u32("n_rows", 2),
+            scalar_u32("n_cols", 2),
+            scalar_bool("correction", false),
+        ];
+
+        let out_upcast = chisq_test_fit(&inputs_upcast).expect("chisq_test_fit on Int64/Int32");
+        let out_u32 = chisq_test_fit(&inputs_u32).expect("chisq_test_fit on UInt32");
+
+        let stat_upcast = struct_f64_field(&out_upcast, "statistic");
+        let stat_u32 = struct_f64_field(&out_u32, "statistic");
+        assert!(
+            (stat_upcast - stat_u32).abs() < 1e-12,
+            "chisq statistic mismatch: upcast={stat_upcast} u32={stat_u32}"
+        );
+
+        let p_upcast = struct_f64_field(&out_upcast, "p_value");
+        let p_u32 = struct_f64_field(&out_u32, "p_value");
+        assert!(
+            (p_upcast - p_u32).abs() < 1e-12,
+            "chisq p_value mismatch: upcast={p_upcast} u32={p_u32}"
+        );
+    }
+
+    // (d) chisq_test_fit with a negative Int64 table cell errors (strict cast at work).
+    {
+        let table_i64 = series_i64("table", &[10, -1, 30, 40]);
+        let inputs = vec![
+            table_i64,
+            scalar_i32("n_rows", 2),
+            scalar_i32("n_cols", 2),
+            scalar_bool("correction", false),
+        ];
+        let err =
+            chisq_test_fit(&inputs).expect_err("chisq_test_fit with a negative cell must error");
+        let _ = err; // message content not asserted; strict_cast's own error is sufficient
     }
 }

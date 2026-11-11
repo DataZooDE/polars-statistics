@@ -84,9 +84,9 @@ fn pl_pearson(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_spearman` expression shim.
 pub fn spearman_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let x = inputs[0].f64()?;
-    let y = inputs[1].f64()?;
-    let conf_level = inputs[2].f64()?.get(0);
+    let x = super::inputs::as_f64(&inputs[0])?;
+    let y = super::inputs::as_f64(&inputs[1])?;
+    let conf_level = super::inputs::as_f64(&inputs[2])?.get(0);
 
     let x_vec: Vec<f64> = x.into_no_null_iter().collect();
     let y_vec: Vec<f64> = y.into_no_null_iter().collect();

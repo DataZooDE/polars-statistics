@@ -262,9 +262,9 @@ fn pl_prop_test_two(inputs: &[Series]) -> PolarsResult<Series> {
 /// Public Rust-callable variant. Same input contract as the `pl_chisq_test` expression shim.
 pub fn chisq_test_fit(inputs: &[Series]) -> PolarsResult<Series> {
     // Expects a flattened contingency table with dimensions
-    let data = inputs[0].u32()?;
-    let n_rows = inputs[1].u32()?.get(0).unwrap_or(2) as usize;
-    let n_cols = inputs[2].u32()?.get(0).unwrap_or(2) as usize;
+    let data = super::inputs::as_u32(&inputs[0])?;
+    let n_rows = super::inputs::as_u32(&inputs[1])?.get(0).unwrap_or(2) as usize;
+    let n_cols = super::inputs::as_u32(&inputs[2])?.get(0).unwrap_or(2) as usize;
     let correction = inputs[3].bool()?.get(0).unwrap_or(false);
 
     let data_vec: Vec<usize> = data.into_no_null_iter().map(|v| v as usize).collect();
