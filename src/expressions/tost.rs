@@ -86,13 +86,13 @@ fn parse_bounds(bounds_type: &str, delta: f64, lower: f64, upper: f64) -> Equiva
 
 /// Public Rust-callable variant. Same input contract as the `pl_tost_t_test_one_sample` expression shim.
 pub fn tost_t_test_one_sample_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let x = inputs[0].f64()?;
-    let mu = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let x = super::inputs::as_f64(&inputs[0])?;
+    let mu = super::inputs::as_f64(&inputs[1])?.get(0).unwrap_or(0.0);
     let bounds_type = inputs[2].str()?.get(0).unwrap_or("symmetric");
-    let delta = inputs[3].f64()?.get(0).unwrap_or(0.5);
-    let lower = inputs[4].f64()?.get(0).unwrap_or(-0.5);
-    let upper = inputs[5].f64()?.get(0).unwrap_or(0.5);
-    let alpha = inputs[6].f64()?.get(0).unwrap_or(0.05);
+    let delta = super::inputs::as_f64(&inputs[3])?.get(0).unwrap_or(0.5);
+    let lower = super::inputs::as_f64(&inputs[4])?.get(0).unwrap_or(-0.5);
+    let upper = super::inputs::as_f64(&inputs[5])?.get(0).unwrap_or(0.5);
+    let alpha = super::inputs::as_f64(&inputs[6])?.get(0).unwrap_or(0.05);
 
     let x_vec: Vec<f64> = x.into_no_null_iter().collect();
     let bounds = parse_bounds(bounds_type, delta, lower, upper);
@@ -112,13 +112,13 @@ fn pl_tost_t_test_one_sample(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_tost_t_test_two_sample` expression shim.
 pub fn tost_t_test_two_sample_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let x = inputs[0].f64()?;
-    let y = inputs[1].f64()?;
+    let x = super::inputs::as_f64(&inputs[0])?;
+    let y = super::inputs::as_f64(&inputs[1])?;
     let bounds_type = inputs[2].str()?.get(0).unwrap_or("symmetric");
-    let delta = inputs[3].f64()?.get(0).unwrap_or(0.5);
-    let lower = inputs[4].f64()?.get(0).unwrap_or(-0.5);
-    let upper = inputs[5].f64()?.get(0).unwrap_or(0.5);
-    let alpha = inputs[6].f64()?.get(0).unwrap_or(0.05);
+    let delta = super::inputs::as_f64(&inputs[3])?.get(0).unwrap_or(0.5);
+    let lower = super::inputs::as_f64(&inputs[4])?.get(0).unwrap_or(-0.5);
+    let upper = super::inputs::as_f64(&inputs[5])?.get(0).unwrap_or(0.5);
+    let alpha = super::inputs::as_f64(&inputs[6])?.get(0).unwrap_or(0.05);
     let pooled = inputs[7].bool()?.get(0).unwrap_or(false);
 
     let x_vec: Vec<f64> = x.into_no_null_iter().collect();
@@ -140,13 +140,13 @@ fn pl_tost_t_test_two_sample(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_tost_t_test_paired` expression shim.
 pub fn tost_t_test_paired_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let x = inputs[0].f64()?;
-    let y = inputs[1].f64()?;
+    let x = super::inputs::as_f64(&inputs[0])?;
+    let y = super::inputs::as_f64(&inputs[1])?;
     let bounds_type = inputs[2].str()?.get(0).unwrap_or("symmetric");
-    let delta = inputs[3].f64()?.get(0).unwrap_or(0.5);
-    let lower = inputs[4].f64()?.get(0).unwrap_or(-0.5);
-    let upper = inputs[5].f64()?.get(0).unwrap_or(0.5);
-    let alpha = inputs[6].f64()?.get(0).unwrap_or(0.05);
+    let delta = super::inputs::as_f64(&inputs[3])?.get(0).unwrap_or(0.5);
+    let lower = super::inputs::as_f64(&inputs[4])?.get(0).unwrap_or(-0.5);
+    let upper = super::inputs::as_f64(&inputs[5])?.get(0).unwrap_or(0.5);
+    let alpha = super::inputs::as_f64(&inputs[6])?.get(0).unwrap_or(0.05);
 
     let x_vec: Vec<f64> = x.into_no_null_iter().collect();
     let y_vec: Vec<f64> = y.into_no_null_iter().collect();
@@ -167,15 +167,15 @@ fn pl_tost_t_test_paired(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_tost_correlation` expression shim.
 pub fn tost_correlation_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let x = inputs[0].f64()?;
-    let y = inputs[1].f64()?;
+    let x = super::inputs::as_f64(&inputs[0])?;
+    let y = super::inputs::as_f64(&inputs[1])?;
     let method_str = inputs[2].str()?.get(0).unwrap_or("pearson");
-    let rho_null = inputs[3].f64()?.get(0).unwrap_or(0.0);
+    let rho_null = super::inputs::as_f64(&inputs[3])?.get(0).unwrap_or(0.0);
     let bounds_type = inputs[4].str()?.get(0).unwrap_or("symmetric");
-    let delta = inputs[5].f64()?.get(0).unwrap_or(0.3);
-    let lower = inputs[6].f64()?.get(0).unwrap_or(-0.3);
-    let upper = inputs[7].f64()?.get(0).unwrap_or(0.3);
-    let alpha = inputs[8].f64()?.get(0).unwrap_or(0.05);
+    let delta = super::inputs::as_f64(&inputs[5])?.get(0).unwrap_or(0.3);
+    let lower = super::inputs::as_f64(&inputs[6])?.get(0).unwrap_or(-0.3);
+    let upper = super::inputs::as_f64(&inputs[7])?.get(0).unwrap_or(0.3);
+    let alpha = super::inputs::as_f64(&inputs[8])?.get(0).unwrap_or(0.05);
 
     let x_vec: Vec<f64> = x.into_no_null_iter().collect();
     let y_vec: Vec<f64> = y.into_no_null_iter().collect();
@@ -202,14 +202,14 @@ fn pl_tost_correlation(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_tost_prop_one` expression shim.
 pub fn tost_prop_one_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let successes = inputs[0].u32()?.get(0).unwrap_or(0) as usize;
-    let n = inputs[1].u32()?.get(0).unwrap_or(1) as usize;
-    let p0 = inputs[2].f64()?.get(0).unwrap_or(0.5);
+    let successes = super::inputs::as_u32(&inputs[0])?.get(0).unwrap_or(0) as usize;
+    let n = super::inputs::as_u32(&inputs[1])?.get(0).unwrap_or(1) as usize;
+    let p0 = super::inputs::as_f64(&inputs[2])?.get(0).unwrap_or(0.5);
     let bounds_type = inputs[3].str()?.get(0).unwrap_or("symmetric");
-    let delta = inputs[4].f64()?.get(0).unwrap_or(0.1);
-    let lower = inputs[5].f64()?.get(0).unwrap_or(-0.1);
-    let upper = inputs[6].f64()?.get(0).unwrap_or(0.1);
-    let alpha = inputs[7].f64()?.get(0).unwrap_or(0.05);
+    let delta = super::inputs::as_f64(&inputs[4])?.get(0).unwrap_or(0.1);
+    let lower = super::inputs::as_f64(&inputs[5])?.get(0).unwrap_or(-0.1);
+    let upper = super::inputs::as_f64(&inputs[6])?.get(0).unwrap_or(0.1);
+    let alpha = super::inputs::as_f64(&inputs[7])?.get(0).unwrap_or(0.05);
 
     let bounds = parse_bounds(bounds_type, delta, lower, upper);
 
@@ -228,15 +228,15 @@ fn pl_tost_prop_one(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_tost_prop_two` expression shim.
 pub fn tost_prop_two_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let successes1 = inputs[0].u32()?.get(0).unwrap_or(0) as usize;
-    let n1 = inputs[1].u32()?.get(0).unwrap_or(1) as usize;
-    let successes2 = inputs[2].u32()?.get(0).unwrap_or(0) as usize;
-    let n2 = inputs[3].u32()?.get(0).unwrap_or(1) as usize;
+    let successes1 = super::inputs::as_u32(&inputs[0])?.get(0).unwrap_or(0) as usize;
+    let n1 = super::inputs::as_u32(&inputs[1])?.get(0).unwrap_or(1) as usize;
+    let successes2 = super::inputs::as_u32(&inputs[2])?.get(0).unwrap_or(0) as usize;
+    let n2 = super::inputs::as_u32(&inputs[3])?.get(0).unwrap_or(1) as usize;
     let bounds_type = inputs[4].str()?.get(0).unwrap_or("symmetric");
-    let delta = inputs[5].f64()?.get(0).unwrap_or(0.1);
-    let lower = inputs[6].f64()?.get(0).unwrap_or(-0.1);
-    let upper = inputs[7].f64()?.get(0).unwrap_or(0.1);
-    let alpha = inputs[8].f64()?.get(0).unwrap_or(0.05);
+    let delta = super::inputs::as_f64(&inputs[5])?.get(0).unwrap_or(0.1);
+    let lower = super::inputs::as_f64(&inputs[6])?.get(0).unwrap_or(-0.1);
+    let upper = super::inputs::as_f64(&inputs[7])?.get(0).unwrap_or(0.1);
+    let alpha = super::inputs::as_f64(&inputs[8])?.get(0).unwrap_or(0.05);
 
     let bounds = parse_bounds(bounds_type, delta, lower, upper);
 
@@ -255,13 +255,13 @@ fn pl_tost_prop_two(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_tost_wilcoxon_paired` expression shim.
 pub fn tost_wilcoxon_paired_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let x = inputs[0].f64()?;
-    let y = inputs[1].f64()?;
+    let x = super::inputs::as_f64(&inputs[0])?;
+    let y = super::inputs::as_f64(&inputs[1])?;
     let bounds_type = inputs[2].str()?.get(0).unwrap_or("symmetric");
-    let delta = inputs[3].f64()?.get(0).unwrap_or(0.5);
-    let lower = inputs[4].f64()?.get(0).unwrap_or(-0.5);
-    let upper = inputs[5].f64()?.get(0).unwrap_or(0.5);
-    let alpha = inputs[6].f64()?.get(0).unwrap_or(0.05);
+    let delta = super::inputs::as_f64(&inputs[3])?.get(0).unwrap_or(0.5);
+    let lower = super::inputs::as_f64(&inputs[4])?.get(0).unwrap_or(-0.5);
+    let upper = super::inputs::as_f64(&inputs[5])?.get(0).unwrap_or(0.5);
+    let alpha = super::inputs::as_f64(&inputs[6])?.get(0).unwrap_or(0.05);
 
     let x_vec: Vec<f64> = x.into_no_null_iter().collect();
     let y_vec: Vec<f64> = y.into_no_null_iter().collect();
@@ -282,13 +282,13 @@ fn pl_tost_wilcoxon_paired(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_tost_wilcoxon_two_sample` expression shim.
 pub fn tost_wilcoxon_two_sample_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let x = inputs[0].f64()?;
-    let y = inputs[1].f64()?;
+    let x = super::inputs::as_f64(&inputs[0])?;
+    let y = super::inputs::as_f64(&inputs[1])?;
     let bounds_type = inputs[2].str()?.get(0).unwrap_or("symmetric");
-    let delta = inputs[3].f64()?.get(0).unwrap_or(0.5);
-    let lower = inputs[4].f64()?.get(0).unwrap_or(-0.5);
-    let upper = inputs[5].f64()?.get(0).unwrap_or(0.5);
-    let alpha = inputs[6].f64()?.get(0).unwrap_or(0.05);
+    let delta = super::inputs::as_f64(&inputs[3])?.get(0).unwrap_or(0.5);
+    let lower = super::inputs::as_f64(&inputs[4])?.get(0).unwrap_or(-0.5);
+    let upper = super::inputs::as_f64(&inputs[5])?.get(0).unwrap_or(0.5);
+    let alpha = super::inputs::as_f64(&inputs[6])?.get(0).unwrap_or(0.05);
 
     let x_vec: Vec<f64> = x.into_no_null_iter().collect();
     let y_vec: Vec<f64> = y.into_no_null_iter().collect();
@@ -309,14 +309,14 @@ fn pl_tost_wilcoxon_two_sample(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_tost_bootstrap` expression shim.
 pub fn tost_bootstrap_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let x = inputs[0].f64()?;
-    let y = inputs[1].f64()?;
+    let x = super::inputs::as_f64(&inputs[0])?;
+    let y = super::inputs::as_f64(&inputs[1])?;
     let bounds_type = inputs[2].str()?.get(0).unwrap_or("symmetric");
-    let delta = inputs[3].f64()?.get(0).unwrap_or(0.5);
-    let lower = inputs[4].f64()?.get(0).unwrap_or(-0.5);
-    let upper = inputs[5].f64()?.get(0).unwrap_or(0.5);
-    let alpha = inputs[6].f64()?.get(0).unwrap_or(0.05);
-    let n_bootstrap = inputs[7].u32()?.get(0).unwrap_or(1000) as usize;
+    let delta = super::inputs::as_f64(&inputs[3])?.get(0).unwrap_or(0.5);
+    let lower = super::inputs::as_f64(&inputs[4])?.get(0).unwrap_or(-0.5);
+    let upper = super::inputs::as_f64(&inputs[5])?.get(0).unwrap_or(0.5);
+    let alpha = super::inputs::as_f64(&inputs[6])?.get(0).unwrap_or(0.05);
+    let n_bootstrap = super::inputs::as_u32(&inputs[7])?.get(0).unwrap_or(1000) as usize;
     let seed = inputs[8].u64()?.get(0);
 
     let x_vec: Vec<f64> = x.into_no_null_iter().collect();
@@ -338,14 +338,14 @@ fn pl_tost_bootstrap(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_tost_yuen` expression shim.
 pub fn tost_yuen_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let x = inputs[0].f64()?;
-    let y = inputs[1].f64()?;
-    let trim = inputs[2].f64()?.get(0).unwrap_or(0.2);
+    let x = super::inputs::as_f64(&inputs[0])?;
+    let y = super::inputs::as_f64(&inputs[1])?;
+    let trim = super::inputs::as_f64(&inputs[2])?.get(0).unwrap_or(0.2);
     let bounds_type = inputs[3].str()?.get(0).unwrap_or("symmetric");
-    let delta = inputs[4].f64()?.get(0).unwrap_or(0.5);
-    let lower = inputs[5].f64()?.get(0).unwrap_or(-0.5);
-    let upper = inputs[6].f64()?.get(0).unwrap_or(0.5);
-    let alpha = inputs[7].f64()?.get(0).unwrap_or(0.05);
+    let delta = super::inputs::as_f64(&inputs[4])?.get(0).unwrap_or(0.5);
+    let lower = super::inputs::as_f64(&inputs[5])?.get(0).unwrap_or(-0.5);
+    let upper = super::inputs::as_f64(&inputs[6])?.get(0).unwrap_or(0.5);
+    let alpha = super::inputs::as_f64(&inputs[7])?.get(0).unwrap_or(0.05);
 
     let x_vec: Vec<f64> = x.into_no_null_iter().collect();
     let y_vec: Vec<f64> = y.into_no_null_iter().collect();

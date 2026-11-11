@@ -27,12 +27,12 @@ fn parse_alternative(s: &str) -> Alternative {
 
 /// Public Rust-callable variant. Same input contract as the `pl_ttest_ind` expression shim.
 pub fn ttest_ind_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let x = inputs[0].f64()?;
-    let y = inputs[1].f64()?;
+    let x = super::inputs::as_f64(&inputs[0])?;
+    let y = super::inputs::as_f64(&inputs[1])?;
     let alt_str = inputs[2].str()?.get(0).unwrap_or("two-sided");
     let equal_var = inputs[3].bool()?.get(0).unwrap_or(false);
-    let mu = inputs[4].f64()?.get(0).unwrap_or(0.0);
-    let conf_level = inputs[5].f64()?.get(0).unwrap_or(0.95);
+    let mu = super::inputs::as_f64(&inputs[4])?.get(0).unwrap_or(0.0);
+    let conf_level = super::inputs::as_f64(&inputs[5])?.get(0).unwrap_or(0.95);
 
     let x_vec: Vec<f64> = x.into_no_null_iter().collect();
     let y_vec: Vec<f64> = y.into_no_null_iter().collect();
@@ -59,11 +59,11 @@ fn pl_ttest_ind(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_ttest_paired` expression shim.
 pub fn ttest_paired_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let x = inputs[0].f64()?;
-    let y = inputs[1].f64()?;
+    let x = super::inputs::as_f64(&inputs[0])?;
+    let y = super::inputs::as_f64(&inputs[1])?;
     let alt_str = inputs[2].str()?.get(0).unwrap_or("two-sided");
-    let mu = inputs[3].f64()?.get(0).unwrap_or(0.0);
-    let conf_level = inputs[4].f64()?.get(0).unwrap_or(0.95);
+    let mu = super::inputs::as_f64(&inputs[3])?.get(0).unwrap_or(0.0);
+    let conf_level = super::inputs::as_f64(&inputs[4])?.get(0).unwrap_or(0.95);
 
     let x_vec: Vec<f64> = x.into_no_null_iter().collect();
     let y_vec: Vec<f64> = y.into_no_null_iter().collect();
@@ -92,8 +92,8 @@ fn pl_ttest_paired(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_brown_forsythe` expression shim.
 pub fn brown_forsythe_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let x = inputs[0].f64()?;
-    let y = inputs[1].f64()?;
+    let x = super::inputs::as_f64(&inputs[0])?;
+    let y = super::inputs::as_f64(&inputs[1])?;
 
     let x_vec: Vec<f64> = x.into_no_null_iter().collect();
     let y_vec: Vec<f64> = y.into_no_null_iter().collect();
@@ -116,11 +116,11 @@ fn pl_brown_forsythe(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_yuen_test` expression shim.
 pub fn yuen_test_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let x = inputs[0].f64()?;
-    let y = inputs[1].f64()?;
-    let trim = inputs[2].f64()?.get(0).unwrap_or(0.2);
+    let x = super::inputs::as_f64(&inputs[0])?;
+    let y = super::inputs::as_f64(&inputs[1])?;
+    let trim = super::inputs::as_f64(&inputs[2])?.get(0).unwrap_or(0.2);
     let alt_str = inputs[3].str()?.get(0).unwrap_or("two-sided");
-    let conf_level = inputs[4].f64()?.get(0).unwrap_or(0.95);
+    let conf_level = super::inputs::as_f64(&inputs[4])?.get(0).unwrap_or(0.95);
 
     let x_vec: Vec<f64> = x.into_no_null_iter().collect();
     let y_vec: Vec<f64> = y.into_no_null_iter().collect();
@@ -162,10 +162,10 @@ fn parse_cohens_d_kind(s: &str) -> TTestKind {
 /// - `inputs[2]` — `String` literal: `kind` (`"student"` | `"welch"` | `"paired"`).
 /// - `inputs[3]` — `f64` literal: `mu`, the null value of the mean difference.
 pub fn cohens_d_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let x = inputs[0].f64()?;
-    let y = inputs[1].f64()?;
+    let x = super::inputs::as_f64(&inputs[0])?;
+    let y = super::inputs::as_f64(&inputs[1])?;
     let kind_str = inputs[2].str()?.get(0).unwrap_or("student");
-    let mu = inputs[3].f64()?.get(0).unwrap_or(0.0);
+    let mu = super::inputs::as_f64(&inputs[3])?.get(0).unwrap_or(0.0);
 
     let x_vec: Vec<f64> = x.into_no_null_iter().collect();
     let y_vec: Vec<f64> = y.into_no_null_iter().collect();
@@ -191,8 +191,8 @@ fn pl_cohens_d(inputs: &[Series]) -> PolarsResult<Series> {
 /// - `inputs[0]` — `f64` Series (sample `x`).
 /// - `inputs[1]` — `f64` literal: `mu`, the null value of the mean.
 pub fn cohens_d_one_sample_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let x = inputs[0].f64()?;
-    let mu = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let x = super::inputs::as_f64(&inputs[0])?;
+    let mu = super::inputs::as_f64(&inputs[1])?.get(0).unwrap_or(0.0);
 
     let x_vec: Vec<f64> = x.into_no_null_iter().collect();
 
@@ -292,7 +292,7 @@ pub fn one_way_anova_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let group_series = &inputs[..inputs.len() - 1];
     let groups: Vec<Vec<f64>> = group_series
         .iter()
-        .map(|s| s.f64().map(|ca| ca.into_no_null_iter().collect()))
+        .map(|s| super::inputs::as_f64(s).map(|ca| ca.into_no_null_iter().collect()))
         .collect::<PolarsResult<Vec<_>>>()?;
 
     let group_refs: Vec<&[f64]> = groups.iter().map(|g| g.as_slice()).collect();
@@ -413,14 +413,14 @@ pub fn two_way_anova_fit(inputs: &[Series]) -> PolarsResult<Series> {
     if inputs.len() < 3 {
         return two_way_anova_error_output();
     }
-    let values: Vec<f64> = inputs[0].f64()?.into_no_null_iter().collect();
-    let factor_a: Vec<usize> = inputs[1]
-        .u32()?
+    let values: Vec<f64> = super::inputs::as_f64(&inputs[0])?
+        .into_no_null_iter()
+        .collect();
+    let factor_a: Vec<usize> = super::inputs::as_u32(&inputs[1])?
         .into_no_null_iter()
         .map(|v| v as usize)
         .collect();
-    let factor_b: Vec<usize> = inputs[2]
-        .u32()?
+    let factor_b: Vec<usize> = super::inputs::as_u32(&inputs[2])?
         .into_no_null_iter()
         .map(|v| v as usize)
         .collect();
@@ -555,9 +555,15 @@ pub fn repeated_measures_anova_fit(inputs: &[Series]) -> PolarsResult<Series> {
     if inputs.len() < 4 {
         return repeated_measures_anova_error_output();
     }
-    let values: Vec<f64> = inputs[0].f64()?.into_no_null_iter().collect();
-    let subjects: Vec<u32> = inputs[1].u32()?.into_no_null_iter().collect();
-    let conditions: Vec<u32> = inputs[2].u32()?.into_no_null_iter().collect();
+    let values: Vec<f64> = super::inputs::as_f64(&inputs[0])?
+        .into_no_null_iter()
+        .collect();
+    let subjects: Vec<u32> = super::inputs::as_u32(&inputs[1])?
+        .into_no_null_iter()
+        .collect();
+    let conditions: Vec<u32> = super::inputs::as_u32(&inputs[2])?
+        .into_no_null_iter()
+        .collect();
     let compute_sphericity = inputs[3].bool()?.get(0).unwrap_or(true);
 
     if values.is_empty() {

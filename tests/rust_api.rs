@@ -3566,6 +3566,24 @@ fn struct_f64_field(s: &Series, field: &str) -> f64 {
         .unwrap_or(f64::NAN)
 }
 
+/// Read the first element of a struct series' `coefficients` list field.
+fn struct_first_coef(s: &Series) -> f64 {
+    let ca = s.struct_().expect("expected struct series");
+    let coefs_field = ca
+        .field_by_name("coefficients")
+        .expect("missing `coefficients`");
+    let coefs_inner = coefs_field
+        .list()
+        .expect("`coefficients` is not a list")
+        .get_as_series(0)
+        .expect("`coefficients` row 0 missing");
+    coefs_inner
+        .f64()
+        .expect("`coefficients` inner is not f64")
+        .get(0)
+        .unwrap_or(f64::NAN)
+}
+
 #[test]
 fn input_dtype_upcast() {
     // (a) spearman_fit with UInt32 x and Int64 y is Ok, and matches the Float64 path.
@@ -3667,5 +3685,260 @@ fn input_dtype_upcast() {
         let err =
             chisq_test_fit(&inputs).expect_err("chisq_test_fit with a negative cell must error");
         let _ = err; // message content not asserted; strict_cast's own error is sufficient
+    }
+
+    // (e) ols_fit with an Int64 x1 column gives the same fit as the Float64 path.
+    // Before this fix the design matrix was NaN-filled for non-Float64 X columns.
+    {
+        let (x_f64, y) = linear_xy();
+        let x_i64: Vec<i64> = x_f64.iter().map(|&v| v as i64).collect();
+
+        let inputs_i64 = vec![
+            series_f64("y", &y),
+            scalar_bool("with_intercept", true),
+            scalar_str_null("solve_method"),
+            series_i64("x1", &x_i64),
+        ];
+        let inputs_f64 = vec![
+            series_f64("y", &y),
+            scalar_bool("with_intercept", true),
+            scalar_str_null("solve_method"),
+            series_f64("x1", &x_f64),
+        ];
+
+        let out_i64 = ols_fit(&inputs_i64).expect("ols_fit on Int64 x1");
+        let out_f64 = ols_fit(&inputs_f64).expect("ols_fit on Float64 x1");
+
+        let intercept_i64 = struct_f64_field(&out_i64, "intercept");
+        let intercept_f64 = struct_f64_field(&out_f64, "intercept");
+        assert!(
+            (intercept_i64 - 1.0).abs() < 1e-9,
+            "ols_fit intercept on Int64 x1 ~ 1.0, got {intercept_i64}"
+        );
+        assert!(
+            (intercept_i64 - intercept_f64).abs() < 1e-9,
+            "ols_fit intercept mismatch: int64={intercept_i64} float64={intercept_f64}"
+        );
+
+        let slope_i64 = struct_first_coef(&out_i64);
+        let slope_f64 = struct_first_coef(&out_f64);
+        assert!(
+            (slope_i64 - 2.0).abs() < 1e-9,
+            "ols_fit slope on Int64 x1 ~ 2.0, got {slope_i64}"
+        );
+        assert!(
+            (slope_i64 - slope_f64).abs() < 1e-9,
+            "ols_fit slope mismatch: int64={slope_i64} float64={slope_f64}"
+        );
+    }
+
+    // (f) ols_predict_fit with an Int64 x column (drop null policy) is Ok and
+    // matches the Float64 path. Before this fix, build_xy_with_null_policy's
+    // drop-policy x_fit could panic on an unwrap over a non-Float64 column.
+    {
+        let (x_f64, y) = linear_xy();
+        let x_i64: Vec<i64> = x_f64.iter().map(|&v| v as i64).collect();
+
+        let inputs_i64 = vec![
+            series_f64("y", &y),
+            scalar_bool("with_intercept", true),
+            scalar_str_null("solve_method"),
+            scalar_str_null("interval"),
+            scalar_f64("level", 0.95),
+            scalar_str("null_policy", "drop"),
+            series_i64("x1", &x_i64),
+        ];
+        let inputs_f64 = vec![
+            series_f64("y", &y),
+            scalar_bool("with_intercept", true),
+            scalar_str_null("solve_method"),
+            scalar_str_null("interval"),
+            scalar_f64("level", 0.95),
+            scalar_str("null_policy", "drop"),
+            series_f64("x1", &x_f64),
+        ];
+
+        let out_i64 = ols_predict_fit(
+            &inputs_i64,
+            PredictKwargs {
+                prefix: "p".to_string(),
+            },
+        )
+        .expect("ols_predict_fit on Int64 x1");
+        let out_f64 = ols_predict_fit(
+            &inputs_f64,
+            PredictKwargs {
+                prefix: "p".to_string(),
+            },
+        )
+        .expect("ols_predict_fit on Float64 x1");
+
+        let ca_i64 = out_i64.struct_().unwrap();
+        let ca_f64 = out_f64.struct_().unwrap();
+        let preds_i64 = ca_i64
+            .field_by_name("p_prediction")
+            .unwrap()
+            .f64()
+            .unwrap()
+            .clone();
+        let preds_f64 = ca_f64
+            .field_by_name("p_prediction")
+            .unwrap()
+            .f64()
+            .unwrap()
+            .clone();
+        assert_eq!(preds_i64.len(), y.len());
+        for i in 0..y.len() {
+            let a = preds_i64.get(i).unwrap();
+            let b = preds_f64.get(i).unwrap();
+            assert!(
+                (a - b).abs() < 1e-9,
+                "ols_predict_fit prediction {i} mismatch: int64={a} float64={b}"
+            );
+        }
+    }
+
+    // (g) condition_number_fit with Int64 x columns equals the Float64 result
+    // (a hoisted diagnostic builder).
+    {
+        // Integer-exact, non-collinear columns: x2 is quadratic in x1, not a
+        // linear multiple of it, so the design matrix stays well-conditioned
+        // and every value round-trips exactly through i64.
+        let x1_f64: Vec<f64> = (0..20).map(|i| i as f64).collect();
+        let x2_f64: Vec<f64> = (0..20).map(|i| (i * i) as f64).collect();
+        let x1_i64: Vec<i64> = x1_f64.iter().map(|&v| v as i64).collect();
+        let x2_i64: Vec<i64> = x2_f64.iter().map(|&v| v as i64).collect();
+
+        let inputs_i64 = vec![
+            scalar_bool("with_intercept", true),
+            series_i64("x1", &x1_i64),
+            series_i64("x2", &x2_i64),
+        ];
+        let inputs_f64 = vec![
+            scalar_bool("with_intercept", true),
+            series_f64("x1", &x1_f64),
+            series_f64("x2", &x2_f64),
+        ];
+
+        let out_i64 = condition_number_fit(&inputs_i64).expect("condition_number_fit on Int64");
+        let out_f64 = condition_number_fit(&inputs_f64).expect("condition_number_fit on Float64");
+
+        let cond_i64 = struct_f64_field(&out_i64, "condition_number");
+        let cond_f64 = struct_f64_field(&out_f64, "condition_number");
+        assert!(
+            (cond_i64 - cond_f64).abs() < 1e-9,
+            "condition_number mismatch: int64={cond_i64} float64={cond_f64}"
+        );
+    }
+
+    // (h) partial_cor_fit with an Int64 covariate equals the Float64-covariate
+    // result, and uses the covariate (differs from pearson_fit(x, y)). Before
+    // this fix the covariate was silently skipped when it wasn't Float64.
+    {
+        // Deterministic pseudo-random-looking integer data (not perfectly
+        // correlated and not collinear with the covariate), so the covariate
+        // measurably changes the partial correlation versus plain pearson,
+        // and every value round-trips exactly through i64.
+        let a: Vec<f64> = (0..25).map(|i| ((i * 7) % 23) as f64).collect();
+        let b: Vec<f64> = (0..25).map(|i| ((i * 13) % 29) as f64).collect();
+        let cov_f64: Vec<f64> = (0..25).map(|i| ((i * 3) % 17) as f64).collect();
+        let cov_i64: Vec<i64> = cov_f64.iter().map(|&v| v as i64).collect();
+
+        let inputs_i64 = vec![
+            series_f64("x", &a),
+            series_f64("y", &b),
+            scalar_u32("n_covariates", 1),
+            series_i64("cov1", &cov_i64),
+        ];
+        let inputs_f64 = vec![
+            series_f64("x", &a),
+            series_f64("y", &b),
+            scalar_u32("n_covariates", 1),
+            series_f64("cov1", &cov_f64),
+        ];
+
+        let out_i64 = partial_cor_fit(&inputs_i64).expect("partial_cor_fit on Int64 covariate");
+        let out_f64 = partial_cor_fit(&inputs_f64).expect("partial_cor_fit on Float64 covariate");
+
+        let est_i64 = struct_f64_field(&out_i64, "estimate");
+        let est_f64 = struct_f64_field(&out_f64, "estimate");
+        assert!(
+            (est_i64 - est_f64).abs() < 1e-9,
+            "partial_cor estimate mismatch: int64={est_i64} float64={est_f64}"
+        );
+
+        let pearson_inputs = vec![
+            series_f64("x", &a),
+            series_f64("y", &b),
+            scalar_f64("conf_level", 0.95),
+        ];
+        let pearson_out = pearson_fit(&pearson_inputs).expect("pearson_fit failed");
+        let pearson_est = struct_f64_field(&pearson_out, "estimate");
+        assert!(
+            (est_i64 - pearson_est).abs() > 1e-6,
+            "partial_cor estimate should differ from plain pearson once the \
+             covariate is actually used: partial={est_i64} pearson={pearson_est}"
+        );
+    }
+
+    // (i) kruskal_wallis_fit with Int32 groups equals the Float64 groups result.
+    {
+        let g1_f64: Vec<f64> = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+        let g2_f64: Vec<f64> = vec![6.0, 7.0, 8.0, 9.0, 10.0];
+        let g3_f64: Vec<f64> = vec![2.0, 4.0, 6.0, 8.0, 10.0];
+        let g1_i32: Vec<i32> = g1_f64.iter().map(|&v| v as i32).collect();
+        let g2_i32: Vec<i32> = g2_f64.iter().map(|&v| v as i32).collect();
+        let g3_i32: Vec<i32> = g3_f64.iter().map(|&v| v as i32).collect();
+
+        let inputs_i32 = vec![
+            Series::new("g1".into(), &g1_i32),
+            Series::new("g2".into(), &g2_i32),
+            Series::new("g3".into(), &g3_i32),
+        ];
+        let inputs_f64 = vec![
+            series_f64("g1", &g1_f64),
+            series_f64("g2", &g2_f64),
+            series_f64("g3", &g3_f64),
+        ];
+
+        let out_i32 = kruskal_wallis_fit(&inputs_i32).expect("kruskal_wallis_fit on Int32");
+        let out_f64 = kruskal_wallis_fit(&inputs_f64).expect("kruskal_wallis_fit on Float64");
+
+        let stat_i32 = struct_f64_field(&out_i32, "statistic");
+        let stat_f64 = struct_f64_field(&out_f64, "statistic");
+        assert!(
+            (stat_i32 - stat_f64).abs() < 1e-9,
+            "kruskal_wallis statistic mismatch: int32={stat_i32} float64={stat_f64}"
+        );
+    }
+
+    // (j) two_way_anova_fit with Int64 factor codes equals the UInt32-codes result.
+    {
+        let values: Vec<f64> = (0..12).map(|i| i as f64).collect();
+        let factor_a_u32: Vec<u32> = (0..12).map(|i| (i % 2) as u32).collect();
+        let factor_b_u32: Vec<u32> = (0..12).map(|i| (i % 3) as u32).collect();
+        let factor_a_i64: Vec<i64> = factor_a_u32.iter().map(|&v| v as i64).collect();
+        let factor_b_i64: Vec<i64> = factor_b_u32.iter().map(|&v| v as i64).collect();
+
+        let inputs_i64 = vec![
+            series_f64("values", &values),
+            series_i64("factor_a", &factor_a_i64),
+            series_i64("factor_b", &factor_b_i64),
+        ];
+        let inputs_u32 = vec![
+            series_f64("values", &values),
+            series_u32("factor_a", &factor_a_u32),
+            series_u32("factor_b", &factor_b_u32),
+        ];
+
+        let out_i64 = two_way_anova_fit(&inputs_i64).expect("two_way_anova_fit on Int64 codes");
+        let out_u32 = two_way_anova_fit(&inputs_u32).expect("two_way_anova_fit on UInt32 codes");
+
+        let a_f_i64 = struct_f64_field(&out_i64, "a_f");
+        let a_f_u32 = struct_f64_field(&out_u32, "a_f");
+        assert!(
+            (a_f_i64 - a_f_u32).abs() < 1e-9 || (a_f_i64.is_nan() && a_f_u32.is_nan()),
+            "two_way_anova a_f mismatch: int64={a_f_i64} u32={a_f_u32}"
+        );
     }
 }

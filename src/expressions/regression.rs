@@ -313,7 +313,7 @@ fn build_xy_data(
     y_idx: usize,
     x_start_idx: usize,
 ) -> PolarsResult<(Mat<f64>, Col<f64>)> {
-    let y_series = inputs[y_idx].f64()?;
+    let y_series = super::inputs::as_f64(&inputs[y_idx])?;
     let n_rows = y_series.len();
     let n_features = inputs.len() - x_start_idx;
 
@@ -321,13 +321,13 @@ fn build_xy_data(
     let y_vec: Vec<f64> = y_series.into_no_null_iter().collect();
     let y = Col::from_fn(y_vec.len(), |i| y_vec[i]);
 
-    // Build X matrix (row-major order for faer)
+    // Build X matrix (row-major order for faer). One cast per column, hoisted
+    // out of the per-cell closure.
+    let x_cols: Vec<Float64Chunked> = (0..n_features)
+        .map(|col| super::inputs::as_f64(&inputs[x_start_idx + col]))
+        .collect::<PolarsResult<Vec<_>>>()?;
     let x = Mat::from_fn(n_rows, n_features, |row, col| {
-        inputs[x_start_idx + col]
-            .f64()
-            .ok()
-            .and_then(|ca| ca.get(row))
-            .unwrap_or(f64::NAN)
+        x_cols[col].get(row).unwrap_or(f64::NAN)
     });
 
     Ok((x, y))
@@ -642,7 +642,7 @@ fn pl_ols(inputs: &[Series], kwargs: LinearAliasKwargs) -> PolarsResult<Series> 
 ///
 /// Input contract: `[y, lambda (f64), with_intercept (bool), solve_method (str|null), x_0, ...]`.
 pub fn ridge_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let lambda = inputs[1].f64()?.get(0).unwrap_or(1.0);
+    let lambda = super::inputs::as_f64(&inputs[1])?.get(0).unwrap_or(1.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let solve_method = parse_solver_type(inputs[3].str()?.get(0));
 
@@ -690,8 +690,8 @@ fn pl_ridge(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_elastic_net` expression shim.
 pub fn elastic_net_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let lambda = inputs[1].f64()?.get(0).unwrap_or(1.0);
-    let alpha = inputs[2].f64()?.get(0).unwrap_or(0.5);
+    let lambda = super::inputs::as_f64(&inputs[1])?.get(0).unwrap_or(1.0);
+    let alpha = super::inputs::as_f64(&inputs[2])?.get(0).unwrap_or(0.5);
     let with_intercept = inputs[3].bool()?.get(0).unwrap_or(true);
 
     let (x, y) = match build_xy_data(inputs, 0, 4) {
@@ -744,7 +744,7 @@ pub fn wls_fit(inputs: &[Series]) -> PolarsResult<Series> {
 /// Additive variant of [`wls_fit`] taking the named `alias_tolerance` option.
 /// Same positional input contract.
 pub fn wls_fit_with(inputs: &[Series], kwargs: &LinearAliasKwargs) -> PolarsResult<Series> {
-    let weights_series = inputs[1].f64()?;
+    let weights_series = super::inputs::as_f64(&inputs[1])?;
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let solve_method = parse_solver_type(inputs[3].str()?.get(0));
 
@@ -838,7 +838,7 @@ pub fn rls_fit(inputs: &[Series]) -> PolarsResult<Series> {
 /// Additive variant of [`rls_fit`] taking the named `initial_p_diagonal`
 /// option. Same positional input contract.
 pub fn rls_fit_with(inputs: &[Series], kwargs: &RlsKwargs) -> PolarsResult<Series> {
-    let forgetting_factor = inputs[1].f64()?.get(0).unwrap_or(0.99);
+    let forgetting_factor = super::inputs::as_f64(&inputs[1])?.get(0).unwrap_or(0.99);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
 
     let (x, y) = match build_xy_data(inputs, 0, 3) {
@@ -884,8 +884,8 @@ fn pl_rls(inputs: &[Series], kwargs: RlsKwargs) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_bls` expression shim.
 pub fn bls_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let lower_bound = inputs[1].f64()?.get(0);
-    let upper_bound = inputs[2].f64()?.get(0);
+    let lower_bound = super::inputs::as_f64(&inputs[1])?.get(0);
+    let upper_bound = super::inputs::as_f64(&inputs[2])?.get(0);
     let with_intercept = inputs[3].bool()?.get(0).unwrap_or(true);
 
     let (x, y) = match build_xy_data(inputs, 0, 4) {
@@ -937,11 +937,11 @@ fn pl_bls(inputs: &[Series]) -> PolarsResult<Series> {
 ///
 /// Input contract: `[y, epsilon (f64), alpha (f64), with_intercept (bool), max_iter (u32), tol (f64), x_0, ...]`.
 pub fn huber_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let epsilon = inputs[1].f64()?.get(0).unwrap_or(1.35);
-    let alpha = inputs[2].f64()?.get(0).unwrap_or(0.0001);
+    let epsilon = super::inputs::as_f64(&inputs[1])?.get(0).unwrap_or(1.35);
+    let alpha = super::inputs::as_f64(&inputs[2])?.get(0).unwrap_or(0.0001);
     let with_intercept = inputs[3].bool()?.get(0).unwrap_or(true);
-    let max_iter = inputs[4].u32()?.get(0).unwrap_or(100) as usize;
-    let tol = inputs[5].f64()?.get(0).unwrap_or(1e-5);
+    let max_iter = super::inputs::as_u32(&inputs[4])?.get(0).unwrap_or(100) as usize;
+    let tol = super::inputs::as_f64(&inputs[5])?.get(0).unwrap_or(1e-5);
 
     let (x, y) = match build_xy_data(inputs, 0, 6) {
         Ok(data) => data,
@@ -991,12 +991,12 @@ fn pl_huber(inputs: &[Series]) -> PolarsResult<Series> {
 /// Input contract: `[y, c (f64), penalty (str: "none" | "l2"), threshold (f64),
 ///                   with_intercept (bool), max_iter (u32), tol (f64), x_0, ...]`.
 pub fn logistic_regression_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let c = inputs[1].f64()?.get(0).unwrap_or(1.0);
+    let c = super::inputs::as_f64(&inputs[1])?.get(0).unwrap_or(1.0);
     let penalty = inputs[2].str()?.get(0).unwrap_or("l2");
-    let threshold = inputs[3].f64()?.get(0).unwrap_or(0.5);
+    let threshold = super::inputs::as_f64(&inputs[3])?.get(0).unwrap_or(0.5);
     let with_intercept = inputs[4].bool()?.get(0).unwrap_or(true);
-    let max_iter = inputs[5].u32()?.get(0).unwrap_or(100) as usize;
-    let tol = inputs[6].f64()?.get(0).unwrap_or(1e-6);
+    let max_iter = super::inputs::as_u32(&inputs[5])?.get(0).unwrap_or(100) as usize;
+    let tol = super::inputs::as_f64(&inputs[6])?.get(0).unwrap_or(1e-6);
 
     let (x, y) = match build_xy_data(inputs, 0, 7) {
         Ok(data) => data,
@@ -1047,9 +1047,9 @@ fn pl_logistic_regression(inputs: &[Series]) -> PolarsResult<Series> {
 /// Input contract: `[y, n_components (u32), with_intercept (bool), tol (f64),
 ///                   scale (bool), x_0, ...]`.
 pub fn pls_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let n_components = inputs[1].u32()?.get(0).unwrap_or(2) as usize;
+    let n_components = super::inputs::as_u32(&inputs[1])?.get(0).unwrap_or(2) as usize;
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
-    let tol = inputs[3].f64()?.get(0).unwrap_or(1e-6);
+    let tol = super::inputs::as_f64(&inputs[3])?.get(0).unwrap_or(1e-6);
     let scale = inputs[4].bool()?.get(0).unwrap_or(true);
 
     let (x, y) = match build_xy_data(inputs, 0, 5) {
@@ -1102,7 +1102,7 @@ fn pl_pls(inputs: &[Series]) -> PolarsResult<Series> {
 ///
 /// Input contract: `[y, tau (f64), with_intercept (bool), x_0, ...]`.
 pub fn quantile_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let tau = inputs[1].f64()?.get(0).unwrap_or(0.5);
+    let tau = super::inputs::as_f64(&inputs[1])?.get(0).unwrap_or(0.5);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
 
     let (x, y) = match build_xy_data(inputs, 0, 3) {
@@ -1144,12 +1144,12 @@ pub fn isotonic_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let increasing = inputs[2].bool()?.get(0).unwrap_or(true);
 
     // Extract y values
-    let y_series = inputs[0].f64()?;
+    let y_series = super::inputs::as_f64(&inputs[0])?;
     let y_vec: Vec<f64> = y_series.into_no_null_iter().collect();
     let y = Col::from_fn(y_vec.len(), |i| y_vec[i]);
 
     // Extract x values (single column)
-    let x_series = inputs[1].f64()?;
+    let x_series = super::inputs::as_f64(&inputs[1])?;
     let x_vec: Vec<f64> = x_series.into_no_null_iter().collect();
     let x = Col::from_fn(x_vec.len(), |i| x_vec[i]);
 
@@ -1187,7 +1187,7 @@ fn pl_isotonic(inputs: &[Series]) -> PolarsResult<Series> {
 /// Quantile regression has no asymptotic standard errors, so the `std_error`,
 /// `statistic`, and `p_value` columns are filled with NaN.
 pub fn quantile_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let tau = inputs[1].f64()?.get(0).unwrap_or(0.5);
+    let tau = super::inputs::as_f64(&inputs[1])?.get(0).unwrap_or(0.5);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let n_features = inputs.len() - 3;
 
@@ -1273,13 +1273,12 @@ pub fn condition_number_fit(inputs: &[Series]) -> PolarsResult<Series> {
         return condition_nan_output();
     }
 
-    // Build X matrix
+    // Build X matrix. One cast per column, hoisted out of the per-cell closure.
+    let x_cols: Vec<Float64Chunked> = (0..n_cols)
+        .map(|col| super::inputs::as_f64(&inputs[1 + col]))
+        .collect::<PolarsResult<Vec<_>>>()?;
     let x = Mat::from_fn(n_rows, n_cols, |row, col| {
-        inputs[1 + col]
-            .f64()
-            .ok()
-            .and_then(|ca| ca.get(row))
-            .unwrap_or(f64::NAN)
+        x_cols[col].get(row).unwrap_or(f64::NAN)
     });
 
     // Check for NaN values
@@ -1369,7 +1368,7 @@ pub fn check_binary_separation_fit(inputs: &[Series]) -> PolarsResult<Series> {
         return separation_default_output();
     }
 
-    let y_series = inputs[0].f64()?;
+    let y_series = super::inputs::as_f64(&inputs[0])?;
     let n_rows = y_series.len();
     let n_cols = inputs.len() - 1;
 
@@ -1382,12 +1381,11 @@ pub fn check_binary_separation_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let y = Col::from_fn(y_vec.len(), |i| y_vec[i]);
 
     // Build X matrix
+    let x_cols: Vec<Float64Chunked> = (0..n_cols)
+        .map(|col| super::inputs::as_f64(&inputs[1 + col]))
+        .collect::<PolarsResult<Vec<_>>>()?;
     let x = Mat::from_fn(n_rows, n_cols, |row, col| {
-        inputs[1 + col]
-            .f64()
-            .ok()
-            .and_then(|ca| ca.get(row))
-            .unwrap_or(f64::NAN)
+        x_cols[col].get(row).unwrap_or(f64::NAN)
     });
 
     // Check for NaN values
@@ -1422,7 +1420,7 @@ pub fn check_count_sparsity_fit(inputs: &[Series]) -> PolarsResult<Series> {
         return separation_default_output();
     }
 
-    let y_series = inputs[0].f64()?;
+    let y_series = super::inputs::as_f64(&inputs[0])?;
     let n_rows = y_series.len();
     let n_cols = inputs.len() - 1;
 
@@ -1435,12 +1433,11 @@ pub fn check_count_sparsity_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let y = Col::from_fn(y_vec.len(), |i| y_vec[i]);
 
     // Build X matrix
+    let x_cols: Vec<Float64Chunked> = (0..n_cols)
+        .map(|col| super::inputs::as_f64(&inputs[1 + col]))
+        .collect::<PolarsResult<Vec<_>>>()?;
     let x = Mat::from_fn(n_rows, n_cols, |row, col| {
-        inputs[1 + col]
-            .f64()
-            .ok()
-            .and_then(|ca| ca.get(row))
-            .unwrap_or(f64::NAN)
+        x_cols[col].get(row).unwrap_or(f64::NAN)
     });
 
     // Check for NaN values
@@ -1505,12 +1502,11 @@ pub fn vif_fit(inputs: &[Series]) -> PolarsResult<Series> {
     }
 
     // Build X matrix from raw features.
+    let x_cols: Vec<Float64Chunked> = (0..n_features)
+        .map(|col| super::inputs::as_f64(&inputs[col]))
+        .collect::<PolarsResult<Vec<_>>>()?;
     let x = Mat::from_fn(n_rows, n_features, |row, col| {
-        inputs[col]
-            .f64()
-            .ok()
-            .and_then(|ca| ca.get(row))
-            .unwrap_or(f64::NAN)
+        x_cols[col].get(row).unwrap_or(f64::NAN)
     });
 
     // Bail on NaN inputs.
@@ -1570,12 +1566,11 @@ pub fn leverage_fit(inputs: &[Series]) -> PolarsResult<Series> {
         return leverage_nan_output();
     }
 
+    let x_cols: Vec<Float64Chunked> = (0..n_features)
+        .map(|col| super::inputs::as_f64(&inputs[1 + col]))
+        .collect::<PolarsResult<Vec<_>>>()?;
     let x = Mat::from_fn(n_rows, n_features, |row, col| {
-        inputs[1 + col]
-            .f64()
-            .ok()
-            .and_then(|ca| ca.get(row))
-            .unwrap_or(f64::NAN)
+        x_cols[col].get(row).unwrap_or(f64::NAN)
     });
 
     for i in 0..n_rows {
@@ -1773,7 +1768,7 @@ pub fn residual_outliers_fit(inputs: &[Series]) -> PolarsResult<Series> {
         return residual_outliers_nan_output();
     }
     let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
-    let threshold = inputs[2].f64()?.get(0).unwrap_or(2.0);
+    let threshold = super::inputs::as_f64(&inputs[2])?.get(0).unwrap_or(2.0);
     let n_features = inputs.len() - 3;
     // Build the input slice expected by the OLS fit helper: [y, with_intercept, x...]
     let mut fit_inputs: Vec<Series> = Vec::with_capacity(2 + n_features);
@@ -1884,7 +1879,7 @@ pub fn influential_cooks_fit(inputs: &[Series]) -> PolarsResult<Series> {
     if inputs.len() < 4 {
         return influence_mask_nan_output();
     }
-    let threshold = inputs[2].f64()?.get(0);
+    let threshold = super::inputs::as_f64(&inputs[2])?.get(0);
     // Build the cooks_distance contract from our own inputs.
     let mut cd_inputs: Vec<Series> = Vec::with_capacity(2 + inputs.len() - 3);
     cd_inputs.push(inputs[0].clone());
@@ -1920,7 +1915,7 @@ pub fn influential_dffits_fit(inputs: &[Series]) -> PolarsResult<Series> {
     if inputs.len() < 4 {
         return influence_mask_nan_output();
     }
-    let threshold = inputs[2].f64()?.get(0);
+    let threshold = super::inputs::as_f64(&inputs[2])?.get(0);
     let mut cd_inputs: Vec<Series> = Vec::with_capacity(2 + inputs.len() - 3);
     cd_inputs.push(inputs[0].clone());
     cd_inputs.push(inputs[1].clone());
@@ -1957,7 +1952,7 @@ pub fn high_leverage_points_fit(inputs: &[Series]) -> PolarsResult<Series> {
         return influence_mask_nan_output();
     }
     let with_intercept = inputs[0].bool()?.get(0).unwrap_or(true);
-    let threshold = inputs[1].f64()?.get(0);
+    let threshold = super::inputs::as_f64(&inputs[1])?.get(0);
     let n_features = inputs.len() - 2;
     let n_rows = inputs[2].len();
     if n_rows < 2 || n_features == 0 {
@@ -1965,12 +1960,11 @@ pub fn high_leverage_points_fit(inputs: &[Series]) -> PolarsResult<Series> {
     }
 
     // Build X matrix
+    let x_cols: Vec<Float64Chunked> = (0..n_features)
+        .map(|col| super::inputs::as_f64(&inputs[2 + col]))
+        .collect::<PolarsResult<Vec<_>>>()?;
     let x = Mat::from_fn(n_rows, n_features, |row, col| {
-        inputs[2 + col]
-            .f64()
-            .ok()
-            .and_then(|ca| ca.get(row))
-            .unwrap_or(0.0)
+        x_cols[col].get(row).unwrap_or(0.0)
     });
     let leverage = compute_leverage(&x, with_intercept);
     let n_params = n_features + if with_intercept { 1 } else { 0 };
@@ -2054,7 +2048,7 @@ pub fn high_vif_predictors_fit(inputs: &[Series]) -> PolarsResult<Series> {
     if inputs.len() < 2 {
         return vif_mask_nan_output();
     }
-    let threshold = match inputs[0].f64()?.get(0) {
+    let threshold = match super::inputs::as_f64(&inputs[0])?.get(0) {
         Some(t) => t,
         None => return vif_mask_nan_output(),
     };
@@ -2064,12 +2058,11 @@ pub fn high_vif_predictors_fit(inputs: &[Series]) -> PolarsResult<Series> {
         return vif_mask_nan_output();
     }
 
+    let x_cols: Vec<Float64Chunked> = (0..n_features)
+        .map(|col| super::inputs::as_f64(&inputs[1 + col]))
+        .collect::<PolarsResult<Vec<_>>>()?;
     let x = Mat::from_fn(n_rows, n_features, |row, col| {
-        inputs[1 + col]
-            .f64()
-            .ok()
-            .and_then(|ca| ca.get(row))
-            .unwrap_or(f64::NAN)
+        x_cols[col].get(row).unwrap_or(f64::NAN)
     });
 
     for i in 0..n_rows {
@@ -2129,12 +2122,11 @@ pub fn generalized_vif_fit(inputs: &[Series]) -> PolarsResult<Series> {
         return gvif_nan_output();
     }
 
+    let x_cols: Vec<Float64Chunked> = (0..n_features)
+        .map(|col| super::inputs::as_f64(&inputs[1 + col]))
+        .collect::<PolarsResult<Vec<_>>>()?;
     let x = Mat::from_fn(n_rows, n_features, |row, col| {
-        inputs[1 + col]
-            .f64()
-            .ok()
-            .and_then(|ca| ca.get(row))
-            .unwrap_or(f64::NAN)
+        x_cols[col].get(row).unwrap_or(f64::NAN)
     });
 
     for i in 0..n_rows {
@@ -2166,7 +2158,7 @@ pub fn pearson_chi_squared_logistic_fit(inputs: &[Series]) -> PolarsResult<Serie
     if inputs.len() < 4 {
         return chi_squared_nan_output();
     }
-    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let lambda = super::inputs::as_f64(&inputs[1])?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let n_features = inputs.len() - 3;
     let (x, y) = match build_xy_data(inputs, 0, 3) {
@@ -2203,7 +2195,7 @@ pub fn pearson_chi_squared_poisson_fit(inputs: &[Series]) -> PolarsResult<Series
     if inputs.len() < 4 {
         return chi_squared_nan_output();
     }
-    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let lambda = super::inputs::as_f64(&inputs[1])?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let n_features = inputs.len() - 3;
     let (x, y) = match build_xy_data(inputs, 0, 3) {
@@ -2236,7 +2228,7 @@ fn pl_pearson_chi_squared_poisson(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_logistic` expression shim.
 pub fn logistic_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let lambda = super::inputs::as_f64(&inputs[1])?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
 
     let (x, y) = match build_xy_data(inputs, 0, 3) {
@@ -2275,7 +2267,7 @@ fn pl_logistic(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_poisson` expression shim.
 pub fn poisson_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let lambda = super::inputs::as_f64(&inputs[1])?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
 
     let (x, y) = match build_xy_data(inputs, 0, 3) {
@@ -2349,7 +2341,7 @@ fn build_gamma_log(lambda: f64, with_intercept: bool) -> GammaRegressor {
 
 /// Logistic Pearson residuals.
 pub fn logistic_pearson_residuals_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let lambda = super::inputs::as_f64(&inputs[1])?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let (x, y) = match build_xy_data(inputs, 0, 3) {
         Ok(d) => d,
@@ -2371,7 +2363,7 @@ fn pl_logistic_pearson_residuals(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Logistic deviance residuals.
 pub fn logistic_deviance_residuals_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let lambda = super::inputs::as_f64(&inputs[1])?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let (x, y) = match build_xy_data(inputs, 0, 3) {
         Ok(d) => d,
@@ -2393,7 +2385,7 @@ fn pl_logistic_deviance_residuals(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Logistic working residuals (IRLS adjusted-dependent-variable residuals).
 pub fn logistic_working_residuals_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let lambda = super::inputs::as_f64(&inputs[1])?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let (x, y) = match build_xy_data(inputs, 0, 3) {
         Ok(d) => d,
@@ -2415,7 +2407,7 @@ fn pl_logistic_working_residuals(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Poisson Pearson residuals.
 pub fn poisson_pearson_residuals_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let lambda = super::inputs::as_f64(&inputs[1])?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let (x, y) = match build_xy_data(inputs, 0, 3) {
         Ok(d) => d,
@@ -2437,7 +2429,7 @@ fn pl_poisson_pearson_residuals(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Poisson deviance residuals.
 pub fn poisson_deviance_residuals_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let lambda = super::inputs::as_f64(&inputs[1])?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let (x, y) = match build_xy_data(inputs, 0, 3) {
         Ok(d) => d,
@@ -2459,7 +2451,7 @@ fn pl_poisson_deviance_residuals(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Poisson working residuals.
 pub fn poisson_working_residuals_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let lambda = super::inputs::as_f64(&inputs[1])?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let (x, y) = match build_xy_data(inputs, 0, 3) {
         Ok(d) => d,
@@ -2497,7 +2489,7 @@ pub fn gamma_dispersion_deviance_fit(inputs: &[Series]) -> PolarsResult<Series> 
     if inputs.len() < 4 {
         return dispersion_nan_output();
     }
-    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let lambda = super::inputs::as_f64(&inputs[1])?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let n_features = inputs.len().saturating_sub(3);
     let (x, y) = match build_xy_data(inputs, 0, 3) {
@@ -2533,7 +2525,7 @@ pub fn gamma_dispersion_pearson_fit(inputs: &[Series]) -> PolarsResult<Series> {
     if inputs.len() < 4 {
         return dispersion_nan_output();
     }
-    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let lambda = super::inputs::as_f64(&inputs[1])?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let n_features = inputs.len().saturating_sub(3);
     let (x, y) = match build_xy_data(inputs, 0, 3) {
@@ -2570,7 +2562,7 @@ pub fn gamma_pearson_chi_squared_fit(inputs: &[Series]) -> PolarsResult<Series> 
     if inputs.len() < 4 {
         return chi_squared_nan_output();
     }
-    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let lambda = super::inputs::as_f64(&inputs[1])?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let n_features = inputs.len().saturating_sub(3);
     let (x, y) = match build_xy_data(inputs, 0, 3) {
@@ -2609,7 +2601,7 @@ pub fn gamma_standardized_pearson_residuals_fit(inputs: &[Series]) -> PolarsResu
     if inputs.len() < 4 {
         return residual_diag_nan_output();
     }
-    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let lambda = super::inputs::as_f64(&inputs[1])?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let n_features = inputs.len().saturating_sub(3);
     let (x, y) = match build_xy_data(inputs, 0, 3) {
@@ -2649,7 +2641,7 @@ pub fn gamma_standardized_deviance_residuals_fit(inputs: &[Series]) -> PolarsRes
     if inputs.len() < 4 {
         return residual_diag_nan_output();
     }
-    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let lambda = super::inputs::as_f64(&inputs[1])?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let n_features = inputs.len().saturating_sub(3);
     let (x, y) = match build_xy_data(inputs, 0, 3) {
@@ -2715,8 +2707,8 @@ pub fn negative_binomial_fit_with(
     inputs: &[Series],
     kwargs: &NegativeBinomialKwargs,
 ) -> PolarsResult<Series> {
-    let theta = inputs[1].f64()?.get(0);
-    let lambda = inputs[2].f64()?.get(0).unwrap_or(0.0);
+    let theta = super::inputs::as_f64(&inputs[1])?.get(0);
+    let lambda = super::inputs::as_f64(&inputs[2])?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[3].bool()?.get(0).unwrap_or(true);
 
     let (x, y) = match build_xy_data(inputs, 0, 4) {
@@ -2766,8 +2758,8 @@ fn pl_negative_binomial(inputs: &[Series], kwargs: NegativeBinomialKwargs) -> Po
 
 /// Public Rust-callable variant. Same input contract as the `pl_tweedie` expression shim.
 pub fn tweedie_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let var_power = inputs[1].f64()?.get(0).unwrap_or(1.5);
-    let lambda = inputs[2].f64()?.get(0).unwrap_or(0.0);
+    let var_power = super::inputs::as_f64(&inputs[1])?.get(0).unwrap_or(1.5);
+    let lambda = super::inputs::as_f64(&inputs[2])?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[3].bool()?.get(0).unwrap_or(true);
 
     let (x, y) = match build_xy_data(inputs, 0, 4) {
@@ -2810,7 +2802,7 @@ fn pl_tweedie(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_probit` expression shim.
 pub fn probit_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let lambda = super::inputs::as_f64(&inputs[1])?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
 
     let (x, y) = match build_xy_data(inputs, 0, 3) {
@@ -2849,7 +2841,7 @@ fn pl_probit(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_cloglog` expression shim.
 pub fn cloglog_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let lambda = super::inputs::as_f64(&inputs[1])?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
 
     let (x, y) = match build_xy_data(inputs, 0, 3) {
@@ -3058,7 +3050,13 @@ pub fn augment_fit(inputs: &[Series], kwargs: &AugmentKwargs) -> PolarsResult<Se
     let model = kwargs.model.to_lowercase();
     let needs_weights = model == "wls";
 
-    let y_ca = inputs[0].f64()?;
+    let y_ca = super::inputs::as_f64(&inputs[0])?;
+
+    // Hoisted once, before the validity scan: one cast per x column, reused
+    // by both the scan below and the `Mat::from_fn` build further down.
+    let x_cols: Vec<Float64Chunked> = (0..n_features)
+        .map(|col| super::inputs::as_f64(&inputs[2 + col]))
+        .collect::<PolarsResult<Vec<_>>>()?;
 
     let mut valid = vec![true; n_rows];
     for (i, ok) in valid.iter_mut().enumerate() {
@@ -3067,8 +3065,7 @@ pub fn augment_fit(inputs: &[Series], kwargs: &AugmentKwargs) -> PolarsResult<Se
             _ => *ok = false,
         }
     }
-    for col in inputs.iter().skip(2) {
-        let ca = col.f64()?;
+    for ca in &x_cols {
         for (i, ok) in valid.iter_mut().enumerate() {
             match ca.get(i) {
                 Some(v) if v.is_finite() => {}
@@ -3077,7 +3074,7 @@ pub fn augment_fit(inputs: &[Series], kwargs: &AugmentKwargs) -> PolarsResult<Se
         }
     }
     if needs_weights {
-        let w_ca = inputs[1].f64()?;
+        let w_ca = super::inputs::as_f64(&inputs[1])?;
         if w_ca.len() != n_rows {
             return Err(
                 polars_err!(ComputeError: "augment: model 'wls' requires a weights column"),
@@ -3101,21 +3098,17 @@ pub fn augment_fit(inputs: &[Series], kwargs: &AugmentKwargs) -> PolarsResult<Se
     // the validity scan above, to have a `Some(v)` with `v.is_finite()` in
     // every `x` column (and in `y`, and in `weights` when `needs_weights`) —
     // that is exactly how `valid`/`valid_indices` were constructed. So
-    // `.f64()` and `.get(valid_indices[..])` cannot fail for these rows
+    // `x_cols[..].get(valid_indices[..])` cannot return `None` for these rows
     // today. Still, follow `build_xy_data`'s convention (a few hundred lines
     // above) of falling back to `f64::NAN` rather than `.unwrap()`-panicking,
     // so a future refactor that reorders or short-circuits the validity scan
     // degrades to NaN output instead of a reachable panic on user input.
     let x = Mat::from_fn(n_valid, n_features, |row, col| {
-        inputs[2 + col]
-            .f64()
-            .ok()
-            .and_then(|ca| ca.get(valid_indices[row]))
-            .unwrap_or(f64::NAN)
+        x_cols[col].get(valid_indices[row]).unwrap_or(f64::NAN)
     });
     let y = Col::from_fn(n_valid, |i| y_ca.get(valid_indices[i]).unwrap_or(f64::NAN));
     let weights: Option<Col<f64>> = if needs_weights {
-        let w_ca = inputs[1].f64()?;
+        let w_ca = super::inputs::as_f64(&inputs[1])?;
         Some(Col::from_fn(n_valid, |i| {
             w_ca.get(valid_indices[i]).unwrap_or(f64::NAN)
         }))
@@ -3331,8 +3324,8 @@ pub fn alm_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let dist_str = inputs[1].str()?.get(0).unwrap_or("normal");
     let link_str = inputs[2].str()?.get(0);
     let loss_str = inputs[3].str()?.get(0).unwrap_or("likelihood");
-    let role_trim = inputs[4].f64()?.get(0);
-    let extra_parameter = inputs[5].f64()?.get(0);
+    let role_trim = super::inputs::as_f64(&inputs[4])?.get(0);
+    let extra_parameter = super::inputs::as_f64(&inputs[5])?.get(0);
     let with_intercept = inputs[6].bool()?.get(0).unwrap_or(true);
 
     let (x, y) = match build_xy_data(inputs, 0, 7) {
@@ -3521,7 +3514,7 @@ fn pl_ols_summary(inputs: &[Series], kwargs: LinearAliasKwargs) -> PolarsResult<
 
 /// Public Rust-callable variant. Same input contract as the `pl_ridge_summary` expression shim.
 pub fn ridge_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let lambda = inputs[1].f64()?.get(0).unwrap_or(1.0);
+    let lambda = super::inputs::as_f64(&inputs[1])?.get(0).unwrap_or(1.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let solve_method = parse_solver_type(inputs[3].str()?.get(0));
     let n_features = inputs.len() - 4;
@@ -3593,8 +3586,8 @@ fn pl_ridge_summary(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_elastic_net_summary` expression shim.
 pub fn elastic_net_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let lambda = inputs[1].f64()?.get(0).unwrap_or(1.0);
-    let alpha = inputs[2].f64()?.get(0).unwrap_or(0.5);
+    let lambda = super::inputs::as_f64(&inputs[1])?.get(0).unwrap_or(1.0);
+    let alpha = super::inputs::as_f64(&inputs[2])?.get(0).unwrap_or(0.5);
     let with_intercept = inputs[3].bool()?.get(0).unwrap_or(true);
     let n_features = inputs.len() - 4;
 
@@ -3669,7 +3662,7 @@ pub fn wls_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
 /// Additive variant of [`wls_summary_fit`] taking the named `alias_tolerance`
 /// option. Same positional input contract.
 pub fn wls_summary_fit_with(inputs: &[Series], kwargs: &LinearAliasKwargs) -> PolarsResult<Series> {
-    let weights_series = inputs[1].f64()?;
+    let weights_series = super::inputs::as_f64(&inputs[1])?;
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let solve_method = parse_solver_type(inputs[3].str()?.get(0));
     let n_features = inputs.len() - 4;
@@ -3752,7 +3745,7 @@ pub fn rls_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
 /// Additive variant of [`rls_summary_fit`] taking the named
 /// `initial_p_diagonal` option. Same positional input contract.
 pub fn rls_summary_fit_with(inputs: &[Series], kwargs: &RlsKwargs) -> PolarsResult<Series> {
-    let forgetting_factor = inputs[1].f64()?.get(0).unwrap_or(0.99);
+    let forgetting_factor = super::inputs::as_f64(&inputs[1])?.get(0).unwrap_or(0.99);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let n_features = inputs.len() - 3;
 
@@ -3822,8 +3815,8 @@ fn pl_rls_summary(inputs: &[Series], kwargs: RlsKwargs) -> PolarsResult<Series> 
 
 /// Public Rust-callable variant. Same input contract as the `pl_bls_summary` expression shim.
 pub fn bls_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let lower_bound = inputs[1].f64()?.get(0);
-    let upper_bound = inputs[2].f64()?.get(0);
+    let lower_bound = super::inputs::as_f64(&inputs[1])?.get(0);
+    let upper_bound = super::inputs::as_f64(&inputs[2])?.get(0);
     let with_intercept = inputs[3].bool()?.get(0).unwrap_or(true);
     let n_features = inputs.len() - 4;
 
@@ -3901,7 +3894,7 @@ fn pl_bls_summary(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_logistic_summary` expression shim.
 pub fn logistic_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let lambda = super::inputs::as_f64(&inputs[1])?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let n_features = inputs.len() - 3;
 
@@ -3970,7 +3963,7 @@ fn pl_logistic_summary(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_poisson_summary` expression shim.
 pub fn poisson_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let lambda = super::inputs::as_f64(&inputs[1])?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let n_features = inputs.len() - 3;
 
@@ -4048,8 +4041,8 @@ pub fn negative_binomial_summary_fit_with(
     inputs: &[Series],
     kwargs: &NegativeBinomialKwargs,
 ) -> PolarsResult<Series> {
-    let theta = inputs[1].f64()?.get(0);
-    let lambda = inputs[2].f64()?.get(0).unwrap_or(0.0);
+    let theta = super::inputs::as_f64(&inputs[1])?.get(0);
+    let lambda = super::inputs::as_f64(&inputs[2])?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[3].bool()?.get(0).unwrap_or(true);
     let n_features = inputs.len() - 4;
 
@@ -4132,8 +4125,8 @@ fn pl_negative_binomial_summary(
 
 /// Public Rust-callable variant. Same input contract as the `pl_tweedie_summary` expression shim.
 pub fn tweedie_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let var_power = inputs[1].f64()?.get(0).unwrap_or(1.5);
-    let lambda = inputs[2].f64()?.get(0).unwrap_or(0.0);
+    let var_power = super::inputs::as_f64(&inputs[1])?.get(0).unwrap_or(1.5);
+    let lambda = super::inputs::as_f64(&inputs[2])?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[3].bool()?.get(0).unwrap_or(true);
     let n_features = inputs.len() - 4;
 
@@ -4206,7 +4199,7 @@ fn pl_tweedie_summary(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_probit_summary` expression shim.
 pub fn probit_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let lambda = super::inputs::as_f64(&inputs[1])?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let n_features = inputs.len() - 3;
 
@@ -4275,7 +4268,7 @@ fn pl_probit_summary(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_cloglog_summary` expression shim.
 pub fn cloglog_summary_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let lambda = super::inputs::as_f64(&inputs[1])?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let n_features = inputs.len() - 3;
 
@@ -4411,9 +4404,15 @@ pub(crate) fn build_xy_with_null_policy(
     x_start_idx: usize,
     null_policy: &str,
 ) -> PolarsResult<XyNullPolicyResult> {
-    let y_series = inputs[y_idx].f64()?;
+    let y_series = super::inputs::as_f64(&inputs[y_idx])?;
     let n_rows = y_series.len();
     let n_features = inputs.len() - x_start_idx;
+
+    // Hoisted once for both policies below: one cast per x column, reused by
+    // every null scan and `Mat::from_fn` build in this function.
+    let x_cols: Vec<Float64Chunked> = (0..n_features)
+        .map(|col| super::inputs::as_f64(&inputs[x_start_idx + col]))
+        .collect::<PolarsResult<Vec<_>>>()?;
 
     match null_policy {
         "drop_y_zero_x" => {
@@ -4444,20 +4443,12 @@ pub(crate) fn build_xy_with_null_policy(
 
             // Build X for fitting (valid rows, zero fill nulls)
             let x_fit = Mat::from_fn(n_valid, n_features, |row, col| {
-                inputs[x_start_idx + col]
-                    .f64()
-                    .ok()
-                    .and_then(|ca| ca.get(valid_indices[row]))
-                    .unwrap_or(0.0)
+                x_cols[col].get(valid_indices[row]).unwrap_or(0.0)
             });
 
             // Build X for prediction (all rows, zero fill nulls)
             let x_pred = Mat::from_fn(n_rows, n_features, |row, col| {
-                inputs[x_start_idx + col]
-                    .f64()
-                    .ok()
-                    .and_then(|ca| ca.get(row))
-                    .unwrap_or(0.0)
+                x_cols[col].get(row).unwrap_or(0.0)
             });
 
             Ok((x_fit, y, valid_mask, x_pred))
@@ -4475,12 +4466,10 @@ pub(crate) fn build_xy_with_null_policy(
             }
 
             // Check X columns for nulls
-            for col_idx in 0..n_features {
-                if let Ok(col) = inputs[x_start_idx + col_idx].f64() {
-                    for (i, mask) in valid_mask.iter_mut().enumerate() {
-                        if col.get(i).is_none() {
-                            *mask = false;
-                        }
+            for col in &x_cols {
+                for (i, mask) in valid_mask.iter_mut().enumerate() {
+                    if col.get(i).is_none() {
+                        *mask = false;
                     }
                 }
             }
@@ -4499,22 +4488,18 @@ pub(crate) fn build_xy_with_null_policy(
 
             // Build y and X for fitting (only valid rows)
             let y = Col::from_fn(n_valid, |i| y_series.get(valid_indices[i]).unwrap());
+            // `.unwrap()` is sound here: every column in `x_cols` was proven
+            // convertible to Float64 by the hoisted cast above (a failed cast
+            // would already have returned `Err` from this function), and the
+            // null scan above covers every column in `x_cols`.
             let x_fit = Mat::from_fn(n_valid, n_features, |row, col| {
-                inputs[x_start_idx + col]
-                    .f64()
-                    .ok()
-                    .and_then(|ca| ca.get(valid_indices[row]))
-                    .unwrap()
+                x_cols[col].get(valid_indices[row]).unwrap()
             });
 
             // X for prediction - same as fitting data (predictions will be masked later)
             // But we need full X for prediction with NaN where nulls exist
             let x_pred = Mat::from_fn(n_rows, n_features, |row, col| {
-                inputs[x_start_idx + col]
-                    .f64()
-                    .ok()
-                    .and_then(|ca| ca.get(row))
-                    .unwrap_or(f64::NAN)
+                x_cols[col].get(row).unwrap_or(f64::NAN)
             });
 
             Ok((x_fit, y, valid_mask, x_pred))
@@ -4569,7 +4554,7 @@ pub fn ols_predict_fit_with(
     let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
     let solve_method = parse_solver_type(inputs[2].str()?.get(0));
     let interval = inputs[3].str()?.get(0); // None, "confidence", or "prediction"
-    let level = inputs[4].f64()?.get(0).unwrap_or(0.95);
+    let level = super::inputs::as_f64(&inputs[4])?.get(0).unwrap_or(0.95);
     let null_policy = inputs[5].str()?.get(0).unwrap_or("drop");
     let prefix = &kwargs.prefix;
 
@@ -4659,9 +4644,9 @@ pub fn ridge_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResu
     let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
     let solve_method = parse_solver_type(inputs[2].str()?.get(0));
     let interval = inputs[3].str()?.get(0);
-    let level = inputs[4].f64()?.get(0).unwrap_or(0.95);
+    let level = super::inputs::as_f64(&inputs[4])?.get(0).unwrap_or(0.95);
     let null_policy = inputs[5].str()?.get(0).unwrap_or("drop");
-    let lambda = inputs[6].f64()?.get(0).unwrap_or(1.0);
+    let lambda = super::inputs::as_f64(&inputs[6])?.get(0).unwrap_or(1.0);
     let prefix = &kwargs.prefix;
 
     let n_rows = inputs[0].len();
@@ -4743,10 +4728,10 @@ fn pl_ridge_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Se
 pub fn elastic_net_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
     let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
     let interval = inputs[2].str()?.get(0);
-    let level = inputs[3].f64()?.get(0).unwrap_or(0.95);
+    let level = super::inputs::as_f64(&inputs[3])?.get(0).unwrap_or(0.95);
     let null_policy = inputs[4].str()?.get(0).unwrap_or("drop");
-    let lambda = inputs[5].f64()?.get(0).unwrap_or(1.0);
-    let alpha = inputs[6].f64()?.get(0).unwrap_or(0.5);
+    let lambda = super::inputs::as_f64(&inputs[5])?.get(0).unwrap_or(1.0);
+    let alpha = super::inputs::as_f64(&inputs[6])?.get(0).unwrap_or(0.5);
     let prefix = &kwargs.prefix;
 
     let n_rows = inputs[0].len();
@@ -4842,14 +4827,14 @@ pub fn wls_predict_fit_with(
     let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
     let solve_method = parse_solver_type(inputs[2].str()?.get(0));
     let interval = inputs[3].str()?.get(0);
-    let level = inputs[4].f64()?.get(0).unwrap_or(0.95);
+    let level = super::inputs::as_f64(&inputs[4])?.get(0).unwrap_or(0.95);
     let null_policy = inputs[5].str()?.get(0).unwrap_or("drop");
     let prefix = &kwargs.prefix;
 
     let n_rows = inputs[0].len();
 
     // Build weights
-    let weights_series = inputs[6].f64()?;
+    let weights_series = super::inputs::as_f64(&inputs[6])?;
     let weights = Col::from_fn(n_rows, |i| weights_series.get(i).unwrap_or(1.0));
 
     let (x_fit, y, valid_mask, x_pred) = match build_xy_with_null_policy(inputs, 0, 7, null_policy)
@@ -4951,9 +4936,9 @@ pub fn rls_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult
 pub fn rls_predict_fit_with(inputs: &[Series], kwargs: RlsPredictKwargs) -> PolarsResult<Series> {
     let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
     let interval = inputs[2].str()?.get(0);
-    let level = inputs[3].f64()?.get(0).unwrap_or(0.95);
+    let level = super::inputs::as_f64(&inputs[3])?.get(0).unwrap_or(0.95);
     let null_policy = inputs[4].str()?.get(0).unwrap_or("drop");
-    let forgetting_factor = inputs[5].f64()?.get(0).unwrap_or(0.99);
+    let forgetting_factor = super::inputs::as_f64(&inputs[5])?.get(0).unwrap_or(0.99);
     let prefix = &kwargs.prefix;
 
     let n_rows = inputs[0].len();
@@ -5049,10 +5034,10 @@ fn pl_rls_predict(inputs: &[Series], kwargs: RlsPredictKwargs) -> PolarsResult<S
 pub fn bls_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
     let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
     let interval = inputs[2].str()?.get(0);
-    let level = inputs[3].f64()?.get(0).unwrap_or(0.95);
+    let level = super::inputs::as_f64(&inputs[3])?.get(0).unwrap_or(0.95);
     let null_policy = inputs[4].str()?.get(0).unwrap_or("drop");
-    let lower_bound = inputs[5].f64()?.get(0);
-    let upper_bound = inputs[6].f64()?.get(0);
+    let lower_bound = super::inputs::as_f64(&inputs[5])?.get(0);
+    let upper_bound = super::inputs::as_f64(&inputs[6])?.get(0);
     let prefix = &kwargs.prefix;
 
     let n_rows = inputs[0].len();
@@ -5137,7 +5122,7 @@ fn pl_bls_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Seri
 ///
 /// Input contract: `[y, tau (f64), with_intercept (bool), null_policy (str), x_0, ...]`.
 pub fn quantile_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
-    let tau = inputs[1].f64()?.get(0).unwrap_or(0.5);
+    let tau = super::inputs::as_f64(&inputs[1])?.get(0).unwrap_or(0.5);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let null_policy = inputs[3].str()?.get(0).unwrap_or("drop");
     let prefix = &kwargs.prefix;
@@ -5191,8 +5176,8 @@ pub fn isotonic_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsR
     let prefix = &kwargs.prefix;
     let n_rows = inputs[0].len();
 
-    let y_ca = inputs[0].f64()?;
-    let x_ca = inputs[1].f64()?;
+    let y_ca = super::inputs::as_f64(&inputs[0])?;
+    let x_ca = super::inputs::as_f64(&inputs[1])?;
 
     let y_vec: Vec<f64> = y_ca.into_no_null_iter().collect();
     let x_vec: Vec<f64> = x_ca.into_no_null_iter().collect();
@@ -5228,10 +5213,10 @@ fn pl_isotonic_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult
 
 /// Public Rust-callable variant. Same input contract as the `pl_logistic_predict` expression shim.
 pub fn logistic_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
-    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let lambda = super::inputs::as_f64(&inputs[1])?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let interval = inputs[3].str()?.get(0);
-    let level = inputs[4].f64()?.get(0).unwrap_or(0.95);
+    let level = super::inputs::as_f64(&inputs[4])?.get(0).unwrap_or(0.95);
     let null_policy = inputs[5].str()?.get(0).unwrap_or("drop");
     let prefix = &kwargs.prefix;
 
@@ -5310,10 +5295,10 @@ fn pl_logistic_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult
 
 /// Public Rust-callable variant. Same input contract as the `pl_poisson_predict` expression shim.
 pub fn poisson_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
-    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let lambda = super::inputs::as_f64(&inputs[1])?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let interval = inputs[3].str()?.get(0);
-    let level = inputs[4].f64()?.get(0).unwrap_or(0.95);
+    let level = super::inputs::as_f64(&inputs[4])?.get(0).unwrap_or(0.95);
     let null_policy = inputs[5].str()?.get(0).unwrap_or("drop");
     let prefix = &kwargs.prefix;
 
@@ -5411,10 +5396,10 @@ pub fn negative_binomial_predict_fit_with(
     inputs: &[Series],
     kwargs: NegativeBinomialPredictKwargs,
 ) -> PolarsResult<Series> {
-    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let lambda = super::inputs::as_f64(&inputs[1])?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let interval = inputs[3].str()?.get(0);
-    let level = inputs[4].f64()?.get(0).unwrap_or(0.95);
+    let level = super::inputs::as_f64(&inputs[4])?.get(0).unwrap_or(0.95);
     let null_policy = inputs[5].str()?.get(0).unwrap_or("drop");
     let prefix = &kwargs.prefix;
 
@@ -5514,12 +5499,12 @@ fn pl_negative_binomial_predict(
 
 /// Public Rust-callable variant. Same input contract as the `pl_tweedie_predict` expression shim.
 pub fn tweedie_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
-    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let lambda = super::inputs::as_f64(&inputs[1])?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let interval = inputs[3].str()?.get(0);
-    let level = inputs[4].f64()?.get(0).unwrap_or(0.95);
+    let level = super::inputs::as_f64(&inputs[4])?.get(0).unwrap_or(0.95);
     let null_policy = inputs[5].str()?.get(0).unwrap_or("drop");
-    let var_power = inputs[6].f64()?.get(0).unwrap_or(1.5);
+    let var_power = super::inputs::as_f64(&inputs[6])?.get(0).unwrap_or(1.5);
     let prefix = &kwargs.prefix;
 
     let n_rows = inputs[0].len();
@@ -5601,10 +5586,10 @@ fn pl_tweedie_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<
 
 /// Public Rust-callable variant. Same input contract as the `pl_probit_predict` expression shim.
 pub fn probit_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
-    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let lambda = super::inputs::as_f64(&inputs[1])?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let interval = inputs[3].str()?.get(0);
-    let level = inputs[4].f64()?.get(0).unwrap_or(0.95);
+    let level = super::inputs::as_f64(&inputs[4])?.get(0).unwrap_or(0.95);
     let null_policy = inputs[5].str()?.get(0).unwrap_or("drop");
     let prefix = &kwargs.prefix;
 
@@ -5683,10 +5668,10 @@ fn pl_probit_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<S
 
 /// Public Rust-callable variant. Same input contract as the `pl_cloglog_predict` expression shim.
 pub fn cloglog_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
-    let lambda = inputs[1].f64()?.get(0).unwrap_or(0.0);
+    let lambda = super::inputs::as_f64(&inputs[1])?.get(0).unwrap_or(0.0);
     let with_intercept = inputs[2].bool()?.get(0).unwrap_or(true);
     let interval = inputs[3].str()?.get(0);
-    let level = inputs[4].f64()?.get(0).unwrap_or(0.95);
+    let level = super::inputs::as_f64(&inputs[4])?.get(0).unwrap_or(0.95);
     let null_policy = inputs[5].str()?.get(0).unwrap_or("drop");
     let prefix = &kwargs.prefix;
 
@@ -5767,7 +5752,7 @@ fn pl_cloglog_predict(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<
 pub fn alm_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
     let with_intercept = inputs[1].bool()?.get(0).unwrap_or(true);
     let interval = inputs[2].str()?.get(0);
-    let level = inputs[3].f64()?.get(0).unwrap_or(0.95);
+    let level = super::inputs::as_f64(&inputs[3])?.get(0).unwrap_or(0.95);
     let null_policy = inputs[4].str()?.get(0).unwrap_or("drop");
     let dist_str = inputs[5].str()?.get(0).unwrap_or("normal");
     let prefix = &kwargs.prefix;
@@ -6092,10 +6077,10 @@ fn aid_nan_output() -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_aid` expression shim.
 pub fn aid_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let intermittent_threshold = inputs[1].f64()?.get(0).unwrap_or(0.3);
+    let intermittent_threshold = super::inputs::as_f64(&inputs[1])?.get(0).unwrap_or(0.3);
     let detect_anomalies = inputs[2].bool()?.get(0).unwrap_or(true);
 
-    let y_series = inputs[0].f64()?;
+    let y_series = super::inputs::as_f64(&inputs[0])?;
     let n_rows = y_series.len();
 
     if n_rows == 0 {
@@ -6204,9 +6189,9 @@ fn aid_anomalies_nan_output(n_rows: usize) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_aid_anomalies` expression shim.
 pub fn aid_anomalies_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let intermittent_threshold = inputs[1].f64()?.get(0).unwrap_or(0.3);
+    let intermittent_threshold = super::inputs::as_f64(&inputs[1])?.get(0).unwrap_or(0.3);
 
-    let y_series = inputs[0].f64()?;
+    let y_series = super::inputs::as_f64(&inputs[0])?;
     let n_rows = y_series.len();
 
     if n_rows == 0 {
@@ -6328,8 +6313,8 @@ fn lm_dynamic_nan_output() -> PolarsResult<Series> {
 pub fn lm_dynamic_fit(inputs: &[Series]) -> PolarsResult<Series> {
     let ic_str = inputs[1].str()?.get(0).unwrap_or("aicc");
     let dist_str = inputs[2].str()?.get(0).unwrap_or("normal");
-    let lowess_span = inputs[3].f64()?.get(0).unwrap_or(0.3);
-    let max_models = inputs[4].u32()?.get(0).unwrap_or(64) as usize;
+    let lowess_span = super::inputs::as_f64(&inputs[3])?.get(0).unwrap_or(0.3);
+    let max_models = super::inputs::as_u32(&inputs[4])?.get(0).unwrap_or(64) as usize;
     let with_intercept = inputs[5].bool()?.get(0).unwrap_or(true);
 
     let (x, y) = match build_xy_data(inputs, 0, 6) {
@@ -6407,8 +6392,8 @@ fn pl_lm_dynamic(inputs: &[Series]) -> PolarsResult<Series> {
 pub fn lm_dynamic_predict_fit(inputs: &[Series], kwargs: PredictKwargs) -> PolarsResult<Series> {
     let ic_str = inputs[1].str()?.get(0).unwrap_or("aicc");
     let dist_str = inputs[2].str()?.get(0).unwrap_or("normal");
-    let lowess_span = inputs[3].f64()?.get(0).unwrap_or(0.3);
-    let max_models = inputs[4].u32()?.get(0).unwrap_or(64) as usize;
+    let lowess_span = super::inputs::as_f64(&inputs[3])?.get(0).unwrap_or(0.3);
+    let max_models = super::inputs::as_u32(&inputs[4])?.get(0).unwrap_or(64) as usize;
     let with_intercept = inputs[5].bool()?.get(0).unwrap_or(true);
     let null_policy = inputs[6].str()?.get(0).unwrap_or("drop");
     let prefix = &kwargs.prefix;

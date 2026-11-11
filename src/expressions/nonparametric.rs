@@ -32,13 +32,13 @@ fn parse_alternative(s: &str) -> Alternative {
 /// `estimate`/`ci_lower`/`ci_upper` are NaN unless `conf_level` (inputs[5]) is `Some`; a
 /// one-sided `alternative` may give an infinite bound, preserved as such.
 pub fn mann_whitney_u_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let x = inputs[0].f64()?;
-    let y = inputs[1].f64()?;
+    let x = super::inputs::as_f64(&inputs[0])?;
+    let y = super::inputs::as_f64(&inputs[1])?;
     let alt_str = inputs[2].str()?.get(0).unwrap_or("two-sided");
     let continuity_correction = inputs[3].bool()?.get(0).unwrap_or(true);
     let exact = inputs[4].bool()?.get(0).unwrap_or(false);
-    let conf_level = inputs[5].f64()?.get(0);
-    let mu = inputs[6].f64()?.get(0);
+    let conf_level = super::inputs::as_f64(&inputs[5])?.get(0);
+    let mu = super::inputs::as_f64(&inputs[6])?.get(0);
 
     let x_vec: Vec<f64> = x.into_no_null_iter().collect();
     let y_vec: Vec<f64> = y.into_no_null_iter().collect();
@@ -78,13 +78,13 @@ fn pl_mann_whitney_u(inputs: &[Series]) -> PolarsResult<Series> {
 /// `estimate`/`ci_lower`/`ci_upper` are NaN unless `conf_level` (inputs[5]) is `Some`; a
 /// one-sided `alternative` may give an infinite bound, preserved as such.
 pub fn wilcoxon_signed_rank_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let x = inputs[0].f64()?;
-    let y = inputs[1].f64()?;
+    let x = super::inputs::as_f64(&inputs[0])?;
+    let y = super::inputs::as_f64(&inputs[1])?;
     let alt_str = inputs[2].str()?.get(0).unwrap_or("two-sided");
     let continuity_correction = inputs[3].bool()?.get(0).unwrap_or(true);
     let exact = inputs[4].bool()?.get(0).unwrap_or(false);
-    let conf_level = inputs[5].f64()?.get(0);
-    let mu = inputs[6].f64()?.get(0);
+    let conf_level = super::inputs::as_f64(&inputs[5])?.get(0);
+    let mu = super::inputs::as_f64(&inputs[6])?.get(0);
 
     let x_vec: Vec<f64> = x.into_no_null_iter().collect();
     let y_vec: Vec<f64> = y.into_no_null_iter().collect();
@@ -123,7 +123,7 @@ pub fn kruskal_wallis_fit(inputs: &[Series]) -> PolarsResult<Series> {
     // This takes multiple groups as separate series
     let groups: Vec<Vec<f64>> = inputs
         .iter()
-        .map(|s| s.f64().map(|ca| ca.into_no_null_iter().collect()))
+        .map(|s| super::inputs::as_f64(s).map(|ca| ca.into_no_null_iter().collect()))
         .collect::<PolarsResult<Vec<_>>>()?;
 
     let group_refs: Vec<&[f64]> = groups.iter().map(|g| g.as_slice()).collect();
@@ -143,10 +143,10 @@ fn pl_kruskal_wallis(inputs: &[Series]) -> PolarsResult<Series> {
 
 /// Public Rust-callable variant. Same input contract as the `pl_brunner_munzel` expression shim.
 pub fn brunner_munzel_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let x = inputs[0].f64()?;
-    let y = inputs[1].f64()?;
+    let x = super::inputs::as_f64(&inputs[0])?;
+    let y = super::inputs::as_f64(&inputs[1])?;
     let alt_str = inputs[2].str()?.get(0).unwrap_or("two-sided");
-    let alpha = inputs[3].f64()?.get(0);
+    let alpha = super::inputs::as_f64(&inputs[3])?.get(0);
 
     let x_vec: Vec<f64> = x.into_no_null_iter().collect();
     let y_vec: Vec<f64> = y.into_no_null_iter().collect();
@@ -175,9 +175,9 @@ fn pl_brunner_munzel(inputs: &[Series]) -> PolarsResult<Series> {
 /// - `inputs[1]` — `f64` Series (second sample `y`).
 /// - `inputs[2]` — `f64` literal, nullable: `mu` (location shift under the null; `None` means 0.0).
 pub fn rank_biserial_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let x = inputs[0].f64()?;
-    let y = inputs[1].f64()?;
-    let mu = inputs[2].f64()?.get(0);
+    let x = super::inputs::as_f64(&inputs[0])?;
+    let y = super::inputs::as_f64(&inputs[1])?;
+    let mu = super::inputs::as_f64(&inputs[2])?.get(0);
 
     let x_vec: Vec<f64> = x.into_no_null_iter().collect();
     let y_vec: Vec<f64> = y.into_no_null_iter().collect();
@@ -203,9 +203,9 @@ fn pl_rank_biserial(inputs: &[Series]) -> PolarsResult<Series> {
 /// - `inputs[1]` — `f64` Series (second sample `y`).
 /// - `inputs[2]` — `f64` literal, nullable: `mu` (location shift under the null; `None` means 0.0).
 pub fn matched_pairs_rank_biserial_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let x = inputs[0].f64()?;
-    let y = inputs[1].f64()?;
-    let mu = inputs[2].f64()?.get(0);
+    let x = super::inputs::as_f64(&inputs[0])?;
+    let y = super::inputs::as_f64(&inputs[1])?;
+    let mu = super::inputs::as_f64(&inputs[2])?.get(0);
 
     let x_vec: Vec<f64> = x.into_no_null_iter().collect();
     let y_vec: Vec<f64> = y.into_no_null_iter().collect();
@@ -234,9 +234,11 @@ fn pl_matched_pairs_rank_biserial(inputs: &[Series]) -> PolarsResult<Series> {
 /// `rank_biserial_from_u` is infallible upstream (returns NaN when `n1 * n2 == 0`), so this
 /// never takes the error branch.
 pub fn rank_biserial_from_u_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let u1 = inputs[0].f64()?.get(0).unwrap_or(f64::NAN);
-    let n1 = inputs[1].u32()?.get(0).unwrap_or(0) as usize;
-    let n2 = inputs[2].u32()?.get(0).unwrap_or(0) as usize;
+    let u1 = super::inputs::as_f64(&inputs[0])?
+        .get(0)
+        .unwrap_or(f64::NAN);
+    let n1 = super::inputs::as_u32(&inputs[1])?.get(0).unwrap_or(0) as usize;
+    let n2 = super::inputs::as_u32(&inputs[2])?.get(0).unwrap_or(0) as usize;
 
     let r = rank_biserial_from_u(u1, n1, n2);
     effect_size_output(r, "rank_biserial_from_u")

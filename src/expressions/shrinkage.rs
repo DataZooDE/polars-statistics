@@ -126,8 +126,8 @@ fn eb_shrink_nan_output(n: usize) -> PolarsResult<Series> {
 /// (`EbShrinkError::InvalidValue`); empty input, a single usable row, or all
 /// rows unusable give `n` rows of NaN with `n_groups` 0 — never an exception.
 pub fn eb_shrink_fit(inputs: &[Series]) -> PolarsResult<Series> {
-    let est_ca = inputs[0].f64()?;
-    let se_ca = inputs[1].f64()?;
+    let est_ca = super::inputs::as_f64(&inputs[0])?;
+    let se_ca = super::inputs::as_f64(&inputs[1])?;
     if est_ca.len() != se_ca.len() {
         return Err(
             polars_err!(ComputeError: "eb_shrink: estimate and std_error must have the same length (got {} and {})", est_ca.len(), se_ca.len()),
@@ -137,7 +137,7 @@ pub fn eb_shrink_fit(inputs: &[Series]) -> PolarsResult<Series> {
 
     let method_str = inputs[2].str()?.get(0).unwrap_or("dl");
     let method = parse_tau_method(method_str)?;
-    let tau_squared = inputs[3].f64()?.get(0);
+    let tau_squared = super::inputs::as_f64(&inputs[3])?.get(0);
 
     let estimates: Vec<f64> = est_ca.iter().map(|v| v.unwrap_or(f64::NAN)).collect();
     let std_errors: Vec<f64> = se_ca.iter().map(|v| v.unwrap_or(f64::NAN)).collect();

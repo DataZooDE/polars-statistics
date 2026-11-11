@@ -394,7 +394,7 @@ pub fn build_penalized_glm(
 /// Build an `n`-length `Vec<f64>` from a Float64 Series, mapping null to NaN
 /// (never `into_no_null_iter`, which yields undefined values in null slots).
 fn series_to_vec_nan(s: &Series) -> PolarsResult<Vec<f64>> {
-    let ca = s.f64()?;
+    let ca = super::inputs::as_f64(s)?;
     Ok((0..ca.len())
         .map(|i| ca.get(i).unwrap_or(f64::NAN))
         .collect())
@@ -416,7 +416,7 @@ fn build_penalized_glm_x(inputs: &[Series], x_start: usize, n: usize) -> PolarsR
 /// -> NaN, the row is then dropped upstream like any other non-finite
 /// value); any other length is a `ComputeError`.
 fn resolve_offset(offset: &Series, n: usize) -> PolarsResult<Col<f64>> {
-    let ca = offset.f64()?;
+    let ca = super::inputs::as_f64(offset)?;
     match ca.len() {
         1 => {
             let v = ca.get(0).unwrap_or(0.0);
@@ -551,7 +551,7 @@ fn penalized_glm_nan_output() -> PolarsResult<Series> {
 /// expression shim: `inputs[0]` = y, `inputs[1]` = offset (length 1 or n),
 /// `inputs[2..]` = x columns.
 pub fn penalized_glm_fit(inputs: &[Series], kwargs: &PenalizedGlmKwargs) -> PolarsResult<Series> {
-    let y_series = inputs[0].f64()?;
+    let y_series = super::inputs::as_f64(&inputs[0])?;
     let n = y_series.len();
 
     let offset_col = resolve_offset(&inputs[1], n)?;
@@ -677,7 +677,7 @@ pub fn penalized_glm_summary_fit(
     inputs: &[Series],
     kwargs: &PenalizedGlmKwargs,
 ) -> PolarsResult<Series> {
-    let y_series = inputs[0].f64()?;
+    let y_series = super::inputs::as_f64(&inputs[0])?;
     let n = y_series.len();
     let n_features = inputs.len() - 2;
 
@@ -816,12 +816,12 @@ pub fn penalized_glm_predict_fit(
     // below excludes that row from the fit under every policy (the offset
     // itself is handled separately via `offset_full`, which preserves NaN at
     // that row for the prediction step regardless of `null_policy`).
-    let offset_ca = inputs[1].f64()?;
+    let offset_ca = super::inputs::as_f64(&inputs[1])?;
     let offset_is_scalar = offset_ca.len() == 1;
     let offset_null_mask: Vec<bool> = (0..n_rows)
         .map(|i| !offset_is_scalar && offset_ca.get(i).is_none())
         .collect();
-    let y_ca = inputs[0].f64()?;
+    let y_ca = super::inputs::as_f64(&inputs[0])?;
     let modified_y: Vec<Option<f64>> = (0..n_rows)
         .map(|i| {
             if offset_null_mask[i] {
