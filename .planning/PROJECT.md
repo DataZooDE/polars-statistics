@@ -26,22 +26,52 @@ and shipped to users via PyPI.
 
 ## Current State
 
-**Shipped:** v0.8.0 Claude Code Skills Plugin (2026-10-16). polars-statistics 0.8.0 is
-on PyPI, and the tag `v0.8.0` is on merge commit `fd52d07`.
+**Shipped:** v0.9.0 bug-fix release (2026-11-11), out of milestone. It fixed GH #51: the
+rlib no longer pulls in pyo3, and pyo3-polars is now optional. It also fixed GH #52:
+every expression upcasts numeric inputs to Float64/UInt32. 0.9.0 is on PyPI; tag
+`v0.9.0`.
 
-- The Claude Code plugin is published two ways. In the repo it is `.claude-plugin/marketplace.json` plus `plugins/polars-statistics/`. In the wheel it is `python/polars_statistics/_plugin/`, kept in sync by a CI drift guard.
-- There are 5 version-pinned skills: hypothesis-tests, anova, regression, results and getting-started. `ROUTING.md` lists 23 routing prompts, and `scripts/verify_skill_examples.py` runs every runnable example.
-- Upstream versions are frozen at anofox-statistics 0.4.7 / anofox-regression 0.5.22.
-- `ruff check .` is green repo-wide and enforced in the CI lint job.
-- 18 version sources are aligned and checked by `scripts/check_version_alignment.py`.
+- Upstream crates are still frozen at anofox-statistics 0.4.7 / anofox-regression
+  0.5.22. Latest upstream (2026-11-06): anofox-statistics 0.10.0 / anofox-regression
+  0.12.2.
+- Stack: polars 0.52 / pyo3-polars 0.25 / pyo3 0.26 / numpy 0.26. The 0.9.0 wheel was
+  verified working with Python polars 1.34, 1.39 and 2.1.
+- 18 version sources are aligned at 0.9.0 (`scripts/check_version_alignment.py`).
 
-## Next Milestone Goals
+## Current Milestone: v0.10.0 Upstream Wave 3
 
-Not yet defined. Start it with `/gsd-new-milestone`. The leading candidate is **v0.9.0
-Upstream Wave 3** (UPST-11): anofox-statistics 0.4.8+ (classification, timeseries
-including Durbin-Watson, survival) and anofox-regression 0.5.23+ (regularisation paths
-with k-fold CV, quantile-regression inference, predict_se, partial residuals,
-Breusch-Pagan/White, AFT survival curves, penalized-GLM augment, GLMM AIC/BIC).
+**Goal:** Move onto the latest anofox crates (anofox-statistics 0.10.0, anofox-regression
+0.12.2) and the current Polars/PyO3 stack while keeping R parity, expose the small new
+upstream surface, and ship 0.10.0 to PyPI.
+
+**Target features:**
+- anofox-statistics 0.4.7 → 0.10.0. Fix the posthoc test and fixture. Document and
+  R-validate the semantic changes: the SPA p-value column swap, MCS, the ICC(2) CI, the
+  one-sided t CI, semi_partial_cor and the HF epsilon. Add the cheap API: pairwise
+  conf_level, p_adjust_n, ttest_1samp, SPA p_value_lower, the MCS fields, the bootstrap
+  method kwarg and the MMD median heuristic.
+- anofox-regression 0.5.22 → 0.8.0, the numerics step. Construct Augment without a
+  struct literal. Set penalized-GLM model_type to "glm". Remove the double vcov φ
+  scaling. Raise the LmDynamic max_models default. Re-validate the R fixtures against
+  the 0.8 algorithm changes.
+- anofox-regression → 0.9.0 → 0.12.2, the API-break step. Renames, IterativeFit,
+  ColRef returns, non_exhaustive enums, error types, and the VIF / P-spline AIC
+  semantics.
+- Polars/PyO3 stack. pyo3-polars 0.28 / polars 0.55 / pyo3 0.29 / numpy 0.29 (pinned
+  by pyo3-polars 0.28). Drop unused deps (rand, rand_chacha, polars-arrow, thiserror).
+  MSRV 1.87. Add a tested Python polars range and a min-version CI job. Keep faer 0.23
+  and statrs 0.18: both anofox crates still require them.
+- Small new upstream surface only: kwargs, result fields and diagnostics. Examples:
+  Breusch-Pagan/White, cluster/HC vcov, predict_se, two-sample KS/AD/CvM,
+  ACF/PACF/Ljung-Box/Durbin-Watson.
+- Docs, skills, CHANGELOG with a Behaviour-changes section, and the v0.10.0 release to
+  PyPI.
+
+**Out of scope for this milestone:** large new families (Cox PH, ordinal/multinomial,
+GLS, the rms toolkit, drift, PCA/monitoring, classification metrics, survival curves).
+They are deferred to later milestones.
+
+**Research:** version-delta analysis in `.planning/research/UPSTREAM-DELTA.md`.
 
 ## Requirements
 
@@ -81,9 +111,10 @@ Breusch-Pagan/White, AFT survival curves, penalized-GLM augment, GLMM AIC/BIC).
 
 ### Active
 
-<!-- Next milestone not yet defined; candidates carried from v0.8.0 deferrals. -->
+<!-- v0.10.0 Upstream Wave 3 — detailed REQ-IDs in REQUIREMENTS.md -->
 
-- [ ] UPST-11: expose anofox-statistics 0.4.8+ / anofox-regression 0.5.23+ surface (targeted v0.9.0)
+- [ ] UPST-11: upgrade to anofox-statistics 0.10.0 / anofox-regression 0.12.2 and expose the small new surface (v0.10.0, see REQUIREMENTS.md)
+- [ ] STACK-01: upgrade to pyo3-polars 0.28 / polars 0.55 / pyo3 0.29 (v0.10.0)
 - [ ] FCST-01: evaluate exposing `anofox-forecast` capabilities
 
 ### Out of Scope
@@ -107,7 +138,7 @@ Breusch-Pagan/White, AFT survival curves, penalized-GLM augment, GLMM AIC/BIC).
 
 ## Constraints
 
-- **Tech stack**: Rust 2021 + PyO3 0.26 + Polars 0.52; new API must follow the existing `#[polars_expr]` / PyModel patterns and output-struct schemas — Why: consistency and native Polars integration.
+- **Tech stack**: Rust 2021 + PyO3 0.26 + Polars 0.52 (→ PyO3 0.29 + Polars 0.55 in v0.10.0); new API must follow the existing `#[polars_expr]` / PyModel patterns and output-struct schemas — Why: consistency and native Polars integration.
 - **Validation**: New tests validated against R where the crates supply references — Why: the library's core promise is "validated against R."
 - **CI gates**: clippy `-D warnings`, cargo fmt, ruff (line length 100, py39 target) must stay green — Why: existing merge gates.
 - **Compatibility**: Maintain Python 3.9–3.12 support across Linux/macOS/Windows wheels — Why: existing distribution matrix.
@@ -129,7 +160,10 @@ Breusch-Pagan/White, AFT survival curves, penalized-GLM augment, GLMM AIC/BIC).
 | Plugin + marketplace layout mirrors `anofox-forecast` | Root `.claude-plugin/marketplace.json` + `plugins/polars-statistics/` with `plugin.json` and `skills/`; `user-invocable: false` auto-surfaced skills | ✓ Good (live `/plugin marketplace add` test still manual-only) |
 | Bundle skills into the wheel + publish 0.8.0 to PyPI | User chose wheel bundling (maturin package data) over repo-only; additive → minor bump under semver | ✓ Done — maturin python-source copy at `_plugin/` with CI drift guard; 0.8.0 live on PyPI |
 | Insert upstream refresh phases 16.1–16.3 into v0.8.0 | New anofox releases carried R-matching fixes and new API; skills had to document the final surface before bundling | ✓ Good — frozen at 0.4.7 / 0.5.22 |
-| Defer anofox-statistics 0.4.8+ / anofox-regression 0.5.23+ (UPST-11) to v0.9.0 | Keep v0.8.0 shippable; wave 3 is large (classification, timeseries, survival, CV paths) | — Pending (v0.9.0) |
+| Defer anofox-statistics 0.4.8+ / anofox-regression 0.5.23+ (UPST-11) to v0.9.0 | Keep v0.8.0 shippable; wave 3 is large (classification, timeseries, survival, CV paths) | ✓ Taken up as v0.10.0. 0.9.0 was used for the #51/#52 bug-fix release |
+| v0.10.0 = upgrade + small surface only; large families deferred | Upgrade spans 25+ upstream releases with numeric and API breaks; keep the milestone shippable | — Pending |
+| Upgrade anofox before the Polars/PyO3 stack, as separate phases | The anofox crates don't depend on polars/pyo3; isolates statistical changes from stack churn | — Pending |
+| Split anofox-regression into a 0.8 numerics step and a 0.9+ API step | Keeps R-fixture failures separate from compile errors | — Pending |
 | Repo-wide ruff cleanup as its own phase (16.4), enforced in CI | Phase 16.1 found that ruff had never run in CI (393 findings) | ✓ Good — `ruff check .` green and gated |
 | Accept the Python 3.9 `get_type_hints` narrowing (T-16.4-03) | PEP 604 annotations under the future import; runtime is unaffected | ⚠️ Revisit when 3.9 support is dropped |
 | Skip the TestPyPI dry run for 0.8.0 | Stale token auth risk, and redundant with the production build matrix | ✓ Good — production publish succeeded on the first run |
@@ -152,4 +186,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-16 after v0.8.0 milestone*
+*Last updated: 2026-11-11 at v0.10.0 milestone start*

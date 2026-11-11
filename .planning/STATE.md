@@ -1,20 +1,16 @@
 ---
 gsd_state_version: "1.0"
-milestone: v0.8.0
-milestone_name: Claude Code Skills Plugin
-status: Awaiting next milestone
-stopped_at: Phase 17 complete — all phases complete
-last_updated: "2026-10-16T06:16:58.748Z"
-last_activity: 2026-10-16
-last_activity_desc: Milestone v0.8.0 completed and archived
-state_head: 796d159959ad0c64cd17680adc2c3b1400169314
+milestone: v0.10.0
+milestone_name: Upstream Wave 3
+status: planning
+last_updated: "2026-11-11T22:09:07.273Z"
+last_activity: 2026-11-11
 progress:
-  total_phases: 9
-  completed_phases: 9
-  total_plans: 44
-  completed_plans: 44
-  percent: 100
-current_phase: 17
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -28,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-10-16)
 
 ## Current Position
 
-Phase: Milestone v0.8.0 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-10-16 — Milestone v0.8.0 completed and archived
+Status: Defining requirements
+Last activity: 2026-11-11 — Milestone v0.10.0 started
 
 ## Milestone Roadmap (v0.8.0)
 
