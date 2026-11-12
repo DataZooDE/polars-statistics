@@ -1,7 +1,7 @@
 {
   "contract": "1.0.0",
   "flavor": "core",
-  "milestone": "v0.8.0 — Claude Code Skills Plugin",
+  "milestone": "v0.10.0",
   "phases": [
     {
       "number": "1",
@@ -62,37 +62,12 @@
       "number": "12",
       "name": "Release 0.7.0",
       "status": "complete"
-    },
-    {
-      "number": "13",
-      "name": "Plugin & Marketplace Scaffolding",
-      "status": "complete"
-    },
-    {
-      "number": "14",
-      "name": "Skill Cheat-Sheet Authoring",
-      "status": "complete"
-    },
-    {
-      "number": "15",
-      "name": "Accuracy Verification Pass",
-      "status": "complete"
-    },
-    {
-      "number": "16",
-      "name": "Wheel Bundling",
-      "status": "complete"
-    },
-    {
-      "number": "17",
-      "name": "Release 0.8.0",
-      "status": "complete"
     }
   ],
   "next": {
-    "command": "/gsd:progress",
-    "label": "Show progress",
-    "reason": "Unsure of state — showing progress"
+    "command": "/gsd-discuss-phase",
+    "label": "Discuss the first phase",
+    "reason": "Project initialized — plan your first phase"
   },
-  "updated_at": "2026-10-16T06:16:58.765Z"
+  "updated_at": "2026-11-11T22:09:07.277Z"
 }

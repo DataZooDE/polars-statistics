@@ -1,49 +1,50 @@
 ---
 gsd_state_version: "1.0"
-milestone: v0.8.0
-milestone_name: Claude Code Skills Plugin
-status: Awaiting next milestone
-stopped_at: Phase 17 complete — all phases complete
-last_updated: "2026-10-16T06:16:58.748Z"
-last_activity: 2026-10-16
-last_activity_desc: Milestone v0.8.0 completed and archived
-state_head: 796d159959ad0c64cd17680adc2c3b1400169314
+milestone: v0.10.0
+milestone_name: Upstream Wave 3
+status: planning
+last_updated: "2026-11-12T06:37:52.000Z"
+last_activity: 2026-11-12
 progress:
-  total_phases: 9
-  completed_phases: 9
-  total_plans: 44
-  completed_plans: 44
-  percent: 100
-current_phase: 17
+  total_phases: 8
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-16)
+See: .planning/PROJECT.md (updated 2026-11-11)
 
 **Core value:** Every public statistical capability in the backing `anofox-*` crates is exposed through the Polars/Python API — correctly, documented, tested, and shipped to PyPI.
-**Current focus:** Planning next milestone (v0.9.0 candidate: UPST-11)
+**Current focus:** v0.10.0 Upstream Wave 3. Phase 18: anofox-statistics 0.10.0 Upgrade.
 
 ## Current Position
 
-Phase: Milestone v0.8.0 complete
+Phase: 18 (anofox-statistics 0.10.0 Upgrade), the first of Phases 18-25
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-10-16 — Milestone v0.8.0 completed and archived
+Status: Ready to plan
+Last activity: 2026-11-12 — v0.10.0 roadmap created (8 phases, 18/18 requirements mapped)
 
-## Milestone Roadmap (v0.8.0)
+Progress: [░░░░░░░░░░] 0%
 
-Execution order: 13 → 14 → 15 → 16 → 17
+## Milestone Roadmap (v0.10.0)
+
+Execution order: 18 → 19 → 20 → 21 → 22 → 23 → 24 → 25
 
 | Phase | Name | Requirements |
 |-------|------|--------------|
-| 13 | Plugin & Marketplace Scaffolding | PLUG-01, PLUG-02, PLUG-03 |
-| 14 | Skill Cheat-Sheet Authoring | SKILL-01..06 |
-| 15 | Accuracy Verification Pass | VERIFY-01, VERIFY-02 |
-| 16 | Wheel Bundling | PKG-01 |
-| 17 | Release 0.8.0 | REL-07, REL-08 |
+| 18 | anofox-statistics 0.10.0 Upgrade | UPST-11, UPST-12 |
+| 19 | anofox-regression 0.8 Numerics | UPST-13 |
+| 20 | anofox-regression 0.12.2 API Migration | UPST-14 |
+| 21 | New Statistics Surface | STAT-01..04 |
+| 22 | New Regression Surface | REG-01..03 |
+| 23 | Polars / PyO3 Stack Upgrade | STACK-01..03 |
+| 24 | Docs & Skills Refresh | DOC-01, SKILL-07 |
+| 25 | Release 0.10.0 | REL-09, REL-10 |
 
 ## Performance Metrics
 
@@ -148,6 +149,17 @@ Execution order: 13 → 14 → 15 → 16 → 17
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
+- Milestone (v0.10.0): Upgrade plus small surface only. Large upstream families (FAM-01..08) are deferred to later milestones.
+- Milestone (v0.10.0): Behaviour-change policy is "adopt + document + R-reference test", with no FutureWarnings (same as v0.8.0).
+- Roadmap (v0.10.0): anofox-statistics goes first (Phase 18). It has no compile breaks and is the lowest risk.
+- Roadmap (v0.10.0): anofox-regression is split into the 0.8 numerics step (Phase 19) and the 0.9 → 0.12.2 API step (Phase 20), so R-fixture failures are never mixed with compile errors.
+- Roadmap (v0.10.0): The new statistics surface (21) and regression surface (22) come before the stack upgrade (23). All statistical work and R validation then happen on the trusted polars 0.52 / pyo3 0.26 stack, and STACK-01's "behaves identically" check runs against the largest suite. The stack's unverified size cannot block the user-visible surface. The cost is that the Phase 21–22 expressions are migrated mechanically in Phase 23 along with the 323 existing ones.
+- Roadmap (v0.10.0): Phase 23 (stack) is the last code-migration phase. Docs and skills (24) are verified against the final post-stack build, and release (25) comes last.
+- Roadmap (v0.10.0): Phases 18–20 add their changed outputs to the CHANGELOG `[Unreleased]` "Behaviour changes" list as they land. Phase 24 consolidates the list into `[0.10.0]`.
+
+<details>
+<summary>Archived decisions from v0.6.0 / v0.7.0 / v0.8.0 (reference; full per-phase detail in .planning/milestones/)</summary>
+
 - Milestone (v0.8.0): Package the full API as Claude Code skills — a plugin + marketplace mirroring anofox-forecast.
 - Milestone (v0.8.0): 5 skills grouped by capability family (hypothesis-tests, anova, regression, results, getting-started).
 - Milestone (v0.8.0): Plugin/marketplace layout mirrors anofox-forecast — root `.claude-plugin/marketplace.json` + `plugins/polars-statistics/` with `plugin.json` and `skills/`; `user-invocable: false` auto-surfaced skills.
@@ -155,10 +167,6 @@ Recent decisions affecting current work:
 - Roadmap (v0.8.0): Sequential technical-stage phases — scaffolding first (13), author skills (14), dedicated accuracy pass (15), wheel bundling (16), release last (17). Mirrors prior milestones' "release-last" pattern.
 - Roadmap (v0.8.0): SKILL-01..06 grouped into a single authoring phase (14) since the five cheat-sheets share frontmatter/structure conventions and benefit from being written together with live example checks.
 - Roadmap (v0.8.0): VERIFY-01/02 kept as a dedicated phase (15) so "every example runs" is a gate, not an afterthought inside authoring.
-
-<details>
-<summary>Prior-milestone decisions (v0.6.0 / v0.7.0) — reference</summary>
-
 - Scoped cargo update (-p flags) prevents polars/pyo3 version churn from unrelated dep bumps
 - No wrapper source reconciliation needed for anofox 0.5.4->0.5.13 bump — all call-site symbols stable
 - ICC stub classified as exposed-but-stubbed; Phase 3 implemented real matrix-input ICC (validated vs Shrout & Fleiss ICC(2,1)=0.71)
@@ -169,9 +177,6 @@ Recent decisions affecting current work:
 - fit_from_accumulator confirmed exact method name in OLS/Ridge solvers
 - icc matrix-input contract change documented as Breaking Change (correlation.md)
 - v0.6.0 stuck-release root cause: version bump reached only Cargo.lock; fixed by aligning Cargo.toml/pyproject.toml/`__version__` + re-pointing tag — carried into REL-07 as a hard requirement (all version sources aligned)
-
-</details>
-
 - [Phase 14]: 14-01: Frontmatter contract locked — four fields only (name, description, version 0.8.0, user-invocable false); Wave-2 plans copy verbatim
 - [Phase 14]: 14-01: Section structure locked — Overview / When-to-use / API-Reference / Worked-Examples / Gotchas / See-also for all five SKILL.md files
 - [Phase 14]: Forecast functions excluded from hypothesis-tests skill; ICC gotcha documented inline under Group D; categorical split into scalar-arg vs contingency-table-column subgroups
@@ -211,43 +216,39 @@ Recent decisions affecting current work:
 - [Phase 16.3]: 16.3-01: ptukey(qtukey(p)) round-trip test tolerance relaxed from 1e-8 to 1e-6 -- qtukey's Newton-Raphson solver converges to its own EPS=1e-4 criterion, not an implementation bug.
 - [Phase 16.3]: 16.3-02: GLM intercept-inference getters mirror the 16.1 Huber convention verbatim (t_statistics/conf_interval_lower/upper, four intercept_* fields) across all 10 OLS/WLS/GLM PyModel classes; LogisticRegression reads via fitted.inner().result() since FittedLogistic wraps FittedBinomial — Ensures API consistency across the regression PyModel family and avoids local recomputation of already-populated RegressionResult fields
 - [Phase 16.3]: 16.3-02: Split the regenerated _polars_statistics.pyi stub per task (splicing only the touched classes' blocks into the previously-committed stub) to keep each task commit's diff scoped to its own PyModel classes — Keeps per-task commits atomic even though scripts/gen_stubs.py regenerates the full cumulative file
-- [Phase 16.3]: [Phase 16.3]: 16.3-03: Resumed stalled executor at Task 1 (ae59953 already committed) — re-verified its full verify/acceptance gate against HEAD before continuing; matched the plan exactly, no fix commit needed
-- [Phase 16.3]: [Phase 16.3]: 16.3-03: Did not flip UPST-09 to Complete in REQUIREMENTS.md — shared with 16.3-04 through 16.3-08 (augment diagnostics, ModelInfo, alias_tolerance, LARS getters, EB shrinkage), none of which have executed yet
-- [Phase 16.3]: [Phase 16.3]: 16.3-03: PyGLMM::construct(...) centralizes random-structure validation (mutual exclusivity, no-intercept-no-slope, theta_max bounds) across all six GLMM factories instead of duplicating checks per factory
-- [Phase 16.3]: [Phase 16.3]: 16.3-04: eb_shrink produces one struct row per input row (returns_scalar=False), unlike posthoc.rs's one-row List[Struct] pairwise tests -- every shrunken value belongs to an input row, so .over(family) shrinks per family directly.
-- [Phase 16.3]: [Phase 16.3]: 16.3-04: Length mismatch between estimate/std_error is checked explicitly before calling upstream eb_shrink and raised as ComputeError directly, distinct from the all-NaN-rows degradation path used for EmptyInput/InsufficientData.
-- [Phase 16.3]: [Phase 16.3]: 16.3-04: Did not flip UPST-09 to Complete in REQUIREMENTS.md -- still shared with 16.3-05 through 16.3-11 (augment diagnostics, ModelInfo, GLM intercept inference, GLMM, alias_tolerance, LARS getters), none of which have executed yet.
-- [Phase 16.3]: [Phase 16.3]: 16.3-05: py_wls.rs's fitted field was already a concrete Option<FittedWls> (16.1-05), so WLS.augment needed no storage-type change
-- [Phase 16.3]: [Phase 16.3]: 16.3-05: augment's tweedie dispatch sets .link_power(0.0) explicitly (log link) since TweedieRegressorBuilder's own unset-link default (canonical link, 1 - var_power) does not reproduce GammaRegressor's Cook's distance at var_power=2.0 -- the pre-existing ps.tweedie() expression is untouched
-- [Phase 16.3]: [Phase 16.3]: 16.3-05: Did not flip UPST-09 to Complete in REQUIREMENTS.md -- still shared with 16.3-06 through 16.3-11
-- [Phase 16.3]: [Phase 16.3]: 16.3-06: Confirmed anofox-regression's Augmentable impls read family/link/theta from the fitted object itself, so every PyModel .augment() describes exactly what the instance was fit with (no reconciliation logic needed, unlike ps.augment's Tweedie dispatch fix in 16.3-05)
-- [Phase 16.3]: [Phase 16.3]: 16.3-06: Did not flip UPST-09 to Complete in REQUIREMENTS.md -- still shared with 16.3-07 through 16.3-11
+- [Phase 16.3]: 16.3-03: Resumed stalled executor at Task 1 (ae59953 already committed) — re-verified its full verify/acceptance gate against HEAD before continuing; matched the plan exactly, no fix commit needed
+- [Phase 16.3]: 16.3-03: PyGLMM::construct(...) centralizes random-structure validation (mutual exclusivity, no-intercept-no-slope, theta_max bounds) across all six GLMM factories instead of duplicating checks per factory
+- [Phase 16.3]: 16.3-04: eb_shrink produces one struct row per input row (returns_scalar=False), unlike posthoc.rs's one-row List[Struct] pairwise tests -- every shrunken value belongs to an input row, so .over(family) shrinks per family directly.
+- [Phase 16.3]: 16.3-04: Length mismatch between estimate/std_error is checked explicitly before calling upstream eb_shrink and raised as ComputeError directly, distinct from the all-NaN-rows degradation path used for EmptyInput/InsufficientData.
+- [Phase 16.3]: 16.3-05: py_wls.rs's fitted field was already a concrete Option<FittedWls> (16.1-05), so WLS.augment needed no storage-type change
+- [Phase 16.3]: 16.3-05: augment's tweedie dispatch sets .link_power(0.0) explicitly (log link) since TweedieRegressorBuilder's own unset-link default (canonical link, 1 - var_power) does not reproduce GammaRegressor's Cook's distance at var_power=2.0 -- the pre-existing ps.tweedie() expression is untouched
+- [Phase 16.3]: 16.3-06: Confirmed anofox-regression's Augmentable impls read family/link/theta from the fitted object itself, so every PyModel .augment() describes exactly what the instance was fit with (no reconciliation logic needed, unlike ps.augment's Tweedie dispatch fix in 16.3-05)
 - [Phase 16.3]: alias_tolerance shim pattern copied verbatim from 16.1-03's NegativeBinomialKwargs precedent, now applied to a 6-function OLS/WLS family — Reuse the established additive-kwargs shim pattern rather than inventing a new one
-- [Phase 16.3]: [Phase 16.3]: 16.3-08: Ridge already stores a concrete FittedRidge (narrowed in 16.1-05), so it gets the direct fitted.model_info() getter like OLS rather than the boxed-capture field the plan assumed for ElasticNet/RLS/BLS
-- [Phase 16.3]: [Phase 16.3]: 16.3-08: 16.3-08 is the last UPST-09-tagged plan (02-08); flipped UPST-09 to Complete in REQUIREMENTS.md
-- [Phase 16.3]: [Phase 16.3]: 16.3-09: mkdocs docs for the 16.3 surface verified against the live package (not docstrings); fixed a pre-existing stale GLMM direct-constructor doc example (GLMM only supports the six family-factory staticmethods, not GLMM(family=...))
-- [Phase 16.3]: [Phase 16.3]: 16.3-10: CHANGELOG [Unreleased] Dependencies section is append-only (16.2's stale 'planned for a later release' sentence preserved verbatim) -- new pin/deferral facts recorded as a trailing bullet, not an edit to that line
-- [Phase 16.3]: [Phase 16.3]: 16.3-10: moved the ps.augment() README mention out of the pre-existing bare Diagnostics code fence into its own self-contained runnable snippet, since the verify script execs every fence containing the literal 'augment(' substring
-- [Phase 16.3]: [Phase 16.3]: 16.3-11: All post-hoc / multiple-testing functions documented in the anova skill, not hypothesis-tests, even though dunn_test follows kruskal_wallis (owned by hypothesis-tests) -- matches the plan's routing decision; hypothesis-tests cross-references by name instead of duplicating content.
-- [Phase 16.3]: [Phase 16.3]: 16.3-11: GLM Group 5's shared 0.8.0 surface (model_info, .augment(), intercept/CI getters) documented once as a shared-surface note instead of repeated per-class; GLMM Group 6 rewritten into a shared-structural-kwargs block plus per-family one-liners to avoid repeating the same kwarg list six times.
-- [Phase 16.4]: [Phase 16.4]: 16.4-01: formula/terms.py's Term = Union[...] runtime alias kept as Union (not | ), since ClassA | ClassB raises TypeError on Python 3.9
-- [Phase 16.4]: [Phase 16.4]: 16.4-01: ruff check python/ exits 0 (390 of 460 baseline findings fixed via --fix --unsafe-fixes) proven behaviour-neutral by a custom AST-equality + public-API fingerprint guard on Python 3.9 and 3.12
-- [Phase 16.4]: [Phase 16.4]: 16.4-01: Did not flip QUAL-01 to Complete in REQUIREMENTS.md — requirement is whole-repo (ruff check . + CI gate), shared with 16.4-02/03 which have not executed yet
-- [Phase 16.4]: [Phase 16.4]: 16.4-02: Live-probed all 21 B017/sibling sites against the real PyO3 getters before the sed rewrite (not the plan's recorded probe list verbatim) — caught that test_moments.py:91 is actually OLS().coefficients, not MomentAccumulator as its filename suggested
-- [Phase 16.4]: [Phase 16.4]: 16.4-02: docs/assets/gen_plots.py F841/B007 fixes kept every surviving zip()/tuple-unpack partner wired exactly as before; only the unused half of each target was dropped or renamed to _name, so iteration length and rendered output stayed byte-identical
-- [Phase 16.4]: [Phase 16.4]: 16.4-03: Fixed scripts/gen_stubs.py (bare class names, no file-wide noqa) instead of excluding the generated .pyi from ruff, per CONTEXT's generator-fix-first rule
-- [Phase 16.4]: [Phase 16.4]: 16.4-03: Scoped ruff with pyproject.toml [tool.ruff] extend-exclude = [".planning"] (documented reason) rather than a per-file-ignore for the 2 remaining non-package findings
-- [Phase 16.4]: [Phase 16.4]: 16.4-03: Did not add ruff format --check to CI (139/249 files would be reformatted) — reformatting is a large diff unrelated to lint, per CONTEXT rule
-- [Phase 16]: [Phase 16]: 16-01: Bundled plugin tree under python/polars_statistics/_plugin/ via maturin python-source auto-include (not [tool.maturin] include globs) so files land inside the package namespace and are discoverable via polars_statistics.__file__
-- [Phase 16]: [Phase 16]: 16-01: [Rule 2] Wired scripts/verify_wheel_bundling.py --drift-only into the CI lint job so stale bundled skills fail CI before release
+- [Phase 16.3]: 16.3-08: Ridge already stores a concrete FittedRidge (narrowed in 16.1-05), so it gets the direct fitted.model_info() getter like OLS rather than the boxed-capture field the plan assumed for ElasticNet/RLS/BLS
+- [Phase 16.3]: 16.3-08: 16.3-08 is the last UPST-09-tagged plan (02-08); flipped UPST-09 to Complete in REQUIREMENTS.md
+- [Phase 16.3]: 16.3-09: mkdocs docs for the 16.3 surface verified against the live package (not docstrings); fixed a pre-existing stale GLMM direct-constructor doc example (GLMM only supports the six family-factory staticmethods, not GLMM(family=...))
+- [Phase 16.3]: 16.3-10: CHANGELOG [Unreleased] Dependencies section is append-only (16.2's stale 'planned for a later release' sentence preserved verbatim) -- new pin/deferral facts recorded as a trailing bullet, not an edit to that line
+- [Phase 16.3]: 16.3-10: moved the ps.augment() README mention out of the pre-existing bare Diagnostics code fence into its own self-contained runnable snippet, since the verify script execs every fence containing the literal 'augment(' substring
+- [Phase 16.3]: 16.3-11: All post-hoc / multiple-testing functions documented in the anova skill, not hypothesis-tests, even though dunn_test follows kruskal_wallis (owned by hypothesis-tests) -- matches the plan's routing decision; hypothesis-tests cross-references by name instead of duplicating content.
+- [Phase 16.3]: 16.3-11: GLM Group 5's shared 0.8.0 surface (model_info, .augment(), intercept/CI getters) documented once as a shared-surface note instead of repeated per-class; GLMM Group 6 rewritten into a shared-structural-kwargs block plus per-family one-liners to avoid repeating the same kwarg list six times.
+- [Phase 16.4]: 16.4-01: formula/terms.py's Term = Union[...] runtime alias kept as Union (not | ), since ClassA | ClassB raises TypeError on Python 3.9
+- [Phase 16.4]: 16.4-01: ruff check python/ exits 0 (390 of 460 baseline findings fixed via --fix --unsafe-fixes) proven behaviour-neutral by a custom AST-equality + public-API fingerprint guard on Python 3.9 and 3.12
+- [Phase 16.4]: 16.4-02: Live-probed all 21 B017/sibling sites against the real PyO3 getters before the sed rewrite (not the plan's recorded probe list verbatim) — caught that test_moments.py:91 is actually OLS().coefficients, not MomentAccumulator as its filename suggested
+- [Phase 16.4]: 16.4-02: docs/assets/gen_plots.py F841/B007 fixes kept every surviving zip()/tuple-unpack partner wired exactly as before; only the unused half of each target was dropped or renamed to _name, so iteration length and rendered output stayed byte-identical
+- [Phase 16.4]: 16.4-03: Fixed scripts/gen_stubs.py (bare class names, no file-wide noqa) instead of excluding the generated .pyi from ruff, per CONTEXT's generator-fix-first rule
+- [Phase 16.4]: 16.4-03: Scoped ruff with pyproject.toml [tool.ruff] extend-exclude = [".planning"] (documented reason) rather than a per-file-ignore for the 2 remaining non-package findings
+- [Phase 16.4]: 16.4-03: Did not add ruff format --check to CI (139/249 files would be reformatted) — reformatting is a large diff unrelated to lint, per CONTEXT rule
+- [Phase 16]: 16-01: Bundled plugin tree under python/polars_statistics/_plugin/ via maturin python-source auto-include (not [tool.maturin] include globs) so files land inside the package namespace and are discoverable via polars_statistics.__file__
+- [Phase 16]: 16-01: [Rule 2] Wired scripts/verify_wheel_bundling.py --drift-only into the CI lint job so stale bundled skills fail CI before release
 - [Phase 17]: 17-01: check_version_alignment.py line-scans TOML/JSON/frontmatter directly (no tomllib) so the check itself runs under CI's Python 3.9 pytest jobs
 - [Phase 17]: 17-01: CHANGELOG self-contradiction removed — deleted the 'planned for a later release' deferral sentence since the Added section + next bullet already document those additions as shipped
-- [Phase 17]: [Phase 17]: 17-02: PR #47's predicted ci.yml conflict did not materialize — git merge-tree probe showed a clean auto-merge (exit 0); documented as a finding, not a conflict to resolve
-- [Phase 17]: [Phase 17]: 17-02: Did not flip REL-08 to complete in REQUIREMENTS.md — it requires the production PyPI publish + post-release smoke, which belong to 17-04/17-05
-- [Phase 17]: [Phase 17]: 17-03: PR #48 merged into GitHub main as merge commit fd52d07 (user-approved merge-commit method, --match-head-commit guard); local main synced via git merge --no-edit origin/main (not ff-only — local main carried 17-02's bookkeeping commit), no history rewrite
-- [Phase 17]: [Phase 17]: 17-03: .planning/milestone.lock (transient session-lock file) ended up committed to GitHub main via 17-01/17-02's plan-metadata commits; left in place per the no-history-rewrite rule, flagged for user awareness (no secrets, just session id/pid/timestamp)
+- [Phase 17]: 17-02: PR #47's predicted ci.yml conflict did not materialize — git merge-tree probe showed a clean auto-merge (exit 0); documented as a finding, not a conflict to resolve
+- [Phase 17]: 17-03: PR #48 merged into GitHub main as merge commit fd52d07 (user-approved merge-commit method, --match-head-commit guard); local main synced via git merge --no-edit origin/main (not ff-only — local main carried 17-02's bookkeeping commit), no history rewrite
+- [Phase 17]: 17-03: .planning/milestone.lock (transient session-lock file) ended up committed to GitHub main via 17-01/17-02's plan-metadata commits; left in place per the no-history-rewrite rule, flagged for user awareness (no secrets, just session id/pid/timestamp)
 - [Phase 17]: 17-04: User declined the TestPyPI dry run (stale stored-token auth risk; production publish exercises the same 5-platform build matrix anyway). Nothing dispatched.
 - [Phase 17]: 17-05: polars-statistics 0.8.0 published to production PyPI via OIDC trusted publishing (publish run 38824647551); tag + GitHub release v0.8.0 at merge commit fd52d07; post-release smoke passed on Python 3.12 and 3.9. REL-08 complete.
+
+</details>
 
 ### Pending Todos
 
@@ -255,8 +256,16 @@ None yet.
 
 ### Blockers/Concerns
 
-- None currently open.
-- Note for Phase 14/15: examples must be verified against the *shipped* v0.7.0 surface (soon 0.8.0) — signatures live in `python/polars_statistics/` (exprs/*.py, regression.py, results.py, _polars_statistics.pyi). Do not invent kwargs.
+- None blocking.
+- Phase 18–22 R validation needs a local R with the reference packages: MCS (`MCSprocedure`), psych, ppcor, afex, kSamples, twosamples, lmtest, sandwich, car and mgcv. Where upstream ships R fixtures, reuse them byte-identically (16.1-09 precedent).
+- Phase 23 risk: polars 0.52 → 0.55 was not compiled offline. A Series→Column plugin-signature change would touch the 323 existing `#[polars_expr]` functions plus the Phase 21–22 additions. The fallback is to step pyo3-polars 0.26 → 0.27 → 0.28.
+- Phase 19/20: upstream now drops NaN rows by default (`NaAction`). Confirm that our `null_policy` pre-processing still decides null handling, so results are unchanged.
+- Accepted tech debt carried from v0.8.0:
+  - On Python 3.9, `get_type_hints` narrowing (T-16.4-03).
+  - `WLS.hc_inference` raises `NotImplementedError`.
+  - `conda/meta.yaml` is still at 0.4.0.
+  - The skill-example harness is not gated in CI.
+- Docs and skills must be verified against the live runtime, not docstrings, because docstrings understate output-struct fields.
 
 ### Quick Tasks Completed
 
@@ -270,25 +279,34 @@ None yet.
 
 ### Roadmap Evolution
 
+- v0.10.0: roadmap created 2026-11-12 with Phases 18–25. There are no insertions yet.
+
+<details>
+<summary>v0.8.0 roadmap evolution (archived)</summary>
+
 - Phase 16.1 inserted after Phase 16: Upstream crate refresh: anofox-statistics 0.4.4 + anofox-regression 0.5.15 — bump, adapt to R-matching behaviour changes, expose new API, update stubs/docs/CHANGELOG/skills (URGENT)
 - Phase 16.2 inserted after Phase 16.1: Penalized GLM + AFT survival regression from anofox-regression 0.5.16; Mann-Whitney/Wilcoxon expression estimate+CI (URGENT)
 - Phase 16.3 inserted after Phase 16.2: Upstream API wave 2: anofox-statistics 0.4.7 + anofox-regression 0.5.17–0.5.21; 16.2 retargeted to bump to 0.4.7/0.5.21 (URGENT)
 - Phase 16.4 inserted after Phase 16.3: Ruff cleanup + CI ruff gate (16.1 ruff criterion accepted via override)
 
+</details>
+
 ## Deferred Items
 
-Items acknowledged and carried forward from previous milestone close:
+Items acknowledged and carried forward:
 
 | Category | Item | Status | Deferred At |
 |----------|------|--------|-------------|
 | Forecast | Evaluate exposing `anofox-forecast` capabilities (FCST-01, v2) | Deferred | 2026-08-11 |
+| Upstream families | FAM-01..08: survival, ordinal/multinomial/GLS, the rms toolkit, drift, classification metrics, PCA/monitoring, CV paths, persistence. See REQUIREMENTS.md Future | Deferred | 2026-11-11 |
+| Dependencies | DEP-01: faer 0.24 / statrs 0.19, once both anofox crates move to them | Deferred | 2026-11-11 |
 
 ## Session Continuity
 
-Last session: 2026-10-16T00:21:26.476Z
-Stopped at: Phase 17 complete — all phases complete
+Last session: 2026-11-12T06:37:52.000Z
+Stopped at: v0.10.0 roadmap created (Phases 18–25, 18/18 requirements mapped)
 Resume file: None
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- Discuss the first phase with /gsd-discuss-phase 18, then plan it with /gsd-plan-phase 18
