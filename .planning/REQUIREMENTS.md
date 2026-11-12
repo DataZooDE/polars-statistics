@@ -98,15 +98,32 @@ Deferred to later milestones and tracked here, not in this roadmap.
 
 ## Traceability
 
-Filled in during roadmap creation.
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
+| UPST-11 | Phase 18 | Pending |
+| UPST-12 | Phase 18 | Pending |
+| UPST-13 | Phase 19 | Pending |
+| UPST-14 | Phase 20 | Pending |
+| STACK-01 | Phase 23 | Pending |
+| STACK-02 | Phase 23 | Pending |
+| STACK-03 | Phase 23 | Pending |
+| STAT-01 | Phase 21 | Pending |
+| STAT-02 | Phase 21 | Pending |
+| STAT-03 | Phase 21 | Pending |
+| STAT-04 | Phase 21 | Pending |
+| REG-01 | Phase 22 | Pending |
+| REG-02 | Phase 22 | Pending |
+| REG-03 | Phase 22 | Pending |
+| DOC-01 | Phase 24 | Pending |
+| SKILL-07 | Phase 24 | Pending |
+| REL-09 | Phase 25 | Pending |
+| REL-10 | Phase 25 | Pending |
 
 **Coverage:**
 - v1 requirements: 18 total
-- Mapped to phases: 0 (pending roadmap)
+- Mapped to phases: 18 ✓
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-11-11*
-*Last updated: 2026-11-11 after initial definition*
+*Last updated: 2026-11-12 after roadmap creation (Phases 18–25)*
